@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import axios from "axios";
@@ -22,7 +22,28 @@ export default function LoginForm({ onClose }) {
   const [devOtp, setDevOtp] = useState("");
   const [resendLoading, setResendLoading] = useState(false);
   const [resendMessage, setResendMessage] = useState("");
+  const [cooldownActive, setCooldownActive] = useState(false);
+  const [cooldownTime, setCooldownTime] = useState(0);
+  const COOLDOWN_SECONDS = 120; // 2 minutes in seconds
   const router = useRouter();
+
+  // Handle cooldown timer
+  useEffect(() => {
+    let interval;
+    if (cooldownActive && cooldownTime > 0) {
+      interval = setInterval(() => {
+        setCooldownTime((prev) => {
+          if (prev <= 1) {
+            setCooldownActive(false);
+            clearInterval(interval);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [cooldownActive, cooldownTime]);
 
   const handleLogin = async () => {
     setError("");
@@ -84,6 +105,10 @@ export default function LoginForm({ onClose }) {
         setDevOtp(otpResponse.data.otp);
       }
       
+      // Initialize cooldown after requesting OTP
+      setCooldownActive(true);
+      setCooldownTime(COOLDOWN_SECONDS);
+      
       setStep(2); 
     } catch (err) {
       console.error("Login error:", err);
@@ -132,6 +157,12 @@ export default function LoginForm({ onClose }) {
   };
 
   const handleResendOTP = async () => {
+    // Check if cooldown is active
+    if (cooldownActive) {
+      setResendMessage(`Please wait ${cooldownTime} seconds before requesting another code.`);
+      return;
+    }
+
     setResendLoading(true);
     setResendMessage("");
     setDevOtp("");
@@ -150,10 +181,14 @@ export default function LoginForm({ onClose }) {
         setDevOtp(response.data.otp);
       }
       
-      setResendMessage("Verification code resent");
+      setResendMessage("Verification code resent. Check your email.");
+      
+      // Start the cooldown
+      setCooldownActive(true);
+      setCooldownTime(COOLDOWN_SECONDS);
     } catch (err) {
       console.error("Resend OTP error:", err);
-      setResendMessage("Failed to resend code. Try again.");
+      setResendMessage("Failed to resend code. Try again later.");
     } finally {
       setResendLoading(false);
     }
@@ -267,14 +302,16 @@ export default function LoginForm({ onClose }) {
               {loading ? "Verifying..." : "Verify"}
             </Button>
             
-            {/* Resend OTP button */}
+            {/* Resend OTP button with cooldown */}
             <div className="mt-4 text-center">
               <button 
                 onClick={handleResendOTP}
-                disabled={resendLoading}
-                className="text-sm text-[#01579B] hover:underline"
+                disabled={resendLoading || cooldownActive}
+                className={`text-sm ${cooldownActive ? 'text-gray-400 cursor-not-allowed' : 'text-[#01579B] hover:underline'}`}
               >
-                {resendLoading ? "Sending..." : "Resend verification code"}
+                {resendLoading ? "Sending..." : 
+                 cooldownActive ? `Resend available in ${cooldownTime}s` : 
+                 "Resend verification code"}
               </button>
               {resendMessage && (
                 <p className="text-xs mt-1 text-gray-600">{resendMessage}</p>
