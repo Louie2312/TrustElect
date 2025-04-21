@@ -5,7 +5,8 @@ const {
   loginSuperAdmin, 
   getSuperAdminProfile, 
   updateSuperAdminProfile, 
-  uploadProfilePicture 
+  uploadProfilePicture,
+  changePassword
 } = require("../controllers/superAdminController");
 const { verifyToken, isSuperAdmin } = require("../middlewares/authMiddleware");
 const { loginLimiter } = require("../middlewares/rateLimit");
@@ -95,5 +96,7 @@ router.post('/test-notifications', verifyToken, async (req, res) => {
     });
   }
 });
+
+router.post("/change-password", verifyToken, isSuperAdmin, changePassword);
 
 module.exports = router;

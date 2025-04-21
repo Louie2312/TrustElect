@@ -5,6 +5,7 @@ import axios from "axios";
 import Cookies from "js-cookie";
 import { PlusCircle, Edit, Trash, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { toast } from "react-hot-toast";
 
 export default function DepartmentsPage() {
   const router = useRouter();
@@ -105,10 +106,10 @@ export default function DepartmentsPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       
-      alert(res.data.message || "Department deleted successfully");
+      toast.success(res.data.message || "Department deleted successfully");
       fetchDepartments();
     } catch (error) {
-      alert(error.response?.data?.message || "Failed to delete department");
+      toast.error(error.response?.data?.message || "Failed to delete department");
     }
   };
 
@@ -310,7 +311,7 @@ function AddDepartmentModal({ onClose, onSuccess }) {
         }
       );
 
-      alert(res.data.message || "Department created successfully");
+      toast.success(res.data.message || "Department created successfully");
       onClose();
       if (onSuccess) onSuccess();
     } catch (error) {
@@ -414,12 +415,13 @@ function AssignAdminModal({ department, admins, onClose, onSuccess }) {
         }
       );
 
-      alert(res.data.message || "Admin assigned successfully");
+      toast.success(res.data.message || "Admin assigned successfully");
       onClose();
       if (onSuccess) onSuccess();
     } catch (error) {
       console.error("Error assigning admin:", error);
       setError(error.response?.data?.message || "Failed to assign admin");
+      toast.error(error.response?.data?.message || "Failed to assign admin");
     } finally {
       setLoading(false);
     }

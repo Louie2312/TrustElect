@@ -2,6 +2,20 @@ const pool = require("../config/db");
 
 class Department {
   static async create({ department_name, department_type, admin_id, created_by }) {
+    // Check if admin is already assigned to another department
+    if (admin_id) {
+      const checkQuery = `
+        SELECT id, department_name FROM departments 
+        WHERE admin_id = $1 AND is_active = TRUE`;
+      const checkResult = await pool.query(checkQuery, [admin_id]);
+      
+      if (checkResult.rows.length > 0) {
+        const error = new Error(`Admin is already assigned to the ${checkResult.rows[0].department_name} department`);
+        error.status = 400;
+        throw error;
+      }
+    }
+    
     const query = `
       INSERT INTO departments (department_name, department_type, admin_id, created_by)
       VALUES ($1, $2, $3, $4)

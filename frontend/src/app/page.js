@@ -131,15 +131,72 @@ export default function Home() {
       const response = await axios.get(`${API_URL}/api/content?t=${timestamp}`);
       
       if (response.data) {
-        // Update state with fetched content
-        setLandingContent({
-          hero: response.data.hero || landingContent.hero,
-          features: response.data.features || landingContent.features,
-          callToAction: response.data.callToAction || landingContent.callToAction
-        });
+        console.log("Content fetched from API:", response.data);
+        
+        // Process the hero section - make sure to create a deep copy to avoid references
+        const hero = response.data.hero ? {
+          title: response.data.hero.title || landingContent.hero.title,
+          subtitle: response.data.hero.subtitle || landingContent.hero.subtitle,
+          videoUrl: response.data.hero.videoUrl || null,
+          posterImage: response.data.hero.posterImage || null
+        } : { ...landingContent.hero };
+        
+        // Process the features section - ensure it has the correct structure
+        let features = {
+          columns: []
+        };
+        
+        // Ensure we have valid features data with columns array
+        if (response.data.features && Array.isArray(response.data.features.columns)) {
+          // Process each feature column carefully
+          features.columns = response.data.features.columns.map((column, index) => {
+            // Create a clean object for each feature
+            const featureData = {
+              title: column.title || '',
+              description: column.description || '',
+              imageUrl: column.imageUrl || null
+            };
+            
+            // Special logging for Feature Card 1
+            if (index === 0) {
+              console.log("API Feature Card 1 data:", column);
+              console.log("Processed Feature Card 1:", featureData);
+            }
+            
+            return featureData;
+          });
+        } else {
+          console.warn("Features data structure is incorrect, using defaults");
+          features = { ...landingContent.features };
+        }
+        
+        // Make sure Feature Card 1 is correctly processed
+        if (features.columns[0]) {
+          console.log("Final Feature Card 1 data:", features.columns[0]);
+        }
+        
+        // Process the callToAction section
+        const callToAction = response.data.callToAction ? {
+          title: response.data.callToAction.title || landingContent.callToAction.title,
+          subtitle: response.data.callToAction.subtitle || landingContent.callToAction.subtitle,
+          buttonText: response.data.callToAction.buttonText || landingContent.callToAction.buttonText,
+          enabled: response.data.callToAction.enabled !== undefined ? response.data.callToAction.enabled : true
+        } : { ...landingContent.callToAction };
+        
+        // Create a completely new object to avoid reference issues
+        const newContent = {
+          hero: { ...hero },
+          features: { 
+            columns: features.columns.map(col => ({ ...col }))
+          },
+          callToAction: { ...callToAction }
+        };
+        
+        console.log("Setting landing content:", newContent);
+        setLandingContent(newContent);
         
         // Cache the content for offline use
-        cacheLandingContent(response.data);
+        cacheLandingContent(newContent);
       }
     } catch (error) {
       console.error("Error fetching content:", error);
@@ -156,9 +213,51 @@ export default function Home() {
 
   // Format image URL
   const formatImageUrl = (url) => {
+    // If URL is null or undefined, return null
     if (!url) return null;
-    if (url.startsWith('http')) return url;
-    return `${API_URL}${url}`;
+    
+    try {
+      // Handle blob URLs - don't use these in production
+      if (url.startsWith('blob:')) {
+        console.warn("Blob URLs cannot be used on the public landing page:", url);
+        return null;
+      }
+      
+      // If already a complete URL, return as is
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        return url;
+      }
+      
+      // Make sure path starts with a slash
+      const path = url.startsWith('/') ? url : `/${url}`;
+      const fullUrl = `${API_URL}${path}`;
+      return fullUrl;
+    } catch (error) {
+      console.error('Error formatting URL:', error, url);
+      return null;
+    }
+  };
+
+  // Helper function to render image based on URL type
+  const renderImage = (url, alt, width, height, className, onErrorAction) => {
+    const formattedUrl = formatImageUrl(url);
+    if (!formattedUrl) return null;
+    
+    // Use Next.js Image for all URLs (no special blob handling)
+    return (
+      <Image
+        src={formattedUrl}
+        alt={alt || "Image"}
+        width={width || 400}
+        height={height || 300}
+        className={className || ""}
+        unoptimized={true}
+        onError={(e) => {
+          console.error("Error loading image:", formattedUrl);
+          if (onErrorAction) onErrorAction(e);
+        }}
+      />
+    );
   };
 
   return (
@@ -202,32 +301,78 @@ export default function Home() {
               </Button>
             </div>
             <div className="md:w-1/2 mt-10 md:mt-0 flex justify-center">
-              {landingContent.hero.videoUrl ? (
-                <div className="w-full max-w-md aspect-video bg-black/20 rounded-lg overflow-hidden relative">
-                  <video
-                    src={formatImageUrl(landingContent.hero.videoUrl)}
-                    poster={landingContent.hero.posterImage ? formatImageUrl(landingContent.hero.posterImage) : undefined}
-                    controls
-                    className="w-full h-full object-cover"
-                  >
-                    Your browser does not support the video tag.
-                  </video>
-                </div>
-              ) : landingContent.hero.posterImage ? (
-                <div className="w-full max-w-md aspect-video bg-black/20 rounded-lg overflow-hidden">
-                  <Image
-                    src={formatImageUrl(landingContent.hero.posterImage)}
-                    alt="TrustElect Platform"
-                    width={640}
-                    height={360}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ) : (
-                <div className="w-full max-w-md aspect-video bg-blue-700 rounded-lg flex items-center justify-center">
-                  <span className="text-xl text-white/70">Demo Video</span>
-                </div>
-              )}
+              {(() => {
+                // Only use hero content for hero section
+                // Process video URL - ensure it comes from hero section only
+                const heroVideoUrl = landingContent.hero && landingContent.hero.videoUrl ? 
+                  formatImageUrl(landingContent.hero.videoUrl) : null;
+                
+                // Process poster image URL - ensure it comes from hero section only
+                const heroPosterUrl = landingContent.hero && landingContent.hero.posterImage ? 
+                  formatImageUrl(landingContent.hero.posterImage) : null;
+                
+                console.log("Hero section video URL:", heroVideoUrl);
+                console.log("Hero section poster URL:", heroPosterUrl);
+                
+                // Render video if available
+                if (heroVideoUrl) {
+                  return (
+                    <div className="w-full max-w-md aspect-video bg-black/20 rounded-lg overflow-hidden relative">
+                      <video
+                        src={heroVideoUrl}
+                        poster={heroPosterUrl}
+                        controls
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          console.error("Error loading hero video");
+                          e.currentTarget.style.display = 'none';
+                          const parent = e.currentTarget.parentElement;
+                          if (parent) {
+                            const fallback = document.createElement('div');
+                            fallback.className = 'absolute inset-0 flex items-center justify-center bg-blue-700';
+                            fallback.innerHTML = `<span class="text-white/70">Video unavailable</span>`;
+                            parent.appendChild(fallback);
+                          }
+                        }}
+                      >
+                        Your browser does not support the video tag.
+                      </video>
+                    </div>
+                  );
+                // Render poster image if available
+                } else if (heroPosterUrl) {
+                  return (
+                    <div className="w-full max-w-md aspect-video bg-black/20 rounded-lg overflow-hidden">
+                      <Image
+                        src={heroPosterUrl}
+                        alt="TrustElect Platform"
+                        width={640}
+                        height={360}
+                        className="w-full h-full object-cover"
+                        unoptimized={true}
+                        onError={(e) => {
+                          console.error("Error loading hero poster image");
+                          const container = e.currentTarget.closest('div');
+                          if (container) {
+                            container.innerHTML = `
+                              <div class="w-full h-full flex items-center justify-center bg-blue-700">
+                                <span class="text-xl text-white/70">Demo Video</span>
+                              </div>
+                            `;
+                          }
+                        }}
+                      />
+                    </div>
+                  );
+                // Render placeholder if no media
+                } else {
+                  return (
+                    <div className="w-full max-w-md aspect-video bg-blue-700 rounded-lg flex items-center justify-center">
+                      <span className="text-xl text-white/70">Demo Video</span>
+                    </div>
+                  );
+                }
+              })()}
             </div>
           </div>
         </section>
@@ -239,26 +384,63 @@ export default function Home() {
               Key Features
             </h2>
             <div className="grid md:grid-cols-3 gap-8">
-              {landingContent.features.columns.map((feature, index) => (
-                <div 
-                  key={index} 
-                  className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow"
-                >
-                  {feature.imageUrl && (
-                    <div className="mb-4 h-48 overflow-hidden rounded-lg">
-                      <Image
-                        src={formatImageUrl(feature.image_Url)}
-                        alt={feature.title}
-                        width={400}
-                        height={300}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  )}
-                  <h3 className="text-xl font-semibold mb-2 text-blue-800">{feature.title}</h3>
-                  <p className="text-gray-600">{feature.description}</p>
-                </div>
-              ))}
+              {landingContent.features.columns.map((feature, index) => {
+                // Extra debugging to trace Feature Card 1 image
+                if (index === 0) {
+                  console.log("Feature Card 1 data:", feature);
+                  console.log("Feature Card 1 image URL:", feature.imageUrl);
+                }
+                
+                // Get the formatted image URL only if it exists and belongs to this feature
+                let imageUrl = null;
+                if (feature.imageUrl) {
+                  imageUrl = formatImageUrl(feature.imageUrl);
+                  
+                  // Ensure this is really a feature image (not a hero image)
+                  const isHeroImage = landingContent.hero && 
+                    (feature.imageUrl === landingContent.hero.videoUrl || 
+                     feature.imageUrl === landingContent.hero.posterImage);
+                     
+                  if (isHeroImage) {
+                    console.warn(`Feature ${index} image URL matches a hero image - ignoring`);
+                    imageUrl = null;
+                  }
+                }
+                
+                // More debugging for Feature Card 1
+                if (index === 0) {
+                  console.log("Feature Card 1 final image URL:", imageUrl);
+                }
+                
+                return (
+                  <div 
+                    key={index} 
+                    className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow"
+                  >
+                    {imageUrl ? (
+                      <div className="mb-4 h-48 overflow-hidden rounded-lg">
+                        <Image
+                          src={imageUrl}
+                          alt={feature.title || `Feature ${index + 1}`}
+                          width={400}
+                          height={300}
+                          className="w-full h-full object-cover"
+                          unoptimized={true}
+                          onError={(e) => {
+                            console.error(`Error loading feature image ${index}:`, imageUrl);
+                            const container = e.currentTarget.closest('.mb-4');
+                            if (container) {
+                              container.style.display = 'none';
+                            }
+                          }}
+                        />
+                      </div>
+                    ) : null}
+                    <h3 className="text-xl font-semibold mb-2 text-blue-800">{feature.title}</h3>
+                    <p className="text-gray-600">{feature.description}</p>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </section>
@@ -269,7 +451,6 @@ export default function Home() {
             <div className="container mx-auto max-w-4xl text-center">
               <h2 className="text-3xl font-bold mb-4">{landingContent.callToAction.title}</h2>
               <p className="text-xl mb-8">{landingContent.callToAction.subtitle}</p>
-              
             </div>
           </section>
         )}
@@ -299,4 +480,3 @@ export default function Home() {
     </div>
   );
 }
-

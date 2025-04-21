@@ -61,6 +61,18 @@ export default function ContentManagement() {
     }
   }, [landingContent, initialContent]);
 
+  // Validate Feature Card 1 content
+  const validateFeatureCard1 = () => {
+    // Check if feature card 1 exists and has valid image URL
+    if (landingContent.features?.columns?.[0]?.imageUrl) {
+      console.log("Feature Card 1 has an image URL:", landingContent.features.columns[0].imageUrl);
+      return true;
+    } else {
+      console.log("Feature Card 1 has no image URL");
+      return false;
+    }
+  };
+
   // Fetch content from API
   const fetchContent = async () => {
     setIsLoading(true);
@@ -70,14 +82,53 @@ export default function ContentManagement() {
       const response = await axios.get(`${API_URL}/api/content?t=${timestamp}`);
       
       if (response.data) {
-        setLandingContent({
-          hero: response.data.hero || landingContent.hero,
-          features: response.data.features || landingContent.features,
-          callToAction: response.data.callToAction || landingContent.callToAction
-        });
+        console.log("Content loaded from API:", response.data);
+        
+        // Create a clean structure for the content
+        const cleanContent = {
+          hero: {
+            title: response.data.hero?.title || landingContent.hero.title,
+            subtitle: response.data.hero?.subtitle || landingContent.hero.subtitle,
+            videoUrl: response.data.hero?.videoUrl || null,
+            posterImage: response.data.hero?.posterImage || null
+          },
+          features: {
+            columns: []
+          },
+          callToAction: {
+            title: response.data.callToAction?.title || landingContent.callToAction.title,
+            subtitle: response.data.callToAction?.subtitle || landingContent.callToAction.subtitle,
+            buttonText: response.data.callToAction?.buttonText || landingContent.callToAction.buttonText,
+            enabled: response.data.callToAction?.enabled !== undefined ? response.data.callToAction.enabled : true
+          }
+        };
+        
+        // Process feature columns
+        if (response.data.features && Array.isArray(response.data.features.columns)) {
+          cleanContent.features.columns = response.data.features.columns.map((column, index) => {
+            console.log(`Processing feature ${index} from API:`, column);
+            return {
+              title: column.title || '',
+              description: column.description || '',
+              imageUrl: column.imageUrl || null
+            };
+          });
+          
+          console.log("Processed feature columns:", cleanContent.features.columns);
+          
+          // Validate Feature Card 1 specifically
+          if (cleanContent.features.columns[0]) {
+            console.log("Feature Card 1 after processing:", cleanContent.features.columns[0]);
+          }
+        } else {
+          // Use default features if not available
+          cleanContent.features.columns = landingContent.features.columns;
+        }
+        
+        setLandingContent(cleanContent);
         
         // Store initial content for comparison
-        setInitialContent(JSON.stringify(response.data));
+        setInitialContent(JSON.stringify(cleanContent));
       }
     } catch (error) {
       console.error("Error fetching content:", error);
@@ -113,6 +164,7 @@ export default function ContentManagement() {
 
   // Update feature column
   const updateFeature = (index, field, value) => {
+    console.log(`Updating feature ${index}, field ${field} with value:`, value);
     const updatedColumns = [...landingContent.features.columns];
     updatedColumns[index] = {
       ...updatedColumns[index],
@@ -154,6 +206,7 @@ export default function ContentManagement() {
         e.target.value = '';
         return;
       }
+      console.log("Updating hero video URL:", localUrl);
       updateHero('videoUrl', localUrl);
     } 
     else if (type === 'heroPoster') {
@@ -163,6 +216,7 @@ export default function ContentManagement() {
         e.target.value = '';
         return;
       }
+      console.log("Updating hero poster image URL:", localUrl);
       updateHero('posterImage', localUrl);
     } 
     else if (type === 'featureImage') {
@@ -172,43 +226,197 @@ export default function ContentManagement() {
         e.target.value = '';
         return;
       }
+      
+      // Special debugging for Feature Card 1 (index 0)
+      if (index === 0) {
+        console.log("FEATURE CARD 1 IMAGE UPLOAD - index:" + index);
+        console.log("Element ID:", e.target.id);
+        console.log("Element data-feature-index before:", e.target.getAttribute('data-feature-index'));
+      }
+      
+      // Log the index to verify correct association
+      console.log(`Updating feature image ${index} with URL ${localUrl}`);
+      
+      // Set ID first to ensure it's properly set
+      e.target.id = `feature-image-${index}`;
+      
+      // Ensure data attribute is correctly set - force it to be a string
+      e.target.setAttribute('data-feature-index', String(index));
+      
+      // Double-check that attributes were correctly set
+      if (index === 0) {
+        console.log("Element data-feature-index after:", e.target.getAttribute('data-feature-index'));
+        console.log("Element ID after:", e.target.id);
+      }
+      
+      // Update UI with local URL preview
       updateFeature(index, 'imageUrl', localUrl);
     }
   };
 
+  // Handle removing images
+  const removeImage = (type, index) => {
+    if (type === 'heroVideo') {
+      updateHero('videoUrl', null);
+    } 
+    else if (type === 'heroPoster') {
+      updateHero('posterImage', null);
+    } 
+    else if (type === 'featureImage') {
+      updateFeature(index, 'imageUrl', null);
+    }
+    
+    setSaveStatus('Image removed. Click Save to apply changes.');
+    setTimeout(() => setSaveStatus(''), 3000);
+  };
+
+  // Special handler for Feature Card 1 to completely isolate it from other components
+  const handleFeatureCard1Upload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    // Check image file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Image file is too large. Maximum size is 5MB.");
+      e.target.value = '';
+      return;
+    }
+    
+    // Create preview URL
+    const localUrl = URL.createObjectURL(file);
+    
+    console.log("FEATURE CARD 1 IMAGE UPLOAD (DEDICATED HANDLER)");
+    console.log("File name:", file.name);
+    console.log("Preview URL:", localUrl);
+    
+    // Explicitly set attributes to ensure correct processing
+    const input = document.getElementById('feature-image-0');
+    if (input) {
+      input.setAttribute('data-feature-index', '0');
+      input.setAttribute('data-section', 'feature');
+      console.log("Input attributes set correctly for Feature Card 1");
+    }
+    
+    // Update the state for feature card 1
+    updateFeature(0, 'imageUrl', localUrl);
+  };
+
   // Save section content to API
   const saveSectionContent = async (section) => {
-    setSaveStatus(`Saving ${section}...`);
+    setIsLoading(true);
+    setSaveStatus(`Saving ${section} content...`);
     
     try {
       const formData = new FormData();
+      let contentData;
       
-      // Add the section content as JSON
-      formData.append('content', JSON.stringify(landingContent[section]));
-      
-      // Add appropriate files based on section
+      // Add section-specific content to formData
       if (section === 'hero') {
-        // If we have a hero video that's not from the API (starts with blob:)
-        const heroVideoInput = document.querySelector('input[type="file"][accept*="video"]');
-        if (heroVideoInput?.files?.[0]) {
-          formData.append('heroVideo', heroVideoInput.files[0]);
+        contentData = {
+          title: landingContent.hero.title,
+          subtitle: landingContent.hero.subtitle,
+          videoUrl: landingContent.hero.videoUrl,
+          posterImage: landingContent.hero.posterImage
+        };
+
+        // Add video file if selected
+        const videoInput = document.querySelector('input[type="file"][accept*="video"]');
+        if (videoInput && videoInput.files.length > 0) {
+          formData.append('heroVideo', videoInput.files[0]);
         }
         
-        // If we have a hero poster image that's not from the API
-        const heroPosterInput = document.querySelector('input[type="file"][accept*="image/jpeg,image/png,image/webp"]');
-        if (heroPosterInput?.files?.[0]) {
-          formData.append('heroPoster', heroPosterInput.files[0]);
+        // Add removal flag if video was removed
+        if (landingContent.hero.videoUrl === null) {
+          formData.append('removeHeroVideo', 'true');
         }
-      } 
-      else if (section === 'features') {
-        // Handle feature images upload
-        landingContent.features.columns.forEach((_, index) => {
-          const featureImageInput = document.querySelector(`input[type="file"][accept*="image"][data-feature-index="${index}"]`);
-          if (featureImageInput?.files?.[0]) {
-            formData.append(`featureImage${index}`, featureImageInput.files[0]);
+
+        // Add poster image if selected - use more specific selector to avoid picking feature image inputs
+        const imageInput = document.querySelector('#hero-poster-input');
+        console.log('Hero image input found:', imageInput ? 'Yes' : 'No');
+        
+        if (imageInput && imageInput.files.length > 0) {
+          console.log('Adding hero poster file:', imageInput.files[0].name);
+          formData.append('heroPoster', imageInput.files[0]);
+        }
+        
+        // Add removal flag if poster was removed
+        if (landingContent.hero.posterImage === null) {
+          formData.append('removeHeroPoster', 'true');
+        }
+      } else if (section === 'features') {
+        // Create a deep copy to avoid reference issues
+        contentData = {
+          columns: landingContent.features.columns.map(column => ({
+            title: column.title,
+            description: column.description,
+            imageUrl: column.imageUrl
+          }))
+        };
+
+        console.log('Features content data before sending:', JSON.stringify(contentData));
+
+        // Diagnostic: list all file inputs on the page
+        const allFileInputs = document.querySelectorAll('input[type="file"]');
+        console.log(`Found ${allFileInputs.length} file inputs on the page`);
+        allFileInputs.forEach((input, i) => {
+          const dataIndex = input.getAttribute('data-feature-index');
+          console.log(`File input ${i}:`, input.accept, 'data-feature-index:', dataIndex);
+        });
+
+        // Add feature images if selected - using more specific selector with exact feature index
+        landingContent.features.columns.forEach((column, index) => {
+          // For Feature Card 1 (index 0), use the specific ID selector
+          let fileInput;
+          if (index === 0) {
+            fileInput = document.getElementById('feature-image-0');
+            console.log("FEATURE CARD 1: Using ID selector for upload, input found:", fileInput ? "Yes" : "No");
+            
+            // Extra validation for Feature Card 1
+            if (fileInput) {
+              console.log("Feature Card 1 input properties:");
+              console.log("- data-feature-index:", fileInput.getAttribute('data-feature-index'));
+              console.log("- data-section:", fileInput.getAttribute('data-section'));
+              console.log("- id:", fileInput.id);
+              console.log("- Has files:", fileInput.files.length > 0 ? "Yes" : "No");
+              
+              if (fileInput.files.length > 0) {
+                console.log("- First file name:", fileInput.files[0].name);
+                
+                // Explicitly create the feature image entry for index 0
+                formData.append("featureImage0", fileInput.files[0]);
+                console.log("Explicitly added Feature Card 1 image to formData as 'featureImage0'");
+              }
+            }
+          } else {
+            // For other features, use attribute selector
+            fileInput = document.querySelector(`input[type="file"][data-feature-index="${index}"]`);
+            
+            // Process normally
+            if (fileInput && fileInput.files.length > 0) {
+              console.log(`Found file for feature ${index}:`, fileInput.files[0].name);
+              formData.append(`featureImage${index}`, fileInput.files[0]);
+              console.log(`Added featureImage${index} to formData`);
+            }
+          }
+          
+          // Add removal flag if image was removed for this feature
+          if (column.imageUrl === null) {
+            console.log(`Adding removal flag for feature ${index}`);
+            formData.append(`removeFeatureImage${index}`, 'true');
           }
         });
+      } else if (section === 'callToAction') {
+        contentData = {
+          title: landingContent.callToAction.title,
+          subtitle: landingContent.callToAction.subtitle,
+          buttonText: landingContent.callToAction.buttonText,
+          buttonUrl: landingContent.callToAction.buttonUrl,
+          enabled: landingContent.callToAction.enabled
+        };
       }
+
+      // Add content JSON to formData
+      formData.append('content', JSON.stringify(contentData));
 
       // Add cache-busting timestamp
       const timestamp = new Date().getTime();
@@ -220,6 +428,7 @@ export default function ContentManagement() {
       };
       
       // Send the request to the API
+      console.log(`Sending ${section} content to API:`, contentData);
       const response = await axios.post(
         `${API_URL}/api/content/${section}?t=${timestamp}`, 
         formData,
@@ -229,8 +438,46 @@ export default function ContentManagement() {
       if (response.data && response.data.content) {
         // Update the state with the returned content
         const newContent = { ...landingContent };
+        
+        // For features section, make sure we properly update each feature's imageUrl
+        if (section === 'features' && response.data.content.columns) {
+          console.log('Response features data:', JSON.stringify(response.data.content));
+          
+          // Create a deep copy to avoid reference issues
+          newContent.features = {
+            columns: response.data.content.columns.map((column, index) => {
+              console.log(`Processing feature ${index} from response:`, column);
+              
+              // Make sure the image URL from the response is correct
+              if (column.imageUrl) {
+                console.log(`Updated feature ${index} with image URL:`, column.imageUrl);
+              }
+              
+              // Return a clean copy of the column data
+              return {
+                title: column.title || '',
+                description: column.description || '',
+                imageUrl: column.imageUrl || null
+              };
+            })
+          };
+        } else if (section === 'hero') {
+          // For hero section, explicitly set hero properties
+          newContent.hero = {
+            title: response.data.content.title || '',
+            subtitle: response.data.content.subtitle || '',
+            videoUrl: response.data.content.videoUrl || null,
+            posterImage: response.data.content.posterImage || null
+          };
+        } else {
+          // For other sections, just update with the response data
         newContent[section] = response.data.content;
+        }
+        
+        console.log(`Setting updated landingContent for ${section}:`, newContent);
         setLandingContent(newContent);
+        
+        console.log(`Updated ${section} content from API response:`, response.data.content);
         
         // Update the initial content to match current content after save
         setInitialContent(JSON.stringify(newContent));
@@ -264,6 +511,8 @@ export default function ContentManagement() {
       console.error(`Error saving ${section}:`, error);
       setSaveStatus(`Error: ${error.message || 'Failed to save'}`);
       setTimeout(() => setSaveStatus(""), 5000);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -272,12 +521,18 @@ export default function ContentManagement() {
     setSaveStatus("Applying all changes...");
     
     try {
-      // Save each section sequentially
-      await saveSectionContent('hero');
+      // Save features first to prevent hero from overriding feature card 1
+      console.log("First saving features section...");
       await saveSectionContent('features');
+      
+      console.log("Now saving hero section...");
+      await saveSectionContent('hero');
+      
+      console.log("Finally saving callToAction section...");
       await saveSectionContent('callToAction');
       
       // Fetch updated content to ensure everything is in sync
+      console.log("Fetching fresh content after all saves...");
       await fetchContent();
       
       setSaveStatus("All changes applied successfully!");
@@ -297,9 +552,21 @@ export default function ContentManagement() {
   // Format image URL to ensure it points to the API
   const formatImageUrl = (url) => {
     if (!url) return null;
-    if (url.startsWith('blob:')) return url;
-    if (url.startsWith('http')) return url;
-    return `${API_URL}${url}`;
+    
+    // For blob URLs (local file previews), use them directly
+    if (url.startsWith('blob:')) {
+      return url;
+    }
+    
+    // For already complete URLs, use them directly
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    
+    // For relative paths, prepend the API URL
+    // Make sure path starts with a slash
+    const path = url.startsWith('/') ? url : `/${url}`;
+    return `${API_URL}${path}`;
   };
 
   return (
@@ -406,12 +673,23 @@ export default function ContentManagement() {
                       <label className="block text-sm font-medium text-black mb-1">
                         Background Video
                       </label>
+                      <div className="flex items-center">
                       <input 
                         type="file" 
                         accept="video/mp4,video/webm"
                         onChange={(e) => handleFileUpload('heroVideo', null, e)}
                         className="w-full border rounded p-1 text-sm file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-blue-50 file:text-black"
                       />
+                        {landingContent.hero.videoUrl && (
+                          <button
+                            onClick={() => removeImage('heroVideo')}
+                            className="ml-2 bg-red-100 text-red-800 px-2 py-1 rounded text-xs hover:bg-red-200"
+                            title="Remove video"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
                       {landingContent.hero.videoUrl && !landingContent.hero.videoUrl.startsWith('blob:') && (
                         <p className="mt-1 text-xs text-black truncate">
                           Current: {landingContent.hero.videoUrl}
@@ -423,12 +701,25 @@ export default function ContentManagement() {
                       <label className="block text-sm font-medium text-black mb-1">
                         Poster Image
                       </label>
+                      <div className="flex items-center">
                       <input 
                         type="file" 
                         accept="image/jpeg,image/png,image/webp"
                         onChange={(e) => handleFileUpload('heroPoster', null, e)}
                         className="w-full border rounded p-1 text-sm file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-blue-50 file:text-black"
-                      />
+                          id="hero-poster-input"
+                          data-section="hero"
+                        />
+                        {landingContent.hero.posterImage && (
+                          <button
+                            onClick={() => removeImage('heroPoster')}
+                            className="ml-2 bg-red-100 text-red-800 px-2 py-1 rounded text-xs hover:bg-red-200"
+                            title="Remove image"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
                       {landingContent.hero.posterImage && !landingContent.hero.posterImage.startsWith('blob:') && (
                         <p className="mt-1 text-xs text-black truncate">
                           Current: {landingContent.hero.posterImage}
@@ -521,19 +812,62 @@ export default function ContentManagement() {
                       
                       <div>
                         <label className="block text-xs text-black mb-1">
-                          Image
+                          Image for Feature {index + 1}
         </label> 
+                        <div className="flex items-center">
+                          {index === 0 ? (
+                            <div className="w-full">
+                              <div className="p-1 border border-blue-300 rounded bg-blue-50">
+                                <p className="text-xs text-blue-800 mb-1 font-semibold">Feature Card 1 Image Upload</p>
+                                <input 
+                                  type="file" 
+                                  accept="image/jpeg,image/png,image/webp"
+                                  data-feature-index="0"
+                                  data-section="feature"
+                                  id="feature-image-0"
+                                  name="feature-image-0"
+                                  onChange={(e) => handleFeatureCard1Upload(e)}
+                                  className="w-full border rounded p-1 text-xs file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-blue-50 file:text-black" 
+                                />
+                              </div>
+                            </div>
+                          ) : (
                         <input 
                           type="file" 
                           accept="image/jpeg,image/png,image/webp"
                           data-feature-index={index}
+                              id={`feature-image-${index}`}
                           onChange={(e) => handleFileUpload('featureImage', index, e)}
                           className="w-full border rounded p-1 text-xs file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-blue-50 file:text-black" 
                         />
-                        {feature.imageUrl && !feature.imageUrl.startsWith('blob:') && (
+                          )}
+                          {feature.imageUrl && (
+                            <button
+                              onClick={() => removeImage('featureImage', index)}
+                              className="ml-2 bg-red-100 text-red-800 px-2 py-1 rounded text-xs hover:bg-red-200"
+                              title="Remove image"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                        {feature.imageUrl && (
+                          <div className="mt-2">
+                            {feature.imageUrl.startsWith('blob:') ? (
+                              <p className="text-xs text-blue-600">New image selected (not yet saved)</p>
+                            ) : (
                           <p className="mt-1 text-xs text-black truncate">
                             Current: {feature.imageUrl}
                           </p>
+                            )}
+                            <div className="mt-1 h-12 w-12 border rounded overflow-hidden">
+                              <img 
+                                src={formatImageUrl(feature.imageUrl)} 
+                                alt={`Feature ${index + 1}`}
+                                className="h-full w-full object-cover" 
+                              />
+                            </div>
+                          </div>
                         )}
                       </div>
                       

@@ -1,4 +1,5 @@
 const Department = require("../models/departmentModel");
+const pool = require("../config/db");
 
 exports.createDepartment = async (req, res) => {
   try {
@@ -25,6 +26,15 @@ exports.createDepartment = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating department:", error);
+    
+    // Handle specific error for admin already assigned
+    if (error.message && error.message.includes("Admin is already assigned")) {
+      return res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+    
     res.status(500).json({ 
       success: false,
       message: "Failed to create department" 
@@ -78,6 +88,21 @@ exports.getDepartmentById = async (req, res) => {
 exports.updateDepartment = async (req, res) => {
   try {
     const { department_name, department_type, admin_id } = req.body;
+
+    // Check if the admin is already assigned to another department
+    if (admin_id) {
+      const checkQuery = await pool.query(
+        "SELECT id, department_name FROM departments WHERE admin_id = $1 AND id != $2 AND is_active = TRUE",
+        [admin_id, req.params.id]
+      );
+
+      if (checkQuery.rows.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `This admin is already assigned to the ${checkQuery.rows[0].department_name} department`
+        });
+      }
+    }
 
     const department = await Department.update(req.params.id, {
       department_name,

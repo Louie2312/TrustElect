@@ -145,9 +145,13 @@ const updateSectionContent = async (req, res) => {
         return res.status(400).json({ error: 'Invalid content JSON' });
       }
       
+      // Handle explicit removal flags
+      const shouldRemoveHeroVideo = req.body.removeHeroVideo === 'true';
+      const shouldRemoveHeroPoster = req.body.removeHeroPoster === 'true';
+      
       // Handle file uploads based on section
       if (section === 'hero') {
-        // Process hero video if uploaded
+        // Process hero video if uploaded or handle removal
         const videoFile = req.files.heroVideo?.[0];
         if (videoFile) {
           const videoUrl = normalizeFilePath(`/uploads/videos/${videoFile.filename}`);
@@ -167,9 +171,12 @@ const updateSectionContent = async (req, res) => {
           
           // Update content data with new video URL
           contentData.videoUrl = videoUrl;
+        } else if (shouldRemoveHeroVideo) {
+          console.log('Removing hero video');
+          contentData.videoUrl = null;
         }
         
-        // Process hero poster image if uploaded
+        // Process hero poster image if uploaded or handle removal
         const imageFile = req.files.heroPoster?.[0];
         if (imageFile) {
           const imageUrl = normalizeFilePath(`/uploads/images/${imageFile.filename}`);
@@ -189,11 +196,16 @@ const updateSectionContent = async (req, res) => {
           
           // Update content data with new image URL
           contentData.posterImage = imageUrl;
+        } else if (shouldRemoveHeroPoster) {
+          console.log('Removing hero poster image');
+          contentData.posterImage = null;
         }
       } else if (section === 'features') {
         // Process feature images (up to 3)
         for (let i = 0; i < 3; i++) {
           const imageFile = req.files[`featureImage${i}`]?.[0];
+          const shouldRemoveFeatureImage = req.body[`removeFeatureImage${i}`] === 'true';
+          
           if (imageFile) {
             const imageUrl = normalizeFilePath(`/uploads/images/${imageFile.filename}`);
             console.log(`Saving feature image ${i}:`, imageFile.filename);
@@ -217,6 +229,12 @@ const updateSectionContent = async (req, res) => {
               }
             } catch (error) {
               console.error(`Error saving feature image ${i}:`, error);
+            }
+          } else if (shouldRemoveFeatureImage) {
+            console.log(`Removing feature image ${i}`);
+            // Only set to null if the column exists
+            if (contentData.columns && contentData.columns[i]) {
+              contentData.columns[i].imageUrl = null;
             }
           }
         }

@@ -106,7 +106,7 @@ exports.uploadProfilePicture = async (req, res) => {
 
 exports.getSuperAdminProfile = async (req, res) => {
   try {
-    const superAdmin = await db.query("SELECT first_name, last_name, profile_picture FROM users WHERE role_id = 1");
+    const superAdmin = await db.query("SELECT first_name, last_name, profile_picture, email FROM users WHERE role_id = 1");
 
     if (!superAdmin.rows.length) {
       return res.status(404).json({ message: "Super Admin not found" });
@@ -118,6 +118,7 @@ exports.getSuperAdminProfile = async (req, res) => {
     res.json({
       firstName: profile.first_name,
       lastName: profile.last_name,
+      email: profile.email,
       profile_picture: filePath,
     });
   } catch (error) {
@@ -156,6 +157,47 @@ exports.updateSuperAdminProfile = async (req, res) => {
   } catch (error) {
     console.error("Error updating profile:", error);
     res.status(500).json({ message: "Server error", error });
+  }
+};
+
+// Change Super Admin Password
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    
+    // Input validation
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: "Current password and new password are required" });
+    }
+    
+    if (newPassword.length < 8) {
+      return res.status(400).json({ message: "New password must be at least 8 characters long" });
+    }
+    
+    // Get super admin from database
+    const superAdmin = await db.query("SELECT id, password_hash FROM users WHERE role_id = 1");
+    
+    if (!superAdmin.rows.length) {
+      return res.status(404).json({ message: "Super Admin not found" });
+    }
+    
+    // Verify current password
+    const isPasswordValid = await bcrypt.compare(currentPassword, superAdmin.rows[0].password_hash);
+    
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: "Current password is incorrect" });
+    }
+    
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    // Update password in database
+    await db.query("UPDATE users SET password_hash = $1 WHERE role_id = 1", [hashedPassword]);
+    
+    res.json({ message: "Password changed successfully" });
+  } catch (error) {
+    console.error("Error changing password:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
