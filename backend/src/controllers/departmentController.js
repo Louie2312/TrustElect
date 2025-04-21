@@ -1,0 +1,196 @@
+const Department = require("../models/departmentModel");
+
+exports.createDepartment = async (req, res) => {
+  try {
+    const { department_name, department_type, admin_id } = req.body;
+    
+    if (!department_name || !department_type) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Department name and type are required" 
+      });
+    }
+
+    const department = await Department.create({
+      department_name,
+      department_type,
+      admin_id: admin_id || null,
+      created_by: req.user.id
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Department created successfully",
+      department
+    });
+  } catch (error) {
+    console.error("Error creating department:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Failed to create department" 
+    });
+  }
+};
+
+exports.getAllDepartments = async (req, res) => {
+  try {
+    console.log("Getting all departments");
+    const departments = await Department.findAll();
+    console.log("Departments found:", departments.length);
+    console.log("First department (if any):", departments[0]);
+    
+    // Add debug information in the response
+    res.json({
+      count: departments.length,
+      departments: departments
+    });
+  } catch (error) {
+    console.error("Error fetching departments:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Failed to fetch departments",
+      error: error.message
+    });
+  }
+};
+
+exports.getDepartmentById = async (req, res) => {
+  try {
+    const department = await Department.findById(req.params.id);
+    
+    if (!department) {
+      return res.status(404).json({ 
+        success: false,
+        message: "Department not found" 
+      });
+    }
+    
+    res.json(department);
+  } catch (error) {
+    console.error("Error fetching department:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Failed to fetch department" 
+    });
+  }
+};
+
+exports.updateDepartment = async (req, res) => {
+  try {
+    const { department_name, department_type, admin_id } = req.body;
+
+    const department = await Department.update(req.params.id, {
+      department_name,
+      department_type,
+      admin_id: admin_id || null
+    });
+
+    if (!department) {
+      return res.status(404).json({ 
+        success: false,
+        message: "Department not found" 
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Department updated successfully",
+      department
+    });
+  } catch (error) {
+    console.error("Error updating department:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Failed to update department" 
+    });
+  }
+};
+
+exports.deleteDepartment = async (req, res) => {
+  try {
+    const department = await Department.delete(req.params.id);
+    
+    if (!department) {
+      return res.status(404).json({ 
+        success: false,
+        message: "Department not found" 
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: "Department deleted successfully",
+      department
+    });
+  } catch (error) {
+    console.error("Error deleting department:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Failed to delete department" 
+    });
+  }
+};
+
+exports.restoreDepartment = async (req, res) => {
+  try {
+    const department = await Department.restore(req.params.id);
+    
+    if (!department) {
+      return res.status(404).json({ 
+        success: false,
+        message: "Department not found" 
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: "Department restored successfully",
+      department
+    });
+  } catch (error) {
+    console.error("Error restoring department:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Failed to restore department" 
+    });
+  }
+};
+
+exports.getArchivedDepartments = async (req, res) => {
+  try {
+    const departments = await Department.findArchived();
+    res.json(departments);
+  } catch (error) {
+    console.error("Error fetching archived departments:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Failed to fetch archived departments" 
+    });
+  }
+};
+
+exports.getDepartmentNames = async (req, res) => {
+  try {
+    const departmentNames = await Department.getAllDepartmentNames();
+    res.json(departmentNames);
+  } catch (error) {
+    console.error("Error fetching department names:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Failed to fetch department names" 
+    });
+  }
+};
+
+exports.getAdminsByDepartment = async (req, res) => {
+  try {
+    const admins = await Department.getAdminsByDepartment(req.params.id);
+    res.json(admins);
+  } catch (error) {
+    console.error("Error fetching admins by department:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Failed to fetch admins by department" 
+    });
+  }
+};
