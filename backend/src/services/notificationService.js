@@ -15,7 +15,7 @@ const normalizeRole = (role) => {
   const lowerRole = role.toLowerCase();
   
   if (lowerRole === 'superadmin' || lowerRole === 'super admin' || lowerRole === 'super_admin') {
-    return 'Super Admin'; // Use the format stored in the database
+    return 'Super Admin'; 
   }
   
   if (lowerRole === 'admin') {
@@ -25,14 +25,11 @@ const normalizeRole = (role) => {
   if (lowerRole === 'student') {
     return 'Student';
   }
-  
-  // If unknown, return as is but with first letter capitalized
+
   return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
 };
 
-/**
- * Notification types
- */
+
 const NOTIFICATION_TYPES = {
   INFO: 'info',
   SUCCESS: 'success',
@@ -40,9 +37,7 @@ const NOTIFICATION_TYPES = {
   ERROR: 'error',
 };
 
-/**
- * Related entity types
- */
+
 const RELATED_ENTITIES = {
   ELECTION: 'election',
   BALLOT: 'ballot',
@@ -61,7 +56,7 @@ const notifyElectionNeedsApproval = async (election) => {
       return [];
     }
     
-    // Query users table for superadmins (role_id = 1)
+ 
     const { rows: superadminUsers } = await pool.query(`
       SELECT id FROM users 
       WHERE role_id = 1
@@ -70,7 +65,6 @@ const notifyElectionNeedsApproval = async (election) => {
     
     let superadminIds = superadminUsers.map(user => user.id);
     
-    // If no superadmins found with active status, try without active filter
     if (superadminIds.length === 0) {
       const { rows: inactiveUsers } = await pool.query(`
         SELECT id FROM users 
@@ -79,7 +73,6 @@ const notifyElectionNeedsApproval = async (election) => {
       superadminIds = inactiveUsers.map(user => user.id);
     }
     
-    // Try join with superadmins table if still no results
     if (superadminIds.length === 0) {
       const { rows: joinedUsers } = await pool.query(`
         SELECT u.id 
@@ -94,7 +87,6 @@ const notifyElectionNeedsApproval = async (election) => {
       return [];
     }
     
-    // Get admin who created the election
     let adminName = 'An admin';
     if (election.created_by) {
       const { rows: userRows } = await pool.query(`
@@ -105,8 +97,7 @@ const notifyElectionNeedsApproval = async (election) => {
         adminName = userRows[0].name;
       }
     }
-    
-    // Create notifications using SuperAdmin role for consistent identification
+
     const result = await createNotificationForUsers(
       superadminIds,
       'Super Admin',
@@ -119,7 +110,7 @@ const notifyElectionNeedsApproval = async (election) => {
     
     return result;
   } catch (error) {
-    // Try one last time with a simplified approach
+
     try {
       const { rows } = await pool.query(`SELECT id FROM users WHERE role_id = 1 LIMIT 10`);
       const superIds = rows.map(row => row.id);
@@ -154,8 +145,7 @@ const notifyElectionApproved = async (election, adminId) => {
       return [];
     }
     
-    // Determine if the target user is actually a superadmin
-    let userRole = 'Admin'; // Default role
+    let userRole = 'Admin'; 
     try {
       const { rows } = await pool.query(`
         SELECT role_id FROM users WHERE id = $1
@@ -163,15 +153,13 @@ const notifyElectionApproved = async (election, adminId) => {
       
       if (rows.length > 0) {
         const user = rows[0];
-        // Check if this user is a superadmin based only on role_id
         if (user.role_id === 1) {
           userRole = 'Super Admin';
         }
       }
     } catch (roleError) {
-      // Keep error logging for database query issues
       console.error(`Error checking role for user ${adminId}:`, roleError.message);
-      // Continue with default role
+
     }
     
     return createNotificationForUsers(
@@ -184,7 +172,6 @@ const notifyElectionApproved = async (election, adminId) => {
       election.id
     );
   } catch (error) {
-    // Keep error logging for critical failures
     console.error('Error creating election approval notification:', error);
     throw error;
   }
@@ -200,8 +187,7 @@ const notifyElectionApproved = async (election, adminId) => {
 const notifyElectionRejected = async (election, adminId, rejectedById) => {
   try {
     const promises = [];
-    
-    // 1. Notify the admin who created the election
+
     if (adminId) {
       promises.push(
         createNotification({
@@ -216,9 +202,7 @@ const notifyElectionRejected = async (election, adminId, rejectedById) => {
       );
     }
     
-    // 2. Notify all other superadmins (exclude the one who rejected it)
     if (rejectedById) {
-      // Query users table for superadmins
       const { rows: superadmins } = await pool.query(`
         SELECT id FROM superadmins WHERE id != $1
       `, [rejectedById]);
@@ -239,7 +223,7 @@ const notifyElectionRejected = async (election, adminId, rejectedById) => {
       }
     }
     
-    // Wait for all notifications to be created
+  
     const results = await Promise.all(promises);
     return results.flat();
   } catch (error) {
@@ -257,8 +241,7 @@ const notifyElectionRejected = async (election, adminId, rejectedById) => {
 const notifyBallotCreated = async (adminId, election) => {
   try {
     const promises = [];
-    
-    // 1. Notify the admin who created the election (if different from ballot creator)
+
     if (election.created_by && election.created_by !== adminId) {
       promises.push(
         createNotification({
@@ -272,8 +255,7 @@ const notifyBallotCreated = async (adminId, election) => {
         })
       );
     }
-    
-    // 2. Notify other admins in the system
+
     const { rows: admins } = await pool.query(`
       SELECT id FROM admins WHERE id != $1 AND id != $2
     `, [adminId || 0, election.created_by || 0]);
@@ -292,8 +274,7 @@ const notifyBallotCreated = async (adminId, election) => {
         )
       );
     }
-    
-    // 3. Notify superadmins
+
     const { rows: superadmins } = await pool.query(`
       SELECT id FROM superadmins
     `);
@@ -312,8 +293,7 @@ const notifyBallotCreated = async (adminId, election) => {
         )
       );
     }
-    
-    // Wait for all notifications to be created
+
     const results = await Promise.all(promises);
     return results.flat();
   } catch (error) {
@@ -328,7 +308,6 @@ const notifyBallotCreated = async (adminId, election) => {
  */
 const getEligibleStudentIds = async (election) => {
   try {
-    // Query to get all student IDs from eligible_voters table
     const { rows } = await pool.query(`
       SELECT DISTINCT student_id 
       FROM eligible_voters
@@ -351,36 +330,30 @@ const notifyStudentsAboutElection = async (election) => {
     if (election.needs_approval) {
       return [];
     }
-    
-    // Get eligible student IDs based on election criteria
+
     const studentIds = await getEligibleStudentIds(election);
     
     if (studentIds.length === 0) {
       return [];
     }
-    
-    // Get the user IDs associated with these students
-    // We need to map student IDs to user IDs
+
     const studentUserIds = [];
     const studentRoleMappings = [];
-    
-    // Process students in batches to avoid overly large queries
+
     const batchSize = 50;
     for (let i = 0; i < studentIds.length; i += batchSize) {
       const batch = studentIds.slice(i, i + batchSize);
-      
-      // Query to find user IDs for these students
+
       const { rows } = await pool.query(`
         SELECT s.id as student_id, u.id as user_id
         FROM students s
         JOIN users u ON s.email = u.email
         WHERE s.id = ANY($1)
       `, [batch]);
-      
-      // Add mapped user IDs to our array
+
       rows.forEach(row => {
         studentUserIds.push(row.user_id);
-        // Keep track of which student ID maps to which user ID
+  
         studentRoleMappings.push({
           userId: row.user_id,
           studentId: row.student_id
@@ -391,8 +364,7 @@ const notifyStudentsAboutElection = async (election) => {
     if (studentUserIds.length === 0) {
       return [];
     }
-    
-    // Create a notification for each eligible student with their user ID
+
     const normalizedRole = normalizeRole('Student');
     
     const notifications = await createNotificationForUsers(
@@ -421,8 +393,6 @@ const notifyElectionStatusChange = async (election, previousStatus) => {
   try {
     const promises = [];
 
-    // 1. Notify admins about status change
-    // Get all admins
     const { rows: admins } = await pool.query(`
       SELECT id FROM admins
     `);
@@ -430,8 +400,7 @@ const notifyElectionStatusChange = async (election, previousStatus) => {
     if (admins.length > 0) {
       const adminIds = admins.map(row => row.id);
       let message = '';
-      
-      // Create different messages based on status
+
       switch (election.status) {
         case 'ongoing':
           message = `Election "${election.title}" is now open for voting!`;
@@ -461,8 +430,7 @@ const notifyElectionStatusChange = async (election, previousStatus) => {
         )
       );
     }
-    
-    // 2. Notify superadmins about status change
+
     const { rows: superadmins } = await pool.query(`
       SELECT id FROM superadmins
     `);
@@ -494,18 +462,15 @@ const notifyElectionStatusChange = async (election, previousStatus) => {
         )
       );
     }
-    
-    // 3. If the election has changed to 'ongoing', notify eligible students that voting is open
+
     if (election.status === 'ongoing') {
       promises.push(notifyStudentsAboutElection(election));
     }
-    
-    // 4. If the election has changed to 'completed', notify students about results
+
     if (election.status === 'completed') {
       promises.push(notifyStudentsAboutElectionResults(election));
     }
-    
-    // Wait for all notifications to be created
+
     const results = await Promise.all(promises);
     return results.flat();
     
@@ -521,14 +486,12 @@ const notifyElectionStatusChange = async (election, previousStatus) => {
  */
 const notifyStudentsAboutElectionResults = async (election) => {
   try {
-    // Get eligible student IDs based on election criteria
     const studentIds = await getEligibleStudentIds(election);
     
     if (studentIds.length === 0) {
       return [];
     }
-    
-    // Get all votes for this election
+
     const { rows: votes } = await pool.query(`
       SELECT DISTINCT student_id 
       FROM votes 
@@ -539,10 +502,8 @@ const notifyStudentsAboutElectionResults = async (election) => {
     const nonVotedStudentIds = studentIds.filter(id => !votedStudentIds.includes(id));
     
     const promises = [];
-    
-    // Process students who voted
+
     if (votedStudentIds.length > 0) {
-      // Get user IDs for students who voted
       const { rows: votedUsers } = await pool.query(`
         SELECT s.id as student_id, u.id as user_id
         FROM students s
@@ -566,10 +527,8 @@ const notifyStudentsAboutElectionResults = async (election) => {
         );
       }
     }
-    
-    // Process students who did not vote
+
     if (nonVotedStudentIds.length > 0) {
-      // Get user IDs for students who did not vote
       const { rows: nonVotedUsers } = await pool.query(`
         SELECT s.id as student_id, u.id as user_id
         FROM students s
@@ -593,8 +552,7 @@ const notifyStudentsAboutElectionResults = async (election) => {
         );
       }
     }
-    
-    // Wait for all notification promises to resolve
+
     const results = await Promise.all(promises);
     return results.flat();
     
@@ -609,15 +567,12 @@ const notifyStudentsAboutElectionResults = async (election) => {
  */
 const debugSendTestToSuperadmins = async () => {
   try {
-    // Get all superadmin IDs - corrected to query users table with role_id
     const { rows: superadmins } = await pool.query(`
       SELECT id FROM users WHERE role_id = 1
     `);
     
     if (superadmins.length === 0) {
       console.warn('No superadmins found to send test notification');
-      
-      // Try direct superadmins table as fallback
       const { rows: directSuperadmins } = await pool.query(`
         SELECT id FROM superadmins
       `);

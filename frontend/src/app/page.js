@@ -268,7 +268,7 @@ export default function Home() {
           <Image 
             src={stiLogo} 
             alt="STI Logo" 
-            width={80}
+            width={60}
             height={20} 
             className="mr-2"
             priority

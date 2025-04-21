@@ -375,7 +375,6 @@ function AddDepartmentModal({ onClose, onSuccess }) {
   );
 }
 
-// Assign Admin Modal
 function AssignAdminModal({ department, admins, onClose, onSuccess }) {
   const [selectedAdmin, setSelectedAdmin] = useState("");
   const [loading, setLoading] = useState(false);
@@ -384,10 +383,8 @@ function AssignAdminModal({ department, admins, onClose, onSuccess }) {
 
   useEffect(() => {
     if (admins && admins.length > 0) {
-      // Show all admins as available options
       setAvailableAdmins(admins);
-      
-      // Preselect the current admin if one is assigned
+    
       if (department.admin_id) {
         setSelectedAdmin(department.admin_id.toString());
       }
@@ -442,7 +439,7 @@ function AssignAdminModal({ department, admins, onClose, onSuccess }) {
               onChange={(e) => setSelectedAdmin(e.target.value)}
               className="w-full p-2 border rounded"
             >
-              <option value="">-- Remove assigned admin --</option>
+              <option value=""> Remove assigned admin </option>
               {availableAdmins.length > 0 ? (
                 availableAdmins.map(admin => (
                   <option key={admin.id} value={admin.id}>

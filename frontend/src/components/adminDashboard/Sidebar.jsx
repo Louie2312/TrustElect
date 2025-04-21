@@ -53,7 +53,7 @@ export default function Sidebar() {
 
   return (
     <>
-      <aside className="w-72 bg-[#003366] text-white h-screen flex flex-col sticky top-0">
+      <aside className="w-72 bg-[#003366] text-white h-screen flex flex-col sticky top-0 z-40">
         <div className="p-6 text-center border-b border-gray-600 relative">
           <div className="cursor-pointer relative inline-block" onClick={() => setShowImageModal(true)}>
             <img

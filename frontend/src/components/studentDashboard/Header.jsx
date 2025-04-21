@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
 import NotificationBell from "../../components/NotificationBell";
-
+import Image from 'next/image';
+import stiLogo from '../../assets/sti_logo.png';
 export default function Header() {
   const router = useRouter();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -17,9 +18,20 @@ export default function Header() {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 w-full bg-[#01579B] text-white shadow-md p-4 flex justify-between items-center h-16 z-50">
-      <h2 className="text-xl font-bold">
-        <span className="text-yellow-400">STI</span> TrustElect
+    <header className="fixed top-0 left-0 right-0 w-full bg-[#01579B] text-white shadow-md p-4 flex justify-between items-center h-20 z-50">
+    
+      <h2 className="text-2xl font-bold flex items-center">
+        <Image 
+         src={stiLogo}
+         alt="STI Logo"
+         width={60}
+        height={20}
+        className="mr-2"
+         priority
+         style={{ maxHeight: 'calc(51px - (0px * 2))' }}
+        
+        />
+        <span className="text-white">TrustElect</span> 
       </h2>
 
       <div className="flex items-center gap-4">
