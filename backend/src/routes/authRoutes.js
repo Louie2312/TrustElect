@@ -1,6 +1,6 @@
 const express = require("express");
 const { check } = require("express-validator");
-const { loginUser, checkEmailExists } = require("../controllers/authController");
+const { loginUser, checkEmailExists, requestOTP, verifyOTP } = require("../controllers/authController");
 const router = express.Router();
 
 router.post(
@@ -14,5 +14,7 @@ router.post(
 
 router.post("/check-email", checkEmailExists)
 
+router.post('/request-otp', requestOTP);
+router.post('/verify-otp', verifyOTP);
 
 module.exports = router;

@@ -4,6 +4,7 @@ const { validationResult } = require("express-validator");
 const { getAdminByEmail } = require("../models/adminModel");
 const { getStudentByEmail } = require("../models/studentModel");
 const pool = require("../config/db");
+const otpService = require('../services/otpService');
 require("dotenv").config();
 
 const MAX_FAILED_ATTEMPTS = 5;
@@ -228,3 +229,96 @@ exports.studentLogin = async (req, res) => {
   }
 };
 
+exports.requestOTP = async (req, res) => {
+  try {
+    const { userId, email } = req.body;
+ 
+    if (!userId || !email) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID and email are required'
+      });
+    }
+    
+    const result = await otpService.requestOTP(userId, email);
+
+    if (process.env.NODE_ENV === 'development' && result.dev) {
+      const maskedEmail = maskEmail(result.email);
+      
+
+      return res.status(200).json({
+        success: true,
+        message: `Verification code for ${maskedEmail}`,
+        devMode: true,
+        otp: result.otp
+      });
+    }
+    
+    if (result.isSystemAccount) {
+      const maskedOriginal = maskEmail(result.email);
+      const maskedRecipient = maskEmail(result.recipientEmail);
+      
+      return res.status(200).json({
+        success: true,
+        message: `Verification code for ${maskedOriginal} sent to administrator (${maskedRecipient})`,
+        isSystemAccount: true
+      });
+    }
+
+    const maskedEmail = maskEmail(email);
+    return res.status(200).json({
+      success: true,
+      message: `Verification code sent to ${maskedEmail}`
+    });
+  } catch (error) {
+    console.error('Error in requestOTP:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to send verification code'
+    });
+  }
+};
+
+exports.verifyOTP = async (req, res) => {
+  try {
+    const { userId, otp } = req.body;
+
+    if (!userId || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID and verification code are required'
+      });
+    }
+
+    const isValid = await otpService.verifyOTP(userId, otp);
+    
+    if (!isValid) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired verification code'
+      });
+    }
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Verification successful',
+      verified: true
+    });
+  } catch (error) {
+    console.error('Error in verifyOTP:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Verification failed'
+    });
+  }
+};
+
+function maskEmail(email) {
+  if (!email) return '***@***.com';
+  
+  const [localPart, domain] = email.split('@');
+  const maskedLocal = localPart.charAt(0) + 
+                    '*'.repeat(Math.max(localPart.length - 2, 1)) + 
+                    localPart.charAt(localPart.length - 1);
+  return `${maskedLocal}@${domain}`;
+}

@@ -19,10 +19,14 @@ export default function LoginForm({ onClose }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [devOtp, setDevOtp] = useState("");
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendMessage, setResendMessage] = useState("");
   const router = useRouter();
 
   const handleLogin = async () => {
     setError("");
+    setDevOtp("");
 
     if (!email.endsWith("@novaliches.sti.edu.ph")) {
       setError("Please enter a valid STI email address.");
@@ -50,13 +54,12 @@ export default function LoginForm({ onClose }) {
       
       const { token, role, user_id, studentId } = response.data;
 
-     
+      // Store auth info in cookies
       Cookies.set("token", token, { expires: 1, path: "/", secure: false, sameSite: "lax" });
       Cookies.set("role", role, { expires: 1, path: "/", secure: false, sameSite: "strict" });
       Cookies.set("email", email, { expires: 1, path: "/", secure: false, sameSite: "strict" });
       Cookies.set("user_id", user_id, { expires: 1, path: "/", secure: false, sameSite: "strict" });
       
-     
       if (studentId) {
         console.log("Setting studentId in cookie:", studentId);
         Cookies.set("studentId", studentId.toString(), { expires: 1, path: "/", secure: false, sameSite: "strict" });
@@ -68,16 +71,29 @@ export default function LoginForm({ onClose }) {
       localStorage.setItem("email", email);
       localStorage.setItem("user_id", user_id);
 
+      // Request OTP
+      const otpResponse = await axios.post(
+        "http://localhost:5000/api/auth/request-otp",
+        { userId: user_id, email }
+      );
+      
+      console.log("OTP request response:", otpResponse.data);
+      
+      // Check for dev mode OTP
+      if (otpResponse.data.devMode && otpResponse.data.otp) {
+        setDevOtp(otpResponse.data.otp);
+      }
+      
       setStep(2); 
-    
     } catch (err) {
+      console.error("Login error:", err);
       setError(err.response?.data?.message || "Login failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleOtpVerification = () => {
+  const handleOtpVerification = async () => {
     if (otp.length !== 6) {
       setError("OTP must be exactly 6 digits.");
       return;
@@ -85,9 +101,15 @@ export default function LoginForm({ onClose }) {
     setLoading(true);
     try {
       console.log("🔹 Verifying OTP...");
-
+      const userId = Cookies.get("user_id");
       
-      if (/^\d{6}$/.test(otp)) {
+      // Call verify API
+      const response = await axios.post(
+        "http://localhost:5000/api/auth/verify-otp",
+        { userId, otp }
+      );
+      
+      if (response.data.success) {
         const role = Cookies.get("role");
         console.log("User role:", role);
 
@@ -99,16 +121,43 @@ export default function LoginForm({ onClose }) {
           router.push("/student");
         }
       } else {
-        throw new Error("Invalid OTP. Please try again.");
+        throw new Error("Verification failed. Please try again.");
       }
     } catch (err) {
-      console.error("OTP verification failed:", err.message);
-      setError(err.message || "Invalid OTP. Please try again.");
+      console.error("OTP verification failed:", err);
+      setError(err.response?.data?.message || "Invalid verification code. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
+  const handleResendOTP = async () => {
+    setResendLoading(true);
+    setResendMessage("");
+    setDevOtp("");
+    try {
+      const userId = Cookies.get("user_id");
+      const userEmail = Cookies.get("email");
+      
+      console.log("Resending OTP for:", userEmail);
+      const response = await axios.post(
+        "http://localhost:5000/api/auth/request-otp",
+        { userId, email: userEmail }
+      );
+      
+      // Check for dev mode OTP
+      if (response.data.devMode && response.data.otp) {
+        setDevOtp(response.data.otp);
+      }
+      
+      setResendMessage("Verification code resent");
+    } catch (err) {
+      console.error("Resend OTP error:", err);
+      setResendMessage("Failed to resend code. Try again.");
+    } finally {
+      setResendLoading(false);
+    }
+  };
 
   return (
     <Card className="relative w-96 p-6 bg-white shadow-2xl rounded-lg">
@@ -191,7 +240,9 @@ export default function LoginForm({ onClose }) {
         {step === 2 && (
           <div>
             <h2 className="text-[#01579B] font-semibold mb-2">Enter OTP</h2>
-            <p className="text-sm text-gray-700 font-medium"></p>
+            <p className="text-sm text-gray-700 mb-2">
+              A verification code has been sent to your email address.
+            </p>
             <Input
               type="text"
               placeholder="Enter 6-digit OTP"
@@ -199,6 +250,15 @@ export default function LoginForm({ onClose }) {
               onChange={(e) => setOtp(e.target.value)}
               required
             />
+            
+            {/* Development OTP display */}
+            {devOtp && (
+              <div className="mt-2 p-2 bg-gray-100 rounded text-center">
+                <p className="text-xs text-gray-500">Development OTP:</p>
+                <p className="font-mono text-sm">{devOtp}</p>
+              </div>
+            )}
+            
             <Button
               onClick={handleOtpVerification}
               className="cursor-pointer mt-4 w-full bg-[#FFDF00] hover:bg-[#00FF00] text-black"
@@ -206,6 +266,20 @@ export default function LoginForm({ onClose }) {
             >
               {loading ? "Verifying..." : "Verify"}
             </Button>
+            
+            {/* Resend OTP button */}
+            <div className="mt-4 text-center">
+              <button 
+                onClick={handleResendOTP}
+                disabled={resendLoading}
+                className="text-sm text-[#01579B] hover:underline"
+              >
+                {resendLoading ? "Sending..." : "Resend verification code"}
+              </button>
+              {resendMessage && (
+                <p className="text-xs mt-1 text-gray-600">{resendMessage}</p>
+              )}
+            </div>
           </div>
         )}
       </CardContent>

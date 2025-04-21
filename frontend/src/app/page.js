@@ -287,7 +287,7 @@ export default function Home() {
       {/* Main content */}
       <main className="flex-grow pt-24">
         {/* Hero Section */}
-        <section className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-20 px-6">
+        <section className="bg-gradient-to-r from-[#01579B] to-[#01579B] text-white py-20 px-6">
           <div className="container mx-auto max-w-6xl flex flex-col md:flex-row items-center">
             <div className="md:w-1/2 space-y-6">
               <h1 className="text-4xl md:text-5xl font-bold leading-tight">
@@ -296,14 +296,11 @@ export default function Home() {
               <p className="text-xl md:text-2xl">
                 {landingContent.hero.subtitle}
               </p>
-              <Button className="bg-white text-blue-800 hover:bg-blue-100 px-8 py-2 text-lg rounded-lg">
-                Learn More
-              </Button>
+             
             </div>
             <div className="md:w-1/2 mt-10 md:mt-0 flex justify-center">
               {(() => {
-                // Only use hero content for hero section
-                // Process video URL - ensure it comes from hero section only
+               
                 const heroVideoUrl = landingContent.hero && landingContent.hero.videoUrl ? 
                   formatImageUrl(landingContent.hero.videoUrl) : null;
                 
@@ -457,14 +454,14 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-gray-800 text-white py-8 px-6">
+      <footer className="bg-[#01579B] text-white py-8 px-6">
         <div className="container mx-auto max-w-6xl">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-4 md:mb-0">
-              <h2 className="text-xl font-bold">TrustElect</h2>
-              <p className="text-gray-400">Secure Digital Voting Platform</p>
+              <h2 className="text-xl font-bold text-white">TrustElect</h2>
+              <p className="text-white">Secure Digital Voting Platform</p>
             </div>
-            <div className="text-gray-400 text-sm">
+            <div className="text-white text-sm">
               © {new Date().getFullYear()} TrustElect. All rights reserved.
             </div>
           </div>
