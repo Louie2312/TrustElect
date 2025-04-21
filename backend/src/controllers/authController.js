@@ -65,7 +65,6 @@ exports.loginUser = async (req, res) => {
       user = await getStudentByEmail(email);
       role = "Student";
       
-    
       if (user) {
         const studentQuery = "SELECT id FROM students WHERE email = $1";
         const studentResult = await pool.query(studentQuery, [email]);

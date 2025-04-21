@@ -41,6 +41,7 @@ filename: (req, file, cb) => {
 }
 });
 
+
 // File filter function
 const fileFilter = (req, file, cb) => {
 // Accept only image files

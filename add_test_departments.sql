@@ -7,5 +7,5 @@ VALUES
 ('Student Council', 'Organization', TRUE, 1),
 ('Computer Society', 'Organization', TRUE, 1);
 
--- View existing departments
+
 SELECT * FROM departments; 
