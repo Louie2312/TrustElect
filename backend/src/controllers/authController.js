@@ -313,6 +313,101 @@ exports.verifyOTP = async (req, res) => {
   }
 };
 
+// Check if user needs to change password on first login
+exports.checkFirstLogin = async (req, res) => {
+  try {
+    const userId = req.userId; // From auth middleware
+    
+    const query = "SELECT is_first_login FROM users WHERE id = $1";
+    const result = await pool.query(query, [userId]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    return res.status(200).json({
+      success: true,
+      isFirstLogin: result.rows[0].is_first_login
+    });
+  } catch (error) {
+    console.error('Error checking first login status:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to check first login status'
+    });
+  }
+};
+
+// Handle password change for first login
+exports.changeFirstLoginPassword = async (req, res) => {
+  try {
+    const userId = req.userId; // From auth middleware
+    const { newPassword } = req.body;
+    
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 8 characters'
+      });
+    }
+
+    // Get user to check if it's their first login
+    const checkQuery = "SELECT is_first_login, role_id FROM users WHERE id = $1";
+    const checkResult = await pool.query(checkQuery, [userId]);
+    
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    const user = checkResult.rows[0];
+    
+    // Check if this is actually their first login
+    if (!user.is_first_login) {
+      return res.status(400).json({
+        success: false,
+        message: 'This is not your first login'
+      });
+    }
+    
+    // Only allow Admin (2) and Student (3) to change password on first login
+    if (user.role_id !== 2 && user.role_id !== 3) {
+      return res.status(403).json({
+        success: false,
+        message: 'Operation not allowed for this user type'
+      });
+    }
+    
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    // Update password and set is_first_login to false
+    const updateQuery = `
+      UPDATE users
+      SET password_hash = $1, is_first_login = FALSE, updated_at = NOW()
+      WHERE id = $2
+    `;
+    
+    await pool.query(updateQuery, [hashedPassword, userId]);
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Password changed successfully'
+    });
+  } catch (error) {
+    console.error('Error changing first-time password:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to change password'
+    });
+  }
+};
+
 function maskEmail(email) {
   if (!email) return '***@***.com';
   

@@ -138,7 +138,7 @@ export default function AddAdminModal({ onClose }) {
             <input type="email" name="email" placeholder="Email" onChange={handleChange} required className="border w-full p-2 rounded text-black" />
             {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
 
-            <label name="studentNumber" className="text-black font-bold">Student Number:</label>
+            <label name="studentNumber" className="text-black font-bold">Employee Number:</label>
             <input type="text" name="employeeNumber" placeholder="Employee Number" onChange={handleChange} required className="border w-full p-2 rounded text-black" />
             {errors.employeeNumber && <p className="text-red-500 text-sm">{errors.employeeNumber}</p>}
 

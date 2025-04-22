@@ -1,8 +1,8 @@
-// services/emailService.js
+
 const nodemailer = require('nodemailer');
 const pool = require('../config/db');
 
-// Create Gmail transporter with simplified configuration
+
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   host: 'smtp.gmail.com',
@@ -39,24 +39,85 @@ const getFormattedPhTime = (date) => {
   }).format(date);
 };
 
-const isSystemAccount = (email) => {
+const isSystemAccount = async (email) => {
   if (!email) return false;
-  return /^(superadmin|admin)\.\d+@novaliches\.sti\.edu\.ph$/i.test(email);
+
+  const systemPatternResult = /^(superadmin|admin)\.\d+@novaliches\.sti\.edu\.ph$/i.test(email);
+
+  const namePatternResult = /@novaliches\.sti\.edu\.ph$/i.test(email) && email.includes('.');
+
+  const employeeNumberPattern = /^[a-zA-Z]+\.\d{6}@novaliches\.sti\.edu\.ph$/i.test(email);
+
+  if (systemPatternResult) {
+    return true;
+  }
+
+  if (namePatternResult || employeeNumberPattern) {
+
+    return checkIfAdminEmail(email);
+  }
+  
+  return false;
 };
 
+const checkIfAdminEmail = async (email) => {
+  try {
+    const query = `
+      SELECT COUNT(*) as count 
+      FROM admins 
+      WHERE email = $1
+    `;
+    const result = await pool.query(query, [email]);
+
+    return result.rows[0].count > 0;
+  } catch (error) {
+    console.error('Error checking if email is admin:', error);
+  
+    return false;
+  }
+};
+
+const getAdminForwardingEmail = async (originalEmail) => {
+  try {
+ 
+    const query = `
+      SELECT a.forwarding_email 
+      FROM admins a 
+      WHERE a.email = $1 AND a.forwarding_email IS NOT NULL
+    `;
+    const result = await pool.query(query, [originalEmail]);
+    
+    if (result.rows.length > 0 && result.rows[0].forwarding_email) {
+      return result.rows[0].forwarding_email;
+    }
+    
+    // If no specific forwarding address found, use the default admin email
+    return process.env.ADMIN_EMAIL || 'louielouie457@gmail.com';
+  } catch (error) {
+    console.error('Error fetching admin forwarding email:', error);
+    return process.env.ADMIN_EMAIL || 'louielouie457@gmail.com';
+  }
+};
+
+// For backward compatibility, keep the old function but use the new one internally
 const getAdminGmail = () => {
   return process.env.ADMIN_EMAIL || 'louielouie457@gmail.com';
 };
 
 const sendOTPEmail = async (userId, email, otp) => {
   try {
-    const isAdmin = isSystemAccount(email);
+    // Check if this is an admin account that needs email forwarding
+    const isAdmin = await isSystemAccount(email);
     const originalEmail = email;
 
     let recipientEmail = email;
     if (isAdmin) {
-      recipientEmail = getAdminGmail();
-      console.log(`System account detected. Sending OTP for ${originalEmail} directly to ${recipientEmail}`);
+      // For admin accounts, use forwarding email
+      recipientEmail = await getAdminForwardingEmail(originalEmail);
+      console.log(`Admin account detected. Sending OTP for ${originalEmail} to ${recipientEmail}`);
+    } else {
+      // For student accounts, send directly to their institutional email
+      console.log(`Student account detected. Sending OTP directly to ${originalEmail}`);
     }
 
     const expiryTime = new Date(Date.now() + 10 * 60 * 1000);
@@ -67,7 +128,7 @@ const sendOTPEmail = async (userId, email, otp) => {
       subject = `[${originalEmail}] TrustElect Verification Code`;
     }
 
-    // Simplified email content
+    // Email content
     const mailOptions = {
       from: `"STI TrustElect" <${process.env.GMAIL_USER}>`,
       to: recipientEmail, 
@@ -153,16 +214,23 @@ const sendOTPEmail = async (userId, email, otp) => {
     console.error('ERROR SENDING EMAIL:', error.message);
     console.error('Error stack:', error.stack);
 
-    await logEmailStatus(
-      userId, 
-      email, 
-      'otp', 
-      'failed', 
-      null, 
-      error.message,
-      isSystemAccount(email),
-      isSystemAccount(email) ? getAdminGmail() : null
-    );
+    try {
+      const isAdminAccount = await isSystemAccount(email);
+      const recipientEmail = isAdminAccount ? await getAdminForwardingEmail(email) : email;
+      
+      await logEmailStatus(
+        userId, 
+        email, 
+        'otp', 
+        'failed', 
+        null, 
+        error.message,
+        isAdminAccount,
+        isAdminAccount ? recipientEmail : null
+      );
+    } catch (logError) {
+      console.error('Error logging email status:', logError);
+    }
     
     throw new Error(`Failed to send email: ${error.message}`);
   }
@@ -170,13 +238,8 @@ const sendOTPEmail = async (userId, email, otp) => {
 
 const testConnection = async () => {
   try {
-    console.log('Testing SMTP connection with settings:');
-    console.log(`- Gmail User: ${process.env.GMAIL_USER}`);
-    console.log(`- App Password: ${process.env.GMAIL_APP_PASSWORD ? '******' : 'NOT SET'}`);
-    console.log(`- Admin Email: ${getAdminGmail()}`);
-    
+  
     const result = await transporter.verify();
-    console.log('Gmail connection verified:', result);
     return { success: true };
   } catch (error) {
     console.error('Gmail connection failed:', error);
@@ -184,25 +247,30 @@ const testConnection = async () => {
   }
 };
 
-const testSystemAccount = (email) => {
-  const result = isSystemAccount(email);
-  console.log(`Email "${email}" is ${result ? 'a system account' : 'a regular account'}`);
+const testSystemAccount = async (email) => {
+  const result = await isSystemAccount(email);
   
   if (result) {
-    console.log(`OTPs will be sent to ${getAdminGmail()}`);
+    const forwardingEmail = await getAdminForwardingEmail(email);
+    console.log(`Email "${email}" is an admin account. OTPs will be sent to ${forwardingEmail}`);
+    return { 
+      isSystemAccount: true,
+      recipientEmail: forwardingEmail
+    };
   } else {
-    console.log(`OTPs will be sent directly to ${email}`);
+    console.log(`Email "${email}" is a regular student account. OTPs will be sent directly to ${email}`);
+    return { 
+      isSystemAccount: false,
+      recipientEmail: email
+    };
   }
-  
-  return { 
-    isSystemAccount: result,
-    recipientEmail: result ? getAdminGmail() : email
-  };
 };
 
 module.exports = {
   sendOTPEmail,
   testConnection,
   isSystemAccount,
-  testSystemAccount
+  testSystemAccount,
+  checkIfAdminEmail,
+  getAdminForwardingEmail
 };

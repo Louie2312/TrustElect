@@ -19,18 +19,22 @@ const verifyToken = async (req, res, next) => {
     console.log(`Token expires in ${timeToExpire} seconds (${Math.floor(timeToExpire / 60)} minutes)`);
 
     req.user = decoded; 
+    // Set userId for easy access in controller functions
+    req.userId = decoded.id;
     
   
     if (decoded.id) {
       try {
         const { rows } = await pool.query(
-          'SELECT role_id FROM users WHERE id = $1',
+          'SELECT role_id, is_first_login FROM users WHERE id = $1',
           [decoded.id]
         );
         
         if (rows.length > 0) {
           // Add role_id to the user object
           req.user.role_id = rows[0].role_id;
+          // Add is_first_login flag to the user object
+          req.user.is_first_login = rows[0].is_first_login;
       
           
           // Normalize role name for consistent checks
