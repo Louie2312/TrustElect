@@ -6,7 +6,10 @@ const {
   requestOTP, 
   verifyOTP,
   checkFirstLogin,
-  changeFirstLoginPassword
+  changeFirstLoginPassword,
+  forgotPassword,
+  verifyResetOTP,
+  resetPassword
 } = require("../controllers/authController");
 const { verifyToken } = require("../middlewares/authMiddleware");
 const router = express.Router();
@@ -30,5 +33,20 @@ router.get('/check-first-login', verifyToken, checkFirstLogin);
 router.post('/change-first-password', verifyToken, [
   check("newPassword", "Password must be at least 8 characters").isLength({ min: 8 }),
 ], changeFirstLoginPassword);
+
+// Forgot password routes
+router.post('/forgot-password', [
+  check("email", "Valid email is required").isEmail(),
+], forgotPassword);
+
+router.post('/verify-reset-otp', [
+  check("email", "Valid email is required").isEmail(),
+  check("otp", "Verification code is required").isLength({ min: 6, max: 6 }),
+], verifyResetOTP);
+
+router.post('/reset-password', [
+  check("resetToken", "Reset token is required").not().isEmpty(),
+  check("newPassword", "Password must be at least 8 characters").isLength({ min: 8 }),
+], resetPassword);
 
 module.exports = router;

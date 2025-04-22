@@ -313,7 +313,6 @@ exports.verifyOTP = async (req, res) => {
   }
 };
 
-// Check if user needs to change password on first login
 exports.checkFirstLogin = async (req, res) => {
   try {
     const userId = req.userId; // From auth middleware
@@ -341,10 +340,9 @@ exports.checkFirstLogin = async (req, res) => {
   }
 };
 
-// Handle password change for first login
 exports.changeFirstLoginPassword = async (req, res) => {
   try {
-    const userId = req.userId; // From auth middleware
+    const userId = req.userId; 
     const { newPassword } = req.body;
     
     if (!newPassword || newPassword.length < 8) {
@@ -354,7 +352,6 @@ exports.changeFirstLoginPassword = async (req, res) => {
       });
     }
 
-    // Get user to check if it's their first login
     const checkQuery = "SELECT is_first_login, role_id FROM users WHERE id = $1";
     const checkResult = await pool.query(checkQuery, [userId]);
     
@@ -366,27 +363,23 @@ exports.changeFirstLoginPassword = async (req, res) => {
     }
     
     const user = checkResult.rows[0];
-    
-    // Check if this is actually their first login
+ 
     if (!user.is_first_login) {
       return res.status(400).json({
         success: false,
         message: 'This is not your first login'
       });
     }
-    
-    // Only allow Admin (2) and Student (3) to change password on first login
+  
     if (user.role_id !== 2 && user.role_id !== 3) {
       return res.status(403).json({
         success: false,
         message: 'Operation not allowed for this user type'
       });
     }
-    
-    // Hash the new password
+ 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    
-    // Update password and set is_first_login to false
+  
     const updateQuery = `
       UPDATE users
       SET password_hash = $1, is_first_login = FALSE, updated_at = NOW()
@@ -417,3 +410,190 @@ function maskEmail(email) {
                     localPart.charAt(localPart.length - 1);
   return `${maskedLocal}@${domain}`;
 }
+
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email || !email.endsWith("@novaliches.sti.edu.ph")) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Please enter a valid STI email address." 
+      });
+    }
+    const userQuery = "SELECT id, role_id FROM users WHERE email = $1 AND is_active = TRUE";
+    const userResult = await pool.query(userQuery, [email]);
+    
+    if (userResult.rows.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "If your email is registered, you will receive a reset code."
+      });
+    }
+    
+    const userId = userResult.rows[0].id;
+ 
+    const result = await otpService.requestOTP(userId, email);
+
+    await pool.query(
+      "UPDATE otps SET purpose = 'reset' WHERE user_id = $1 AND verified = FALSE",
+      [userId]
+    );
+
+    if (process.env.NODE_ENV === 'development' && result.dev) {
+      const maskedEmail = maskEmail(email);
+      return res.status(200).json({
+        success: true,
+        message: `Password reset code for ${maskedEmail}`,
+        devMode: true,
+        otp: result.otp
+      });
+    }
+    
+    const maskedEmail = maskEmail(email);
+    return res.status(200).json({
+      success: true,
+      message: `Password reset code sent to ${maskedEmail}`
+    });
+  } catch (error) {
+    console.error('Error in forgotPassword:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to process password reset request. Please try again later.'
+    });
+  }
+};
+
+exports.verifyResetOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    
+    if (!email || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and verification code are required'
+      });
+    }
+
+    const userQuery = "SELECT id FROM users WHERE email = $1";
+    const userResult = await pool.query(userQuery, [email]);
+    
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Account not found'
+      });
+    }
+    
+    const userId = userResult.rows[0].id;
+
+    const otpQuery = `
+      SELECT id FROM otps 
+      WHERE user_id = $1 
+      AND otp = $2 
+      AND expires_at > NOW() 
+      AND verified = FALSE 
+      AND attempts <= 5
+      AND (purpose = 'reset' OR purpose IS NULL)
+    `;
+    
+    const otpResult = await pool.query(otpQuery, [userId, otp]);
+    
+    if (otpResult.rows.length === 0) {
+      await pool.query(
+        'UPDATE otps SET attempts = attempts + 1 WHERE user_id = $1 AND verified = FALSE',
+        [userId]
+      );
+      
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired verification code'
+      });
+    }
+
+    await pool.query(
+      'UPDATE otps SET verified = TRUE WHERE id = $1',
+      [otpResult.rows[0].id]
+    );
+
+    const resetToken = jwt.sign(
+      { userId, purpose: 'reset' },
+      process.env.JWT_SECRET,
+      { expiresIn: '15m' }
+    );
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Verification successful',
+      resetToken
+    });
+  } catch (error) {
+    console.error('Error in verifyResetOTP:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Verification failed. Please try again.'
+    });
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const { resetToken, newPassword } = req.body;
+    
+    if (!resetToken || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Reset token and new password are required'
+      });
+    }
+    
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 8 characters'
+      });
+    }
+    let decoded;
+    try {
+      decoded = jwt.verify(resetToken, process.env.JWT_SECRET);
+      
+      if (decoded.purpose !== 'reset') {
+        throw new Error('Invalid token purpose');
+      }
+    } catch (tokenError) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid or expired reset token'
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    const updateQuery = `
+      UPDATE users
+      SET password_hash = $1, updated_at = NOW(), is_first_login = FALSE
+      WHERE id = $2
+      RETURNING id, email
+    `;
+    
+    const updateResult = await pool.query(updateQuery, [hashedPassword, decoded.userId]);
+    
+    if (updateResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Password reset successful'
+    });
+  } catch (error) {
+    console.error('Error in resetPassword:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Password reset failed. Please try again.'
+    });
+  }
+};

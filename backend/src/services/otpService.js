@@ -5,7 +5,7 @@ const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-const createOTP = async (userId, email) => {
+const createOTP = async (userId, email, purpose = 'login') => {
   try {
   
     const otp = generateOTP();
@@ -19,8 +19,8 @@ const createOTP = async (userId, email) => {
     );
  
     await pool.query(
-      'INSERT INTO otps (user_id, otp, expires_at) VALUES ($1, $2, $3)',
-      [userId, otp, expiryTime]
+      'INSERT INTO otps (user_id, otp, expires_at, purpose) VALUES ($1, $2, $3, $4)',
+      [userId, otp, expiryTime, purpose]
     );
     
     return otp;
@@ -30,12 +30,12 @@ const createOTP = async (userId, email) => {
   }
 };
 
-const requestOTP = async (userId, email) => {
+const requestOTP = async (userId, email, purpose = 'login') => {
   try {
 
-    const otp = await createOTP(userId, email);
+    const otp = await createOTP(userId, email, purpose);
 
-    const emailResult = await emailService.sendOTPEmail(userId, email, otp);
+    const emailResult = await emailService.sendOTPEmail(userId, email, otp, purpose);
 
     if (process.env.NODE_ENV === 'development' && emailResult.dev) {
 
@@ -45,7 +45,8 @@ const requestOTP = async (userId, email) => {
         otp: otp,
         email: emailResult.originalEmail,
         isSystemAccount: emailResult.isSystemAccount,
-        recipientEmail: emailResult.recipientEmail
+        recipientEmail: emailResult.recipientEmail,
+        purpose: purpose
       };
     }
     
@@ -53,7 +54,8 @@ const requestOTP = async (userId, email) => {
       success: true,
       email: emailResult.originalEmail,
       isSystemAccount: emailResult.isSystemAccount,
-      recipientEmail: emailResult.recipientEmail
+      recipientEmail: emailResult.recipientEmail,
+      purpose: purpose
     };
   } catch (error) {
     console.error('Error requesting OTP:', error);

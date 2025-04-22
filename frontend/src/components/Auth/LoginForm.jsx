@@ -24,14 +24,22 @@ export default function LoginForm({ onClose }) {
   const [resendMessage, setResendMessage] = useState("");
   const [cooldownActive, setCooldownActive] = useState(false);
   const [cooldownTime, setCooldownTime] = useState(0);
-  const COOLDOWN_SECONDS = 120; // 2 minutes in seconds
+  const COOLDOWN_SECONDS = 120; 
 
-  
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isFirstLogin, setIsFirstLogin] = useState(false);
+
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [resetOtp, setResetOtp] = useState("");
+  const [resetToken, setResetToken] = useState("");
+  const [resetPassword, setResetPassword] = useState("");
+  const [confirmResetPassword, setConfirmResetPassword] = useState("");
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [showConfirmResetPassword, setShowConfirmResetPassword] = useState(false);
+  const [resetStep, setResetStep] = useState(1); // 1: email, 2: OTP, 3: new password
   
   const router = useRouter();
 
@@ -101,20 +109,17 @@ export default function LoginForm({ onClose }) {
       localStorage.setItem("email", email);
       localStorage.setItem("user_id", user_id);
 
-      // Request OTP
       const otpResponse = await axios.post(
         "http://localhost:5000/api/auth/request-otp",
         { userId: user_id, email }
       );
       
       console.log("OTP request response:", otpResponse.data);
-      
-      // Check for dev mode OTP
+
       if (otpResponse.data.devMode && otpResponse.data.otp) {
         setDevOtp(otpResponse.data.otp);
       }
-      
-      // Initialize cooldown after requesting OTP
+
       setCooldownActive(true);
       setCooldownTime(COOLDOWN_SECONDS);
       
@@ -136,8 +141,7 @@ export default function LoginForm({ onClose }) {
     try {
       console.log("🔹 Verifying OTP...");
       const userId = Cookies.get("user_id");
-      
-      // Call verify API
+
       const response = await axios.post(
         "http://localhost:5000/api/auth/verify-otp",
         { userId, otp }
@@ -147,7 +151,6 @@ export default function LoginForm({ onClose }) {
         const role = Cookies.get("role");
         console.log("User role:", role);
 
-        // Check if this is first login for Admin or Student roles (not SuperAdmin)
         if (role !== "Super Admin") {
           try {
             const token = Cookies.get("token");
@@ -162,16 +165,15 @@ export default function LoginForm({ onClose }) {
             
             if (firstLoginCheckResponse.data.isFirstLogin) {
               setIsFirstLogin(true);
-              setStep(3); // Show password change screen
+              setStep(3);
               return;
             }
           } catch (firstLoginCheckError) {
             console.error("Error checking first login status:", firstLoginCheckError);
-            // Continue with normal login if check fails
+          
           }
         }
 
-        // Proceed to appropriate dashboard
         navigateToDashboard(role);
       } else {
         throw new Error("Verification failed. Please try again.");
@@ -185,7 +187,7 @@ export default function LoginForm({ onClose }) {
   };
 
   const handlePasswordChange = async () => {
-    // Validate passwords
+
     if (newPassword.length < 8) {
       setError("New password must be at least 8 characters.");
       return;
@@ -211,7 +213,7 @@ export default function LoginForm({ onClose }) {
       );
       
       if (response.data.success) {
-        // Clear cookies and local storage
+  
         Cookies.remove("token");
         Cookies.remove("role");
         Cookies.remove("email");
@@ -235,11 +237,11 @@ export default function LoginForm({ onClose }) {
         setConfirmPassword("");
         setIsFirstLogin(false);
         
-        // Show success message
+
         setError("");
         setResendMessage("Password changed successfully. Please login again with your new password.");
         
-        // Return to login screen
+
         setStep(1);
       } else {
         throw new Error("Password change failed. Please try again.");
@@ -252,7 +254,6 @@ export default function LoginForm({ onClose }) {
     }
   };
   
-  // Function to navigate to the correct dashboard
   const navigateToDashboard = (role) => {
     if (role === "Super Admin") {
       router.push("/superadmin");
@@ -264,7 +265,6 @@ export default function LoginForm({ onClose }) {
   };
 
   const handleResendOTP = async () => {
-    // Check if cooldown is active
     if (cooldownActive) {
       setResendMessage(`Please wait ${cooldownTime} seconds before requesting another code.`);
       return;
@@ -282,8 +282,157 @@ export default function LoginForm({ onClose }) {
         "http://localhost:5000/api/auth/request-otp",
         { userId, email: userEmail }
       );
+
+      if (response.data.devMode && response.data.otp) {
+        setDevOtp(response.data.otp);
+      }
+      
+      setResendMessage("Verification code resent. Check your email.");
+      
+      setCooldownActive(true);
+      setCooldownTime(COOLDOWN_SECONDS);
+    } catch (err) {
+      console.error("Resend OTP error:", err);
+      setResendMessage("Failed to resend code. Try again later.");
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
+  const toggleForgotPassword = () => {
+    if (step === 1) {
+      setStep(4); 
+      setResetStep(1); 
+    } else if (step === 4) {
+      setStep(1); 
+    }
+    setError("");
+    setResendMessage("");
+  };
+
+  const handleForgotPassword = async () => {
+    setError("");
+    
+    if (!forgotEmail.endsWith("@novaliches.sti.edu.ph")) {
+      setError("Please enter a valid STI email address.");
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const response = await axios.post(
+        "http://localhost:5000/api/auth/forgot-password",
+        { email: forgotEmail }
+      );
       
       // Check for dev mode OTP
+      if (response.data.devMode && response.data.otp) {
+        setDevOtp(response.data.otp);
+      }
+      
+      // Move to OTP verification step
+      setResetStep(2);
+      
+      // Initialize cooldown for OTP resend
+      setCooldownActive(true);
+      setCooldownTime(COOLDOWN_SECONDS);
+    } catch (err) {
+      console.error("Forgot password error:", err);
+      setError(err.response?.data?.message || "Failed to process request. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyResetOTP = async () => {
+    setError("");
+    
+    if (resetOtp.length !== 6) {
+      setError("Verification code must be exactly 6 digits.");
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const response = await axios.post(
+        "http://localhost:5000/api/auth/verify-reset-otp",
+        { email: forgotEmail, otp: resetOtp }
+      );
+      
+      if (response.data.success) {
+        setResetToken(response.data.resetToken);
+        setResetStep(3);
+        setResendMessage("");
+      } else {
+        throw new Error("Verification failed. Please try again.");
+      }
+    } catch (err) {
+      console.error("OTP verification failed:", err);
+      setError(err.response?.data?.message || "Invalid verification code. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    setError("");
+    
+    if (resetPassword.length < 8) {
+      setError("New password must be at least 8 characters.");
+      return;
+    }
+    
+    if (resetPassword !== confirmResetPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const response = await axios.post(
+        "http://localhost:5000/api/auth/reset-password",
+        { resetToken, newPassword: resetPassword }
+      );
+      
+      if (response.data.success) {
+        // Clear the reset form
+        setForgotEmail("");
+        setResetOtp("");
+        setResetToken("");
+        setResetPassword("");
+        setConfirmResetPassword("");
+        setResetStep(1);
+        
+        setStep(1);
+        setResendMessage("Password reset successful.");
+      } else {
+        throw new Error("Password reset failed. Please try again.");
+      }
+    } catch (err) {
+      console.error("Password reset failed:", err);
+      setError(err.response?.data?.message || "Failed to reset password.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendResetOTP = async () => {
+  
+    if (cooldownActive) {
+      setResendMessage(`Please wait ${cooldownTime} seconds before requesting another code.`);
+      return;
+    }
+    
+    setResendLoading(true);
+    setResendMessage("");
+    setDevOtp("");
+    try {
+      const response = await axios.post(
+        "http://localhost:5000/api/auth/forgot-password",
+        { email: forgotEmail }
+      );
+      
+   
       if (response.data.devMode && response.data.otp) {
         setDevOtp(response.data.otp);
       }
@@ -304,9 +453,21 @@ export default function LoginForm({ onClose }) {
   return (
     <Card className="relative w-96 p-6 bg-white shadow-2xl rounded-lg">
       
-      {(step === 2 || step === 3) && (
+      {(step === 2 || step === 3 || step === 4) && (
         <button
-          onClick={() => setStep(step === 3 ? 2 : 1)}
+          onClick={() => {
+            if (step === 3) {
+              setStep(2); 
+            } else if (step === 2) {
+              setStep(1); 
+            } else if (step === 4) {
+              if (resetStep > 1) {
+                setResetStep(resetStep - 1); 
+              } else {
+                setStep(1); 
+              }
+            }
+          }}
           className="absolute top-2 left-2 text-gray-600 hover:text-gray-900 text-xl"
         >
           <ArrowLeft />
@@ -333,7 +494,10 @@ export default function LoginForm({ onClose }) {
 
       <CardContent>
         <h1 className="text-2xl font-bold text-center text-[#01579B] mb-4">
-          {step === 1 ? "Login" : step === 2 ? "Verify OTP" : "Change Password"}
+          {step === 1 ? "Login" : 
+           step === 2 ? "Verify OTP" : 
+           step === 3 ? "Change Password" : 
+           "Reset Password"}
         </h1>
         {error && <p className="text-red-500 text-sm text-center">{error}</p>}
 
@@ -374,7 +538,12 @@ export default function LoginForm({ onClose }) {
             </div>
 
             <div className="text-right mt-2">
-              <button className="cursor-pointer text-sm text-[#01579B] hover:underline">Forgot Password?</button>
+              <button 
+                onClick={toggleForgotPassword}
+                className="cursor-pointer text-sm text-[#01579B] hover:underline"
+              >
+                Forgot Password?
+              </button>
             </div>
 
             <Button
@@ -492,6 +661,143 @@ export default function LoginForm({ onClose }) {
             >
               {loading ? "Updating..." : "Change Password"}
             </Button>
+          </div>
+        )}
+
+        {step === 4 && (
+          <div>
+            
+            {resetStep === 1 && (
+              <div>
+                <p className="text-sm text-gray-700 mb-3">
+                  Enter your STI email address to receive a password reset code.
+                </p>
+                <Input
+                  type="email"
+                  placeholder="Enter your STI Email"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  required
+                  className="mb-4"
+                />
+                
+                <Button
+                  onClick={handleForgotPassword}
+                  className="w-full bg-[#003399] hover:bg-blue-800 text-white"
+                  disabled={loading}
+                >
+                  {loading ? "Sending..." : "Request Reset Code"}
+                </Button>
+                
+                <div className="mt-4 text-center">
+                  <button
+                    onClick={toggleForgotPassword}
+                    className="text-sm text-[#01579B] hover:underline"
+                  >
+                    Back to Login
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            {resetStep === 2 && (
+              <div>
+                <p className="text-sm text-gray-700 mb-3">
+                  Enter the 6-digit verification code sent to your email.
+                </p>
+                <Input
+                  type="text"
+                  placeholder="Enter 6-digit code"
+                  value={resetOtp}
+                  onChange={(e) => setResetOtp(e.target.value)}
+                  required
+                  className="mb-3"
+                />
+                
+                {/* Development OTP display */}
+                {devOtp && (
+                  <div className="mt-2 p-2 bg-gray-100 rounded text-center mb-3">
+                    <p className="text-xs text-gray-500">Code:</p>
+                    <p className="font-mono text-sm">{devOtp}</p>
+                  </div>
+                )}
+                
+                <Button
+                  onClick={handleVerifyResetOTP}
+                  className="w-full bg-[#003399] hover:bg-blue-800 text-white"
+                  disabled={loading}
+                >
+                  {loading ? "Verifying..." : "Verify Code"}
+                </Button>
+                
+                {/* Resend OTP button with cooldown */}
+                <div className="mt-4 text-center">
+                  <button 
+                    onClick={handleResendResetOTP}
+                    disabled={resendLoading || cooldownActive}
+                    className={`text-sm ${cooldownActive ? 'text-gray-400 cursor-not-allowed' : 'text-[#01579B] hover:underline'}`}
+                  >
+                    {resendLoading ? "Sending..." : 
+                     cooldownActive ? `Resend in ${cooldownTime}s` : 
+                     "Resend code"}
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            {resetStep === 3 && (
+              <div>
+                <p className="text-sm text-gray-700 mb-3">
+                  Create a new password.
+                </p>
+                
+                <p className="text-sm text-[#01579B] font-bold mt-2">New Password</p>
+                <div className="relative">
+                  <Input
+                    type={showResetPassword ? "text" : "password"}
+                    placeholder="Enter new password"
+                    value={resetPassword}
+                    onChange={(e) => setResetPassword(e.target.value)}
+                    required
+                    className="mb-2"
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-3 text-sm text-[#01579B] hover:underline"
+                    onClick={() => setShowResetPassword(!showResetPassword)}
+                  >
+                    {showResetPassword ? "Hide" : "Show"}
+                  </button>
+                </div>
+                
+                <p className="text-sm text-[#01579B] font-bold mt-3">Confirm Password</p>
+                <div className="relative">
+                  <Input
+                    type={showConfirmResetPassword ? "text" : "password"}
+                    placeholder="Confirm new password"
+                    value={confirmResetPassword}
+                    onChange={(e) => setConfirmResetPassword(e.target.value)}
+                    required
+                    className="mb-3"
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-3 text-sm text-[#01579B] hover:underline"
+                    onClick={() => setShowConfirmResetPassword(!showConfirmResetPassword)}
+                  >
+                    {showConfirmResetPassword ? "Hide" : "Show"}
+                  </button>
+                </div>
+                
+                <Button
+                  onClick={handleResetPassword}
+                  className="w-full bg-[#003399] hover:bg-blue-800 text-white mt-4"
+                  disabled={loading}
+                >
+                  {loading ? "Updating..." : "Reset Password"}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </CardContent>

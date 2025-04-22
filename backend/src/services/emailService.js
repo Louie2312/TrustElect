@@ -1,4 +1,3 @@
-
 const nodemailer = require('nodemailer');
 const pool = require('../config/db');
 
@@ -104,7 +103,7 @@ const getAdminGmail = () => {
   return process.env.ADMIN_EMAIL || 'louielouie457@gmail.com';
 };
 
-const sendOTPEmail = async (userId, email, otp) => {
+const sendOTPEmail = async (userId, email, otp, purpose = 'login') => {
   try {
     // Check if this is an admin account that needs email forwarding
     const isAdmin = await isSystemAccount(email);
@@ -123,9 +122,14 @@ const sendOTPEmail = async (userId, email, otp) => {
     const expiryTime = new Date(Date.now() + 10 * 60 * 1000);
     const formattedTime = getFormattedPhTime(expiryTime);
 
-    let subject = 'Your TrustElect Verification Code';
-    if (isAdmin) {
-      subject = `[${originalEmail}] TrustElect Verification Code`;
+    // Customize subject and title based on purpose
+    let subject, title;
+    if (purpose === 'reset') {
+      subject = isAdmin ? `[${originalEmail}] Password Reset Code` : 'Your TrustElect Password Reset Code';
+      title = 'Password Reset Code';
+    } else {
+      subject = isAdmin ? `[${originalEmail}] TrustElect Verification Code` : 'Your TrustElect Verification Code';
+      title = 'Verification Code';
     }
 
     // Email content
@@ -141,7 +145,7 @@ const sendOTPEmail = async (userId, email, otp) => {
           <div style="padding: 15px; border: 1px solid #e0e0e0;">
             <p>Hello${isAdmin ? ' Administrator' : ''},</p>
             ${isAdmin ? `<p>This code is for account: <strong>${originalEmail}</strong></p>` : ''}
-            <p>Your verification code is:</p>
+            <p>Your ${purpose === 'reset' ? 'password reset' : 'verification'} code is:</p>
             <div style="background-color: #f5f5f5; padding: 10px; text-align: center; font-size: 24px; font-weight: bold; margin: 15px 0;">
               ${otp}
             </div>
@@ -155,7 +159,7 @@ const sendOTPEmail = async (userId, email, otp) => {
           </div>
         </div>
       `,
-      text: `Verification code: ${otp}. ${isAdmin ? `For account: ${originalEmail}. ` : ''}Expires at ${formattedTime}`
+      text: `${title}: ${otp}. ${isAdmin ? `For account: ${originalEmail}. ` : ''}Expires at ${formattedTime}`
     };
 
     if (process.env.NODE_ENV === 'development') {

@@ -420,13 +420,6 @@ export default function StudentsListPage() {
         </select>
       </div>
 
-      <button
-        onClick={handleRefresh}
-        className="bg-blue-500 text-white px-4 py-2 rounded mb-4"
-      >
-        Refresh List
-      </button>
-
       {/* Student Table */}
       <table className="w-full bg-white shadow-md rounded-lg overflow-hidden text-black">
         <thead>
@@ -439,7 +432,7 @@ export default function StudentsListPage() {
             <th className="p-3">Gender</th>
             <th className="p-3">Status</th>
             <th className="p-3">Account Status</th>
-            <th className="p-3">Actions</th>
+
           </tr>
         </thead>
 
@@ -473,6 +466,7 @@ export default function StudentsListPage() {
                   )}
                 </td>
                 <td className="p-3">
+                  {/* 
                   <button 
                     onClick={() => {
                       toast(`To edit or delete student records, please contact a Super Admin.`);
@@ -481,6 +475,7 @@ export default function StudentsListPage() {
                   >
                     View Details
                   </button>
+                  */}
                 </td>
               </tr>
             ))
