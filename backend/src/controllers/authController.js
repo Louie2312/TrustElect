@@ -5,6 +5,7 @@ const { getAdminByEmail } = require("../models/adminModel");
 const { getStudentByEmail } = require("../models/studentModel");
 const pool = require("../config/db");
 const otpService = require('../services/otpService');
+const { logAction } = require('../middlewares/auditLogMiddleware');
 require("dotenv").config();
 
 const MAX_FAILED_ATTEMPTS = 5;
@@ -38,6 +39,7 @@ exports.checkEmailExists = async (req, res) => {
 exports.loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
+    const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
 
     if (!email || !email.endsWith("@novaliches.sti.edu.ph")) {
       return res.status(400).json({ success: false, message: "Invalid email format." });
@@ -77,10 +79,26 @@ exports.loginUser = async (req, res) => {
     }
 
     if (!user) {
+      // Log failed login attempt for non-existent user
+      await logAction(
+        { id: 0, email: email, role: 'Unknown' },
+        'LOGIN_FAILED',
+        'auth',
+        null,
+        { reason: 'Invalid credentials', ipAddress }
+      );
       return res.status(401).json({ success: false, message: "Invalid email or password." });
     }
 
     if (user.is_locked && user.locked_until > new Date()) {
+      // Log account locked access attempt
+      await logAction(
+        { id: user.id, email: user.email, role },
+        'LOGIN_FAILED',
+        'auth',
+        null,
+        { reason: 'Account locked', ipAddress }
+      );
       return res.status(403).json({
         success: false,
         message: `Your account is locked. Try again later.`,
@@ -88,6 +106,14 @@ exports.loginUser = async (req, res) => {
     }
 
     if (!user.is_active) {
+      // Log inactive account access attempt
+      await logAction(
+        { id: user.id, email: user.email, role },
+        'LOGIN_FAILED',
+        'auth',
+        null,
+        { reason: 'Account inactive', ipAddress }
+      );
       return res.status(403).json({
         success: false,
         message: "Account is deactivated. Contact your admin.",
@@ -97,6 +123,14 @@ exports.loginUser = async (req, res) => {
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
     if (!isPasswordValid) {
       await handleFailedLogin(user.id);
+      // Log failed login with wrong password
+      await logAction(
+        { id: user.id, email: user.email, role },
+        'LOGIN_FAILED',
+        'auth',
+        null,
+        { reason: 'Invalid password', ipAddress }
+      );
       return res.status(401).json({ success: false, message: "Invalid email or password." });
     }
     await resetFailedAttempts(user.id);
@@ -138,6 +172,15 @@ exports.loginUser = async (req, res) => {
     if (role === "Student" && studentId) {
       response.studentId = studentId;
     }
+
+    // Log successful login
+    await logAction(
+      { id: user.id, email: user.email, role },
+      'LOGIN',
+      'auth',
+      user.id,
+      { ipAddress, userAgent: req.headers['user-agent'] || 'unknown' }
+    );
 
     res.status(200).json(response);
   } catch (error) {
@@ -184,21 +227,46 @@ const resetFailedAttempts = async (userId) => {
 exports.studentLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
+    const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
 
     // Get student with both user and student info
     const student = await getStudentByEmail(email);
     if (!student) {
+      // Log failed student login
+      await logAction(
+        { id: 0, email, role: 'Student' },
+        'LOGIN_FAILED',
+        'auth',
+        null,
+        { reason: 'Invalid credentials', ipAddress }
+      );
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
     const isValidPassword = await bcrypt.compare(password, student.password);
     if (!isValidPassword) {
+      // Log failed student login with wrong password
+      await logAction(
+        { id: student.id, email: student.email, role: 'Student' },
+        'LOGIN_FAILED',
+        'auth',
+        student.id,
+        { reason: 'Invalid password', ipAddress }
+      );
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
 
     if (!student.student_id) {
       console.error("Student ID missing for student:", student.id);
+      // Log configuration error
+      await logAction(
+        { id: student.id, email: student.email, role: 'Student' },
+        'LOGIN_FAILED',
+        'auth',
+        student.id,
+        { reason: 'Configuration error', ipAddress }
+      );
       return res.status(500).json({ message: "Student account configuration error" });
     }
 
@@ -211,6 +279,15 @@ exports.studentLogin = async (req, res) => {
       },
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
+    );
+
+    // Log successful student login
+    await logAction(
+      { id: student.id, email: student.email, role: 'Student' },
+      'LOGIN',
+      'auth',
+      student.id,
+      { ipAddress, userAgent: req.headers['user-agent'] || 'unknown' }
     );
 
     res.json({
@@ -595,5 +672,51 @@ exports.resetPassword = async (req, res) => {
       success: false,
       message: 'Password reset failed. Please try again.'
     });
+  }
+};
+
+// Add a new logout endpoint
+exports.logoutUser = async (req, res) => {
+  try {
+    let userData = null;
+    
+    // First try to get user data from authenticated request
+    if (req.user) {
+      userData = { 
+        id: req.user.id, 
+        email: req.user.email, 
+        role: req.user.role || 'Unknown' 
+      };
+    } 
+    // If not authenticated, try to get user info from request body
+    else if (req.body.userId || req.body.email) {
+      userData = {
+        id: req.body.userId || 0,
+        email: req.body.email || 'unknown@example.com',
+        role: req.body.role || 'Unknown'
+      };
+    }
+    
+    // Log the logout action if we have user data
+    if (userData) {
+      await logAction(
+        userData,
+        'LOGOUT',
+        'auth',
+        userData.id !== 0 ? userData.id : null,
+        { 
+          ipAddress: req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown',
+          userAgent: req.headers['user-agent'] || 'unknown'
+        }
+      );
+    }
+
+    res.status(200).json({ 
+      success: true, 
+      message: "Logout successful" 
+    });
+  } catch (error) {
+    console.error("Logout error:", error);
+    res.status(500).json({ success: false, message: "Error processing logout" });
   }
 };

@@ -7,6 +7,7 @@ const upload = require('../middlewares/uploadMiddleware');
 const profileUpload = require('../middlewares/profileUploadMiddleware');
 const path = require('path');
 const fs = require('fs');
+const { checkPermission } = require('../middlewares/permissionMiddleware');
 
 // Student-specific routes (should be defined first)
 router.get("/students/elections", verifyToken, isStudent, getStudentElections);
@@ -62,7 +63,6 @@ router.get("/students/:id", verifyToken, getStudentById);
 router.post(
   "/students",
   verifyToken,
-  isSuperAdmin,
   [
     check("firstName", "First Name is required").not().isEmpty(),
     check("lastName", "Last Name is required").not().isEmpty(),
@@ -79,11 +79,11 @@ router.post(
   registerStudent
 );
 
-router.put("/students/:id", verifyToken, isSuperAdmin, editStudent);
-router.delete("/students/:id", verifyToken, isSuperAdmin, deleteStudent);
-router.patch("/students/:id/restore", verifyToken, isSuperAdmin, restoreStudent);
+router.put("/students/:id", verifyToken, editStudent);
+router.delete("/students/:id", verifyToken, deleteStudent);
+router.patch("/students/:id/restore", verifyToken, restoreStudent);
 router.patch("/students/:id/unlock", verifyToken, isSuperAdmin, unlockStudentAccount);
-router.delete("/students/:id/permanent", verifyToken, isSuperAdmin, permanentDeleteStudent);
+router.delete("/students/:id/permanent", verifyToken, permanentDeleteStudent);
 router.post("/students/reset-password", verifyToken, isSuperAdmin, resetStudentPassword);
 router.post(
   '/students/batch',
@@ -97,5 +97,38 @@ router.post(
 );
 
 router.get("/by-courses", verifyToken, getStudentsByCourses);
+
+// Admin student management routes with permission checks
+router.get(
+  '/admin/students',
+  verifyToken,
+  isSuperAdmin,
+  checkPermission('users', 'view'),
+  getAllStudents
+);
+
+router.post(
+  '/admin/students',
+  verifyToken,
+  isSuperAdmin,
+  checkPermission('users', 'create'),
+  registerStudent
+);
+
+router.put(
+  '/admin/students/:id',
+  verifyToken,
+  isSuperAdmin,
+  checkPermission('users', 'edit'),
+  editStudent
+);
+
+router.delete(
+  '/admin/students/:id',
+  verifyToken,
+  isSuperAdmin,
+  checkPermission('users', 'delete'),
+  deleteStudent
+);
 
 module.exports = router;

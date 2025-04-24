@@ -4,6 +4,7 @@ const { validationResult } = require("express-validator");
 const { checkEmployeeNumberExists, registerAdmin, checkAdminEmailExists, getAllAdmins, updateAdmin, softDeleteAdmin, restoreAdmin, resetAdminPassword, deleteAdminPermanently, unlockAdminAccount, getSuperAdmins, getAdminById} = require("../models/adminModel");
 const crypto = require("crypto"); 
 const pool = require("../config/db");
+const { setAdminPermissions } = require('../models/adminPermissionModel');
 
 // Function to Generate Auto Password: `{lastName}{last3digits of employee#}{special char}`
 const generatePassword = (lastName, employeeNumber) => {
@@ -25,8 +26,16 @@ exports.registerAdmin = async (req, res) => {
       return res.status(400).json({ message: "Validation failed", errors: errors.array() });
     }
 
-    let { firstName, lastName, email, employeeNumber, department } = req.body;
-    email = email.trim().toLowerCase();
+    // Extract all fields including permissions
+    const { 
+      firstName, 
+      lastName, 
+      email, 
+      employeeNumber, 
+      department, 
+      password, 
+      permissions 
+    } = req.body;
 
     // Validate Token & Ensure Super Admin
     const token = req.header("Authorization")?.replace("Bearer ", "") || req.cookies?.token;
@@ -59,7 +68,21 @@ exports.registerAdmin = async (req, res) => {
     // Register Admin
     console.log("Registering Admin:", firstName, lastName, email);
     const username = email;
-    const newAdmin = await registerAdmin(firstName, lastName, email, username, hashedPassword, employeeNumber, department, createdBy);
+    const newAdmin = await registerAdmin(
+      firstName, 
+      lastName, 
+      email, 
+      username, 
+      hashedPassword, 
+      employeeNumber, 
+      department, 
+      createdBy
+    );
+
+    // Set permissions if provided
+    if (permissions && typeof permissions === 'object') {
+      await setAdminPermissions(newAdmin.id, permissions);
+    }
 
     return res.status(201).json({
       message: "Admin registered successfully!",
@@ -106,9 +129,16 @@ exports.getAllAdmins = async (req, res) => {
 exports.updateAdmin = async (req, res) => {
   try {
     const { id } = req.params;
-    const { firstName, lastName, email, employeeNumber, department } = req.body;
+    const { 
+      firstName, 
+      lastName, 
+      email, 
+      employeeNumber, 
+      department,
+      permissions 
+    } = req.body;
 
-    if (!firstName && !lastName && !email && !employeeNumber && !department) {
+    if (!firstName && !lastName && !email && !employeeNumber && !department && !permissions) {
       return res.status(400).json({ message: "At least one field is required to update." });
     }
 
@@ -116,18 +146,30 @@ exports.updateAdmin = async (req, res) => {
       return res.status(400).json({ message: "Invalid email domain. Only @novaliches.sti.edu.ph emails are allowed." });
     }
 
-    const updatedAdmin = await updateAdmin(id, { firstName, lastName, email, employeeNumber, department });
+    // Update admin basic info
+    const updatedAdmin = await updateAdmin(id, { 
+      firstName, 
+      lastName, 
+      email, 
+      employeeNumber, 
+      department 
+    });
 
     if (!updatedAdmin) {
       return res.status(404).json({ message: "Admin not found." });
     }
 
-    //Return the updated admin in response
+    // Update permissions if provided
+    if (permissions && typeof permissions === 'object') {
+      await setAdminPermissions(id, permissions);
+    }
+
+    // Return the updated admin in response
     return res.json({ 
       message: "Admin updated successfully!", 
       admin: updatedAdmin 
     });
-
+    
   } catch (error) {
     console.error("Error updating admin:", error);
     res.status(500).json({ message: "Internal Server Error.", error: error.message });

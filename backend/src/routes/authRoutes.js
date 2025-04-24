@@ -9,7 +9,8 @@ const {
   changeFirstLoginPassword,
   forgotPassword,
   verifyResetOTP,
-  resetPassword
+  resetPassword,
+  logoutUser
 } = require("../controllers/authController");
 const { verifyToken } = require("../middlewares/authMiddleware");
 const router = express.Router();
@@ -27,6 +28,9 @@ router.post("/check-email", checkEmailExists);
 
 router.post('/request-otp', requestOTP);
 router.post('/verify-otp', verifyOTP);
+
+// Logout route - changed to not require authentication
+router.post('/logout', logoutUser);
 
 // First-time login password change routes
 router.get('/check-first-login', verifyToken, checkFirstLogin);

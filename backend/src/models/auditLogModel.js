@@ -83,6 +83,7 @@ const getAuditLogs = async (options = {}) => {
   
   const {
     user_id,
+    user_email,
     user_role,
     action,
     entity_type,
@@ -106,11 +107,25 @@ const getAuditLogs = async (options = {}) => {
       values.push(user_id);
       paramCount++;
     }
+    
+    if (user_email) {
+      query += ` AND user_email = $${paramCount}`;
+      values.push(user_email);
+      paramCount++;
+    }
 
     if (user_role) {
-      query += ` AND user_role = $${paramCount}`;
-      values.push(user_role);
-      paramCount++;
+      // Support for comma-separated roles
+      if (user_role.includes(',')) {
+        const roles = user_role.split(',');
+        query += ` AND user_role IN (${roles.map((_, i) => `$${paramCount + i}`).join(',')})`;
+        values.push(...roles);
+        paramCount += roles.length;
+      } else {
+        query += ` AND user_role = $${paramCount}`;
+        values.push(user_role);
+        paramCount++;
+      }
     }
 
     if (action) {
@@ -160,13 +175,20 @@ const getAuditLogs = async (options = {}) => {
     }
     
     if (search) {
-      query += ` AND (user_email ILIKE $${paramCount} OR entity_type ILIKE $${paramCount})`;
-      values.push(`%${search}%`);
+      query += ` AND (
+        user_email ILIKE $${paramCount} 
+        OR entity_type ILIKE $${paramCount} 
+        OR action ILIKE $${paramCount}
+        OR CAST(entity_id AS TEXT) ILIKE $${paramCount}
+        OR details ILIKE $${paramCount}
+      )`;
+      const searchValue = `%${search}%`;
+      values.push(searchValue);
       paramCount++;
     }
 
     // Validate sort_by to prevent SQL injection
-    const allowedSortColumns = ['created_at', 'user_id', 'action', 'entity_type'];
+    const allowedSortColumns = ['created_at', 'user_id', 'user_email', 'action', 'entity_type', 'id'];
     const validSortBy = allowedSortColumns.includes(sort_by) ? sort_by : 'created_at';
     
     // Validate sort_order to prevent SQL injection
@@ -182,8 +204,22 @@ const getAuditLogs = async (options = {}) => {
     console.log('With values:', values);
 
     const result = await pool.query(query, values);
-    console.log(`Fetched ${result.rows.length} audit logs`);
-    return result.rows;
+    
+    // Process the results to parse JSON details if needed
+    const processedLogs = result.rows.map(log => {
+      // Try to parse details JSON if it's a string
+      if (log.details && typeof log.details === 'string') {
+        try {
+          log.details = JSON.parse(log.details);
+        } catch (e) {
+          // Keep as string if can't parse as JSON
+        }
+      }
+      return log;
+    });
+    
+    console.log(`Fetched ${processedLogs.length} audit logs`);
+    return processedLogs;
   } catch (error) {
     console.error('Error getting audit logs:', error);
     throw error;
@@ -198,6 +234,7 @@ const getAuditLogs = async (options = {}) => {
 const getAuditLogsCount = async (options = {}) => {
   const {
     user_id,
+    user_email,
     user_role,
     action,
     entity_type,
@@ -217,11 +254,25 @@ const getAuditLogsCount = async (options = {}) => {
       values.push(user_id);
       paramCount++;
     }
+    
+    if (user_email) {
+      query += ` AND user_email = $${paramCount}`;
+      values.push(user_email);
+      paramCount++;
+    }
 
     if (user_role) {
-      query += ` AND user_role = $${paramCount}`;
-      values.push(user_role);
-      paramCount++;
+      // Support for comma-separated roles
+      if (user_role.includes(',')) {
+        const roles = user_role.split(',');
+        query += ` AND user_role IN (${roles.map((_, i) => `$${paramCount + i}`).join(',')})`;
+        values.push(...roles);
+        paramCount += roles.length;
+      } else {
+        query += ` AND user_role = $${paramCount}`;
+        values.push(user_role);
+        paramCount++;
+      }
     }
 
     if (action) {
@@ -271,8 +322,15 @@ const getAuditLogsCount = async (options = {}) => {
     }
     
     if (search) {
-      query += ` AND (user_email ILIKE $${paramCount} OR entity_type ILIKE $${paramCount})`;
-      values.push(`%${search}%`);
+      query += ` AND (
+        user_email ILIKE $${paramCount} 
+        OR entity_type ILIKE $${paramCount} 
+        OR action ILIKE $${paramCount}
+        OR CAST(entity_id AS TEXT) ILIKE $${paramCount}
+        OR details ILIKE $${paramCount}
+      )`;
+      const searchValue = `%${search}%`;
+      values.push(searchValue);
       paramCount++;
     }
 
@@ -282,6 +340,97 @@ const getAuditLogsCount = async (options = {}) => {
     return count;
   } catch (error) {
     console.error('Error getting audit logs count:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get audit logs summary grouped by categories
+ * @param {Number} days - Number of days to include in summary
+ * @returns {Promise<Object>} Summary statistics
+ */
+const getAuditLogsSummary = async (days = 30) => {
+  try {
+    // Get date for filtering
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    const startDateStr = startDate.toISOString();
+    
+    // Queries for different summaries
+    const queries = {
+      actionSummary: `
+        SELECT action, COUNT(*) as count 
+        FROM audit_logs 
+        WHERE created_at >= $1 
+        GROUP BY action 
+        ORDER BY count DESC
+      `,
+      userRoleSummary: `
+        SELECT user_role, COUNT(*) as count 
+        FROM audit_logs 
+        WHERE created_at >= $1 
+        GROUP BY user_role 
+        ORDER BY count DESC
+      `,
+      entityTypeSummary: `
+        SELECT entity_type, COUNT(*) as count 
+        FROM audit_logs 
+        WHERE created_at >= $1 
+        GROUP BY entity_type 
+        ORDER BY count DESC
+      `,
+      timelineSummary: `
+        SELECT 
+          DATE_TRUNC('day', created_at) as date,
+          COUNT(*) as count
+        FROM audit_logs 
+        WHERE created_at >= $1 
+        GROUP BY DATE_TRUNC('day', created_at)
+        ORDER BY date ASC
+      `,
+      topUsers: `
+        SELECT user_id, user_email, user_role, COUNT(*) as count 
+        FROM audit_logs 
+        WHERE created_at >= $1 
+        GROUP BY user_id, user_email, user_role
+        ORDER BY count DESC
+        LIMIT 10
+      `,
+      recentLogins: `
+        SELECT * FROM audit_logs 
+        WHERE created_at >= $1 AND action = 'LOGIN'
+        ORDER BY created_at DESC
+        LIMIT 20
+      `,
+      recentVotes: `
+        SELECT * FROM audit_logs 
+        WHERE created_at >= $1 AND action = 'VOTE'
+        ORDER BY created_at DESC
+        LIMIT 20
+      `
+    };
+    
+    // Execute all queries in parallel
+    const results = await Promise.all(Object.entries(queries).map(async ([key, query]) => {
+      const result = await pool.query(query, [startDateStr]);
+      return { [key]: result.rows };
+    }));
+    
+    // Convert array of objects into a single object
+    const summary = Object.assign({}, ...results);
+    
+    // Get total count
+    const totalCountResult = await pool.query(
+      'SELECT COUNT(*) as total FROM audit_logs WHERE created_at >= $1',
+      [startDateStr]
+    );
+    
+    summary.totalCount = parseInt(totalCountResult.rows[0].total, 10);
+    summary.periodDays = days;
+    
+    return summary;
+  } catch (error) {
+    console.error('Error getting audit logs summary:', error);
     throw error;
   }
 };
@@ -306,5 +455,6 @@ module.exports = {
   createAuditLog,
   getAuditLogs,
   getAuditLogsCount,
+  getAuditLogsSummary,
   deleteOldAuditLogs
 }; 

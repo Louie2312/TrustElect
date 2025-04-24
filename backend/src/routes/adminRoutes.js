@@ -71,4 +71,32 @@ router.get("/protected", verifyToken, isSuperAdmin, (req, res) => {
   res.status(200).json({ message: "Welcome, Super Admin! This is a protected route." });
 });
 
+// Add admin's own permissions route
+router.get('/permissions', verifyToken, async (req, res) => {
+  try {
+    // The user ID is available from the JWT token in req.user.id
+    const adminId = req.user.id;
+    
+    // Use the existing getAdminPermissions function
+    const { getAdminPermissions } = require('../models/adminPermissionModel');
+    const permissions = await getAdminPermissions(adminId);
+    
+    // Format permissions for the frontend
+    const formattedPermissions = {};
+    permissions.forEach(perm => {
+      formattedPermissions[perm.module] = {
+        canView: perm.can_view,
+        canCreate: perm.can_create,
+        canEdit: perm.can_edit,
+        canDelete: perm.can_delete
+      };
+    });
+    
+    res.json({ permissions: formattedPermissions });
+  } catch (error) {
+    console.error("Error getting admin permissions:", error);
+    res.status(500).json({ message: "Failed to retrieve permissions" });
+  }
+});
+
 module.exports = router;
