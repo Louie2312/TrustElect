@@ -24,6 +24,7 @@ export default function ManageStudents() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCourse, setSelectedCourse] = useState("");
   const [selectedYearLevel, setSelectedYearLevel] = useState("");
+  const [showStatsPanel, setShowStatsPanel] = useState(false);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -197,6 +198,25 @@ export default function ManageStudents() {
     setBatchResults(null);
   };
 
+  // Calculate statistics for courses and year levels
+  const calculateStats = () => {
+    // Count by course
+    const courseStats = {};
+    courses.forEach(course => {
+      courseStats[course] = students.filter(student => student.course_name === course).length;
+    });
+
+    // Count by year level
+    const yearStats = {};
+    yearLevels.forEach(year => {
+      yearStats[year] = students.filter(student => student.year_level === year).length;
+    });
+
+    return { courseStats, yearStats };
+  };
+
+  const stats = calculateStats();
+
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4 text-black">Student Management</h1>
@@ -204,33 +224,91 @@ export default function ManageStudents() {
       {loading && <p>Loading students...</p>}
       {error && <p className="text-red-500">{error}</p>}
 
-      <div className="flex flex-wrap gap-4 mb-4">
-        <input
-          type="text"
-          placeholder="Search"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="border w-64 p-2 rounded text-black"
-        />
+      <div className="flex flex-wrap justify-between items-center mb-4">
+        <div className="flex flex-wrap gap-4">
+          <input
+            type="text"
+            placeholder="Search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="border w-64 p-2 rounded text-black"
+          />
 
-        <select value={selectedCourse} onChange={(e) => setSelectedCourse(e.target.value)} className="border w-48 p-2 rounded text-black">
-          <option value="">All Courses</option>
-          {courses.map((course) => (
-            <option key={course} value={course}>
-              {course}
-            </option>
-          ))}
-        </select>
+          <select value={selectedCourse} onChange={(e) => setSelectedCourse(e.target.value)} className="border w-48 p-2 rounded text-black">
+            <option value="">All Courses</option>
+            {courses.map((course) => (
+              <option key={course} value={course}>
+                {course}
+              </option>
+            ))}
+          </select>
 
-        <select value={selectedYearLevel} onChange={(e) => setSelectedYearLevel(e.target.value)} className="border w-48 p-2 rounded text-black">
-          <option value="">All Year Levels</option>
-          {yearLevels.map((year) => (
-            <option key={year} value={year}>
-              {year}
-            </option>
-          ))}
-        </select>
+          <select value={selectedYearLevel} onChange={(e) => setSelectedYearLevel(e.target.value)} className="border w-48 p-2 rounded text-black">
+            <option value="">All Year Levels</option>
+            {yearLevels.map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
+        </div>
+        
+        <div className="bg-gray-100 px-4 py-2 rounded-lg shadow-sm">
+          <span className="text-black font-medium">Total Students: </span>
+          <span className="text-blue-600 font-bold">{filteredStudents.length}</span>
+          {filteredStudents.length !== students.length && (
+            <span className="text-gray-500 text-sm ml-2">
+              (Filtered from {students.length})
+            </span>
+          )}
+          <button 
+            onClick={() => setShowStatsPanel(!showStatsPanel)}
+            className="ml-3 text-blue-600 hover:text-blue-800 underline text-sm"
+          >
+            {showStatsPanel ? 'Hide Details' : 'Show Details'}
+          </button>
+        </div>
       </div>
+
+      {showStatsPanel && (
+        <div className="bg-white rounded-lg shadow p-4 mb-4">
+          <h2 className="text-lg font-semibold mb-3 text-black">Student Distribution</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h3 className="text-md font-medium mb-2 text-gray-700">By Course</h3>
+              <div className="space-y-2">
+                {Object.entries(stats.courseStats).map(([course, count]) => (
+                  <div key={course} className="flex justify-between">
+                    <span className="text-black">{course}</span>
+                    <div>
+                      <span className="font-medium text-blue-600">{count}</span>
+                      <span className="text-gray-500 text-sm ml-1">
+                        ({students.length > 0 ? Math.round((count / students.length) * 100) : 0}%)
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h3 className="text-md font-medium mb-2 text-gray-700">By Year Level</h3>
+              <div className="space-y-2">
+                {Object.entries(stats.yearStats).map(([year, count]) => (
+                  <div key={year} className="flex justify-between">
+                    <span className="text-black">{year}</span>
+                    <div>
+                      <span className="font-medium text-blue-600">{count}</span>
+                      <span className="text-gray-500 text-sm ml-1">
+                        ({students.length > 0 ? Math.round((count / students.length) * 100) : 0}%)
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <button onClick={() => setShowAddModal(true)} className="bg-[#01579B]  text-white px-4 py-2 rounded mb-4 ml-4 mr-5">
         Add New Student

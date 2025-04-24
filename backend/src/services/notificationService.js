@@ -5,9 +5,9 @@ const {
 const pool = require('../config/db');
 
 /**
- * Normalize role format - helps with inconsistent role naming throughout the application
- * @param {string} role - The role to normalize
- * @returns {string} The normalized role
+
+ * @param {string} role 
+ * @returns {string} 
  */
 const normalizeRole = (role) => {
   if (!role) return '';
@@ -46,9 +46,9 @@ const RELATED_ENTITIES = {
 };
 
 /**
- * Notify superadmins that an election needs approval
- * @param {Object} election - The election object
- * @returns {Promise<Array>} The created notifications
+ 
+ * @param {Object} election 
+ * @returns {Promise<Array>} 
  */
 const notifyElectionNeedsApproval = async (election) => {
   try {
@@ -134,10 +134,10 @@ const notifyElectionNeedsApproval = async (election) => {
 };
 
 /**
- * Notify the admin that their election has been approved
- * @param {Object} election - The election object
- * @param {string} adminId - The ID of the admin who created the election
- * @returns {Promise<Array>} The created notifications
+
+ * @param {Object} election 
+ * @param {string} adminId 
+ * @returns {Promise<Array>} 
  */
 const notifyElectionApproved = async (election, adminId) => {
   try {
@@ -178,11 +178,11 @@ const notifyElectionApproved = async (election, adminId) => {
 };
 
 /**
- * Send a notification about an election being rejected
- * @param {Object} election - The election object
- * @param {string} adminId - The ID of the admin who created the election
- * @param {string} rejectedById - The ID of the superadmin who rejected the election
- * @returns {Promise<Array>} The created notifications
+ 
+ * @param {Object} election 
+ * @param {string} adminId 
+ * @param {string} rejectedById 
+ * @returns {Promise<Array>} 
  */
 const notifyElectionRejected = async (election, adminId, rejectedById) => {
   try {
@@ -233,10 +233,10 @@ const notifyElectionRejected = async (election, adminId, rejectedById) => {
 };
 
 /**
- * Send a notification about a ballot being created
- * @param {string} adminId - The ID of the admin who created the ballot
- * @param {Object} election - The election object
- * @returns {Promise<Array>} The created notifications
+
+ * @param {string} adminId 
+ * @param {Object} election 
+ * @returns {Promise<Array>} 
  */
 const notifyBallotCreated = async (adminId, election) => {
   try {
@@ -302,9 +302,9 @@ const notifyBallotCreated = async (adminId, election) => {
 };
 
 /**
- * Get student IDs eligible for this election
- * @param {Object} election - The election object
- * @returns {Promise<Array>} Array of student IDs
+ 
+ * @param {Object} election 
+ * @returns {Promise<Array>}
  */
 const getEligibleStudentIds = async (election) => {
   try {
@@ -321,9 +321,9 @@ const getEligibleStudentIds = async (election) => {
 };
 
 /**
- * Send a notification to eligible students about an election
- * @param {Object} election - The election object
- * @returns {Promise<Array>} The created notifications
+
+ * @param {Object} election 
+ * @returns {Promise<Array>} 
  */
 const notifyStudentsAboutElection = async (election) => {
   try {
@@ -384,10 +384,10 @@ const notifyStudentsAboutElection = async (election) => {
 };
 
 /**
- * Send notifications about election status changes
- * @param {Object} election - The election object with updated status
- * @param {string} previousStatus - The previous status of the election
- * @returns {Promise<Array>} The created notifications
+
+ * @param {Object} election 
+ * @param {string} previousStatus 
+ * @returns {Promise<Array>} 
  */
 const notifyElectionStatusChange = async (election, previousStatus) => {
   try {
@@ -562,8 +562,7 @@ const notifyStudentsAboutElectionResults = async (election) => {
 };
 
 /**
- * Debug function to send a test notification to all superadmins
- * @returns {Promise<Array>} The created test notifications
+ * @returns {Promise<Array>}
  */
 const debugSendTestToSuperadmins = async () => {
   try {

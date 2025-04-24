@@ -478,9 +478,9 @@ export default function BallotPage() {
         const position = ballot.positions.find(pos => 
           pos.candidates.some(c => c.id === deleteConfirm.id)
         );
-        
-        if (position && position.candidates.length <= 1) {
-          alert("At least one candidate is required");
+        2
+        if (position && position.candidates.length <= 2) {
+          alert("Each position must have at least 2 candidates");
           return;
         }
         
@@ -639,6 +639,11 @@ export default function BallotPage() {
         newErrors[`position-${pos.id}`] = "Position name is required";
       }  
       
+      // Check if position has at least 2 candidates
+      if (pos.candidates.length < 2) {
+        newErrors[`position-${pos.id}-candidates`] = "At least 2 candidates are required per position";
+      }
+      
       pos.candidates.forEach((cand) => {
         if (!cand.first_name.trim()) {
           newErrors[`candidate-fn-${cand.id}`] = "First name is required";
@@ -654,7 +659,18 @@ export default function BallotPage() {
   };
 
   const handlePreview = () => {
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      // Check specifically for positions with insufficient candidates
+      const positionsWithTooFewCandidates = ballot.positions.filter(pos => pos.candidates.length < 2);
+      
+      if (positionsWithTooFewCandidates.length > 0) {
+        setApiError(`Each position must have at least 2 candidates. Please add more candidates to ${positionsWithTooFewCandidates.map(p => p.name || 'unnamed position').join(', ')}.`);
+        window.scrollTo(0, 0);
+      }
+      return;
+    }
+    
+    setApiError(null);
     setPreviewBallot(true);
   };
 
@@ -997,7 +1013,7 @@ export default function BallotPage() {
                     onClick={() => confirmDelete("candidate", candidate.id)}
                     className="ml-4 text-red-600 hover:text-red-800 p-2"
                     title="Delete candidate"
-                    disabled={position.candidates.length <= 1}
+                    disabled={position.candidates.length <= 2}
                   >
                     <Trash2 className="w-5 h-5" />
                   </button>

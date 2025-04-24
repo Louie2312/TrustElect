@@ -383,6 +383,107 @@ async function getAllThemes() {
   }
 }
 
+/**
+ * Get a theme by ID
+ * @param {Number} id - Theme ID
+ * @returns {Promise<Object>} Theme record
+ */
+async function getThemeById(id) {
+  try {
+    const result = await pool.query(
+      `SELECT id, name, colors, is_active as "isActive", 
+              to_char(created_at, 'YYYY-MM-DD HH24:MI:SS') as "createdAt", 
+              to_char(updated_at, 'YYYY-MM-DD HH24:MI:SS') as "updatedAt" 
+       FROM themes 
+       WHERE id = $1`,
+      [id]
+    );
+    
+    if (result.rows.length > 0) {
+      return result.rows[0];
+    }
+    
+    return null;
+  } catch (error) {
+    console.error(`Error in getThemeById for ID ${id}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Update a theme
+ * @param {Number} id - Theme ID
+ * @param {String} name - Theme name
+ * @param {Object} colors - Theme colors
+ * @returns {Promise<Object>} Updated theme record
+ */
+async function updateTheme(id, name, colors) {
+  try {
+    const result = await pool.query(
+      `UPDATE themes 
+       SET name = $1, colors = $2, updated_at = CURRENT_TIMESTAMP 
+       WHERE id = $3 
+       RETURNING id, name, colors, is_active as "isActive", 
+                 to_char(created_at, 'YYYY-MM-DD HH24:MI:SS') as "createdAt", 
+                 to_char(updated_at, 'YYYY-MM-DD HH24:MI:SS') as "updatedAt"`,
+      [name, colors, id]
+    );
+    
+    if (result.rows.length > 0) {
+      return result.rows[0];
+    }
+    
+    return null;
+  } catch (error) {
+    console.error(`Error in updateTheme for ID ${id}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Delete a theme
+ * @param {Number} id - Theme ID
+ * @returns {Promise<Boolean>} Success status
+ */
+async function deleteTheme(id) {
+  try {
+    // Don't allow deleting the last theme
+    const countResult = await pool.query('SELECT COUNT(*) FROM themes');
+    if (parseInt(countResult.rows[0].count) <= 1) {
+      throw new Error('Cannot delete the last theme');
+    }
+    
+    // If this is the active theme, make another theme active
+    const themeResult = await pool.query(
+      'SELECT is_active FROM themes WHERE id = $1',
+      [id]
+    );
+    
+    if (themeResult.rows.length > 0 && themeResult.rows[0].is_active) {
+      // Find another theme to make active
+      const otherThemeResult = await pool.query(
+        'SELECT id FROM themes WHERE id != $1 LIMIT 1',
+        [id]
+      );
+      
+      if (otherThemeResult.rows.length > 0) {
+        await setActiveTheme(otherThemeResult.rows[0].id);
+      }
+    }
+    
+    // Delete the theme
+    const result = await pool.query(
+      'DELETE FROM themes WHERE id = $1 RETURNING id',
+      [id]
+    );
+    
+    return result.rowCount > 0;
+  } catch (error) {
+    console.error(`Error in deleteTheme for ID ${id}:`, error);
+    throw error;
+  }
+}
+
 module.exports = {
   getAllContent,
   getSectionContent,
@@ -394,5 +495,8 @@ module.exports = {
   getActiveTheme,
   setActiveTheme,
   createTheme,
-  getAllThemes
+  getAllThemes,
+  getThemeById,
+  updateTheme,
+  deleteTheme
 }; 

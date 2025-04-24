@@ -180,15 +180,35 @@ export default function CreateElectionPage() {
     fetchMaintenanceData();
   }, []);
 
+  // Add a helper function to check if all items are selected
+  const areAllSelected = (selectedItems, allItems) => {
+    return selectedItems.length === allItems.length;
+  };
+
   useEffect(() => {
     const fetchEligibleCount = async () => {
       try {
         setLoading(prev => ({ ...prev, form: true }));
         const token = Cookies.get("token");
         
+        // Determine if all options for each category are selected
+        const allProgramsSelected = areAllSelected(eventData.eligibleVoters.programs, maintenanceData.programs);
+        const allYearLevelsSelected = areAllSelected(eventData.eligibleVoters.yearLevels, maintenanceData.yearLevels);
+        const allGendersSelected = areAllSelected(eventData.eligibleVoters.gender, maintenanceData.genders);
+        
+        // Create a modified eligible voters object - key to fixing the count
+        const optimizedEligibleVoters = {
+          // If all items are selected, send empty array to backend to indicate "all"
+          programs: allProgramsSelected ? [] : eventData.eligibleVoters.programs,
+          yearLevels: allYearLevelsSelected ? [] : eventData.eligibleVoters.yearLevels,
+          gender: allGendersSelected ? [] : eventData.eligibleVoters.gender,
+          semester: eventData.eligibleVoters.semester,
+          precinct: eventData.eligibleVoters.precinct,
+        };
+        
         const response = await axios.post(
           "http://localhost:5000/api/elections/preview-voters",
-          { eligible_voters: eventData.eligibleVoters },
+          { eligible_voters: optimizedEligibleVoters },
           {
             headers: {
               'Content-Type': 'application/json',
@@ -212,7 +232,7 @@ export default function CreateElectionPage() {
     } else {
       setEligibleCount(0);
     }
-  }, [eventData.eligibleVoters]);
+  }, [eventData.eligibleVoters, maintenanceData]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -321,6 +341,19 @@ export default function CreateElectionPage() {
       setApiError(null);
       const token = Cookies.get("token");
       
+      // Use the same optimization for creation endpoint
+      const allProgramsSelected = areAllSelected(eventData.eligibleVoters.programs, maintenanceData.programs);
+      const allYearLevelsSelected = areAllSelected(eventData.eligibleVoters.yearLevels, maintenanceData.yearLevels);
+      const allGendersSelected = areAllSelected(eventData.eligibleVoters.gender, maintenanceData.genders);
+      
+      const optimizedEligibleVoters = {
+        programs: allProgramsSelected ? [] : eventData.eligibleVoters.programs,
+        yearLevels: allYearLevelsSelected ? [] : eventData.eligibleVoters.yearLevels,
+        gender: allGendersSelected ? [] : eventData.eligibleVoters.gender,
+        semester: eventData.eligibleVoters.semester,
+        precinct: eventData.eligibleVoters.precinct,
+      };
+      
       const response = await axios.post(
         "http://localhost:5000/api/elections",
         {
@@ -331,7 +364,7 @@ export default function CreateElectionPage() {
           date_to: eventData.dateTo,
           start_time: eventData.startTime,
           end_time: eventData.endTime,
-          eligible_voters: eventData.eligibleVoters
+          eligible_voters: optimizedEligibleVoters
         },
         {
           headers: {

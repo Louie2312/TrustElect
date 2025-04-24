@@ -257,7 +257,7 @@ export default function ElectionDetailsPage() {
             {election.needs_approval ? 'NEEDS APPROVAL' : election.status.toUpperCase()}
           </span>
           
-          {!election.needs_approval && election.status === 'upcoming' ? (
+          {(election.needs_approval || election.status === 'upcoming') ? (
             <>
               <Link
                 href={`/superadmin/election/${election.id}/edit`}
@@ -304,6 +304,7 @@ export default function ElectionDetailsPage() {
             <ExclamationTriangle size={20} />
             <h3 className="font-bold text-black">This election requires your approval</h3>
           </div>
+          <p className="mb-3 text-black">Please review the election details and ballot before approving.</p>
           <div className="flex gap-3">
             <button
               onClick={async () => {
@@ -417,7 +418,10 @@ export default function ElectionDetailsPage() {
           {/* Election Details */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <div className="bg-white rounded-lg shadow p-4">
-              <h3 className="font-medium mb-2 text-black">Date & Time</h3>
+              <h3 className="font-medium mb-2 text-black flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                Date & Time
+              </h3>
               <p className="text-gray-800">
                 <span>Starts: {parseElectionDate(election.date_from, election.start_time)}</span>
               </p>
@@ -426,13 +430,29 @@ export default function ElectionDetailsPage() {
               </p>
             </div>
             <div className="bg-white rounded-lg shadow p-4">
-              <h3 className="font-medium text-gray-500 mb-2">Participation</h3>
+              <h3 className="font-medium mb-2 text-black flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                Voter Information
+              </h3>
               <p className="text-gray-800">
-                {election.vote_count || 0} / {election.voter_count || 0} votes
+                Eligible Voters: {election.voter_count || 0}
               </p>
+              {(election.status === 'ongoing' || election.status === 'completed') && (
+                <p className="text-gray-800">
+                  Votes Cast: {election.vote_count || 0}
+                  {election.voter_count > 0 && (
+                    <span className="text-sm ml-1">
+                      ({Math.round(((election.vote_count || 0) / election.voter_count) * 100)}%)
+                    </span>
+                  )}
+                </p>
+              )}
             </div>
             <div className="bg-white rounded-lg shadow p-4">
-              <h3 className="font-medium text-gray-500 mb-2">Election/Event Type</h3>
+              <h3 className="font-medium mb-2 text-black flex items-center gap-2">
+                <List className="w-4 h-4" />
+                Election/Event Type
+              </h3>
               <p className="text-gray-800">{election.election_type}</p>
             </div>
           </div>
@@ -509,7 +529,26 @@ export default function ElectionDetailsPage() {
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold text-black">Ballot Details</h2>
+                
+                {(election.needs_approval || election.status === 'upcoming') && (
+                  <Link
+                    href={`/superadmin/election/${election.id}/ballot`}
+                    className="flex items-center px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                  >
+                    <Edit className="w-4 h-4 mr-1" />
+                    Edit Ballot
+                  </Link>
+                )}
               </div>
+              
+              {election.needs_approval && (
+                <div className="mb-4 p-3 bg-yellow-50 border border-yellow-300 rounded-md">
+                  <p className="text-sm text-yellow-800 flex items-center">
+                    <AlertCircle className="w-4 h-4 mr-2" />
+                    Please review all positions and candidates before approving this election.
+                  </p>
+                </div>
+              )}
               
               <div className="space-y-6">
                 {election.positions.map(position => (
@@ -574,10 +613,21 @@ export default function ElectionDetailsPage() {
                 <div className="flex-shrink-0">
                   <ExclamationTriangle className="h-5 w-5 text-yellow-400" />
                 </div>
-                <div className="ml-3">
+                <div className="ml-3 flex-1">
                   <p className="text-sm text-yellow-700">
                     This election doesn't have a ballot yet.
-                    {election.status === 'upcoming' && " Create one to allow voting."}
+                    {(election.needs_approval || election.status === 'upcoming') && (
+                      <>
+                        <span className="font-medium"> A ballot is required before {election.needs_approval ? 'approval' : 'the election can start'}.</span>
+                        <Link
+                          href={`/superadmin/election/${election.id}/ballot/create`}
+                          className="ml-2 inline-flex items-center px-3 py-1 bg-yellow-600 text-white text-xs font-medium rounded-md hover:bg-yellow-700"
+                        >
+                          <Plus className="w-3 h-3 mr-1" />
+                          Create Ballot Now
+                        </Link>
+                      </>
+                    )}
                   </p>
                 </div>
               </div>

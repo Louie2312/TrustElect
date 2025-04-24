@@ -49,9 +49,7 @@ exports.getNotifications = async (req, res) => {
 
 
     if (matchingRoleNotifications.length === 0 && totalNotifications.length > 0) {
-     
-      
-      // Common alternative formats
+
       const possibleRoles = [];
       if (userRole === 'Super Admin' || userRole === 'SuperAdmin') {
         possibleRoles.push('Super Admin', 'SuperAdmin', 'super admin', 'superadmin');
@@ -68,7 +66,6 @@ exports.getNotifications = async (req, res) => {
     
     const notifications = await getNotificationsByUser(userId, options);
   
-    // For debugging - log the first notification if exists
     if (notifications.length > 0) {
       
     }

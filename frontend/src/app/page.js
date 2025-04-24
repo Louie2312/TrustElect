@@ -113,86 +113,60 @@ export default function Home() {
     setIsLoading(true);
     
     try {
-      // Check if API is connected
-      const isConnected = await checkApiConnection();
-      
-      if (!isConnected) {
-        // Try to use cached content
-        const cachedContent = getCachedLandingContent();
-        if (cachedContent) {
-          setLandingContent(cachedContent);
-        }
-        setIsLoading(false);
-        return;
-      }
-      
+      // Always attempt to fetch new content, even if API connection failed previously
       // Add cache-busting timestamp
       const timestamp = new Date().getTime();
-      const response = await axios.get(`${API_URL}/api/content?t=${timestamp}`);
+      
+      console.log("Fetching latest content from API...");
+      const response = await axios.get(`${API_URL}/api/content?t=${timestamp}`, {
+        // Set a reasonable timeout
+        timeout: 5000
+      });
       
       if (response.data) {
         console.log("Content fetched from API:", response.data);
         
-        // Process the hero section - make sure to create a deep copy to avoid references
-        const hero = response.data.hero ? {
-          title: response.data.hero.title || landingContent.hero.title,
-          subtitle: response.data.hero.subtitle || landingContent.hero.subtitle,
-          videoUrl: response.data.hero.videoUrl || null,
-          posterImage: response.data.hero.posterImage || null
-        } : { ...landingContent.hero };
+        // Extract the new content
+        const newHero = response.data.hero || landingContent.hero;
+        const newFeatures = response.data.features || landingContent.features;
+        const newCTA = response.data.callToAction || landingContent.callToAction;
         
-        // Process the features section - ensure it has the correct structure
-        let features = {
-          columns: []
-        };
-        
-        // Ensure we have valid features data with columns array
-        if (response.data.features && Array.isArray(response.data.features.columns)) {
-          // Process each feature column carefully
-          features.columns = response.data.features.columns.map((column, index) => {
-            // Create a clean object for each feature
-            const featureData = {
-              title: column.title || '',
-              description: column.description || '',
-              imageUrl: column.imageUrl || null
-            };
-            
-            // Special logging for Feature Card 1
-            if (index === 0) {
-              console.log("API Feature Card 1 data:", column);
-              console.log("Processed Feature Card 1:", featureData);
-            }
-            
-            return featureData;
-          });
-        } else {
-          console.warn("Features data structure is incorrect, using defaults");
-          features = { ...landingContent.features };
-        }
-        
-        // Make sure Feature Card 1 is correctly processed
-        if (features.columns[0]) {
-          console.log("Final Feature Card 1 data:", features.columns[0]);
-        }
-        
-        // Process the callToAction section
-        const callToAction = response.data.callToAction ? {
-          title: response.data.callToAction.title || landingContent.callToAction.title,
-          subtitle: response.data.callToAction.subtitle || landingContent.callToAction.subtitle,
-          buttonText: response.data.callToAction.buttonText || landingContent.callToAction.buttonText,
-          enabled: response.data.callToAction.enabled !== undefined ? response.data.callToAction.enabled : true
-        } : { ...landingContent.callToAction };
-        
-        // Create a completely new object to avoid reference issues
+        // Create a complete content object with all the latest data and colors
         const newContent = {
-          hero: { ...hero },
-          features: { 
-            columns: features.columns.map(col => ({ ...col }))
+          hero: {
+            title: newHero.title || landingContent.hero.title,
+            subtitle: newHero.subtitle || landingContent.hero.subtitle,
+            videoUrl: newHero.videoUrl || null,
+            posterImage: newHero.posterImage || null,
+            bgColor: newHero.bgColor || landingContent.hero.bgColor || "#1e40af",
+            textColor: newHero.textColor || landingContent.hero.textColor || "#ffffff"
           },
-          callToAction: { ...callToAction }
+          features: {
+            columns: (newFeatures.columns || []).map((column, index) => {
+              // Safely get the existing column if it exists
+              const existingColumn = landingContent.features.columns[index] || {};
+              
+              return {
+                title: column.title || existingColumn.title || "",
+                description: column.description || existingColumn.description || "",
+                imageUrl: column.imageUrl || existingColumn.imageUrl || null,
+                bgColor: column.bgColor || existingColumn.bgColor || "#ffffff",
+                textColor: column.textColor || existingColumn.textColor || "#000000"
+              };
+            })
+          },
+          callToAction: {
+            title: newCTA.title || landingContent.callToAction.title,
+            subtitle: newCTA.subtitle || landingContent.callToAction.subtitle,
+            buttonText: newCTA.buttonText || landingContent.callToAction.buttonText,
+            buttonUrl: newCTA.buttonUrl || landingContent.callToAction.buttonUrl,
+            enabled: typeof newCTA.enabled !== 'undefined' ? newCTA.enabled : true,
+            bgColor: newCTA.bgColor || landingContent.callToAction.bgColor || "#1e3a8a",
+            textColor: newCTA.textColor || landingContent.callToAction.textColor || "#ffffff"
+          }
         };
         
-        console.log("Setting landing content:", newContent);
+        console.log("Setting updated landing content:", newContent);
         setLandingContent(newContent);
         
         // Cache the content for offline use
@@ -204,7 +178,10 @@ export default function Home() {
       // Try to use cached content on error
       const cachedContent = getCachedLandingContent();
       if (cachedContent) {
+        console.log("Using cached content due to fetch error");
         setLandingContent(cachedContent);
+      } else {
+        console.log("No cached content available, using defaults");
       }
     } finally {
       setIsLoading(false);
@@ -287,13 +264,25 @@ export default function Home() {
       {/* Main content */}
       <main className="flex-grow pt-24">
         {/* Hero Section */}
-        <section className="bg-gradient-to-r from-[#01579B] to-[#01579B] text-white py-20 px-6">
+        <section 
+          className="text-white py-20 px-6"
+          style={{
+            backgroundColor: landingContent.hero?.bgColor || '#01579B',
+            color: landingContent.hero?.textColor || '#ffffff'
+          }}
+        >
           <div className="container mx-auto max-w-6xl flex flex-col md:flex-row items-center">
             <div className="md:w-1/2 space-y-6">
-              <h1 className="text-4xl md:text-5xl font-bold leading-tight">
+              <h1 
+                className="text-4xl md:text-5xl font-bold leading-tight"
+                style={{ color: landingContent.hero?.textColor || '#ffffff' }}
+              >
                 {landingContent.hero.title}
               </h1>
-              <p className="text-xl md:text-2xl">
+              <p 
+                className="text-xl md:text-2xl"
+                style={{ color: landingContent.hero?.textColor || '#ffffff' }}
+              >
                 {landingContent.hero.subtitle}
               </p>
              
@@ -412,7 +401,11 @@ export default function Home() {
                 return (
                   <div 
                     key={index} 
-                    className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow"
+                    className="p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow"
+                    style={{
+                      backgroundColor: feature.bgColor || '#ffffff',
+                      color: feature.textColor || '#000000'
+                    }}
                   >
                     {imageUrl ? (
                       <div className="mb-4 h-48 overflow-hidden rounded-lg">
@@ -433,8 +426,15 @@ export default function Home() {
                         />
                       </div>
                     ) : null}
-                    <h3 className="text-xl font-semibold mb-2 text-blue-800">{feature.title}</h3>
-                    <p className="text-gray-600">{feature.description}</p>
+                    <h3 
+                      className="text-xl font-semibold mb-2"
+                      style={{ color: feature.textColor || '#000000' }}
+                    >
+                      {feature.title}
+                    </h3>
+                    <p style={{ color: feature.textColor || '#000000' }}>
+                      {feature.description}
+                    </p>
                   </div>
                 );
               })}
@@ -444,10 +444,26 @@ export default function Home() {
 
         {/* Call to Action Section */}
         {landingContent.callToAction.enabled && (
-          <section className="bg-blue-900 text-white py-16 px-6">
+          <section 
+            className="text-white py-16 px-6"
+            style={{
+              backgroundColor: landingContent.callToAction?.bgColor || '#1e3a8a',
+              color: landingContent.callToAction?.textColor || '#ffffff'
+            }}
+          >
             <div className="container mx-auto max-w-4xl text-center">
-              <h2 className="text-3xl font-bold mb-4">{landingContent.callToAction.title}</h2>
-              <p className="text-xl mb-8">{landingContent.callToAction.subtitle}</p>
+              <h2 
+                className="text-3xl font-bold mb-4"
+                style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
+              >
+                {landingContent.callToAction.title}
+              </h2>
+              <p 
+                className="text-xl mb-8"
+                style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
+              >
+                {landingContent.callToAction.subtitle}
+              </p>
             </div>
           </section>
         )}

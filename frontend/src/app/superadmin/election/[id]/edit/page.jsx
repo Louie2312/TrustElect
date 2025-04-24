@@ -47,6 +47,11 @@ export default function EditElectionPage() {
   const [criteriaErrors, setCriteriaErrors] = useState({});
   const [eligibleCount, setEligibleCount] = useState(0);
 
+  // Add helper function to check if all items are selected
+  const areAllSelected = (selectedItems, allItems) => {
+    return selectedItems.length === allItems.length;
+  };
+
   // Format date to YYYY-MM-DD for date input
   const formatDateForInput = (dateString) => {
     if (!dateString) return "";
@@ -238,9 +243,24 @@ export default function EditElectionPage() {
       setLoading(prev => ({ ...prev, eligibility: true }));
       const token = Cookies.get("token");
       
+      // Determine if all options for each category are selected
+      const allProgramsSelected = areAllSelected(eligibleVoters.programs, maintenanceData.programs);
+      const allYearLevelsSelected = areAllSelected(eligibleVoters.yearLevels, maintenanceData.yearLevels);
+      const allGendersSelected = areAllSelected(eligibleVoters.gender, maintenanceData.genders);
+      
+      // Create a modified eligible voters object to fix the count
+      const optimizedEligibleVoters = {
+        // If all items are selected, send empty array to backend to indicate "all"
+        programs: allProgramsSelected ? [] : eligibleVoters.programs,
+        yearLevels: allYearLevelsSelected ? [] : eligibleVoters.yearLevels,
+        gender: allGendersSelected ? [] : eligibleVoters.gender,
+        semester: eligibleVoters.semester,
+        precinct: eligibleVoters.precinct,
+      };
+      
       const response = await axios.post(
         "http://localhost:5000/api/elections/preview-voters",
-        { eligible_voters: eligibleVoters },
+        { eligible_voters: optimizedEligibleVoters },
         {
           headers: {
             'Content-Type': 'application/json',
@@ -439,16 +459,24 @@ export default function EditElectionPage() {
         // Log the eligibility update
         console.log("Updating eligibility criteria");
         
+        // Determine if all options for each category are selected
+        const allProgramsSelected = areAllSelected(electionData.eligibleVoters.programs, maintenanceData.programs);
+        const allYearLevelsSelected = areAllSelected(electionData.eligibleVoters.yearLevels, maintenanceData.yearLevels);
+        const allGendersSelected = areAllSelected(electionData.eligibleVoters.gender, maintenanceData.genders);
+        
+        // Create the optimized payload
+        const optimizedEligibleVoters = {
+          programs: allProgramsSelected ? [] : electionData.eligibleVoters.programs,
+          yearLevels: allYearLevelsSelected ? [] : electionData.eligibleVoters.yearLevels,
+          gender: allGendersSelected ? [] : electionData.eligibleVoters.gender,
+          semester: electionData.eligibleVoters.semester,
+          precinct: electionData.eligibleVoters.precinct
+        };
+        
         const eligibilityResponse = await axios.put(
           `http://localhost:5000/api/elections/${electionId}/criteria`,
           {
-            eligibility: {
-              programs: electionData.eligibleVoters.programs,
-              yearLevels: electionData.eligibleVoters.yearLevels,
-              gender: electionData.eligibleVoters.gender,
-              semester: electionData.eligibleVoters.semester,
-              precinct: electionData.eligibleVoters.precinct
-            }
+            eligibility: optimizedEligibleVoters
           },
           {
             headers: {

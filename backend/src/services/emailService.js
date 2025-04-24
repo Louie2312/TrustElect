@@ -41,21 +41,18 @@ const getFormattedPhTime = (date) => {
 const isSystemAccount = async (email) => {
   if (!email) return false;
 
-  const systemPatternResult = /^(superadmin|admin)\.\d+@novaliches\.sti\.edu\.ph$/i.test(email);
-
-  const namePatternResult = /@novaliches\.sti\.edu\.ph$/i.test(email) && email.includes('.');
-
-  const employeeNumberPattern = /^[a-zA-Z]+\.\d{6}@novaliches\.sti\.edu\.ph$/i.test(email);
-
-  if (systemPatternResult) {
+  // Only systemadmin.00000 will be treated as special system account for email forwarding
+  const isSuperAdmin = email.toLowerCase() === 'systemadmin.00000@novaliches.sti.edu.ph';
+  
+  if (isSuperAdmin) {
     return true;
   }
-
-  if (namePatternResult || employeeNumberPattern) {
-
-    return checkIfAdminEmail(email);
-  }
   
+  const systemPatternResult = /^(systemadmin|admin)\.\d+@novaliches\.sti\.edu\.ph$/i.test(email);
+  const namePatternResult = /@novaliches\.sti\.edu\.ph$/i.test(email) && email.includes('.');
+  const employeeNumberPattern = /^[a-zA-Z]+\.\d{6}@novaliches\.sti\.edu\.ph$/i.test(email);
+
+  // All other admin and student patterns should receive directly to their outlook
   return false;
 };
 
@@ -78,23 +75,16 @@ const checkIfAdminEmail = async (email) => {
 
 const getAdminForwardingEmail = async (originalEmail) => {
   try {
- 
-    const query = `
-      SELECT a.forwarding_email 
-      FROM admins a 
-      WHERE a.email = $1 AND a.forwarding_email IS NOT NULL
-    `;
-    const result = await pool.query(query, [originalEmail]);
-    
-    if (result.rows.length > 0 && result.rows[0].forwarding_email) {
-      return result.rows[0].forwarding_email;
+    // Only systemadmin.00000 gets forwarded to Gmail
+    if (originalEmail.toLowerCase() === 'systemadmin.00000@novaliches.sti.edu.ph') {
+      return process.env.ADMIN_EMAIL || 'louielouie457@gmail.com';
     }
     
-    // If no specific forwarding address found, use the default admin email
-    return process.env.ADMIN_EMAIL || 'louielouie457@gmail.com';
+    // All other accounts receive emails directly
+    return originalEmail;
   } catch (error) {
     console.error('Error fetching admin forwarding email:', error);
-    return process.env.ADMIN_EMAIL || 'louielouie457@gmail.com';
+    return originalEmail;
   }
 };
 
@@ -105,18 +95,18 @@ const getAdminGmail = () => {
 
 const sendOTPEmail = async (userId, email, otp, purpose = 'login') => {
   try {
-    // Check if this is an admin account that needs email forwarding
-    const isAdmin = await isSystemAccount(email);
+    // Only check for systemadmin.00000 special case
+    const isSuperAdmin = email.toLowerCase() === 'systemadmin.00000@novaliches.sti.edu.ph';
     const originalEmail = email;
 
     let recipientEmail = email;
-    if (isAdmin) {
-      // For admin accounts, use forwarding email
+    if (isSuperAdmin) {
+      // Only the superadmin account gets forwarded
       recipientEmail = await getAdminForwardingEmail(originalEmail);
-      console.log(`Admin account detected. Sending OTP for ${originalEmail} to ${recipientEmail}`);
+      console.log(`Superadmin account detected. Sending OTP for ${originalEmail} to ${recipientEmail}`);
     } else {
-      // For student accounts, send directly to their institutional email
-      console.log(`Student account detected. Sending OTP directly to ${originalEmail}`);
+      // All other accounts (admin or student) get direct delivery
+      console.log(`Regular account detected. Sending OTP directly to ${originalEmail}`);
     }
 
     const expiryTime = new Date(Date.now() + 10 * 60 * 1000);
@@ -125,10 +115,10 @@ const sendOTPEmail = async (userId, email, otp, purpose = 'login') => {
     // Customize subject and title based on purpose
     let subject, title;
     if (purpose === 'reset') {
-      subject = isAdmin ? `[${originalEmail}] Password Reset Code` : 'Your TrustElect Password Reset Code';
+      subject = isSuperAdmin ? `[${originalEmail}] Password Reset Code` : 'Your TrustElect Password Reset Code';
       title = 'Password Reset Code';
     } else {
-      subject = isAdmin ? `[${originalEmail}] TrustElect Verification Code` : 'Your TrustElect Verification Code';
+      subject = isSuperAdmin ? `[${originalEmail}] TrustElect Verification Code` : 'Your TrustElect Verification Code';
       title = 'Verification Code';
     }
 
@@ -143,8 +133,8 @@ const sendOTPEmail = async (userId, email, otp, purpose = 'login') => {
             <h2>STI TrustElect</h2>
           </div>
           <div style="padding: 15px; border: 1px solid #e0e0e0;">
-            <p>Hello${isAdmin ? ' Administrator' : ''},</p>
-            ${isAdmin ? `<p>This code is for account: <strong>${originalEmail}</strong></p>` : ''}
+            <p>Hello${isSuperAdmin ? ' Administrator' : ''},</p>
+            ${isSuperAdmin ? `<p>This code is for account: <strong>${originalEmail}</strong></p>` : ''}
             <p>Your ${purpose === 'reset' ? 'password reset' : 'verification'} code is:</p>
             <div style="background-color: #f5f5f5; padding: 10px; text-align: center; font-size: 24px; font-weight: bold; margin: 15px 0;">
               ${otp}
@@ -159,11 +149,11 @@ const sendOTPEmail = async (userId, email, otp, purpose = 'login') => {
           </div>
         </div>
       `,
-      text: `${title}: ${otp}. ${isAdmin ? `For account: ${originalEmail}. ` : ''}Expires at ${formattedTime}`
+      text: `${title}: ${otp}. ${isSuperAdmin ? `For account: ${originalEmail}. ` : ''}Expires at ${formattedTime}`
     };
 
     if (process.env.NODE_ENV === 'development') {
-      console.log(`🔹 [DEV MODE] OTP ${otp} for ${originalEmail}${isAdmin ? ` (would be sent to ${recipientEmail})` : ''}`);
+      console.log(`🔹 [DEV MODE] OTP ${otp} for ${originalEmail}${isSuperAdmin ? ` (would be sent to ${recipientEmail})` : ''}`);
       
       try {
         const info = await transporter.sendMail(mailOptions);
@@ -176,8 +166,8 @@ const sendOTPEmail = async (userId, email, otp, purpose = 'login') => {
           'sent_dev_mode', 
           info.messageId,
           null,
-          isAdmin,
-          isAdmin ? recipientEmail : null
+          isSuperAdmin,
+          isSuperAdmin ? recipientEmail : null
         );
       } catch (error) {
         console.error('DEV MODE: Email sending failed:', error.message);
@@ -189,7 +179,7 @@ const sendOTPEmail = async (userId, email, otp, purpose = 'login') => {
         otp,
         originalEmail,
         recipientEmail,
-        isSystemAccount: isAdmin
+        isSystemAccount: isSuperAdmin
       };
     }
 
@@ -203,8 +193,8 @@ const sendOTPEmail = async (userId, email, otp, purpose = 'login') => {
       'sent', 
       info.messageId,
       null,
-      isAdmin,
-      isAdmin ? recipientEmail : null
+      isSuperAdmin,
+      isSuperAdmin ? recipientEmail : null
     );
     
     return { 
@@ -212,15 +202,15 @@ const sendOTPEmail = async (userId, email, otp, purpose = 'login') => {
       messageId: info.messageId,
       originalEmail,
       recipientEmail,
-      isSystemAccount: isAdmin
+      isSystemAccount: isSuperAdmin
     };
   } catch (error) {
     console.error('ERROR SENDING EMAIL:', error.message);
     console.error('Error stack:', error.stack);
 
     try {
-      const isAdminAccount = await isSystemAccount(email);
-      const recipientEmail = isAdminAccount ? await getAdminForwardingEmail(email) : email;
+      const isSuperAdmin = email.toLowerCase() === 'systemadmin.00000@novaliches.sti.edu.ph';
+      const recipientEmail = isSuperAdmin ? await getAdminForwardingEmail(email) : email;
       
       await logEmailStatus(
         userId, 
@@ -229,8 +219,8 @@ const sendOTPEmail = async (userId, email, otp, purpose = 'login') => {
         'failed', 
         null, 
         error.message,
-        isAdminAccount,
-        isAdminAccount ? recipientEmail : null
+        isSuperAdmin,
+        isSuperAdmin ? recipientEmail : null
       );
     } catch (logError) {
       console.error('Error logging email status:', logError);
@@ -252,17 +242,17 @@ const testConnection = async () => {
 };
 
 const testSystemAccount = async (email) => {
-  const result = await isSystemAccount(email);
+  const isSuperAdmin = email.toLowerCase() === 'systemadmin.00000@novaliches.sti.edu.ph';
   
-  if (result) {
+  if (isSuperAdmin) {
     const forwardingEmail = await getAdminForwardingEmail(email);
-    console.log(`Email "${email}" is an admin account. OTPs will be sent to ${forwardingEmail}`);
+    console.log(`Email "${email}" is a superadmin account. OTPs will be sent to ${forwardingEmail}`);
     return { 
       isSystemAccount: true,
       recipientEmail: forwardingEmail
     };
   } else {
-    console.log(`Email "${email}" is a regular student account. OTPs will be sent directly to ${email}`);
+    console.log(`Email "${email}" is a regular account. OTPs will be sent directly to ${email}`);
     return { 
       isSystemAccount: false,
       recipientEmail: email

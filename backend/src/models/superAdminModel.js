@@ -16,7 +16,7 @@ const createSuperAdmin = async (firstName, lastName, hashedPassword) => {
     throw new Error("A Super Admin already exists.");
   }
 
-  const email = "superadmin.00000@novaliches.sti.edu.ph";
+  const email = "systemadmin.00000@novaliches.sti.edu.ph";
   const username = email;
 
   const query = `

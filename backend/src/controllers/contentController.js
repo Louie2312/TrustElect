@@ -3,6 +3,8 @@ const fs = require('fs');
 const contentModel = require('../models/contentModel');
 const multer = require('multer');
 
+
+
 // Ensure upload directories exist
 const uploadDir = {
   images: path.join(__dirname, '../../uploads/images'),
@@ -113,14 +115,16 @@ const getSectionContent = async (req, res) => {
  * @param {Object} res - Response object
  */
 const updateSectionContent = async (req, res) => {
-  // This middleware handles file uploads for hero and feature sections
+  // Create dynamic upload fields for feature images
   const uploadFields = [
     { name: 'heroVideo', maxCount: 1 },
-    { name: 'heroPoster', maxCount: 1 },
-    { name: 'featureImage0', maxCount: 1 },
-    { name: 'featureImage1', maxCount: 1 },
-    { name: 'featureImage2', maxCount: 1 }
+    { name: 'heroPoster', maxCount: 1 }
   ];
+  
+  // Support up to 10 feature cards
+  for (let i = 0; i < 10; i++) {
+    uploadFields.push({ name: `featureImage${i}`, maxCount: 1 });
+  }
   
   const uploadMiddleware = upload.fields(uploadFields);
   
@@ -143,6 +147,11 @@ const updateSectionContent = async (req, res) => {
         contentData = JSON.parse(req.body.content);
       } catch (error) {
         return res.status(400).json({ error: 'Invalid content JSON' });
+      }
+      
+      // Helper function to validate color format
+      function isValidColorFormat(color) {
+        return /^#([0-9A-F]{3}){1,2}$/i.test(color);
       }
       
       // Handle explicit removal flags
@@ -200,43 +209,66 @@ const updateSectionContent = async (req, res) => {
           console.log('Removing hero poster image');
           contentData.posterImage = null;
         }
+        
+        // Validate hero color properties
+        if (contentData.bgColor && !isValidColorFormat(contentData.bgColor)) {
+          contentData.bgColor = "#1e40af"; // Default if invalid
+        }
+        if (contentData.textColor && !isValidColorFormat(contentData.textColor)) {
+          contentData.textColor = "#ffffff"; // Default if invalid
+        }
+        
       } else if (section === 'features') {
-        // Process feature images (up to 3)
-        for (let i = 0; i < 3; i++) {
-          const imageFile = req.files[`featureImage${i}`]?.[0];
-          const shouldRemoveFeatureImage = req.body[`removeFeatureImage${i}`] === 'true';
-          
-          if (imageFile) {
-            const imageUrl = normalizeFilePath(`/uploads/images/${imageFile.filename}`);
-            console.log(`Saving feature image ${i}:`, imageFile.filename);
+        // Process feature images dynamically based on the number of columns
+        if (contentData.columns && Array.isArray(contentData.columns)) {
+          // Process each feature column
+          for (let i = 0; i < contentData.columns.length; i++) {
+            const imageFile = req.files[`featureImage${i}`]?.[0];
+            const shouldRemoveFeatureImage = req.body[`removeFeatureImage${i}`] === 'true';
             
-            // Save media to database
-            try {
-              const imageMedia = await contentModel.saveMedia({
-                filename: imageFile.filename,
-                originalFilename: imageFile.originalname,
-                fileType: 'image',
-                mimeType: imageFile.mimetype,
-                fileSize: imageFile.size,
-                path: imageFile.path,
-                url: imageUrl,
-                altText: `Feature image ${i + 1}`
-              });
+            if (imageFile) {
+              const imageUrl = normalizeFilePath(`/uploads/images/${imageFile.filename}`);
+              console.log(`Saving feature image ${i}:`, imageFile.filename);
               
-              // Update feature column with new image URL
-              if (contentData.columns && contentData.columns[i]) {
+              // Save media to database
+              try {
+                const imageMedia = await contentModel.saveMedia({
+                  filename: imageFile.filename,
+                  originalFilename: imageFile.originalname,
+                  fileType: 'image',
+                  mimeType: imageFile.mimetype,
+                  fileSize: imageFile.size,
+                  path: imageFile.path,
+                  url: imageUrl,
+                  altText: `Feature image ${i + 1}`
+                });
+                
+                // Update feature column with new image URL
                 contentData.columns[i].imageUrl = imageUrl;
+              } catch (error) {
+                console.error(`Error saving feature image ${i}:`, error);
               }
-            } catch (error) {
-              console.error(`Error saving feature image ${i}:`, error);
-            }
-          } else if (shouldRemoveFeatureImage) {
-            console.log(`Removing feature image ${i}`);
-            // Only set to null if the column exists
-            if (contentData.columns && contentData.columns[i]) {
+            } else if (shouldRemoveFeatureImage) {
+              console.log(`Removing feature image ${i}`);
               contentData.columns[i].imageUrl = null;
             }
+            
+            // Validate color properties for each feature card
+            if (contentData.columns[i].bgColor && !isValidColorFormat(contentData.columns[i].bgColor)) {
+              contentData.columns[i].bgColor = "#ffffff"; // Default to white if invalid
+            }
+            if (contentData.columns[i].textColor && !isValidColorFormat(contentData.columns[i].textColor)) {
+              contentData.columns[i].textColor = "#000000"; // Default to black if invalid
+            }
           }
+        }
+      } else if (section === 'callToAction') {
+        // Validate CTA color properties
+        if (contentData.bgColor && !isValidColorFormat(contentData.bgColor)) {
+          contentData.bgColor = "#1e3a8a"; // Default if invalid
+        }
+        if (contentData.textColor && !isValidColorFormat(contentData.textColor)) {
+          contentData.textColor = "#ffffff"; // Default if invalid
         }
       }
       
@@ -398,6 +430,164 @@ const getAllThemes = async (req, res) => {
   }
 };
 
+// Add a new theme management endpoint
+const saveTheme = async (req, res) => {
+  try {
+    const { name, colors } = req.body;
+    
+    if (!name || !colors) {
+      return res.status(400).json({ error: 'Theme name and colors are required' });
+    }
+    
+    // Validate color values
+    const validColors = { ...colors };
+    for (const [key, value] of Object.entries(validColors)) {
+      if (typeof value === 'string' && !/^#([0-9A-F]{3}){1,2}$/i.test(value)) {
+        // Set a default color if invalid
+        if (key.includes('bg')) {
+          validColors[key] = '#ffffff';
+        } else {
+          validColors[key] = '#000000';
+        }
+      }
+    }
+    
+    const theme = await contentModel.createTheme(name, validColors);
+    
+    res.status(201).json({
+      message: 'Theme saved successfully',
+      theme
+    });
+  } catch (error) {
+    console.error('Error in saveTheme controller:', error);
+    res.status(500).json({ error: 'Failed to save theme' });
+  }
+};
+
+// Add new function to apply theme to content
+const applyTheme = async (req, res) => {
+  try {
+    const { themeId } = req.params;
+    
+    if (!themeId) {
+      return res.status(400).json({ error: 'Theme ID is required' });
+    }
+    
+    // Get the theme
+    const theme = await contentModel.getThemeById(themeId);
+    
+    if (!theme) {
+      return res.status(404).json({ error: 'Theme not found' });
+    }
+    
+    // Get all content
+    const content = await contentModel.getAllContent();
+    
+    // Apply theme colors to content
+    if (content.hero) {
+      content.hero.bgColor = theme.colors.heroBg || '#1e40af';
+      content.hero.textColor = theme.colors.heroText || '#ffffff';
+    }
+    
+    if (content.features && content.features.columns) {
+      content.features.columns = content.features.columns.map(column => ({
+        ...column,
+        bgColor: theme.colors.featureBg || '#ffffff',
+        textColor: theme.colors.featureText || '#000000'
+      }));
+    }
+    
+    if (content.callToAction) {
+      content.callToAction.bgColor = theme.colors.ctaBg || '#1e3a8a';
+      content.callToAction.textColor = theme.colors.ctaText || '#ffffff';
+    }
+    
+    // Update each section with themed colors
+    await contentModel.updateSectionContent('hero', content.hero);
+    await contentModel.updateSectionContent('features', content.features);
+    await contentModel.updateSectionContent('callToAction', content.callToAction);
+    
+    res.status(200).json({
+      message: 'Theme applied successfully',
+      content
+    });
+  } catch (error) {
+    console.error(`Error in applyTheme controller:`, error);
+    res.status(500).json({ error: 'Failed to apply theme' });
+  }
+};
+
+const getThemeById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!id) {
+      return res.status(400).json({ error: 'Theme ID parameter is required' });
+    }
+    
+    const theme = await contentModel.getThemeById(id);
+    
+    if (!theme) {
+      return res.status(404).json({ error: 'Theme not found' });
+    }
+    
+    res.status(200).json(theme);
+  } catch (error) {
+    console.error(`Error in getThemeById controller for ID ${req.params.id}:`, error);
+    res.status(500).json({ error: 'Failed to fetch theme' });
+  }
+};
+
+const updateTheme = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, colors } = req.body;
+    
+    if (!id) {
+      return res.status(400).json({ error: 'Theme ID parameter is required' });
+    }
+    
+    if (!name || !colors) {
+      return res.status(400).json({ error: 'Theme name and colors are required' });
+    }
+    
+    const theme = await contentModel.updateTheme(id, name, colors);
+    
+    if (!theme) {
+      return res.status(404).json({ error: 'Theme not found' });
+    }
+    
+    res.status(200).json({
+      message: 'Theme updated successfully',
+      theme
+    });
+  } catch (error) {
+    console.error(`Error in updateTheme controller for ID ${req.params.id}:`, error);
+    res.status(500).json({ error: 'Failed to update theme' });
+  }
+};
+
+const deleteTheme = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!id) {
+      return res.status(400).json({ error: 'Theme ID parameter is required' });
+    }
+    
+    const deleted = await contentModel.deleteTheme(id);
+    
+    if (!deleted) {
+      return res.status(404).json({ error: 'Theme not found or could not be deleted' });
+    }
+    
+    res.status(200).json({ message: 'Theme deleted successfully' });
+  } catch (error) {
+    console.error(`Error in deleteTheme controller for ID ${req.params.id}:`, error);
+    res.status(500).json({ error: error.message || 'Failed to delete theme' });
+  }
+};
+
 module.exports = {
   getAllContent,
   getSectionContent,
@@ -407,5 +597,10 @@ module.exports = {
   getActiveTheme,
   setActiveTheme,
   createTheme,
-  getAllThemes
+  getAllThemes,
+  saveTheme,
+  applyTheme,
+  getThemeById,
+  updateTheme,
+  deleteTheme
 }; 

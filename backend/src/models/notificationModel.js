@@ -21,18 +21,18 @@ const createNotification = async (notification) => {
 };
 
 /**
- * Create notifications for multiple users with the same content
- * @param {Array} userIds - Array of user IDs
- * @param {String} role - Role of users
- * @param {String} title - Notification title
- * @param {String} message - Notification message
- * @param {String} type - Notification type
- * @param {String} related_entity - Type of related entity
- * @param {Number} entity_id - ID of related entity
- * @returns {Promise<Array>} The created notifications
+ 
+ * @param {Array} userIds 
+ * @param {String} role 
+ * @param {String} title 
+ * @param {String} message 
+ * @param {String} type 
+ * @param {String} related_entity 
+ * @param {Number} entity_id 
+ * @returns {Promise<Array>} 
  */
 const createNotificationForUsers = async (userIds, role, title, message, type, related_entity, entity_id) => {
-  // Create a batch query for multiple users
+ 
   const values = [];
   const placeholders = [];
   
@@ -67,9 +67,6 @@ const getNotificationsByUser = async (userId, options = {}) => {
     includeRoleVariants = true 
   } = options;
   
-
-  
-  // Force all parameters to be the correct types
   const userIdInt = parseInt(userId, 10);
   const limitInt = parseInt(limit, 10);
   const offsetInt = parseInt(offset, 10);
@@ -88,11 +85,8 @@ const getNotificationsByUser = async (userId, options = {}) => {
       
       if (userDirectQuery.rows.length > 0) {
         const user = userDirectQuery.rows[0];
-        console.log(`Found user with role_id=${user.role_id} for user ${userIdInt}`);
         
-        // Determine role from role_id only since role column doesn't exist
         if (user.role_id) {
-          // Map role_id to role string
           switch (user.role_id) {
             case 1:
               userRole = 'Super Admin';
@@ -234,7 +228,7 @@ const getNotificationsByUser = async (userId, options = {}) => {
       const directResult = await pool.query(directQuery);
       
       if (directResult.rows.length > 0) {
-        // Update these notifications to be associated with this user
+
         const updatePromises = directResult.rows.map(notification => 
           pool.query(
             'UPDATE notifications SET user_id = $1 WHERE id = $2 RETURNING *',
@@ -243,15 +237,12 @@ const getNotificationsByUser = async (userId, options = {}) => {
         );
         
         await Promise.all(updatePromises);
-    
-        
-        // Re-run original query to get properly associated notifications
+
         result = await pool.query(query, queryParams);
        
       }
     }
-    
-    // If we still have no notifications at all, create a test notification for debugging
+
     if (result.rows.length === 0 && process.env.NODE_ENV !== 'production') {
 
       try {
@@ -264,15 +255,13 @@ const getNotificationsByUser = async (userId, options = {}) => {
            'This is a test notification because you had no notifications.', 
            'info', null, null]
         );
-        
-        // Query again to get the new notification
+
         result = await pool.query(query, queryParams);
       } catch (debugError) {
         console.error('Error creating debug notification:', debugError);
       }
     }
-    
-    // Log the first notification to help with debugging
+
     if (result.rows.length > 0) {
     }
     
@@ -286,8 +275,8 @@ const getNotificationsByUser = async (userId, options = {}) => {
 
 /**
  * Count unread notifications for a user
- * @param {Number} userId - User ID
- * @returns {Promise<Number>} Count of unread notifications
+ * @param {Number} userId 
+ * @returns {Promise<Number>} 
  */
 const countUnreadNotifications = async (userId) => {
   const query = `
@@ -301,9 +290,9 @@ const countUnreadNotifications = async (userId) => {
 
 /**
  * Mark a notification as read
- * @param {Number} notificationId - Notification ID
- * @param {Number} userId - User ID (for security check)
- * @returns {Promise<Object>} Updated notification
+ * @param {Number} notificationId 
+ * @param {Number} userId 
+ * @returns {Promise<Object>}
  */
 const markNotificationAsRead = async (notificationId, userId) => {
   const query = `
