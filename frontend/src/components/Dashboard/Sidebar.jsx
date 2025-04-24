@@ -99,12 +99,12 @@ export default function Sidebar() {
           <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/superadmin/content")}>
             Content Management
           </button>
-          {/*
+          
           <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/superadmin/audit-logs")}>
             Audit Logs
 
           </button>
-          */}
+
           <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/superadmin/maintenance")}>
            Election Maintenance
           </button>

@@ -13,11 +13,18 @@ export default function AddAdminModal({ onClose }) {
     department: "",
   });
 
+  const [permissions, setPermissions] = useState({
+    users: { canView: false, canCreate: false, canEdit: false, canDelete: false },
+    elections: { canView: false, canCreate: false, canEdit: false, canDelete: false },
+    departments: { canView: false, canCreate: false, canEdit: false, canDelete: false }
+  });
+
   const [departments, setDepartments] = useState([]);
   const [loadingDepartments, setLoadingDepartments] = useState(true);
   const [generatedPassword, setGeneratedPassword] = useState("");
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [errors, setErrors] = useState({});
+  const [currentStep, setCurrentStep] = useState(1);
 
   // Fetch departments when component mounts
   useEffect(() => {
@@ -85,9 +92,50 @@ export default function AddAdminModal({ onClose }) {
     return `${lastName}${lastThreeDigits}!`;
   };
 
-  const handleRegister = () => {
-    if (!validateInputs()) return;
+  const handlePermissionChange = (module, action) => {
+    setPermissions(prev => ({
+      ...prev,
+      [module]: {
+        ...prev[module],
+        [action]: !prev[module][action]
+      }
+    }));
+  };
 
+  const handleSelectAll = (module) => {
+    setPermissions(prev => ({
+      ...prev,
+      [module]: {
+        canView: true,
+        canCreate: true,
+        canEdit: true,
+        canDelete: true
+      }
+    }));
+  };
+
+  const handleDeselectAll = (module) => {
+    setPermissions(prev => ({
+      ...prev,
+      [module]: {
+        canView: false,
+        canCreate: false,
+        canEdit: false,
+        canDelete: false
+      }
+    }));
+  };
+
+  const handleNextStep = () => {
+    if (!validateInputs()) return;
+    setCurrentStep(2);
+  };
+
+  const handlePrevStep = () => {
+    setCurrentStep(1);
+  };
+
+  const handleRegister = () => {
     const autoPassword = generatePassword(formData.lastName, formData.employeeNumber);
     setGeneratedPassword(autoPassword);
     setShowPasswordModal(true);
@@ -103,7 +151,12 @@ export default function AddAdminModal({ onClose }) {
         return;
       }
 
-      const adminData = { ...formData, password: generatedPassword, createdBy: superAdminId };
+      const adminData = { 
+        ...formData, 
+        password: generatedPassword, 
+        createdBy: superAdminId,
+        permissions: permissions
+      };
 
       console.log("Submitting admin:", adminData);
 
@@ -125,54 +178,268 @@ export default function AddAdminModal({ onClose }) {
         <div className="bg-white p-6 rounded-lg shadow-lg w-110">
           <h2 className="text-xl font-bold mb-4 text-center text-black">Add New Admin</h2>
 
-          <form className="space-y-3">
-          <label name="firstName" className="text-black font-bold">First Name:</label>
-            <input type="text" name="firstName" placeholder="First Name" onChange={handleChange} required className="border w-full p-2 rounded text-black" />
-            {errors.firstName && <p className="text-red-500 text-sm">{errors.firstName}</p>}
+          {currentStep === 1 && (
+            <>
+              <form className="space-y-3">
+                <label name="firstName" className="text-black font-bold">First Name:</label>
+                <input type="text" name="firstName" placeholder="First Name" onChange={handleChange} required className="border w-full p-2 rounded text-black" />
+                {errors.firstName && <p className="text-red-500 text-sm">{errors.firstName}</p>}
 
-            <label name="lastName" className="text-black font-bold">Last Name:</label>
-            <input type="text" name="lastName" placeholder="Last Name" onChange={handleChange} required className="border w-full p-2 rounded text-black" />
-            {errors.lastName && <p className="text-red-500 text-sm">{errors.lastName}</p>}
+                <label name="lastName" className="text-black font-bold">Last Name:</label>
+                <input type="text" name="lastName" placeholder="Last Name" onChange={handleChange} required className="border w-full p-2 rounded text-black" />
+                {errors.lastName && <p className="text-red-500 text-sm">{errors.lastName}</p>}
 
-            <label name="email" className="text-black font-bold">Email:</label>
-            <input type="email" name="email" placeholder="Email" onChange={handleChange} required className="border w-full p-2 rounded text-black" />
-            {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
+                <label name="email" className="text-black font-bold">Email:</label>
+                <input type="email" name="email" placeholder="Email" onChange={handleChange} required className="border w-full p-2 rounded text-black" />
+                {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
 
-            <label name="studentNumber" className="text-black font-bold">Employee Number:</label>
-            <input type="text" name="employeeNumber" placeholder="Employee Number" onChange={handleChange} required className="border w-full p-2 rounded text-black" />
-            {errors.employeeNumber && <p className="text-red-500 text-sm">{errors.employeeNumber}</p>}
+                <label name="studentNumber" className="text-black font-bold">Employee Number:</label>
+                <input type="text" name="employeeNumber" placeholder="Employee Number" onChange={handleChange} required className="border w-full p-2 rounded text-black" />
+                {errors.employeeNumber && <p className="text-red-500 text-sm">{errors.employeeNumber}</p>}
 
-            {/* Department Dropdown */}
-            <label name="department" className="text-black font-bold">Select Department:</label>
-            <select 
-              name="department" 
-              onChange={handleChange} 
-              className="border w-full p-2 rounded text-black"
-              disabled={loadingDepartments}
-            >
-              {loadingDepartments ? (
-                <option value="">Loading departments...</option>
-              ) : (
-                <>
-                  <option value=""></option>
-                  {departments.map((dept) => (
-                    <option key={dept} value={dept}>{dept}</option>
-                  ))}
-                </>
-              )}
-            </select>
-            {errors.department && <p className="text-red-500 text-sm">{errors.department}</p>}
+                {/* Department Dropdown */}
+                <label name="department" className="text-black font-bold">Select Department:</label>
+                <select 
+                  name="department" 
+                  onChange={handleChange} 
+                  className="border w-full p-2 rounded text-black"
+                  disabled={loadingDepartments}
+                >
+                  {loadingDepartments ? (
+                    <option value="">Loading departments...</option>
+                  ) : (
+                    <>
+                      <option value=""></option>
+                      {departments.map((dept) => (
+                        <option key={dept} value={dept}>{dept}</option>
+                      ))}
+                    </>
+                  )}
+                </select>
+                {errors.department && <p className="text-red-500 text-sm">{errors.department}</p>}
+              </form>
 
-          </form>
+              <div className="flex justify-between mt-4">
+                <button onClick={onClose} className="text-red-500">Cancel</button>
+                <button 
+                  onClick={handleNextStep} 
+                  className="bg-blue-600 text-white px-4 py-2 rounded"
+                  disabled={loadingDepartments}
+                >
+                  Next: Set Permissions
+                </button>
+              </div>
+            </>
+          )}
 
-          <button 
-            onClick={handleRegister} 
-            className="bg-blue-600 text-white px-4 py-2 rounded w-full mt-4"
-            disabled={loadingDepartments}
-          >
-            Generate Password & Register
-          </button>
-          <button onClick={onClose} className="text-red-500 w-full text-center mt-3">Cancel</button>
+          {currentStep === 2 && (
+            <>
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold mb-2 text-black">Set Admin Permissions</h3>
+                <p className="text-sm text-gray-500">Select what this admin can access and manage</p>
+              </div>
+
+              <div className="max-h-80 overflow-y-auto">
+                {/* Users Permission Section */}
+                <div className="mb-6 p-3 border rounded">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-lg font-semibold text-black">Users</h3>
+                    <div className="space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSelectAll('users')}
+                        className="px-2 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600"
+                      >
+                        Select All
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeselectAll('users')}
+                        className="px-2 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
+                      >
+                        Deselect All
+                      </button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={permissions.users.canView}
+                        onChange={() => handlePermissionChange('users', 'canView')}
+                        className="form-checkbox h-5 w-5 text-blue-600"
+                      />
+                      <span className="text-black">View Students</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={permissions.users.canCreate}
+                        onChange={() => handlePermissionChange('users', 'canCreate')}
+                        className="form-checkbox h-5 w-5 text-blue-600"
+                      />
+                      <span className="text-black">Add Students</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={permissions.users.canEdit}
+                        onChange={() => handlePermissionChange('users', 'canEdit')}
+                        className="form-checkbox h-5 w-5 text-blue-600"
+                      />
+                      <span className="text-black">Edit Students</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={permissions.users.canDelete}
+                        onChange={() => handlePermissionChange('users', 'canDelete')}
+                        className="form-checkbox h-5 w-5 text-blue-600"
+                      />
+                      <span className="text-black">Delete Students</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Elections Permission Section */}
+                <div className="mb-6 p-3 border rounded">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-lg font-semibold text-black">Elections</h3>
+                    <div className="space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSelectAll('elections')}
+                        className="px-2 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600"
+                      >
+                        Select All
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeselectAll('elections')}
+                        className="px-2 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
+                      >
+                        Deselect All
+                      </button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={permissions.elections.canView}
+                        onChange={() => handlePermissionChange('elections', 'canView')}
+                        className="form-checkbox h-5 w-5 text-blue-600"
+                      />
+                      <span className="text-black">View Elections</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={permissions.elections.canCreate}
+                        onChange={() => handlePermissionChange('elections', 'canCreate')}
+                        className="form-checkbox h-5 w-5 text-blue-600"
+                      />
+                      <span className="text-black">Create Elections</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={permissions.elections.canEdit}
+                        onChange={() => handlePermissionChange('elections', 'canEdit')}
+                        className="form-checkbox h-5 w-5 text-blue-600"
+                      />
+                      <span className="text-black">Edit Elections</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={permissions.elections.canDelete}
+                        onChange={() => handlePermissionChange('elections', 'canDelete')}
+                        className="form-checkbox h-5 w-5 text-blue-600"
+                      />
+                      <span className="text-black">Delete Elections</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Departments Permission Section */}
+                <div className="mb-6 p-3 border rounded">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-lg font-semibold text-black">Departments</h3>
+                    <div className="space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSelectAll('departments')}
+                        className="px-2 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600"
+                      >
+                        Select All
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeselectAll('departments')}
+                        className="px-2 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
+                      >
+                        Deselect All
+                      </button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={permissions.departments.canView}
+                        onChange={() => handlePermissionChange('departments', 'canView')}
+                        className="form-checkbox h-5 w-5 text-blue-600"
+                      />
+                      <span className="text-black">View Departments</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={permissions.departments.canCreate}
+                        onChange={() => handlePermissionChange('departments', 'canCreate')}
+                        className="form-checkbox h-5 w-5 text-blue-600"
+                      />
+                      <span className="text-black">Create Departments</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={permissions.departments.canEdit}
+                        onChange={() => handlePermissionChange('departments', 'canEdit')}
+                        className="form-checkbox h-5 w-5 text-blue-600"
+                      />
+                      <span className="text-black">Edit Departments</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={permissions.departments.canDelete}
+                        onChange={() => handlePermissionChange('departments', 'canDelete')}
+                        className="form-checkbox h-5 w-5 text-blue-600"
+                      />
+                      <span className="text-black">Delete Departments</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-between mt-4">
+                <button 
+                  onClick={handlePrevStep} 
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                >
+                  Back
+                </button>
+                <button 
+                  onClick={handleRegister} 
+                  className="bg-blue-600 text-white px-4 py-2 rounded"
+                >
+                  Generate Password & Register
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

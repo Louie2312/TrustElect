@@ -96,7 +96,7 @@ export default function LoginForm({ onClose }) {
       Cookies.set("token", token, { expires: 1, path: "/", secure: false, sameSite: "lax" });
       Cookies.set("role", role, { expires: 1, path: "/", secure: false, sameSite: "strict" });
       Cookies.set("email", email, { expires: 1, path: "/", secure: false, sameSite: "strict" });
-      Cookies.set("user_id", user_id, { expires: 1, path: "/", secure: false, sameSite: "strict" });
+      Cookies.set("userId", user_id, { expires: 1, path: "/", secure: false, sameSite: "strict" });
       
       if (studentId) {
         console.log("Setting studentId in cookie:", studentId);
@@ -107,7 +107,7 @@ export default function LoginForm({ onClose }) {
       localStorage.setItem("token", token);
       localStorage.setItem("role", role);
       localStorage.setItem("email", email);
-      localStorage.setItem("user_id", user_id);
+      localStorage.setItem("userId", user_id);
 
       const otpResponse = await axios.post(
         "http://localhost:5000/api/auth/request-otp",
@@ -140,7 +140,7 @@ export default function LoginForm({ onClose }) {
     setLoading(true);
     try {
       console.log("🔹 Verifying OTP...");
-      const userId = Cookies.get("user_id");
+      const userId = Cookies.get("userId");
 
       const response = await axios.post(
         "http://localhost:5000/api/auth/verify-otp",
@@ -217,7 +217,7 @@ export default function LoginForm({ onClose }) {
         Cookies.remove("token");
         Cookies.remove("role");
         Cookies.remove("email");
-        Cookies.remove("user_id");
+        Cookies.remove("userId");
         
         if (Cookies.get("studentId")) {
           Cookies.remove("studentId");
@@ -227,7 +227,7 @@ export default function LoginForm({ onClose }) {
         localStorage.removeItem("token");
         localStorage.removeItem("role");
         localStorage.removeItem("email");
-        localStorage.removeItem("user_id");
+        localStorage.removeItem("userId");
         
         // Reset form fields
         setEmail("");
@@ -274,7 +274,7 @@ export default function LoginForm({ onClose }) {
     setResendMessage("");
     setDevOtp("");
     try {
-      const userId = Cookies.get("user_id");
+      const userId = Cookies.get("userId");
       const userEmail = Cookies.get("email");
       
       console.log("Resending OTP for:", userEmail);

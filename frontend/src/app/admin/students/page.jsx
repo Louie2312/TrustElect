@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import Cookies from "js-cookie";
-import { Search, User, Filter, X, RefreshCw, UserCheck, Lock, Trash2, RefreshCcw, Edit, Loader2 } from "lucide-react";
+import { Search, User, Filter, X, RefreshCw, UserCheck, Lock, Trash2, RefreshCcw, Edit, Loader2, UserPlus } from "lucide-react";
 import { toast } from "react-hot-toast";
+import usePermissions from "@/hooks/usePermissions";
+import AdminAddStudentModal from "@/components/Modals/AdminAddStudentModal";
 
-// Department to Courses mapping
 const DEPARTMENT_COURSES = {
   "Information Communication Technology (ICT)": ["BSIT", "BSCS", "BSCPE", "BMMA"],
   "Tourism and Hospitality Management": ["BSTM", "BSHM"],
@@ -31,15 +32,38 @@ export default function StudentsListPage() {
   const [studentToDelete, setStudentToDelete] = useState(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
   const [formData, setFormData] = useState({
-    fullname: "",
+    firstName: "",
+    lastName: "",
     email: "",
     student_number: "",
-    year_level: "",
-    course_id: "",
+    yearLevel: "",
+    courseName: "",
     gender: "",
     status: "active"
   });
+  
+  const { hasPermission, loading: permissionsLoading, refreshPermissions } = usePermissions();
+
+  useEffect(() => {
+    console.log("Students page: Forcing permissions refresh");
+    refreshPermissions();
+    
+    try {
+      const userId = Cookies.get('user_id');
+      if (userId) {
+        const lastUpdate = localStorage.getItem(`admin_permissions_updated_${userId}`);
+        if (lastUpdate) {
+          console.log('Found recent permission update in storage');
+          localStorage.removeItem(`admin_permissions_updated_${userId}`);
+          refreshPermissions();
+        }
+      }
+    } catch (e) {
+      console.warn("Error checking localStorage:", e);
+    }
+  }, [refreshPermissions]);
 
   // Fetch admin profile to get department
   const fetchAdminProfile = async () => {
@@ -133,8 +157,7 @@ export default function StudentsListPage() {
         departmentStudents = departmentStudents.filter(student => 
           courses.includes(student.course_name)
         );
-        
-        console.log("Filtered students by department courses:", departmentStudents);
+
         
         if (departmentStudents.length === 0) {
           console.warn("No students found for the department courses");
@@ -158,8 +181,6 @@ export default function StudentsListPage() {
             },
             withCredentials: true
           });
-          
-          console.log("Fetched students by courses:", response.data);
           
           if (Array.isArray(response.data)) {
             setStudents(response.data);
@@ -238,9 +259,24 @@ export default function StudentsListPage() {
         result = result.filter(student => student.course_name === selectedCourse);
       }
       
+      // Apply year level filter
+      if (yearFilter !== "all") {
+        result = result.filter(student => student.year_level === yearFilter);
+      }
+ 
+      if (genderFilter !== "all") {
+        result = result.filter(student => student.gender === genderFilter);
+      }
+      
+      // Apply status filter
+      if (statusFilter !== "all") {
+        const isActive = statusFilter === "active";
+        result = result.filter(student => student.is_active === isActive);
+      }
+      
       setFilteredStudents(result);
     }
-  }, [searchTerm, selectedCourse, students]);
+  }, [searchTerm, selectedCourse, yearFilter, genderFilter, statusFilter, students]);
 
   const handleCourseFilter = (course) => {
     setSelectedCourse(course === selectedCourse ? "" : course);
@@ -256,11 +292,12 @@ export default function StudentsListPage() {
     if (student) {
       setEditingStudent(student);
       setFormData({
-        fullname: `${student.first_name} ${student.last_name}` || "",
+        firstName: student.first_name || "",
+        lastName: student.last_name || "",
         email: student.email || "",
         student_number: student.student_number || "",
-        year_level: student.year_level || "",
-        course_id: student.course_name || "",
+        yearLevel: student.year_level || "",
+        courseName: student.course_name || "",
         gender: student.gender || "",
         status: student.is_active ? "active" : "inactive"
       });
@@ -282,37 +319,54 @@ export default function StudentsListPage() {
     try {
       setLoading(true);
       
+      // Basic validation
+      if (!formData.firstName.trim() || !formData.lastName.trim()) {
+        toast.error("First and last name are required");
+        setLoading(false);
+        return;
+      }
+
       const token = Cookies.get("token");
       
-      // Extract first and last name from fullname
-      const [firstName, ...lastNameParts] = formData.fullname.split(' ');
-      const lastName = lastNameParts.join(' ');
-      
-      // Prepare updated student data
-      const studentData = {
-        first_name: firstName,
-        last_name: lastName,
+      // Update payload with direct field mapping (matches the system admin implementation)
+      const updateData = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
         email: formData.email,
         student_number: formData.student_number,
-        year_level: formData.year_level,
-        course_name: formData.course_id,
+        yearLevel: formData.yearLevel,
+        courseName: formData.courseName,
         gender: formData.gender,
         is_active: formData.status === 'active'
       };
       
-      // Attempt to update via API
+      console.log("Sending update with data:", JSON.stringify(updateData, null, 2));
+      
       try {
-        await axios.put(`http://localhost:5000/api/students/${editingStudent.id}`, studentData, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json"
-          },
-        });
+        const response = await axios.put(
+          `http://localhost:5000/api/students/${editingStudent.id}`,
+          updateData,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json"
+            },
+          }
+        );
         
-        // If successful, update local state
+        console.log("Update response:", response.data);
+        
+        // If successful, update the local students state with the updated student
         const updatedStudent = {
           ...editingStudent,
-          ...studentData
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          email: formData.email,
+          student_number: formData.student_number,
+          year_level: formData.yearLevel,
+          course_name: formData.courseName,
+          gender: formData.gender,
+          is_active: formData.status === 'active'
         };
         
         const updatedStudents = students.map(s => 
@@ -323,19 +377,15 @@ export default function StudentsListPage() {
         setFilteredStudents(updatedStudents);
         
         toast.success("Student updated successfully");
+        setEditModalOpen(false);
+        setEditingStudent(null);
       } catch (error) {
-        console.error("Error updating via API:", error);
-        toast.error("Failed to update on server: " + (error.response?.data?.message || error.message));
-        
-        // Don't update local state if server update failed
-        throw error;
+        console.error("Error updating student:", error);
+        console.error("Response data:", error.response?.data);
+        toast.error(error.response?.data?.message || "Failed to update student");
       }
-      
-      setEditModalOpen(false);
-      setEditingStudent(null);
     } catch (error) {
       console.error("Error in edit flow:", error);
-      // Toast already shown in inner catch block
     } finally {
       setLoading(false);
     }
@@ -363,8 +413,7 @@ export default function StudentsListPage() {
             Authorization: `Bearer ${token}`,
           },
         });
-        
-        // Update local state only after successful API call
+
         const updatedStudents = students.filter(s => s.id !== studentToDelete.id);
         setStudents(updatedStudents);
         setFilteredStudents(updatedStudents);
@@ -380,37 +429,67 @@ export default function StudentsListPage() {
       setStudentToDelete(null);
     } catch (error) {
       console.error("Error in delete flow:", error);
-      // Toast already shown in inner catch block
+
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAddStudent = () => {
+    if (hasPermission('users', 'create')) {
+      setShowAddModal(true);
+    } else {
+      toast.error("You don't have permission to add students");
+    }
+  };
+
+  const resetFilters = () => {
+    setSearchTerm("");
+    setSelectedCourse("");
+    setYearFilter("all");
+    setGenderFilter("all");
+    setStatusFilter("all");
   };
 
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4 text-black">Student Management</h1>
 
-      {loading && <p className="text-gray-600">Loading students...</p>}
-      {error && <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4">
-        <p>{error}</p>
-        <button 
-          onClick={handleRefresh} 
-          className="mt-2 text-blue-600 hover:underline"
+      {(loading || permissionsLoading) && (
+        <div className="mb-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 flex items-center">
+          <div className="animate-spin h-5 w-5 mr-3 border-t-2 border-blue-700 border-solid rounded-full"></div>
+          <p>Loading {permissionsLoading ? "permissions and " : ""}student data...</p>
+        </div>
+      )}
+      
+      {error && (
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4">
+          <p>{error}</p>
+          <button 
+            onClick={handleRefresh} 
+            className="mt-2 text-blue-600 hover:underline"
+          >
+            Try again
+          </button>
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-4 mb-4 items-center">
+        <div className="flex-grow max-w-md">
+          <input
+            type="text"
+            placeholder="Search by name, email or ID..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="border w-full p-2 rounded text-black"
+          />
+        </div>
+
+        <select 
+          value={selectedCourse} 
+          onChange={(e) => setSelectedCourse(e.target.value)} 
+          className="border p-2 rounded text-black"
         >
-          Try again
-        </button>
-      </div>}
-
-      <div className="flex flex-wrap gap-4 mb-4">
-        <input
-          type="text"
-          placeholder="Search"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="border w-64 p-2 rounded text-black"
-        />
-
-        <select value={selectedCourse} onChange={(e) => setSelectedCourse(e.target.value)} className="border w-48 p-2 rounded text-black">
           <option value="">All Courses</option>
           {departmentCourses.map((course) => (
             <option key={course} value={course}>
@@ -418,6 +497,102 @@ export default function StudentsListPage() {
             </option>
           ))}
         </select>
+        
+        <button
+          onClick={() => setShowFilter(!showFilter)}
+          className={`flex items-center p-2 rounded ${
+            showFilter ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-800 border"
+          }`}
+        >
+          <Filter className="w-4 h-4 mr-1" />
+          Filters
+        </button>
+        
+        {/* Only show Add Student button if user has create permission */}
+        {hasPermission('users', 'create') ? (
+          <button
+            onClick={handleAddStudent}
+            className="bg-blue-600 text-white px-4 py-2 rounded flex items-center ml-auto"
+          >
+            <UserPlus className="w-4 h-4 mr-1" />
+            Add New Student
+          </button>
+        ) : !permissionsLoading && (
+          <div className="bg-gray-100 px-3 py-2 rounded text-gray-600 text-sm italic flex items-center ml-auto">
+            <Lock className="w-4 h-4 mr-1" />
+            You don't have permission to add students
+          </div>
+        )}
+      </div>
+      
+      {showFilter && (
+        <div className="mb-4 p-4 bg-gray-50 rounded-lg border shadow-sm">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="font-medium text-black">Advanced Filters</h3>
+            <button
+              onClick={resetFilters}
+              className="text-red-600 text-sm hover:underline flex items-center"
+            >
+              <X className="w-4 h-4 mr-1" />
+              Clear Filters
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Year Level</label>
+              <select
+                value={yearFilter}
+                onChange={(e) => setYearFilter(e.target.value)}
+                className="w-full p-2 border rounded text-black"
+              >
+                <option value="all">All Year Levels</option>
+                <option value="1st Year">1st Year</option>
+                <option value="2nd Year">2nd Year</option>
+                <option value="3rd Year">3rd Year</option>
+                <option value="4th Year">4th Year</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+              <select
+                value={genderFilter}
+                onChange={(e) => setGenderFilter(e.target.value)}
+                className="w-full p-2 border rounded text-black"
+              >
+                <option value="all">All Genders</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full p-2 border rounded text-black"
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Display current permission status for debugging */}
+      <div className="mb-4 p-2 bg-gray-50 rounded text-xs text-gray-500">
+        <strong>Permission status:</strong> 
+        {permissionsLoading ? " Loading..." : (
+          <span>
+            {" "}View: {hasPermission('users', 'view') ? "✓" : "×"} | 
+            Create: {hasPermission('users', 'create') ? "✓" : "×"} | 
+            Edit: {hasPermission('users', 'edit') ? "✓" : "×"} | 
+            Delete: {hasPermission('users', 'delete') ? "✓" : "×"}
+          </span>
+        )}
       </div>
 
       {/* Student Table */}
@@ -432,7 +607,10 @@ export default function StudentsListPage() {
             <th className="p-3">Gender</th>
             <th className="p-3">Status</th>
             <th className="p-3">Account Status</th>
-
+            {/* Only show Actions column if user has any edit or delete permissions */}
+            {(hasPermission('users', 'edit') || hasPermission('users', 'delete')) && (
+              <th className="p-3">Actions</th>
+            )}
           </tr>
         </thead>
 
@@ -465,23 +643,34 @@ export default function StudentsListPage() {
                     </div>
                   )}
                 </td>
-                <td className="p-3">
-                  {/* 
-                  <button 
-                    onClick={() => {
-                      toast(`To edit or delete student records, please contact a Super Admin.`);
-                    }} 
-                    className="bg-blue-500 text-white px-3 py-1 rounded"
-                  >
-                    View Details
-                  </button>
-                  */}
-                </td>
+                {/* Show action buttons based on permissions */}
+                {(hasPermission('users', 'edit') || hasPermission('users', 'delete')) && (
+                  <td className="p-3 flex justify-center space-x-2">
+                    {hasPermission('users', 'edit') && (
+                      <button
+                        onClick={() => handleEditStudent(student.id)}
+                        className="bg-blue-500 text-white px-3 py-1 rounded flex items-center"
+                      >
+                        <Edit className="w-4 h-4 mr-1" />
+                        Edit
+                      </button>
+                    )}
+                    {hasPermission('users', 'delete') && (
+                      <button
+                        onClick={() => confirmDeleteStudent(student.id)}
+                        className="bg-red-500 text-white px-3 py-1 rounded flex items-center"
+                      >
+                        <Trash2 className="w-4 h-4 mr-1" />
+                        Delete
+                      </button>
+                    )}
+                  </td>
+                )}
               </tr>
             ))
           ) : (
             <tr>
-              <td colSpan="9" className="text-center py-4 text-gray-500">
+              <td colSpan={(hasPermission('users', 'edit') || hasPermission('users', 'delete')) ? "9" : "8"} className="text-center py-4 text-gray-500">
                 {error ? "Failed to load students." : loading ? "Loading students..." : "No students available in this department."}
               </td>
             </tr>
@@ -491,27 +680,39 @@ export default function StudentsListPage() {
 
       {/* Edit Student Modal */}
       {editModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+        <div className="fixed inset-0  flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-lg w-full">
-            <h3 className="text-lg font-medium mb-4">Edit Student</h3>
+            <h3 className="text-lg font-medium mb-4 text-black">Edit Student</h3>
             <form onSubmit={handleSubmitEdit}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Full Name
+                  <label className="block text-sm font-medium text-black mb-1">
+                    First Name
                   </label>
                   <input
                     type="text"
-                    name="fullname"
-                    value={formData.fullname}
+                    name="firstName"
+                    value={formData.firstName}
                     onChange={handleFormChange}
-                    className="w-full p-2 border rounded"
-                    required
+                    className="w-full p-2 border rounded text-black"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-black mb-1">
+                    Last Name
+                  </label>
+                  <input
+                    type="text"
+                    name="lastName"
+                    value={formData.lastName}
+                    onChange={handleFormChange}
+                    className="w-full p-2 border rounded text-black"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-black mb-1">
                     Email
                   </label>
                   <input
@@ -519,13 +720,12 @@ export default function StudentsListPage() {
                     name="email"
                     value={formData.email}
                     onChange={handleFormChange}
-                    className="w-full p-2 border rounded"
-                    required
+                    className="w-full p-2 border rounded text-black"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-black mb-1">
                     Student Number
                   </label>
                   <input
@@ -533,21 +733,19 @@ export default function StudentsListPage() {
                     name="student_number"
                     value={formData.student_number}
                     onChange={handleFormChange}
-                    className="w-full p-2 border rounded"
-                    required
+                    className="w-full p-2 border rounded text-black"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-black mb-1">
                     Year Level
                   </label>
                   <select
-                    name="year_level"
-                    value={formData.year_level}
+                    name="yearLevel"
+                    value={formData.yearLevel}
                     onChange={handleFormChange}
-                    className="w-full p-2 border rounded"
-                    required
+                    className="w-full p-2 border rounded text-black"
                   >
                     <option value="">Select Year Level</option>
                     <option value="1st Year">1st Year</option>
@@ -558,15 +756,14 @@ export default function StudentsListPage() {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-black mb-1">
                     Course
                   </label>
                   <select
-                    name="course_id"
-                    value={formData.course_id}
+                    name="courseName"
+                    value={formData.courseName}
                     onChange={handleFormChange}
-                    className="w-full p-2 border rounded"
-                    required
+                    className="w-full p-2 border rounded text-black"
                   >
                     <option value="">Select Course</option>
                     {departmentCourses.map((course) => (
@@ -578,33 +775,29 @@ export default function StudentsListPage() {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-black mb-1">
                     Gender
                   </label>
                   <select
                     name="gender"
                     value={formData.gender}
                     onChange={handleFormChange}
-                    className="w-full p-2 border rounded"
-                    required
+                    className="w-full p-2 border rounded text-black"
                   >
-                    <option value="">Select Gender</option>
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
-                    <option value="Other">Other</option>
                   </select>
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-black mb-1">
                     Status
                   </label>
                   <select
                     name="status"
                     value={formData.status}
                     onChange={handleFormChange}
-                    className="w-full p-2 border rounded"
-                    required
+                    className="w-full p-2 border rounded text-black"
                   >
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
@@ -619,7 +812,7 @@ export default function StudentsListPage() {
                     setEditModalOpen(false);
                     setEditingStudent(null);
                   }}
-                  className="px-4 py-2 text-gray-600 rounded hover:bg-gray-100"
+                  className="px-4 py-2 text-black rounded hover:bg-gray-100"
                 >
                   Cancel
                 </button>
@@ -635,9 +828,8 @@ export default function StudentsListPage() {
         </div>
       )}
 
-      {/* Delete Confirmation Dialog */}
       {deleteDialogOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+        <div className="fixed inset-0  flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
             <h3 className="text-lg font-medium mb-4">Confirm Deletion</h3>
             <p className="mb-6">
@@ -663,6 +855,18 @@ export default function StudentsListPage() {
           </div>
         </div>
       )}
+
+      {showAddModal && (
+        <AdminAddStudentModal
+          onClose={() => setShowAddModal(false)}
+          onSuccess={() => {
+            fetchStudents(DEPARTMENT_COURSES[adminDepartment]);
+            toast.success("Student added successfully!");
+          }}
+          departmentCourses={departmentCourses}
+        />
+      )}
     </div>
   );
 } 
+

@@ -1,4 +1,13 @@
-export { default as HeroSection } from './HeroSection';
-export { default as FeaturesSection } from './FeaturesSection';
-export { default as CTASection } from './CTASection';
-export { default as ThemesSection } from './ThemesSection'; 
+import HeroSection from './HeroSection';
+import FeaturesSection from './FeaturesSection';
+import CTASection from './CTASection';
+import ThemesSection from './ThemesSection';
+import CandidatesSection from './CandidatesSection';
+
+export {
+  HeroSection,
+  FeaturesSection,
+  CTASection,
+  ThemesSection,
+  CandidatesSection
+}; 

@@ -5,6 +5,7 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
 import { Toaster, toast } from "react-hot-toast";
+import { Calendar, Filter, RefreshCw, Users, Shield, Download } from "lucide-react";
 
 export default function AuditLogsPage() {
   const router = useRouter();
@@ -15,13 +16,25 @@ export default function AuditLogsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   
-  // Simple filter: activity type
-  const [activityType, setActivityType] = useState("all");
+  // Advanced filtering options
+  const [filters, setFilters] = useState({
+    activityType: "all",
+    userRole: "all",
+    dateRange: "all",
+    entityId: "",
+    startDate: "",
+    endDate: ""
+  });
+  
+  const [showFilters, setShowFilters] = useState(false);
+  
+  // Get API URL from env or default
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
   
   const fetchAuditLogs = async (pageNum = 1) => {
     try {
       setLoading(true);
-      const token = Cookies.get("token");
+      const token = Cookies.get("token") || localStorage.getItem("authToken");
       
       if (!token) {
         setError("Authentication token is missing. Please log in again.");
@@ -35,28 +48,61 @@ export default function AuditLogsPage() {
       params.append("limit", 50);
       
       // Filter by action type based on selected activity
-      if (activityType !== "all") {
-        if (activityType === "auth") {
+      if (filters.activityType !== "all") {
+        if (filters.activityType === "auth") {
           params.append("action", "LOGIN,LOGOUT");
-        } else if (activityType === "elections") {
+        } else if (filters.activityType === "elections") {
           params.append("entity_type", "elections");
-        } else if (activityType === "ballots") {
+        } else if (filters.activityType === "ballots") {
           params.append("entity_type", "ballots");
-        } else if (activityType === "voting") {
+        } else if (filters.activityType === "voting") {
           params.append("action", "VOTE");
-        } else if (activityType === "approval") {
+        } else if (filters.activityType === "approval") {
           params.append("action", "APPROVE,REJECT");
+        } else if (filters.activityType === "create") {
+          params.append("action", "CREATE");
+        } else if (filters.activityType === "update") {
+          params.append("action", "UPDATE");
+        } else if (filters.activityType === "delete") {
+          params.append("action", "DELETE");
         }
       }
       
-      console.log("Fetching logs with params:", params.toString());
+      // Filter by user role
+      if (filters.userRole !== "all") {
+        params.append("user_role", filters.userRole);
+      }
       
-      const res = await axios.get(`http://localhost:5000/api/audit-logs?${params.toString()}`, {
+      // Filter by entity ID if provided
+      if (filters.entityId) {
+        params.append("entity_id", filters.entityId);
+      }
+      
+      // Filter by date range
+      if (filters.dateRange === "custom" && filters.startDate) {
+        params.append("start_date", filters.startDate);
+      }
+      
+      if (filters.dateRange === "custom" && filters.endDate) {
+        params.append("end_date", filters.endDate);
+      } else if (filters.dateRange === "today") {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        params.append("start_date", today.toISOString());
+      } else if (filters.dateRange === "week") {
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        params.append("start_date", weekAgo.toISOString());
+      } else if (filters.dateRange === "month") {
+        const monthAgo = new Date();
+        monthAgo.setMonth(monthAgo.getMonth() - 1);
+        params.append("start_date", monthAgo.toISOString());
+      }
+      
+      const res = await axios.get(`${API_URL}/api/audit-logs?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
-      
-      console.log("API response:", res.data);
       
       if (res.data && res.data.data) {
         setLogs(res.data.data);
@@ -64,7 +110,6 @@ export default function AuditLogsPage() {
         setTotalPages(res.data.pagination?.totalPages || 1);
         setTotalItems(res.data.pagination?.totalItems || 0);
       } else {
-        console.error("Invalid response format:", res.data);
         setError("Received invalid data format from server");
         setLogs([]);
       }
@@ -74,8 +119,6 @@ export default function AuditLogsPage() {
       // Handle different error types
       if (error.response) {
         // Server responded with error status
-        console.error("Server response:", error.response.data);
-        
         if (error.response.status === 401 || error.response.status === 403) {
           setError("Authorization error. You might not have permission to view audit logs.");
         } else {
@@ -102,38 +145,75 @@ export default function AuditLogsPage() {
     }
   };
   
-  const handleFilterChange = (e) => {
-    setActivityType(e.target.value);
+  const handleFilterChange = (field, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+  
+  const applyFilters = () => {
     setPage(1);
-    // Apply filter immediately on change
+    fetchAuditLogs(1);
+  };
+  
+  const resetFilters = () => {
+    setFilters({
+      activityType: "all",
+      userRole: "all",
+      dateRange: "all",
+      entityId: "",
+      startDate: "",
+      endDate: ""
+    });
+    setPage(1);
     setTimeout(() => {
       fetchAuditLogs(1);
     }, 100);
   };
   
+  const exportToCSV = () => {
+    try {
+      if (!logs || logs.length === 0) {
+        toast.error("No logs to export");
+        return;
+      }
+      
+      // Create CSV content
+      const headers = ["ID", "Time", "User", "Role", "Action", "Entity Type", "Entity ID"];
+      const csvContent = [
+        headers.join(","),
+        ...logs.map(log => [
+          log.id,
+          formatDateTime(log.created_at),
+          log.user_email || `User #${log.user_id}`,
+          log.user_role,
+          log.action,
+          log.entity_type,
+          log.entity_id || ""
+        ].join(","))
+      ].join("\n");
+      
+      // Create blob and download link
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `audit_logs_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success("Logs exported successfully");
+    } catch (error) {
+      console.error("Error exporting logs:", error);
+      toast.error("Failed to export logs");
+    }
+  };
+  
   useEffect(() => {
     fetchAuditLogs();
-    
-    // Helper function to manually trigger refresh
-    const refreshButton = document.createElement("button");
-    refreshButton.innerText = "Refresh Logs";
-    refreshButton.style.position = "fixed";
-    refreshButton.style.bottom = "10px";
-    refreshButton.style.right = "10px";
-    refreshButton.style.zIndex = 9999;
-    refreshButton.style.padding = "5px 10px";
-    refreshButton.style.backgroundColor = "#007bff";
-    refreshButton.style.color = "white";
-    refreshButton.style.border = "none";
-    refreshButton.style.borderRadius = "4px";
-    refreshButton.onclick = () => fetchAuditLogs(page);
-    
-    document.body.appendChild(refreshButton);
-    
-    // Cleanup
-    return () => {
-      document.body.removeChild(refreshButton);
-    };
   }, []);
   
   // Format date in a simple way
@@ -147,15 +227,39 @@ export default function AuditLogsPage() {
     }
   };
   
-  // Get activity description
+  // Get simplified activity description
   const getActivityDescription = (log) => {
-    if (!log) return "Unknown activity";
+    if (!log) return "-";
     
-    let description = `${log.action || "Unknown"} ${log.entity_type || ""}`;
-    if (log.entity_id) {
-      description += ` #${log.entity_id}`;
+    const id = log.entity_id ? `#${log.entity_id}` : '';
+    
+    // Action-based descriptions (simple and clear)
+    switch (log.action) {
+      case 'LOGIN':
+        return "Logged in";
+      case 'LOGOUT':
+        return "Logged out";
+      case 'VOTE':
+        return `Voted in election ${id}`;
+      case 'CREATE':
+        if (log.entity_type === 'elections') return `Created election ${id}`;
+        if (log.entity_type === 'ballots') return `Created ballot ${id}`;
+        if (log.entity_type === 'candidates') return `Added candidate ${id}`;
+        return `Created ${log.entity_type} ${id}`;
+      case 'UPDATE':
+        if (log.entity_type === 'elections') return `Updated election ${id}`;
+        if (log.entity_type === 'ballots') return `Modified ballot ${id}`;
+        if (log.entity_type === 'user') return `Updated profile`;
+        return `Updated ${log.entity_type} ${id}`;
+      case 'DELETE':
+        return `Deleted ${log.entity_type} ${id}`;
+      case 'APPROVE':
+        return `Approved election ${id}`;
+      case 'REJECT':
+        return `Rejected election ${id}`;
+      default:
+        return `${log.action} ${log.entity_type} ${id}`;
     }
-    return description;
   };
   
   // Get badge color for different actions
@@ -171,7 +275,19 @@ export default function AuditLogsPage() {
       case 'APPROVE': return 'bg-emerald-100 text-emerald-800';
       case 'REJECT': return 'bg-orange-100 text-orange-800';
       case 'VOTE': return 'bg-yellow-100 text-yellow-800';
-      case 'TEST': return 'bg-pink-100 text-pink-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+  
+  // Get badge color for different user roles
+  const getRoleColor = (role) => {
+    if (!role) return 'bg-gray-100 text-gray-800';
+    
+    switch (role.toLowerCase()) {
+      case 'admin': return 'bg-purple-100 text-purple-800';
+      case 'systemadmin': return 'bg-red-100 text-red-800';
+      case 'superadmin': return 'bg-blue-100 text-blue-800';
+      case 'student': return 'bg-green-100 text-green-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -179,27 +295,189 @@ export default function AuditLogsPage() {
   return (
     <div className="p-4">
       <Toaster position="bottom-center" />
-      <h1 className="text-xl font-bold mb-4 text-black">Activity Tracker</h1>
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-xl font-bold text-black">Activity Logs</h1>
+        
+        <div className="flex space-x-2">
+          <button 
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center px-3 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+          >
+            <Filter className="w-4 h-4 mr-1" />
+            {showFilters ? "Hide Filters" : "Filters"}
+          </button>
+          <button 
+            onClick={exportToCSV}
+            className="flex items-center px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+            disabled={logs.length === 0}
+          >
+            <Download className="w-4 h-4 mr-1" />
+            Export
+          </button>
+        </div>
+      </div>
       
-      {/* Simple filter selector */}
-      <div className="mb-4 bg-white p-3 rounded shadow-sm">
-        <select
-          value={activityType}
-          onChange={handleFilterChange}
-          className="w-full md:w-auto p-2 border rounded text-black"
-        >
-          <option value="all">All Activities</option>
-          <option value="auth">Logins & Logouts</option>
-          <option value="elections">Election Activities</option>
-          <option value="ballots">Ballot Activities</option>
-          <option value="approval">Approvals & Rejections</option>
-          <option value="voting">Voting Activities</option>
-        </select>
+      {/* Advanced filter panel */}
+      {showFilters && (
+        <div className="mb-4 bg-white p-4 rounded shadow-sm border border-gray-200">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Activity Type
+              </label>
+              <select
+                value={filters.activityType}
+                onChange={(e) => handleFilterChange('activityType', e.target.value)}
+                className="w-full p-2 border rounded text-black"
+              >
+                <option value="all">All Activities</option>
+                <option value="auth">Logins & Logouts</option>
+                <option value="elections">Elections</option>
+                <option value="ballots">Ballots</option>
+                <option value="approval">Approvals/Rejections</option>
+                <option value="voting">Voting</option>
+                <option value="create">Creation</option>
+                <option value="update">Updates</option>
+                <option value="delete">Deletion</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                User Role
+              </label>
+              <select
+                value={filters.userRole}
+                onChange={(e) => handleFilterChange('userRole', e.target.value)}
+                className="w-full p-2 border rounded text-black"
+              >
+                <option value="all">All Roles</option>
+                <option value="Student">Students</option>
+                <option value="Admin">Administrators</option>
+                <option value="SuperAdmin">Super Admins</option>
+                <option value="SystemAdmin">System Admins</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Date Range
+              </label>
+              <select
+                value={filters.dateRange}
+                onChange={(e) => handleFilterChange('dateRange', e.target.value)}
+                className="w-full p-2 border rounded text-black"
+              >
+                <option value="all">All Time</option>
+                <option value="today">Today</option>
+                <option value="week">Last 7 Days</option>
+                <option value="month">Last 30 Days</option>
+                <option value="custom">Custom Range</option>
+              </select>
+            </div>
+          </div>
+          
+          {filters.dateRange === "custom" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Start Date
+                </label>
+                <input
+                  type="date"
+                  value={filters.startDate}
+                  onChange={(e) => handleFilterChange('startDate', e.target.value)}
+                  className="w-full p-2 border rounded text-black"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  End Date
+                </label>
+                <input
+                  type="date"
+                  value={filters.endDate}
+                  onChange={(e) => handleFilterChange('endDate', e.target.value)}
+                  className="w-full p-2 border rounded text-black"
+                />
+              </div>
+            </div>
+          )}
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Entity ID
+              </label>
+              <input
+                type="text"
+                value={filters.entityId}
+                onChange={(e) => handleFilterChange('entityId', e.target.value)}
+                placeholder="e.g. Election ID"
+                className="w-full p-2 border rounded text-black"
+              />
+            </div>
+          </div>
+          
+          <div className="flex space-x-2">
+            <button 
+              onClick={applyFilters}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Apply
+            </button>
+            <button 
+              onClick={resetFilters}
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+            >
+              Reset
+            </button>
+          </div>
+        </div>
+      )}
+      
+      {/* Quick filter selector */}
+      <div className="mb-4 bg-white p-3 rounded shadow-sm flex justify-between items-center">
+        <div className="flex items-center space-x-2">
+          <select
+            value={filters.activityType}
+            onChange={(e) => {
+              handleFilterChange('activityType', e.target.value);
+              setPage(1);
+              setTimeout(() => fetchAuditLogs(1), 100);
+            }}
+            className="p-2 border rounded text-black"
+          >
+            <option value="all">All Activities</option>
+            <option value="auth">Logins</option>
+            <option value="elections">Elections</option>
+            <option value="ballots">Ballots</option>
+            <option value="approval">Approvals</option>
+            <option value="voting">Voting</option>
+          </select>
+          
+          <select
+            value={filters.userRole}
+            onChange={(e) => {
+              handleFilterChange('userRole', e.target.value);
+              setPage(1);
+              setTimeout(() => fetchAuditLogs(1), 100);
+            }}
+            className="p-2 border rounded text-black"
+          >
+            <option value="all">All Users</option>
+            <option value="Student">Students</option>
+            <option value="Admin">Admins</option>
+            <option value="SuperAdmin">Super Admins</option>
+            <option value="SystemAdmin">System Admins</option>
+          </select>
+        </div>
         
         <button 
-          onClick={() => fetchAuditLogs(1)}
-          className="ml-2 p-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          onClick={() => fetchAuditLogs(page)}
+          className="p-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center"
         >
+          <RefreshCw className="w-4 h-4 mr-1" />
           Refresh
         </button>
       </div>
@@ -230,42 +508,62 @@ export default function AuditLogsPage() {
                 <tr className="bg-[#01579B] text-white">
                   <th className="p-2 text-left">Time</th>
                   <th className="p-2 text-left">User</th>
-                  <th className="p-2 text-left">Activity</th>
+                  <th className="p-2 text-left">Action</th>
+                  <th className="p-2 text-left">Description</th>
                 </tr>
               </thead>
               <tbody>
                 {logs && logs.length > 0 ? (
                   logs.map((log) => (
                     <tr key={log.id} className="border-b hover:bg-gray-50">
-                      <td className="p-2 whitespace-nowrap text-sm">{formatDateTime(log.created_at)}</td>
+                      <td className="p-2 whitespace-nowrap text-sm text-black">{formatDateTime(log.created_at)}</td>
                       <td className="p-2">
-                        <div className="text-sm">{log.user_email || `User #${log.user_id}`}</div>
-                        <div className="text-xs text-gray-500">{log.user_role}</div>
+                        <div className="text-sm text-black font-medium truncate max-w-[180px]">
+                          {log.user_email || `User #${log.user_id}`}
+                        </div>
+                        <div className="text-xs mt-1">
+                          <span className={`inline-block px-2 py-0.5 rounded-full ${getRoleColor(log.user_role)}`}>
+                            {log.user_role}
+                          </span>
+                        </div>
                       </td>
                       <td className="p-2">
                         <span className={`inline-block px-2 py-1 rounded-full text-xs ${getActionColor(log.action)}`}>
                           {log.action}
                         </span>
-                        <span className="ml-2 text-sm">{getActivityDescription(log)}</span>
+                      </td>
+                      <td className="p-2 text-sm text-black">
+                        {getActivityDescription(log)}
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    
+                    <td colSpan="4" className="p-4 text-center text-gray-500">
+                      No activity logs found with current filters.
+                    </td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
           
-          {/* Simple pagination */}
+          {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex justify-between items-center mt-4">
               <div className="text-sm text-gray-600">
-                Page {page} of {totalPages} ({totalItems} activities)
+                Page {page} of {totalPages} ({totalItems} total)
               </div>
               <div className="flex space-x-2">
+                <button
+                  onClick={() => handlePageChange(1)}
+                  disabled={page === 1}
+                  className={`px-3 py-1 rounded ${
+                    page === 1 ? "bg-gray-200 text-gray-400" : "bg-blue-600 text-white"
+                  }`}
+                >
+                  First
+                </button>
                 <button
                   onClick={() => handlePageChange(page - 1)}
                   disabled={page === 1}
@@ -273,7 +571,7 @@ export default function AuditLogsPage() {
                     page === 1 ? "bg-gray-200 text-gray-400" : "bg-blue-600 text-white"
                   }`}
                 >
-                  Previous
+                  Prev
                 </button>
                 <button
                   onClick={() => handlePageChange(page + 1)}
@@ -283,6 +581,15 @@ export default function AuditLogsPage() {
                   }`}
                 >
                   Next
+                </button>
+                <button
+                  onClick={() => handlePageChange(totalPages)}
+                  disabled={page === totalPages}
+                  className={`px-3 py-1 rounded ${
+                    page === totalPages ? "bg-gray-200 text-gray-400" : "bg-blue-600 text-white"
+                  }`}
+                >
+                  Last
                 </button>
               </div>
             </div>

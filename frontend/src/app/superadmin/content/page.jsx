@@ -1,8 +1,9 @@
 "use client"
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { HeroSection, FeaturesSection, CTASection, ThemesSection } from './components';
+import { HeroSection, FeaturesSection, CTASection, ThemesSection, CandidatesSection } from './components';
 import * as utils from './utils';
+import { updateAllBackgrounds, updateCTASettings } from './utils/themeUtils';
 
 // API base URL
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
@@ -61,6 +62,11 @@ export default function ContentManagement() {
       title: "",
       content: "",
       imageUrl: ""
+    },
+    candidates: {
+      title: "Election Candidates",
+      subtitle: "Meet the candidates running in this election",
+      items: []
     }
   });
 
@@ -104,7 +110,17 @@ export default function ContentManagement() {
       buttonText: "Contact Us",
       enabled: true,
       bgColor: "#1e3a8a", // Default CTA background color
-      textColor: "#ffffff"  // Default CTA text color
+      textColor: "#ffffff",  // Default CTA text color
+      mediaType: null,
+      mediaPosition: null,
+      purpose: null
+    },
+    candidates: {
+      title: "Election Candidates",
+      subtitle: "Meet the candidates running in this election",
+      sectionBgColor: "#f9fafb", // Default section background
+      textColor: "#000000", // Default text color
+      items: []
     }
   });
 
@@ -176,9 +192,53 @@ export default function ContentManagement() {
     utils.updateCTA(field, value, landingContent, setLandingContent);
   };
 
+  // Update candidates section
+  const updateCandidates = (field, value) => {
+    setLandingContent(prev => ({
+      ...prev,
+      candidates: {
+        ...prev.candidates,
+        [field]: value
+      }
+    }));
+  };
+
   // Handle theme color change
   const handleThemeColorChange = (colorKey, colorValue) => {
     utils.handleThemeColorChange(colorKey, colorValue, newTheme, setNewTheme);
+  };
+  
+  // Handle bulk background update
+  const handleBulkBackgroundUpdate = (color, theme) => {
+    // Update the theme with the new background color
+    const updatedTheme = updateAllBackgrounds(color, theme);
+    
+    // If this is the active theme, apply changes immediately
+    if (theme.isActive) {
+      applyThemeColors(updatedTheme);
+    }
+    
+    return updatedTheme;
+  };
+  
+  // Handle CTA update
+  const handleCTAUpdate = (color, purpose, mediaType, theme) => {
+    // Update the theme with new CTA settings
+    const updatedTheme = updateCTASettings(
+      color, 
+      purpose, 
+      mediaType,
+      theme, 
+      landingContent, 
+      setLandingContent
+    );
+    
+    // If this is the active theme, apply changes immediately
+    if (theme.isActive) {
+      applyThemeColors(updatedTheme);
+    }
+    
+    return updatedTheme;
   };
 
   // Apply theme colors
@@ -254,6 +314,41 @@ export default function ContentManagement() {
       // Update UI with local URL preview
       updateFeature(index, 'imageUrl', localUrl);
     }
+    else if (type === 'ctaMedia') {
+      // Handle media type based on file
+      const fileType = file.type;
+      let mediaType = "image";
+      
+      // Check file type and size limits
+      if (fileType.startsWith('video/')) {
+        mediaType = "video";
+        if (file.size > 50 * 1024 * 1024) {
+          alert("Video file is too large. Maximum size is 50MB.");
+          e.target.value = '';
+          return;
+        }
+      } 
+      else if (fileType === 'application/x-shockwave-flash' || file.name.endsWith('.swf')) {
+        mediaType = "flash";
+        if (file.size > 10 * 1024 * 1024) {
+          alert("Flash file is too large. Maximum size is 10MB.");
+          e.target.value = '';
+          return;
+        }
+      } 
+      else {
+        // Assume image
+        if (file.size > 5 * 1024 * 1024) {
+          alert("Image file is too large. Maximum size is 5MB.");
+          e.target.value = '';
+          return;
+        }
+      }
+      
+      console.log(`Updating engagement section media URL (${mediaType}):`, localUrl);
+      updateCTA('mediaUrl', localUrl);
+      updateCTA('mediaType', mediaType);
+    }
   };
 
   // Handle removing images
@@ -266,6 +361,9 @@ export default function ContentManagement() {
     } 
     else if (type === 'featureImage') {
       updateFeature(index, 'imageUrl', null);
+    }
+    else if (type === 'ctaMedia') {
+      updateCTA('mediaUrl', null);
     }
     
     setSaveStatus('Image removed. Click Save to apply changes.');
@@ -427,8 +525,44 @@ export default function ContentManagement() {
           buttonUrl: landingContent.callToAction.buttonUrl,
           enabled: landingContent.callToAction.enabled,
           bgColor: landingContent.callToAction.bgColor,
-          textColor: landingContent.callToAction.textColor
+          textColor: landingContent.callToAction.textColor,
+          mediaType: landingContent.callToAction.mediaType || 'none',
+          mediaPosition: landingContent.callToAction.mediaPosition || 'background',
+          purpose: landingContent.callToAction.purpose || 'default'
         };
+        
+        // Add media file if selected
+        const mediaInput = document.querySelector('#cta-media-input');
+        if (mediaInput && mediaInput.files.length > 0) {
+          formData.append('ctaMedia', mediaInput.files[0]);
+        }
+        
+        // Add removal flag if media was removed
+        if (landingContent.callToAction.mediaUrl === null) {
+          formData.append('removeCtaMedia', 'true');
+        }
+      } else if (section === 'candidates') {
+        contentData = {
+          title: landingContent.candidates.title,
+          subtitle: landingContent.candidates.subtitle,
+          sectionBgColor: landingContent.candidates.sectionBgColor,
+          textColor: landingContent.candidates.textColor,
+          items: landingContent.candidates.items || []
+        };
+        
+        // For each candidate with a photo
+        if (landingContent.candidates.items && landingContent.candidates.items.length > 0) {
+          landingContent.candidates.items.forEach((candidate, index) => {
+            // Handle candidate photos (future implementation for actual uploads)
+            if (candidate.photoUrl && candidate.photoUrl.startsWith('blob:')) {
+              // This would be where we'd grab files from a file input
+              const candidatePhotoInput = document.querySelector(`#candidate-photo-${index}`);
+              if (candidatePhotoInput && candidatePhotoInput.files.length > 0) {
+                formData.append(`candidatePhoto${index}`, candidatePhotoInput.files[0]);
+              }
+            }
+          });
+        }
       }
 
       // Add content JSON to formData
@@ -737,7 +871,13 @@ export default function ContentManagement() {
               className={`px-3 py-2 text-sm ${activeTab === 'cta' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-black'}`}
               onClick={() => setActiveTab('cta')}
             >
-              CTA
+              Engagement
+            </button>
+            <button 
+              className={`px-3 py-2 text-sm ${activeTab === 'candidates' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-black'}`}
+              onClick={() => setActiveTab('candidates')}
+            >
+              Candidates
             </button>
             <button 
               className={`px-3 py-2 text-sm ${activeTab === 'themes' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-black'}`}
@@ -784,6 +924,22 @@ export default function ContentManagement() {
                 updateCTA={updateCTA}
                 saveSectionContent={saveSectionContent}
                 showPreview={showPreview}
+                handleFileUpload={handleFileUpload}
+                removeMedia={removeImage}
+                formatImageUrl={formatImageUrl}
+              />
+            )}
+            
+            {/* Candidates Section */}
+            {activeTab === 'candidates' && (
+              <CandidatesSection 
+                landingContent={landingContent}
+                updateCandidates={updateCandidates}
+                saveSectionContent={saveSectionContent}
+                showPreview={showPreview}
+                handleFileUpload={handleFileUpload}
+                removeMedia={removeImage}
+                formatImageUrl={formatImageUrl}
               />
             )}
 
@@ -800,6 +956,8 @@ export default function ContentManagement() {
                 setSaveStatus={setSaveStatus}
                 applyThemeColors={handleApplyThemeColors}
                 handleThemeColorChange={handleThemeColorChange}
+                handleBulkBackgroundUpdate={handleBulkBackgroundUpdate}
+                handleCTAUpdate={handleCTAUpdate}
               />
             )}
           </div>

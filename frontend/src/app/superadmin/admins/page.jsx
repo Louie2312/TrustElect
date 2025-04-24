@@ -7,6 +7,8 @@ import Cookies from "js-cookie";
 import AddAdminModal from "@/components/Modals/AddAdminModal";
 import EditAdminModal from "@/components/Modals/EditAdminModal";
 import ResetPasswordModal from "@/components/Modals/ResetPasswordModal";
+import EditAdminPermissionsModal from "@/components/Modals/EditAdminPermissionsModal";
+import { toast } from "react-hot-toast";
 
 export default function AdminsPage() {
   const router = useRouter();
@@ -17,6 +19,7 @@ export default function AdminsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
+  const [showPermissionsModal, setShowPermissionsModal] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState(null);
   const [searchQuery, setSearchQuery] = useState(""); 
   const [departmentFilter, setDepartmentFilter] = useState(""); 
@@ -30,13 +33,11 @@ export default function AdminsPage() {
         withCredentials: true,
       });
 
-      // Get the current user's ID from the token
       const tokenData = JSON.parse(atob(token.split('.')[1]));
       setCurrentUserId(tokenData.id);
 
       console.log("All admins data:", res.data.admins);
-      
-      // Don't filter out super admins, only filter by active status
+
       setAdmins(res.data.admins.filter((admin) => admin.is_active));
       setFilteredAdmins(res.data.admins.filter((admin) => admin.is_active));
       setLoading(false);
@@ -111,15 +112,17 @@ export default function AdminsPage() {
     fetchAdmins();
   }, []);
 
-  // Check if admin is a super admin
   const isSuperAdmin = (admin) => {
-    // Check for role_id directly or if department is "Administration" for super admins
     return admin.role_id === 1 || (admin.department === "Administration" && !admin.employee_number);
   };
 
-  // Check if it's the current logged in super admin
   const isCurrentUser = (admin) => {
     return admin.id === currentUserId;
+  };
+
+  const handleManagePermissions = (admin) => {
+    setSelectedAdmin(admin);
+    setShowPermissionsModal(true);
   };
 
   return (
@@ -209,7 +212,7 @@ export default function AdminsPage() {
                   </div>
                 )}
               </td>
-              <td className="p-3 flex justify-center gap-2">
+              <td className="p-3 flex justify-center gap-2 flex-wrap">
                 {!isSuperAdmin(admin) ? (
                   <>
                     <button
@@ -220,6 +223,12 @@ export default function AdminsPage() {
                       className="bg-green-500 text-white px-3 py-1 rounded"
                     >
                       Edit
+                    </button>
+                    <button
+                      onClick={() => handleManagePermissions(admin)}
+                      className="bg-indigo-600 text-white px-3 py-1 rounded"
+                    >
+                      Permissions
                     </button>
                     <button
                       onClick={() => deleteAdmin(admin.id)}
@@ -269,6 +278,45 @@ export default function AdminsPage() {
         <EditAdminModal 
           admin={selectedAdmin} 
           onClose={() => setShowEditModal(false)} 
+        />
+      )}
+
+      {showPermissionsModal && selectedAdmin && (
+        <EditAdminPermissionsModal
+          admin={selectedAdmin}
+          onClose={() => setShowPermissionsModal(false)}
+          onSave={(updatedPermissions) => {
+            // Force permission update for the target admin
+            try {
+              // Store a timestamp in localStorage to indicate when the permissions were last updated
+              const updateTimestamp = Date.now().toString();
+              localStorage.setItem(`admin_permissions_updated_${selectedAdmin.id}`, updateTimestamp);
+              
+              // Dispatch a custom event to notify any component that might be using this admin's permissions
+              const permissionUpdateEvent = new CustomEvent('admin-permissions-updated', {
+                detail: { 
+                  adminId: selectedAdmin.id,
+                  timestamp: updateTimestamp,
+                  permissions: updatedPermissions // Include the permissions that were saved
+                }
+              });
+              window.dispatchEvent(permissionUpdateEvent);
+              
+              // Create a global timestamp update as well
+              if (typeof window !== 'undefined' && window.GLOBAL_PERMISSIONS_TIMESTAMP) {
+                window.GLOBAL_PERMISSIONS_TIMESTAMP = Date.now();
+                console.log('Updated global permissions timestamp:', window.GLOBAL_PERMISSIONS_TIMESTAMP);
+              }
+              
+              console.log(`Permission update confirmed for admin #${selectedAdmin.id}`);
+              toast.success(`Permissions updated for ${selectedAdmin.first_name} ${selectedAdmin.last_name}`);
+            } catch (e) {
+              console.warn('Could not store permission update timestamp:', e);
+            }
+            
+            setShowPermissionsModal(false);
+            fetchAdmins(); // Refresh admin list after permission update
+          }}
         />
       )}
     </div>

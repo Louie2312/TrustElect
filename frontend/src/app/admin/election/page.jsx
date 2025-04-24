@@ -1,8 +1,10 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, Plus } from 'lucide-react';
+import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, Plus, Lock } from 'lucide-react';
 import Cookies from 'js-cookie';
+import usePermissions from '../../../hooks/usePermissions';
+import Link from 'next/link';
 
 const API_BASE = 'http://localhost:5000/api';
 
@@ -46,14 +48,14 @@ export default function ElectionPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [pendingCount, setPendingCount] = useState(0);
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   const tabs = [
     { id: 'all', label: 'All Elections' },
     { id: 'ongoing', label: 'Ongoing' },
     { id: 'upcoming', label: 'Upcoming' },
     { id: 'completed', label: 'Completed' },
-    { id: 'pending', label: 'Pending Approval' },
-
+    { id: 'pending', label: 'Pending Approval', requiresPermission: 'edit' },
   ];
 
   const fetchElections = useCallback(async () => {
@@ -71,6 +73,13 @@ export default function ElectionPage() {
 
   const fetchPendingApprovals = useCallback(async () => {
     try {
+      // Only fetch pending approvals if the user has edit permissions
+      if (!hasPermission('elections', 'edit')) {
+        setPendingApprovals([]);
+        setPendingCount(0);
+        return;
+      }
+      
       setLoading(true);
       // Use the dedicated endpoint for admin pending approvals
       const data = await fetchWithAuth('/elections/admin-pending-approval');
@@ -79,19 +88,25 @@ export default function ElectionPage() {
     } catch (err) {
       console.error("Failed to load pending approvals:", err);
       // Don't set the main error state here, just log it
+      setPendingApprovals([]);
+      setPendingCount(0);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [hasPermission]);
 
   // Initial load
   useEffect(() => {
     const loadData = async () => {
-      await fetchElections();
-      await fetchPendingApprovals();
+      if (!permissionsLoading && hasPermission('elections', 'view')) {
+        await fetchElections();
+        await fetchPendingApprovals();
+      } else if (!permissionsLoading) {
+        setLoading(false);
+      }
     };
     loadData();
-  }, [fetchElections, fetchPendingApprovals]);
+  }, [fetchElections, fetchPendingApprovals, hasPermission, permissionsLoading]);
 
   useEffect(() => {
     if (activeTab === 'all') {
@@ -109,11 +124,31 @@ export default function ElectionPage() {
     }
   }, [activeTab, elections, pendingApprovals]);
 
+  // Set default active tab based on permissions
+  useEffect(() => {
+    if (!permissionsLoading) {
+      // If the current active tab requires permissions the user doesn't have
+      const currentTab = tabs.find(tab => tab.id === activeTab);
+      if (currentTab?.requiresPermission && !hasPermission('elections', currentTab.requiresPermission)) {
+        // Fall back to 'all' tab which is always available with view permission
+        setActiveTab('all');
+      }
+    }
+  }, [permissionsLoading, hasPermission, activeTab]);
+
   const handleCreateElection = () => {
-    router.push("/admin/election/create"); 
+    if (!hasPermission('elections', 'create')) {
+      alert("You don't have permission to create elections");
+      return;
+    }
+    router.push("/admin/election/create");
   };
 
   const handleElectionClick = (electionId) => {
+    if (!hasPermission('elections', 'view')) {
+      alert("You don't have permission to view election details");
+      return;
+    }
     router.push(`/admin/election/${electionId}`);
   };
 
@@ -150,22 +185,63 @@ export default function ElectionPage() {
     );
   };
 
+  if (loading || permissionsLoading) {
+    return (
+      <div className="flex h-full w-full items-center justify-center p-6 bg-gray-50 min-h-screen">
+        <div className="h-16 w-16 animate-spin rounded-full border-t-4 border-solid border-blue-500"></div>
+      </div>
+    );
+  }
+  
+  // If the user doesn't have permission to view elections, show an access denied message
+  if (!hasPermission('elections', 'view')) {
+    return (
+      <div className="p-6 bg-gray-50 min-h-screen">
+        <div className="bg-white p-8 rounded-lg shadow-md text-center">
+          <div className="flex items-center justify-center">
+            <div className="bg-red-100 p-3 rounded-full">
+              <Lock className="h-8 w-8 text-red-600" />
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold mt-4 mb-2 text-black">Access Denied</h2>
+          <p className="text-gray-600 mb-4">
+            You don't have permission to view elections. Please contact your administrator for access.
+          </p>
+          <div className="mt-6">
+            <Link href="/admin" className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">
+              Back to Dashboard
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-black">Elections</h1>
-        <button 
-          onClick={handleCreateElection} 
-          className="bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 transition-colors flex items-center shadow-sm"
-        >
-          <Plus className="w-5 h-5 mr-2" />
-          Create New Election
-        </button>
+        {hasPermission('elections', 'create') ? (
+          <button 
+            onClick={handleCreateElection} 
+            className="bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 transition-colors flex items-center shadow-sm"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Create New Election
+          </button>
+        ) : (
+          <div className="text-sm text-gray-500 italic bg-gray-100 px-4 py-2 rounded-md flex items-center">
+            <Lock className="w-4 h-4 mr-2" />
+            Create permission required
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow mb-6">
         <div className="flex flex-wrap">
-          {tabs.map(tab => (
+          {tabs
+            .filter(tab => !tab.requiresPermission || hasPermission('elections', tab.requiresPermission))
+            .map(tab => (
             <button
               key={tab.id}
               className={`px-6 py-3 text-sm font-medium focus:outline-none transition-colors relative ${
@@ -229,7 +305,7 @@ export default function ElectionPage() {
                     <tr 
                       key={election.id}
                       onClick={() => handleElectionClick(election.id)}
-                      className="hover:bg-gray-50 cursor-pointer transition-colors"
+                      className={`${hasPermission('elections', 'view') ? 'hover:bg-gray-50 cursor-pointer' : ''} transition-colors`}
                     >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-black">{election.title}</div>
@@ -262,7 +338,11 @@ export default function ElectionPage() {
               <h3 className="text-xl font-medium text-black mb-2">
                 No {activeTab === 'all' ? '' : activeTab} elections found
               </h3>
-             
+              {activeTab === 'all' && !hasPermission('elections', 'create') && (
+                <p className="text-gray-500 mt-2">
+                  You don't have permission to create new elections.
+                </p>
+              )}
             </div>
           )}
         </>

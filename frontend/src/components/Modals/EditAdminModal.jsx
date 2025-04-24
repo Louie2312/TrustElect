@@ -1,112 +1,194 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import Cookies from "js-cookie";
 
-export default function EditAdminModal({ admin, onClose, onUpdate }) {
-  const [firstName, setFirstName] = useState(admin.first_name || "");
-  const [lastName, setLastName] = useState(admin.last_name || "");
-  const [email, setEmail] = useState(admin.email || "");
-  const [employeeNumber, setEmployeeNumber] = useState(admin.employee_number || "");
-  const [department, setDepartment] = useState(admin.department || "");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+export default function EditAdminModal({ admin, onClose }) {
+  const [formData, setFormData] = useState({
+    firstName: admin.first_name || "",
+    lastName: admin.last_name || "",
+    email: admin.email || "",
+    employeeNumber: admin.employee_number || "",
+    department: admin.department || "",
+  });
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-  
+  const [departments, setDepartments] = useState([]);
+  const [errors, setErrors] = useState({});
+  const [loadingDepartments, setLoadingDepartments] = useState(true);
+  const [showPermissionsModal, setShowPermissionsModal] = useState(false);
+
+  // Fetch departments when component mounts
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const token = Cookies.get("token");
+        const res = await axios.get("http://localhost:5000/api/superadmin/department-names", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        
+        if (res.data && Array.isArray(res.data)) {
+          setDepartments(res.data);
+        } else {
+          setDepartments([
+            "Information and Communication Technology (ICT)",
+            "Tourism and Hospitality Management (THM)",
+            "Business Administration and Accountancy"
+          ]);
+        }
+      } catch (error) {
+        console.error("Error fetching departments:", error);
+        setDepartments([
+          "Information and Communication Technology (ICT)",
+          "Tourism and Hospitality Management (THM)",
+          "Business Administration and Accountancy"
+        ]);
+      } finally {
+        setLoadingDepartments(false);
+      }
+    };
+
+    fetchDepartments();
+  }, []);
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const validateInputs = () => {
+    let newErrors = {};
+    
+    if (formData.firstName.trim() === "") {
+      newErrors.firstName = "First Name is required.";
+    }
+    
+    if (formData.lastName.trim() === "") {
+      newErrors.lastName = "Last Name is required.";
+    }
+    
+    if (formData.email.trim() === "") {
+      newErrors.email = "Email is required.";
+    } else if (!formData.email.endsWith("@novaliches.sti.edu.ph")) {
+      newErrors.email = "Invalid STI email.";
+    }
+    
+    if (formData.employeeNumber.trim() === "") {
+      newErrors.employeeNumber = "Employee Number is required.";
+    } else if (!formData.employeeNumber.match(/^\d{4,}$/)) {
+      newErrors.employeeNumber = "Employee Number must be at least 4 digits.";
+    }
+    
+    if (!formData.department) {
+      newErrors.department = "Select a department.";
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async () => {
+    if (!validateInputs()) return;
+
     try {
       const token = Cookies.get("token");
-  
-      const updatedFields = {};
-      if (firstName !== admin.first_name) updatedFields.firstName = firstName;
-      if (lastName !== admin.last_name) updatedFields.lastName = lastName;
-      if (email !== admin.email) updatedFields.email = email;
-      if (employeeNumber !== admin.employee_number) updatedFields.employeeNumber = employeeNumber;
-      if (department !== admin.department) updatedFields.department = department;
-  
-      if (Object.keys(updatedFields).length === 0) {
-        setError("No changes detected.");
-        setLoading(false);
-        return;
-      }
-  
-      const res = await axios.put(
-        `http://localhost:5000/api/superadmin/admins/${admin.id}`,
-        updatedFields,
-        { headers: { Authorization: `Bearer ${token}` }, withCredentials: true }
-      );
-  
-      alert(res.data.message);
+      await axios.put(`http://localhost:5000/api/superadmin/admins/${admin.id}`, formData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      alert("Admin updated successfully!");
       onClose();
       window.location.reload();
-    } catch (err) {
-      console.error("Error updating admin:", err);
-      setError(err.response?.data?.message || "Failed to update Admin.");
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      console.error("Error updating admin:", error);
+      alert(error.response?.data?.message || "Failed to update admin.");
     }
   };
-  
+
   return (
-    <div className="fixed inset-0 flex items-center justify-center ">
-      <div className="bg-white p-6 rounded-lg shadow-lg w-96">
-        <h2 className="text-xl font-bold mb-4 text-black">Edit Admin</h2>
-
-        {error && <p className="text-red-500">{error}</p>}
-
-        <form onSubmit={handleSubmit}>
+    <div className="fixed inset-0 flex items-center justify-center z-50">
+      <div className="bg-white p-6 rounded-lg shadow-lg w-110">
+        <h2 className="text-xl font-bold mb-4 text-center text-black">Edit Admin</h2>
+        
+        <form className="space-y-3">
+          <label className="text-black font-bold">First Name:</label>
           <input
             type="text"
-            placeholder="First Name"
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-            className="border w-full p-2 mb-2 rounded text-black"
+            name="firstName"
+            value={formData.firstName}
+            onChange={handleChange}
+            className="border w-full p-2 rounded text-black"
           />
+          {errors.firstName && <p className="text-red-500 text-sm">{errors.firstName}</p>}
+
+          <label className="text-black font-bold">Last Name:</label>
           <input
             type="text"
-            placeholder="Last Name"
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-            className="border w-full p-2 mb-2 rounded text-black"
+            name="lastName"
+            value={formData.lastName}
+            onChange={handleChange}
+            className="border w-full p-2 rounded text-black"
           />
+          {errors.lastName && <p className="text-red-500 text-sm">{errors.lastName}</p>}
+
+          <label className="text-black font-bold">Email:</label>
           <input
             type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="border w-full p-2 mb-2 rounded text-black"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            className="border w-full p-2 rounded text-black"
           />
+          {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
+
+          <label className="text-black font-bold">Employee Number:</label>
           <input
             type="text"
-            placeholder="Employee Number"
-            value={employeeNumber}
-            onChange={(e) => setEmployeeNumber(e.target.value)}
-            className="border w-full p-2 mb-2 rounded text-black"
+            name="employeeNumber"
+            value={formData.employeeNumber}
+            onChange={handleChange}
+            className="border w-full p-2 rounded text-black"
           />
-          <select
-            value={department}
-            onChange={(e) => setDepartment(e.target.value)}
-            className="border w-full p-2 mb-2 rounded text-black"
-          >
-            <option value="">Select Department</option>
-            <option value="Information and Communication Technology (ICT)">Information and Communication Technology (ICT)</option>
-            <option value="Tourism and Hospitality Management (THM)">Tourism and Hospitality Management (THM)</option>
-            <option value="Business Administration and Accountancy">Business Administration and Accountancy</option>
-          </select>
+          {errors.employeeNumber && <p className="text-red-500 text-sm">{errors.employeeNumber}</p>}
 
-          <div className="mt-4 flex justify-between">
-            <button type="button" onClick={onClose} className="bg-gray-400 text-white px-4 py-2 rounded">
-              Cancel
-            </button>
-            <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded" disabled={loading}>
-              {loading ? "Updating..." : "Save Changes"}
+          <label className="text-black font-bold">Department:</label>
+          <select
+            name="department"
+            value={formData.department}
+            onChange={handleChange}
+            className="border w-full p-2 rounded text-black"
+            disabled={loadingDepartments}
+          >
+            {loadingDepartments ? (
+              <option value="">Loading departments...</option>
+            ) : (
+              <>
+                <option value=""></option>
+                {departments.map((dept) => (
+                  <option key={dept} value={dept}>{dept}</option>
+                ))}
+              </>
+            )}
+          </select>
+          {errors.department && <p className="text-red-500 text-sm">{errors.department}</p>}
+        </form>
+
+        <div className="mt-6 flex justify-between">
+          <button onClick={onClose} className="text-red-500">Cancel</button>
+          <div className="space-x-2">
+            <button 
+              onClick={handleSubmit} 
+              className="bg-blue-600 text-white px-4 py-2 rounded"
+            >
+              Save Changes
             </button>
           </div>
-        </form>
+        </div>
+
+        <div className="mt-6 border-t pt-4">
+          <p className="text-gray-700 mb-2">
+            <strong>Note:</strong> To edit this admin's permissions, please use the Permissions button on the admin list.
+          </p>
+        </div>
       </div>
     </div>
   );

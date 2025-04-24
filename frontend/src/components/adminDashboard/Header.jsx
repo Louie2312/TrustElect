@@ -6,15 +6,45 @@ import Cookies from "js-cookie";
 import NotificationBell from "../../components/NotificationBell";
 import Image from 'next/image';
 import stiLogo from "../../assets/sti_logo.png"
+import axios from "axios";
+
 export default function Header() {
   const router = useRouter();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
-  const handleLogout = () => {
-    Cookies.remove("token");
-    Cookies.remove("role");
-    Cookies.remove("email");
-    router.push("/");
+  const handleLogout = async () => {
+    try {
+      // Get user information before removing cookies
+      const token = Cookies.get("token");
+      const userId = Cookies.get("userId");
+      const email = Cookies.get("email");
+      const role = Cookies.get("role");
+      
+      // Call the logout API
+      await axios.post(`${API_URL}/api/auth/logout`, {
+        userId,
+        email,
+        role
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      // Then remove cookies and redirect
+      Cookies.remove("token");
+      Cookies.remove("role");
+      Cookies.remove("email");
+      Cookies.remove("userId");
+      router.push("/");
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Still perform client-side logout even if API call fails
+      Cookies.remove("token");
+      Cookies.remove("role");
+      Cookies.remove("email");
+      Cookies.remove("userId");
+      router.push("/");
+    }
   };
 
   return (

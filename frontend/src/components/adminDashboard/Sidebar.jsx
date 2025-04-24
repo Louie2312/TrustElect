@@ -4,12 +4,14 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import Cookies from "js-cookie";
+import usePermissions from "../../hooks/usePermissions";
 
 export default function Sidebar() {
   const router = useRouter();
   const [profilePic, setProfilePic] = useState("https://via.placeholder.com/80");
   const [adminName, setAdminName] = useState("Admin");
   const [showImageModal, setShowImageModal] = useState(false);
+  const { hasPermission, permissionsLoading } = usePermissions();
 
   const fetchProfile = async () => {
     try {
@@ -66,7 +68,7 @@ export default function Sidebar() {
         </div>
 
         {showImageModal && (
-          <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+          <div className="fixed inset-0 flex items-center justify-center z-50">
             <div className="bg-white p-4 rounded-lg shadow-lg relative">
               <button 
                 className="absolute top-2 right-2 text-gray-600 hover:text-gray-900 text-xl" 
@@ -92,13 +94,26 @@ export default function Sidebar() {
             Profile
           </button>
           
-          <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/admin/election")}>
-            Elections
-          </button>
+          {/* Only show Elections if user has permission */}
+          {!permissionsLoading && hasPermission('elections', 'view') && (
+            <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/admin/election")}>
+              Elections
+            </button>
+          )}
           
-          <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/admin/students")}>
-            Students
-          </button>
+          {/* Only show Students if user has permission */}
+          {!permissionsLoading && hasPermission('users', 'view') && (
+            <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/admin/students")}>
+              Students
+            </button>
+          )}
+          
+          {/* Only show Departments if user has permission */}
+          {!permissionsLoading && hasPermission('departments', 'view') && (
+            <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/admin/departments")}>
+              Departments
+            </button>
+          )}
         </nav>
       </aside>   
     </>

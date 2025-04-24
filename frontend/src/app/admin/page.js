@@ -1,9 +1,12 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Calendar, Clock, Users, CheckCircle, XCircle, AlertCircle, Trash2 } from 'lucide-react';
+import { Calendar, Clock, Users, CheckCircle, XCircle, AlertCircle, Trash2, GraduationCap, BarChart, Building, ClipboardCheck, Loader2, Lock } from 'lucide-react';
 import Link from 'next/link';
 import Cookies from 'js-cookie';
+import PermissionDisplay from '../../components/Admin/PermissionDisplay';
+import usePermissions from '../../hooks/usePermissions';
+import axios from "axios";
 
 const API_BASE = 'http://localhost:5000/api';
 
@@ -70,7 +73,7 @@ const DeleteConfirmationModal = ({ isOpen, election, onCancel, onConfirm, isDele
   );
 };
 
-const ElectionCard = ({ election, onClick, onDeleteClick }) => {
+const ElectionCard = ({ election, onClick, onDeleteClick, canDelete }) => {
   const statusColors = {
     ongoing: 'bg-blue-100 text-blue-800 border-blue-300',
     upcoming: 'bg-yellow-100 text-yellow-800 border-yellow-300',
@@ -127,7 +130,7 @@ const ElectionCard = ({ election, onClick, onDeleteClick }) => {
           </span>
         </div>
         
-        {displayStatus === 'completed' && (
+        {displayStatus === 'completed' && canDelete && (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -136,6 +139,7 @@ const ElectionCard = ({ election, onClick, onDeleteClick }) => {
             className="text-red-500 hover:text-red-700 p-1 hover:bg-white hover:bg-opacity-50 rounded-full"
             title="Delete Election"
           >
+            <Trash2 className="w-5 h-5" />
           </button>
         )}
       </div>
@@ -192,46 +196,86 @@ export default function AdminDashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('ongoing');
   const [elections, setElections] = useState([]);
-  const [stats, setStats] = useState([]);
+  const [allElections, setAllElections] = useState({
+    ongoing: [],
+    upcoming: [],
+    completed: [],
+    to_approve: []
+  });
+  const [stats, setStats] = useState({
+    students: 0,
+    departments: 0,
+    elections: 0,
+    activeElections: 0,
+    statuses: []
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [electionToDelete, setElectionToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [actionMessage, setActionMessage] = useState(null);
-  const [filteredElections, setFilteredElections] = useState([]);
+  const { hasPermission, permissionsLoading } = usePermissions();
 
-  const loadElections = async (status) => {
+  // Load all elections data at once
+  const loadAllElections = async () => {
     try {
       setIsLoading(true);
-      setError(null); // Clear previous errors
+      setError(null);
       
-      let endpoint;
-      if (status === 'to_approve') {
-        endpoint = '/elections/admin-pending-approval';
-      } else {
-        endpoint = `/elections/status/${status}`;
-      }
+      const statuses = ['ongoing', 'upcoming', 'completed'];
+      const results = {};
       
-      const response = await fetch(`${API_BASE}${endpoint}`, {
-        headers: {
-          'Authorization': `Bearer ${Cookies.get('token')}`,
-          'Content-Type': 'application/json'
+      // Load regular election statuses
+      await Promise.all(statuses.map(async (status) => {
+        try {
+          const response = await fetch(`${API_BASE}/elections/status/${status}`, {
+            headers: {
+              'Authorization': `Bearer ${Cookies.get('token')}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            results[status] = data || [];
+          } else {
+            console.error(`Error loading ${status} elections: ${response.status}`);
+            results[status] = [];
+          }
+        } catch (err) {
+          console.error(`Error fetching ${status} elections:`, err);
+          results[status] = [];
         }
-      });
+      }));
       
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`[Admin] Error loading elections: ${response.status} ${response.statusText}`, errorText);
-        throw new Error(`Failed to load elections: ${response.status} ${response.statusText}`);
+      // Load pending approval elections
+      try {
+        const response = await fetch(`${API_BASE}/elections/admin-pending-approval`, {
+          headers: {
+            'Authorization': `Bearer ${Cookies.get('token')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          results['to_approve'] = data || [];
+        } else {
+          console.error(`Error loading pending approval elections: ${response.status}`);
+          results['to_approve'] = [];
+        }
+      } catch (err) {
+        console.error('Error fetching pending approval elections:', err);
+        results['to_approve'] = [];
       }
       
-      const data = await response.json();
-      setElections(data || []);
+      setAllElections(results);
+      // Set the elections for the active tab
+      setElections(results[activeTab] || []);
     } catch (err) {
-      console.error('[Admin] Error in loadElections:', err);
-      setError(err.message || 'Failed to load elections');
-      setElections([]);
+      console.error('Error in loadAllElections:', err);
+      setError('Failed to load elections data');
     } finally {
       setIsLoading(false);
     }
@@ -240,37 +284,162 @@ export default function AdminDashboard() {
   const loadStats = async () => {
     try {
       const data = await fetchWithAuth('/elections/stats');
+      
+      // Transform the data structure to have statuses array for compatibility
+      if (data && !Array.isArray(data.statuses)) {
+        const statusesArray = [];
+        ['ongoing', 'upcoming', 'completed', 'to_approve'].forEach(status => {
+          if (data[status + '_count'] !== undefined) {
+            statusesArray.push({
+              status: status,
+              count: data[status + '_count'] || 0
+            });
+          }
+        });
+        data.statuses = statusesArray;
+      }
+      
       setStats(data);
     } catch (err) {
       console.error("Failed to load stats:", err);
     }
   };
 
+  // Load initial data
   useEffect(() => {
-    loadElections(activeTab);
-    loadStats();
-  }, [activeTab]);
+    const initializeDashboard = async () => {
+      if (!permissionsLoading) {
+        // First check if user has permission to view elections
+        if (!hasPermission('elections', 'view')) {
+          setIsLoading(false);
+          return;
+        }
+        
+        try {
+          const token = Cookies.get("token");
+          
+          // Fetch stats
+          const statsResponse = await axios.get("http://localhost:5000/api/elections/stats", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          
+          // Process stats data
+          const statsData = statsResponse.data;
+          
+          // Make sure counts are properly set
+          if (statsData) {
+            // Ensure we have status counts from the API
+            if (statsData.ongoing_count === undefined) statsData.ongoing_count = allElections.ongoing?.length || 0;
+            if (statsData.upcoming_count === undefined) statsData.upcoming_count = allElections.upcoming?.length || 0;
+            if (statsData.completed_count === undefined) statsData.completed_count = allElections.completed?.length || 0;
+            if (statsData.to_approve_count === undefined) statsData.to_approve_count = allElections.to_approve?.length || 0;
+            
+            // Create statuses array for compatibility
+            if (!Array.isArray(statsData.statuses)) {
+              statsData.statuses = [
+                { status: 'ongoing', count: statsData.ongoing_count || 0 },
+                { status: 'upcoming', count: statsData.upcoming_count || 0 },
+                { status: 'completed', count: statsData.completed_count || 0 },
+                { status: 'to_approve', count: statsData.to_approve_count || 0 }
+              ];
+            }
+          }
+          
+          setStats(statsData);
+          
+          // Load all elections at once
+          await loadAllElections();
+        } catch (error) {
+          console.error("Error initializing dashboard:", error);
+          loadStats();
+          loadAllElections();
+        }
+      }
+    };
+    
+    initializeDashboard();
+  }, [permissionsLoading, hasPermission]);
 
+  // Update stats when all elections are loaded
+  useEffect(() => {
+    // Update stats with actual counts from loaded elections
+    if (Object.keys(allElections).length > 0) {
+      setStats(prevStats => ({
+        ...prevStats,
+        ongoing_count: allElections.ongoing?.length || 0,
+        upcoming_count: allElections.upcoming?.length || 0,
+        completed_count: allElections.completed?.length || 0,
+        to_approve_count: allElections.to_approve?.length || 0,
+        statuses: [
+          { status: 'ongoing', count: allElections.ongoing?.length || 0 },
+          { status: 'upcoming', count: allElections.upcoming?.length || 0 },
+          { status: 'completed', count: allElections.completed?.length || 0 },
+          { status: 'to_approve', count: allElections.to_approve?.length || 0 }
+        ]
+      }));
+    }
+  }, [allElections]);
+
+  // Handle tab change without loading indicator
+  useEffect(() => {
+    // Just update the elections based on the activeTab from the already loaded data
+    setElections(allElections[activeTab] || []);
+  }, [activeTab, allElections]);
   
-  useEffect(() => {
-    setFilteredElections(elections);
-  }, [elections]);
-
   const handleElectionClick = (electionId) => {
     if (!electionId || isNaN(parseInt(electionId))) {
       console.error('Invalid election ID:', electionId);
       return;
     }
+    
+    // Check if user has permission to view election details
+    if (!hasPermission('elections', 'view')) {
+      setActionMessage({
+        type: 'error',
+        text: 'You do not have permission to view election details'
+      });
+      setTimeout(() => {
+        setActionMessage(null);
+      }, 5000);
+      return;
+    }
+    
     router.push(`/admin/election/${electionId}`);
   };
 
   const handleDeleteClick = (election) => {
+    // Check if user has permission to delete elections
+    if (!hasPermission('elections', 'delete')) {
+      setActionMessage({
+        type: 'error',
+        text: 'You do not have permission to delete elections'
+      });
+      setTimeout(() => {
+        setActionMessage(null);
+      }, 5000);
+      return;
+    }
+    
     setElectionToDelete(election);
     setDeleteModalOpen(true);
   };
 
   const handleDeleteConfirm = async () => {
     if (!electionToDelete) return;
+    
+    // Double-check delete permission
+    if (!hasPermission('elections', 'delete')) {
+      setActionMessage({
+        type: 'error',
+        text: 'You do not have permission to delete elections'
+      });
+      setDeleteModalOpen(false);
+      setElectionToDelete(null);
+      setTimeout(() => {
+        setActionMessage(null);
+      }, 5000);
+      return;
+    }
     
     try {
       setIsDeleting(true);
@@ -288,7 +457,16 @@ export default function AdminDashboard() {
         method: 'DELETE'
       });
       
-      setElections(elections.filter(e => e.id !== electionToDelete.id));
+      // Update the allElections state to remove the deleted election
+      setAllElections(prev => ({
+        ...prev,
+        completed: prev.completed.filter(e => e.id !== electionToDelete.id)
+      }));
+      
+      // Update the current elections view if we're on the completed tab
+      if (activeTab === 'completed') {
+        setElections(prev => prev.filter(e => e.id !== electionToDelete.id));
+      }
       
       // Update stats
       loadStats();
@@ -315,128 +493,192 @@ export default function AdminDashboard() {
   };
 
   const getStatValue = (status, field) => {
-    const stat = stats.find(s => s.status === status);
-    return stat ? stat[field] : 0;
+    if (!stats || !stats.statuses) {
+      return 0;
+    }
+    
+    // Direct access to count properties when available
+    if (status === 'ongoing' && stats.ongoing_count !== undefined) {
+      return stats.ongoing_count;
+    } else if (status === 'upcoming' && stats.upcoming_count !== undefined) {
+      return stats.upcoming_count;
+    } else if (status === 'completed' && stats.completed_count !== undefined) {
+      return stats.completed_count;
+    } else if (status === 'to_approve' && stats.to_approve_count !== undefined) {
+      return stats.to_approve_count;
+    }
+    
+    // Fallback to statuses array if available
+    if (Array.isArray(stats.statuses)) {
+      const stat = stats.statuses.find(s => s.status === status);
+      return stat ? (stat.count || 0) : 0;
+    }
+    
+    return 0;
   };
+
+  if (isLoading || permissionsLoading) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <div className="h-16 w-16 animate-spin rounded-full border-t-4 border-solid border-blue-500"></div>
+      </div>
+    );
+  }
+
+  // If the user doesn't have permission to view elections, show an access denied message
+  if (!hasPermission('elections', 'view')) {
+    return (
+      <div className="container mx-auto px-4 py-8 bg-gray-50 min-h-screen">
+        <div className="bg-white p-8 rounded-lg shadow-md text-center">
+          <div className="flex items-center justify-center">
+            <div className="bg-red-100 p-3 rounded-full">
+              <Lock className="h-8 w-8 text-red-600" />
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold mt-4 mb-2 text-black">Access Denied</h2>
+          <p className="text-gray-600 mb-4">
+            You don't have permission to view elections. Please contact your administrator for access.
+          </p>
+          <div className="mt-6">
+            <Link href="/admin" className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">
+              Back to Dashboard
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8 bg-gray-50 min-h-screen">
-      <h1 className="text-3xl font-bold mb-2 text-black">Election Dashboard</h1>
-      <p className="text-gray-600 mb-6">Manage and monitor all elections</p>
-      
-      {actionMessage && (
-        <div className={`mb-4 p-4 rounded-lg shadow ${actionMessage.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' : 'bg-red-100 text-red-800 border-l-4 border-red-500'}`}>
-          {actionMessage.text}
-        </div>
-      )}
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="font-medium text-gray-500 mb-2 text-black">Total Elections</h3>
-          <p className="text-3xl font-bold text-black">
-            {stats.reduce((sum, stat) => sum + parseInt(stat.count), 0)}
-          </p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="font-medium text-gray-500 mb-2 text-black">Total Voters</h3>
-          <p className="text-3xl font-bold text-black">
-            {stats.reduce((sum, stat) => sum + parseInt(stat.total_voters || 0), 0)}
-          </p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="font-medium text-gray-500 mb-2 text-black">Total Votes Cast</h3>
-          <p className="text-3xl font-bold text-black">
-            {stats.reduce((sum, stat) => sum + parseInt(stat.total_votes || 0), 0)}
-          </p>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow mb-6 p-1">
-        <div className="flex">
-          {statusTabs.map(tab => (
-            <button
-              key={tab.id}
-              className={`flex items-center justify-center px-6 py-3 font-medium text-sm transition-colors duration-200 flex-1 ${activeTab === tab.id ? 'bg-blue-50 text-blue-600 rounded-md' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
-              onClick={() => setActiveTab(tab.id)}
-            >
-              <div className="flex flex-col items-center">
-                <div className="flex items-center mb-1">
-                  {tab.icon}
-                  <span className="ml-2">{tab.name}</span>
-                </div>
-                <span className="bg-gray-100 rounded-full px-3 py-1 text-xs font-bold">
-                  {getStatValue(tab.id, 'count')}
-                </span>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="mb-6 flex justify-between items-center">
-        <h2 className="text-xl font-bold text-black">
-          {activeTab === 'ongoing' && 'Ongoing Elections'}
-          {activeTab === 'upcoming' && 'Upcoming Elections'}
-          {activeTab === 'completed' && 'Completed Elections'}
-          {activeTab === 'to_approve' && 'Elections Pending Approval'}
-        </h2>
-        <Link 
-          href="/admin/election/create"
-          className="inline-flex items-center px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-md hover:shadow-lg transition-all"
-        >
-          + Create New Election
-        </Link>
-      </div>
-
-      {error && (
-        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg shadow mb-6">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <XCircle className="h-5 w-5 text-red-500" />
+      <div className="flex flex-col lg:flex-row gap-6 mb-8">
+        <div className="lg:w-3/4">
+          <h1 className="text-3xl font-bold mb-2 text-black">Election Dashboard</h1>
+          <p className="text-gray-600 mb-6">Manage and monitor all elections</p>
+          
+          {actionMessage && (
+            <div className={`mb-4 p-4 rounded-lg shadow ${actionMessage.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' : 'bg-red-100 text-red-800 border-l-4 border-red-500'}`}>
+              {actionMessage.text}
             </div>
-            <div className="ml-3">
-              <p className="text-sm">{error}</p>
+          )}
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="font-medium text-gray-500 mb-2 text-black">Total Elections</h3>
+              <p className="text-3xl font-bold text-black">
+                {stats.elections || 0}
+              </p>
+            </div>
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="font-medium text-gray-500 mb-2 text-black">Total Voters</h3>
+              <p className="text-3xl font-bold text-black">
+                {stats.total_voters || 0}
+              </p>
+            </div>
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="font-medium text-gray-500 mb-2 text-black">Total Votes Cast</h3>
+              <p className="text-3xl font-bold text-black">
+                {stats.total_votes || 0}
+              </p>
             </div>
           </div>
-        </div>
-      )}
 
-      {isLoading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredElections.length > 0 ? (
-            filteredElections.map((election, index) => (
-              <ElectionCard 
-                key={`${election.id}-${index}`} 
-                election={election} 
-                onClick={handleElectionClick}
-                onDeleteClick={handleDeleteClick}
-              />
-            ))
-          ) : (
-            <div className="col-span-full text-center py-12 bg-white rounded-lg shadow">
-              <div className="text-gray-400 mb-4">
-                {activeTab === 'ongoing' && <Clock className="w-16 h-16 mx-auto" />}
-                {activeTab === 'upcoming' && <Calendar className="w-16 h-16 mx-auto" />}
-                {activeTab === 'completed' && <CheckCircle className="w-16 h-16 mx-auto" />}
-                {activeTab === 'to_approve' && <AlertCircle className="w-16 h-16 mx-auto" />}
+          <div className="bg-white rounded-lg shadow mb-6 p-1">
+            <div className="flex flex-wrap">
+              {statusTabs.map(tab => (
+                <button
+                  key={tab.id}
+                  className={`flex items-center justify-center px-4 py-3 font-medium text-sm transition-colors duration-200 flex-1 ${activeTab === tab.id ? 'bg-blue-50 text-blue-600 rounded-md' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+                  onClick={() => setActiveTab(tab.id)}
+                >
+                  <div className="flex flex-col items-center">
+                    <div className="flex items-center mb-1">
+                      {tab.icon}
+                      <span className="ml-2">{tab.name}</span>
+                    </div>
+                    <span className="bg-gray-100 rounded-full px-3 py-1 text-xs font-bold">
+                      {getStatValue(tab.id, 'count')}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mb-6 flex flex-wrap justify-between items-center">
+            <h2 className="text-xl font-bold text-black">
+              {activeTab === 'ongoing' && 'Ongoing Elections'}
+              {activeTab === 'upcoming' && 'Upcoming Elections'}
+              {activeTab === 'completed' && 'Completed Elections'}
+              {activeTab === 'to_approve' && 'Elections Pending Approval'}
+            </h2>
+            {hasPermission('elections', 'create') && (
+              <Link 
+                href="/admin/election/create"
+                className="inline-flex items-center px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-md hover:shadow-lg transition-all mt-2 md:mt-0"
+              >
+                + Create New Election
+              </Link>
+            )}
+          </div>
+
+          {error && (
+            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg shadow mb-6">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <XCircle className="h-5 w-5 text-red-500" />
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm">{error}</p>
+                </div>
               </div>
-              <h3 className="text-xl font-medium text-gray-900 mb-2">
-                No {activeTab === 'to_approve' ? 'elections pending approval' : `${activeTab} elections`}
-              </h3>
-              <p className="text-gray-500 max-w-md mx-auto">
-                {activeTab === 'ongoing' && 'There are currently no ongoing elections.'}
-                {activeTab === 'upcoming' && 'No upcoming elections scheduled.'}
-                {activeTab === 'completed' && 'No completed elections yet. Elections that have ended will be shown here.'}
-                {activeTab === 'to_approve' && 'No elections are waiting for approval.'}
-              </p>
+            </div>
+          )}
+
+          {isLoading ? (
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {elections.length > 0 ? (
+                elections.map((election, index) => (
+                  <ElectionCard 
+                    key={`${election.id}-${index}`} 
+                    election={election} 
+                    onClick={handleElectionClick}
+                    onDeleteClick={handleDeleteClick}
+                    canDelete={hasPermission('elections', 'delete')}
+                  />
+                ))
+              ) : (
+                <div className="col-span-full text-center py-12 bg-white rounded-lg shadow">
+                  <div className="text-gray-400 mb-4">
+                    {activeTab === 'ongoing' && <Clock className="w-16 h-16 mx-auto" />}
+                    {activeTab === 'upcoming' && <Calendar className="w-16 h-16 mx-auto" />}
+                    {activeTab === 'completed' && <CheckCircle className="w-16 h-16 mx-auto" />}
+                    {activeTab === 'to_approve' && <AlertCircle className="w-16 h-16 mx-auto" />}
+                  </div>
+                  <h3 className="text-xl font-medium text-gray-900 mb-2">
+                    No {activeTab === 'to_approve' ? 'elections pending approval' : `${activeTab} elections`}
+                  </h3>
+                  <p className="text-gray-500 max-w-md mx-auto">
+                    {activeTab === 'ongoing' && 'There are currently no ongoing elections.'}
+                    {activeTab === 'upcoming' && 'No upcoming elections scheduled.'}
+                    {activeTab === 'completed' && 'No completed elections yet. Elections that have ended will be shown here.'}
+                    {activeTab === 'to_approve' && 'No elections are waiting for approval.'}
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
-      )}
+        
+        <div className="lg:w-1/4 space-y-6">
+          {/* Permissions Display */}
+          <PermissionDisplay />
+        </div>
+      </div>
       
       <DeleteConfirmationModal 
         isOpen={deleteModalOpen}

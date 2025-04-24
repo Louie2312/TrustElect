@@ -303,15 +303,41 @@ export default function ElectionDetailsPage() {
             {election.needs_approval ? 'PENDING APPROVAL' : election.status.toUpperCase()}
           </span>
           
-          {/* Allow editing of elections that need approval or are upcoming */}
+          {/* Edit buttons for upcoming or pending approval elections */}
           {(election.needs_approval || election.status === 'upcoming') && (
-            <Link
-              href={`/admin/election/${election.id}/edit`}
-              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
-              <Edit className="w-4 h-4 mr-2" />
-              Edit Election
-            </Link>
+            <>
+              <Link
+                href={`/admin/election/${election.id}/edit`}
+                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Edit Election
+              </Link>
+              
+              {election.positions && election.positions.length > 0 ? (
+                <Link
+                  href={`/admin/election/${election.id}/ballot`}
+                  className="flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  Edit Ballot
+                </Link>
+              ) : (
+                <Link
+                  href={`/admin/election/${election.id}/ballot`}
+                  className="flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Ballot
+                </Link>
+              )}
+            </>
+          )}
+          {!(election.needs_approval || election.status === 'upcoming') && (
+            <div className="flex items-center px-4 py-2 bg-gray-200 text-gray-600 rounded cursor-not-allowed">
+              <Lock className="w-4 h-4 mr-2" />
+              {election.status === 'ongoing' ? 'Election In Progress' : 'Election Completed'}
+            </div>
           )}
         </div>
       </div>
@@ -327,11 +353,11 @@ export default function ElectionDetailsPage() {
             <h3 className="font-bold">Election pending approval</h3>
           </div>
           <p className="mb-2 text-sm text-black">
-            This election is waiting for approval from a Super Admin before it can be published.
+            This election is waiting for approval from a System Admin before it can be published.
             You can still edit all aspects of this election while waiting for approval.
           </p>
           <p className="text-xs text-black">
-            Only Super Admins can approve or reject elections.
+            Only System Admin can approve or reject elections.
           </p>
         </div>
       )}
@@ -393,16 +419,6 @@ export default function ElectionDetailsPage() {
           <div className="bg-white rounded-lg shadow p-6 mb-8">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold text-black">Eligibility Criteria</h2>
-              
-              {(election.needs_approval || election.status === 'upcoming') && (
-                <Link
-                  href={`/admin/election/${election.id}/eligibility`}
-                  className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  <Edit className="w-4 h-4 mr-2" />
-                  Edit Criteria
-                </Link>
-              )}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               <div>
@@ -472,26 +488,6 @@ export default function ElectionDetailsPage() {
           <div className="bg-white rounded-lg shadow p-6 mb-8">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold text-black">Ballot</h2>
-              
-              {(election.needs_approval || election.status === 'upcoming') && (
-                hasBallot ? (
-                  <Link
-                    href={`/admin/election/${election.id}/ballot`}
-                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                  >
-                    <Edit className="w-4 h-4 mr-2" />
-                    Edit Ballot
-                  </Link>
-                ) : (
-                  <Link
-                    href={`/admin/election/${election.id}/ballot`}
-                    className="flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Ballot
-                  </Link>
-                )
-              )}
             </div>
             
             {election.positions && election.positions.length > 0 ? (
