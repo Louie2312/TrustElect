@@ -58,7 +58,7 @@ export default function ManageStudents() {
       setUploadProgress(0);
   
       const token = Cookies.get('token');
-      const superAdminId = Cookies.get('user_id') || localStorage.getItem("user_id"); 
+      const superAdminId = Cookies.get('userId') || localStorage.getItem("userId"); 
       
       if (!superAdminId) {
         alert("Authentication error: Super Admin ID missing.");

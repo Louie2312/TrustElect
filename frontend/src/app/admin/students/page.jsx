@@ -51,7 +51,7 @@ export default function StudentsListPage() {
     refreshPermissions();
     
     try {
-      const userId = Cookies.get('user_id');
+      const userId = Cookies.get('userId');
       if (userId) {
         const lastUpdate = localStorage.getItem(`admin_permissions_updated_${userId}`);
         if (lastUpdate) {

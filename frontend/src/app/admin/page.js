@@ -5,7 +5,7 @@ import { Calendar, Clock, Users, CheckCircle, XCircle, AlertCircle, Trash2, Grad
 import Link from 'next/link';
 import Cookies from 'js-cookie';
 import PermissionDisplay from '../../components/Admin/PermissionDisplay';
-import usePermissions from '../../hooks/usePermissions';
+import usePermissions, { ensureUserIdFromToken } from '../../hooks/usePermissions.js';
 import axios from "axios";
 
 const API_BASE = 'http://localhost:5000/api';
@@ -215,7 +215,24 @@ export default function AdminDashboard() {
   const [electionToDelete, setElectionToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [actionMessage, setActionMessage] = useState(null);
-  const { hasPermission, permissionsLoading } = usePermissions();
+  const { hasPermission, permissionsLoading, permissions } = usePermissions();
+
+  // Ensure user ID is available from token if needed
+  useEffect(() => {
+    const userId = ensureUserIdFromToken();
+    console.log('Admin Dashboard - Ensured User ID:', userId);
+  }, []);
+
+  // For debugging
+  useEffect(() => {
+    console.log('Admin Dashboard - User info:', {
+      userId: Cookies.get('userId'),
+      role: Cookies.get('role'),
+      token: Cookies.get('token') ? 'Token exists' : 'No token'
+    });
+    console.log('Admin Dashboard - Permissions loading:', permissionsLoading);
+    console.log('Admin Dashboard - Permissions:', permissions);
+  }, [permissionsLoading, permissions]);
 
   // Load all elections data at once
   const loadAllElections = async () => {
@@ -519,8 +536,11 @@ export default function AdminDashboard() {
 
   if (isLoading || permissionsLoading) {
     return (
-      <div className="flex h-full w-full items-center justify-center">
-        <div className="h-16 w-16 animate-spin rounded-full border-t-4 border-solid border-blue-500"></div>
+      <div className="flex h-full w-full items-center justify-center p-20">
+        <div className="text-center">
+          <div className="h-16 w-16 animate-spin rounded-full border-t-4 border-solid border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard data...</p>
+        </div>
       </div>
     );
   }

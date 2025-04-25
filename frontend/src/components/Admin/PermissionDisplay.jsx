@@ -1,17 +1,30 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import usePermissions from '../../hooks/usePermissions';
+import usePermissions, { ensureUserIdFromToken } from '../../hooks/usePermissions';
 import Cookies from 'js-cookie';
 
 export default function PermissionDisplay() {
-  const { permissions, loading, error, refreshPermissions } = usePermissions();
+  const { hasPermission, permissions, permissionsLoading, refreshPermissions, triggerGlobalPermissionsRefresh } = usePermissions();
   const [moduleNames, setModuleNames] = useState([]);
   const [forceRefresh, setForceRefresh] = useState(0);
+  const [error, setError] = useState(null);
+
+  // Ensure user ID is available from token if needed
+  useEffect(() => {
+    const userId = ensureUserIdFromToken();
+    console.log('PermissionDisplay - Ensured User ID:', userId);
+  }, []);
+
+  // For debugging
+  useEffect(() => {
+    console.log('PermissionDisplay - User ID:', Cookies.get('userId'));
+    console.log('PermissionDisplay - Permissions loading:', permissionsLoading);
+    console.log('PermissionDisplay - Permissions:', permissions);
+  }, [permissions, permissionsLoading]);
 
   useEffect(() => {
-    if (permissions) {
-
+    if (permissions && typeof permissions === 'object') {
       const filteredModules = Object.keys(permissions).filter(
         module => module !== 'reports' && module !== 'notifications'
       );
@@ -20,12 +33,24 @@ export default function PermissionDisplay() {
   }, [permissions]);
 
   useEffect(() => {
-
-    refreshPermissions();
+    // Try to refresh permissions immediately when component mounts
+    const userId = Cookies.get('userId');
+    console.log('PermissionDisplay - Initial refresh for user:', userId);
+    
+    if (userId) {
+      refreshPermissions().catch(err => {
+        console.error('Error refreshing permissions:', err);
+        setError('Failed to load permissions');
+      });
+    } else {
+      setError('No user ID found');
+    }
 
     const refreshInterval = setInterval(() => {
       console.log('Auto-refreshing permissions...');
-      refreshPermissions();
+      refreshPermissions().catch(err => {
+        console.error('Error auto-refreshing permissions:', err);
+      });
     }, 60000);
 
     return () => clearInterval(refreshInterval);
@@ -33,7 +58,7 @@ export default function PermissionDisplay() {
 
   useEffect(() => {
     const handleAdminPermissionUpdate = (event) => {
-      const currentUserId = Cookies.get('user_id');
+      const currentUserId = Cookies.get('userId');
       if (currentUserId && event.detail && event.detail.adminId.toString() === currentUserId) {
         console.log('Detected permission update for current user, refreshing...');
      
@@ -45,7 +70,7 @@ export default function PermissionDisplay() {
     window.addEventListener('admin-permissions-updated', handleAdminPermissionUpdate);
 
     try {
-      const currentUserId = Cookies.get('user_id');
+      const currentUserId = Cookies.get('userId');
       if (currentUserId) {
         const lastUpdateTime = localStorage.getItem(`admin_permissions_updated_${currentUserId}`);
         if (lastUpdateTime) {
@@ -62,7 +87,7 @@ export default function PermissionDisplay() {
     };
   }, [refreshPermissions]);
 
-  if (loading) {
+  if (permissionsLoading) {
     return (
       <div className="bg-white shadow rounded-lg p-4">
         <h2 className="text-lg font-semibold mb-3">Your Permissions</h2>

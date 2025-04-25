@@ -59,11 +59,22 @@ export default function AddStudentModal({ onClose }) {
   const confirmRegistration = async () => {
     try {
       const token = Cookies.get("token");
-      const superAdminId = Cookies.get("user_id") || localStorage.getItem("user_id"); 
+      const superAdminId = Cookies.get("userId") || localStorage.getItem("userId");
 
       if (!superAdminId) {
-        alert("Authentication error: Super Admin ID missing.");
-        return;
+        try {
+          if (token) {
+            const tokenData = JSON.parse(atob(token.split('.')[1]));
+            if (tokenData && tokenData.id) {
+              console.log("Using user ID from token:", tokenData.id);
+              Cookies.set("userId", tokenData.id, { path: "/", secure: false, sameSite: "strict" });
+              
+              return tokenData.id;
+            }
+          }
+        } catch (tokenError) {
+          console.error("Error extracting user ID from token:", tokenError);
+        }
       }
 
       const studentData = { ...formData, password: generatedPassword, createdBy: superAdminId };

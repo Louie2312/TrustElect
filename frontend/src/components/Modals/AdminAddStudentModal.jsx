@@ -65,13 +65,25 @@ export default function AdminAddStudentModal({ onClose, onSuccess, departmentCou
   const confirmRegistration = async () => {
     try {
       setIsSubmitting(true);
-      const token = Cookies.get("token");
-      const adminId = Cookies.get("user_id");
+      const adminId = Cookies.get("userId");
 
       if (!adminId) {
-        toast.error("Authentication error: Admin ID missing.");
-        setIsSubmitting(false);
-        return;
+        try {
+          const token = Cookies.get("token");
+          if (token) {
+            const tokenData = JSON.parse(atob(token.split('.')[1]));
+            if (tokenData && tokenData.id) {
+              console.log("Using user ID from token:", tokenData.id);
+              // Set the cookie for future use
+              Cookies.set("userId", tokenData.id, { path: "/", secure: false, sameSite: "strict" });
+              
+              // Use this ID
+              return tokenData.id;
+            }
+          }
+        } catch (tokenError) {
+          console.error("Error extracting user ID from token:", tokenError);
+        }
       }
 
       const studentData = { ...formData, password: generatedPassword, createdBy: adminId };

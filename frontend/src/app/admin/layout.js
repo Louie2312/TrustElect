@@ -14,19 +14,35 @@ export default function AdminLayout({children}){
   useEffect(() => {
     const token = Cookies.get("token");
     const role = Cookies.get("role");
+    const userId = Cookies.get("userId");
+
+    console.log("Admin Layout - Authorization check:", { token: !!token, role, userId });
 
     if (!token || role !== "Admin"){
       console.warn("Unauthorized access detected. Redirecting to login...");
       router.push("/");
-    } else{
-      setIsAuthorized(true);
+      return;
     }
 
+    if (!userId && token) {
+      try {
+        // Try to extract user ID from token
+        const tokenData = JSON.parse(atob(token.split('.')[1]));
+        if (tokenData && tokenData.id) {
+          console.log("Setting missing userId from token:", tokenData.id);
+          Cookies.set("userId", tokenData.id, { path: "/", secure: false, sameSite: "strict" });
+        }
+      } catch (error) {
+        console.error("Error extracting user ID from token:", error);
+      }
+    }
+    
+    setIsAuthorized(true);
     setIsLoading(false);
   }, [router]);
 
   if(isLoading){
-    return <div className="h-screen flex items-center justify-center text-xl"></div>;
+    return <div className="h-screen flex items-center justify-center text-xl">Loading...</div>;
   }
 
   if (!isAuthorized) {

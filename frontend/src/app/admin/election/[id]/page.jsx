@@ -88,11 +88,10 @@ export default function ElectionDetailsPage() {
         
         let electionData = data.election;
        
-        // Improved ballot data handling logic
         if (electionData) {
-          // Try to detect ballot in different possible formats from API
+
           if (electionData.ballot?.positions) {
-            // Ballot directly in election object with positions
+
             electionData.positions = electionData.ballot.positions.map(pos => ({
               id: pos.position_id || pos.id,
               name: pos.position_name || pos.name,
@@ -100,7 +99,7 @@ export default function ElectionDetailsPage() {
               candidates: pos.candidates || []
             }));
           } else if (!electionData.positions && electionData.ballot?.id) {
-            // Ballot exists but positions might be empty
+
             try {
               // Make an additional request to get the complete ballot with positions
               const ballotResponse = await fetchWithAuth(`/elections/${params.id}/ballot`);

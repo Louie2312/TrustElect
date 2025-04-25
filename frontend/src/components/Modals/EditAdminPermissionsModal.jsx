@@ -189,7 +189,7 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
         const updateTimestamp = Date.now().toString();
         localStorage.setItem(`admin_permissions_updated_${admin.id}`, updateTimestamp);
 
-        const currentUserId = Cookies.get('user_id');
+        const currentUserId = Cookies.get('userId');
         if (currentUserId === admin.id.toString()) {
           console.log('Updated own permissions, forcing immediate refresh');
         }

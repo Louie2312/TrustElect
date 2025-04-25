@@ -144,17 +144,45 @@ export default function AddAdminModal({ onClose }) {
   const confirmRegistration = async () => {
     try {
       const token = Cookies.get("token");
-      const superAdminId = Cookies.get("user_id") || localStorage.getItem("user_id");
+      const superAdminId = Cookies.get("userId") || localStorage.getItem("userId");
 
       if (!superAdminId) {
+        // Try to extract ID from token as a last resort
+        try {
+          const token = Cookies.get("token");
+          if (token) {
+            const tokenData = JSON.parse(atob(token.split('.')[1]));
+            if (tokenData && tokenData.id) {
+              console.log("Using user ID from token:", tokenData.id);
+              const id = tokenData.id;
+              // Save it for future use
+              Cookies.set("userId", id, { path: "/", secure: false, sameSite: "strict" });
+              
+              // Continue with the registration using this ID
+              submitRegistration(id, token);
+              return;
+            }
+          }
+        } catch (tokenError) {
+          console.error("Error extracting user ID from token:", tokenError);
+        }
+
         alert("Authentication error: Super Admin ID missing.");
         return;
       }
 
+      submitRegistration(superAdminId, token);
+    } catch (error) {
+      alert(error.response?.data?.message || "Failed to add admin.");
+    }
+  };
+
+  const submitRegistration = async (adminId, token) => {
+    try {
       const adminData = { 
         ...formData, 
         password: generatedPassword, 
-        createdBy: superAdminId,
+        createdBy: adminId,
         permissions: permissions
       };
 

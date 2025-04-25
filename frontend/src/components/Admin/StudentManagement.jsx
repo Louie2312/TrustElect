@@ -10,10 +10,9 @@ export default function StudentManagement() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   
-  // Use the permissions hook
   const { hasPermission, loading: permissionsLoading } = usePermissions();
 
-  // Fetch students when component mounts
+ 
   useEffect(() => {
     if (!permissionsLoading) {
       fetchStudents();
@@ -95,7 +94,6 @@ export default function StudentManagement() {
     );
   }
 
-  // If we don't have view permission, show a message
   if (!hasPermission('users', 'view')) {
     return (
       <div className="p-4">

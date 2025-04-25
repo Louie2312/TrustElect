@@ -16,6 +16,28 @@ export const updateGlobalPermissionsTimestamp = () => {
   }
 };
 
+// Utility function to extract user ID from token if needed
+export const ensureUserIdFromToken = () => {
+  try {
+    const userId = Cookies.get('userId');
+    if (!userId) {
+      const token = Cookies.get('token');
+      if (token) {
+        const tokenData = JSON.parse(atob(token.split('.')[1]));
+        if (tokenData && tokenData.id) {
+          console.log('Setting userId cookie from token:', tokenData.id);
+          Cookies.set('userId', tokenData.id, { path: '/', secure: false, sameSite: 'strict' });
+          return tokenData.id;
+        }
+      }
+    }
+    return userId;
+  } catch (error) {
+    console.error('Error extracting user ID from token:', error);
+    return null;
+  }
+};
+
 /**
  * Custom hook to fetch and check admin permissions
  * @returns {Object} Permission check functions and loading state
@@ -28,7 +50,7 @@ const usePermissions = () => {
 
   // Initialize user data from cookies on first load
   useEffect(() => {
-    const userId = Cookies.get('user_id');
+    const userId = Cookies.get('userId');
     const userRole = Cookies.get('role');
     
     if (userId) {
@@ -141,20 +163,24 @@ const usePermissions = () => {
   }, []);
 
   const refreshPermissions = useCallback(() => {
-    console.log('Refreshing permissions for user:', userData?.id);
-    if (userData?.id) {
-      return fetchPermissions(userData.id);
+    const userId = userData?.id || Cookies.get('userId');
+    console.log('Refreshing permissions for user:', userId);
+
+    if (userId) {
+      return fetchPermissions(userId);
     }
+    
     return Promise.resolve(false);
   }, [userData, fetchPermissions]);
 
   const hasPermission = useCallback((module, action) => {
     // Super Admin always has all permissions
+
     const userRole = Cookies.get('role');
     if (userRole === 'Super Admin') {
       return true;
     }
-
+  
     // Check if module and action exist in permissions
     if (permissions && permissions[module]) {
       // Map from action to permission key format
@@ -165,10 +191,11 @@ const usePermissions = () => {
     return false;
   }, [permissions]);
 
-  // Load permissions when userData is available
+  // Load permissions when userData is available or when cookies change
   useEffect(() => {
-    if (userData?.id) {
-      fetchPermissions(userData.id);
+    const userId = userData?.id || Cookies.get('userId');
+    if (userId) {
+      fetchPermissions(userId);
     }
   }, [userData, fetchPermissions]);
 
