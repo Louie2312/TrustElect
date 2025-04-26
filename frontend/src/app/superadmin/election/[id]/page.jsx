@@ -24,11 +24,31 @@ async function fetchWithAuth(url) {
       'Authorization': `Bearer ${token}`
     }
   });
+  
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Request failed');
+    // Check if the response is JSON before trying to parse it
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      const error = await response.json();
+      throw new Error(error.message || 'Request failed');
+    } else {
+      // If not JSON, throw error with status
+      throw new Error(`Request failed with status ${response.status}`);
+    }
   }
-  return response.json();
+  
+  // Check for empty response
+  const text = await response.text();
+  if (!text) {
+    return {}; // Return empty object if no response body
+  }
+  
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    console.error("Error parsing JSON response:", e);
+    throw new Error("Invalid JSON response from server");
+  }
 }
 
 
@@ -62,6 +82,7 @@ export default function ElectionDetailsPage() {
   const [imageErrors, setImageErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('details');
+  const [isSystemAdminCreator, setIsSystemAdminCreator] = useState(false);
 
   const handleImageError = (candidateId) => {
     if (!imageErrors[candidateId]) {
@@ -82,6 +103,94 @@ export default function ElectionDetailsPage() {
         
         let electionData = data.election;
        
+        // Check if this election was created by a system admin
+        if (electionData && electionData.created_by) {
+          try {
+            console.log('Creator data:', JSON.stringify(electionData.created_by));
+            
+            // Default to NOT being able to edit - more secure this way
+            let isSysAdmin = false;
+            
+            // Special handling for ID 1 which is typically the system admin
+            if (typeof electionData.created_by === 'object') {
+              const creatorId = electionData.created_by.id || '';
+              if (creatorId === 1 || creatorId === '1') {
+                console.log('Creator has ID 1, treating as system admin');
+                isSysAdmin = true;
+              }
+            } else if (electionData.created_by === 1 || electionData.created_by === '1') {
+              console.log('Creator has ID 1, treating as system admin');
+              isSysAdmin = true;
+              
+              // If we only have the ID but not the creator details, try to fetch them
+              try {
+                console.log('Attempting to fetch creator details for ID:', electionData.created_by);
+                
+                // Instead of attempting to fetch user details which may not exist,
+                // set a default system admin name
+                electionData.created_by_name = "System Administrator";
+                electionData.created_by_role = "SuperAdmin";
+              } catch (creatorFetchError) {
+                console.error('Error setting creator details:', creatorFetchError);
+                electionData.created_by_name = "System Administrator";
+              }
+            } else if (typeof electionData.created_by === 'number' || typeof electionData.created_by === 'string') {
+              // For any other numeric or string ID
+              console.log('Creator has ID (not 1):', electionData.created_by);
+              
+              // Set a generic name based on the role instead of trying to fetch
+              electionData.created_by_name = "Administrator";
+              electionData.created_by_role = "Admin";
+            }
+            
+            // Check creator role if available
+            if (typeof electionData.created_by === 'object' && electionData.created_by.role) {
+              const creatorRole = electionData.created_by.role.toLowerCase();
+              console.log('Creator role from object:', creatorRole);
+              
+              // Check if creator is a system admin based on role
+              const isSysAdminByRole = 
+                creatorRole.includes('superadmin') || 
+                creatorRole.includes('system_admin') || 
+                creatorRole.includes('systemadmin') ||
+                creatorRole.includes('super');
+              
+              if (isSysAdminByRole) {
+                isSysAdmin = true;
+              }
+              
+              console.log('Creator role:', creatorRole, 'Is System Admin by role:', isSysAdminByRole);
+            } else if (electionData.created_by_role) {
+              // Check if there's a separate created_by_role field
+              const creatorRole = electionData.created_by_role.toLowerCase();
+              console.log('Creator role from separate field:', creatorRole);
+              
+              const isSysAdminByRole = 
+                creatorRole.includes('superadmin') || 
+                creatorRole.includes('system_admin') || 
+                creatorRole.includes('systemadmin') ||
+                creatorRole.includes('super');
+                
+              if (isSysAdminByRole) {
+                isSysAdmin = true;
+              }
+              
+              console.log('Creator role from field:', creatorRole, 'Is System Admin by role:', isSysAdminByRole);
+            }
+            
+            // Set the final determination
+            setIsSystemAdminCreator(isSysAdmin);
+            console.log('Final determination - Can edit (is system admin created):', isSysAdmin);
+          } catch (error) {
+            console.error('Error checking creator:', error);
+            // Default to false for safety
+            setIsSystemAdminCreator(false);
+          }
+        } else {
+          // Default to false if no creator info
+          setIsSystemAdminCreator(false);
+        }
+
         if (electionData?.ballot?.positions && !electionData.positions) {
           electionData.positions = electionData.ballot.positions.map(pos => ({
             id: pos.position_id || pos.id,
@@ -171,9 +280,34 @@ export default function ElectionDetailsPage() {
   const getEligibilityCriteria = () => {
     const criteria = election.eligibility_criteria || {};
     
+    // Helper function to remove duplicates and normalize case for year levels
+    const getUniqueYearLevels = () => {
+      // Get year levels from both possible property names
+      const yearLevelsArray = [...(criteria.year_levels || []), ...(criteria.yearLevels || [])];
+      
+      // Create a Set to store normalized values
+      const uniqueYearLevels = new Set();
+      const result = [];
+      
+      // Normalize and add to result if not already added
+      yearLevelsArray.forEach(year => {
+        if (!year) return; // Skip empty values
+        
+        // Normalize to lowercase for comparison
+        const normalizedYear = year.toString().toLowerCase();
+        
+        if (!uniqueYearLevels.has(normalizedYear)) {
+          uniqueYearLevels.add(normalizedYear);
+          result.push(year); // Add the original value to result
+        }
+      });
+      
+      return result;
+    };
+    
     return {
       courses: criteria.courses || criteria.programs || [],
-      year_levels: criteria.year_levels || criteria.yearLevels || [],
+      year_levels: getUniqueYearLevels(),
       genders: criteria.genders || criteria.gender || [],
       semesters: criteria.semesters || criteria.semester || [],
       precincts: criteria.precincts || criteria.precinct || []
@@ -257,34 +391,42 @@ export default function ElectionDetailsPage() {
             {election.needs_approval ? 'NEEDS APPROVAL' : election.status.toUpperCase()}
           </span>
           
+          {/* Only show edit buttons if system admin created the election */}
           {(election.needs_approval || election.status === 'upcoming') ? (
-            <>
-              <Link
-                href={`/superadmin/election/${election.id}/edit`}
-                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
-                <Edit className="w-4 h-4 mr-2" />
-                Edit Election
-              </Link>
-              
-              {election.positions && election.positions.length > 0 ? (
+            isSystemAdminCreator ? (
+              <>
                 <Link
-                  href={`/superadmin/election/${election.id}/ballot`}
-                  className="flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                  href={`/superadmin/election/${election.id}/edit`}
+                  className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                 >
                   <Edit className="w-4 h-4 mr-2" />
-                  Edit Ballot
+                  Edit Election
                 </Link>
-              ) : (
-                <Link
-                  href={`/superadmin/election/${election.id}/ballot/create`}
-                  className="flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Ballot
-                </Link>
-              )}
-            </>
+                
+                {election.positions && election.positions.length > 0 ? (
+                  <Link
+                    href={`/superadmin/election/${election.id}/ballot`}
+                    className="flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                  >
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit Ballot
+                  </Link>
+                ) : (
+                  <Link
+                    href={`/superadmin/election/${election.id}/ballot/create`}
+                    className="flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Ballot
+                  </Link>
+                )}
+              </>
+            ) : (
+              <div className="flex items-center px-4 py-2 bg-gray-200 text-gray-600 rounded cursor-not-allowed">
+                <Lock className="w-4 h-4 mr-2" />
+                {election.needs_approval ? 'Need Approval - Admin Created' : 'Admin Created (View Only)'}
+              </div>
+            )
           ) : (
             <div className="flex items-center px-4 py-2 bg-gray-200 text-gray-600 rounded cursor-not-allowed">
               <Lock className="w-4 h-4 mr-2" />
@@ -297,6 +439,47 @@ export default function ElectionDetailsPage() {
       <h1 className="text-2xl font-bold mb-2 text-black">Title: {election.title}</h1>
       <p className="text-gray-600 mb-6 text-black">Description: {election.description}</p>
 
+      {/* Created By Information */}
+      <div className="mb-4 bg-gray-50 rounded-lg p-3 border border-gray-200">
+        <p className="text-sm text-gray-600">
+          <span className="font-medium">Created by: </span>
+          {election.created_by ? (
+            typeof election.created_by === 'object' ? 
+              <span className="text-black">
+                {election.created_by.first_name && election.created_by.last_name ? 
+                  `${election.created_by.first_name} ${election.created_by.last_name}` : 
+                  election.created_by.name || election.created_by.username || 
+                  election.created_by.email || ''}
+                <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
+                  isSystemAdminCreator 
+                    ? 'bg-purple-100 text-purple-800' 
+                    : 'bg-blue-100 text-blue-800'
+                }`}>
+                  {isSystemAdminCreator ? 'System Admin' : 'Admin'}
+                </span>
+              </span> :
+              <span className="text-black">
+                {election.created_by_name ? election.created_by_name : ''}
+                <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
+                  isSystemAdminCreator || election.created_by === 1 || election.created_by === '1'
+                    ? 'bg-purple-100 text-purple-800' 
+                    : 'bg-blue-100 text-blue-800'
+                }`}>
+                  {isSystemAdminCreator || election.created_by === 1 || election.created_by === '1' 
+                    ? 'System Admin' 
+                    : 'Admin'}
+                </span>
+              </span>
+          ) : 'Unknown'}
+          
+          {election.created_at && (
+            <span className="ml-2">
+              on {new Date(election.created_at).toLocaleDateString()} at {new Date(election.created_at).toLocaleTimeString()}
+            </span>
+          )}
+        </p>
+      </div>
+
       {/* Approval Section */}
       {election.needs_approval && (
         <div className="mb-6 p-4 rounded-lg border-2 border-yellow-400 bg-yellow-50">
@@ -304,8 +487,17 @@ export default function ElectionDetailsPage() {
             <ExclamationTriangle size={20} />
             <h3 className="font-bold text-black">This election requires your approval</h3>
           </div>
-          <p className="mb-3 text-black">Please review the election details and ballot before approving.</p>
+          <p className="mb-3 text-black">
+            Please review the election details and ballot before approving.
+            {!isSystemAdminCreator && (
+              <span className="block mt-1 text-sm font-medium text-yellow-800">
+                Created by an Admin user - this election cannot be edited, only approved or rejected.
+              </span>
+            )}
+          </p>
           <div className="flex gap-3">
+            {/* Remove edit button in approval section */}
+            
             <button
               onClick={async () => {
                 setLoading(true);
@@ -530,7 +722,7 @@ export default function ElectionDetailsPage() {
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold text-black">Ballot Details</h2>
                 
-                {(election.needs_approval || election.status === 'upcoming') && (
+                {(election.needs_approval || election.status === 'upcoming') && isSystemAdminCreator && (
                   <Link
                     href={`/superadmin/election/${election.id}/ballot`}
                     className="flex items-center px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
@@ -616,7 +808,7 @@ export default function ElectionDetailsPage() {
                 <div className="ml-3 flex-1">
                   <p className="text-sm text-yellow-700">
                     This election doesn't have a ballot yet.
-                    {(election.needs_approval || election.status === 'upcoming') && (
+                    {(election.needs_approval || election.status === 'upcoming') && isSystemAdminCreator && (
                       <>
                         <span className="font-medium"> A ballot is required before {election.needs_approval ? 'approval' : 'the election can start'}.</span>
                         <Link

@@ -24,6 +24,7 @@ export default function AdminsPage() {
   const [searchQuery, setSearchQuery] = useState(""); 
   const [departmentFilter, setDepartmentFilter] = useState(""); 
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const fetchAdmins = async () => {
     try {
@@ -47,6 +48,25 @@ export default function AdminsPage() {
       setLoading(false);
     }
   };
+
+  // Listen for admin updates
+  useEffect(() => {
+    const handleAdminUpdated = () => {
+      console.log("Admin updated event detected, refreshing admin data");
+      fetchAdmins();
+    };
+
+    window.addEventListener('admin-updated', handleAdminUpdated);
+    
+    return () => {
+      window.removeEventListener('admin-updated', handleAdminUpdated);
+    };
+  }, []);
+
+  // Effect for initial data loading and refreshing when triggered
+  useEffect(() => {
+    fetchAdmins();
+  }, [refreshTrigger]);
 
   const handleSearch = (e) => {
     const query = e.target.value.toLowerCase();
@@ -190,7 +210,7 @@ export default function AdminsPage() {
                 <span className={`px-2 py-1 rounded-full text-xs ${
                   isSuperAdmin(admin) ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
                 }`}>
-                  {isSuperAdmin(admin) ? 'Super Admin' : 'Admin'}
+                  {isSuperAdmin(admin) ? 'System Admin' : 'Admin'}
                 </span>
               </td>
               <td className="p-3">

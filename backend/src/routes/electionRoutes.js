@@ -52,7 +52,7 @@ router.put('/:id/criteria', verifyToken, updateElectionCriteria);
 router.get("/:id/ballot", verifyToken, getBallotByElection);
 router.get("/:id", verifyToken, getElectionById);
 router.put("/:id", verifyToken, updateElection);
-router.delete("/:id", verifyToken, isSuperAdmin, deleteElection);
+router.delete("/:id", verifyToken, deleteElection);
 
 router.post("/:id/approve", verifyToken, isSuperAdmin, approveElection);
 router.post("/:id/reject", verifyToken, isSuperAdmin, rejectElection);

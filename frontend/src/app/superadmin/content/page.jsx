@@ -427,12 +427,10 @@ export default function ContentManagement() {
           formData.append('heroVideo', videoInput.files[0]);
         }
         
-        // Add removal flag if video was removed
         if (landingContent.hero.videoUrl === null) {
           formData.append('removeHeroVideo', 'true');
         }
 
-        // Add poster image if selected - use more specific selector to avoid picking feature image inputs
         const imageInput = document.querySelector('#hero-poster-input');
         console.log('Hero image input found:', imageInput ? 'Yes' : 'No');
         
@@ -553,7 +551,6 @@ export default function ContentManagement() {
         // For each candidate with a photo
         if (landingContent.candidates.items && landingContent.candidates.items.length > 0) {
           landingContent.candidates.items.forEach((candidate, index) => {
-            // Handle candidate photos (future implementation for actual uploads)
             if (candidate.photoUrl && candidate.photoUrl.startsWith('blob:')) {
               // This would be where we'd grab files from a file input
               const candidatePhotoInput = document.querySelector(`#candidate-photo-${index}`);
@@ -565,10 +562,8 @@ export default function ContentManagement() {
         }
       }
 
-      // Add content JSON to formData
       formData.append('content', JSON.stringify(contentData));
 
-      // Add cache-busting timestamp
       const timestamp = new Date().getTime();
       
       const config = {
@@ -867,18 +862,21 @@ export default function ContentManagement() {
             >
               Feature Cards
             </button>
+
             <button 
               className={`px-3 py-2 text-sm ${activeTab === 'cta' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-black'}`}
               onClick={() => setActiveTab('cta')}
             >
               Engagement
             </button>
+            {/* 
             <button 
               className={`px-3 py-2 text-sm ${activeTab === 'candidates' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-black'}`}
               onClick={() => setActiveTab('candidates')}
             >
               Candidates
             </button>
+            */}
             <button 
               className={`px-3 py-2 text-sm ${activeTab === 'themes' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-black'}`}
               onClick={() => setActiveTab('themes')}

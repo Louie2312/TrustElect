@@ -392,7 +392,6 @@ export default function CreateElectionPage() {
       router.push(`/admin/election/create/${electionId}/ballot`);
       
     } catch (error) {
-      console.error("Election creation failed:", error);
       const errorMessage = error.response?.data?.message || error.message;
       setApiError(errorMessage);
       toast.error(`Election creation failed: ${errorMessage}`);

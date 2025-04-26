@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import Cookies from "js-cookie";
+import { toast } from "react-hot-toast";
 
 export default function EditAdminModal({ admin, onClose }) {
   const [formData, setFormData] = useState({
@@ -17,6 +18,8 @@ export default function EditAdminModal({ admin, onClose }) {
   const [errors, setErrors] = useState({});
   const [loadingDepartments, setLoadingDepartments] = useState(true);
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [departmentsWithAdmins, setDepartmentsWithAdmins] = useState([]);
 
   // Fetch departments when component mounts
   useEffect(() => {
@@ -48,8 +51,30 @@ export default function EditAdminModal({ admin, onClose }) {
       }
     };
 
+    // Fetch list of departments with assigned admins
+    const fetchDepartmentsWithAdmins = async () => {
+      try {
+        const token = Cookies.get("token");
+        const res = await axios.get("http://localhost:5000/api/superadmin/admins", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        
+        if (res.data && res.data.admins) {
+          // Create a map of department names to admin IDs (excluding the current admin)
+          const departmentMap = res.data.admins
+            .filter(a => a.id !== admin.id && a.department)
+            .map(a => a.department);
+          
+          setDepartmentsWithAdmins(departmentMap);
+        }
+      } catch (error) {
+        console.error("Error fetching departments with admins:", error);
+      }
+    };
+
     fetchDepartments();
-  }, []);
+    fetchDepartmentsWithAdmins();
+  }, [admin.id]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -80,6 +105,11 @@ export default function EditAdminModal({ admin, onClose }) {
     
     if (!formData.department) {
       newErrors.department = "Select a department.";
+    } else if (
+      formData.department !== admin.department && 
+      departmentsWithAdmins.includes(formData.department)
+    ) {
+      newErrors.department = "This department already has an assigned admin.";
     }
     
     setErrors(newErrors);
@@ -88,19 +118,45 @@ export default function EditAdminModal({ admin, onClose }) {
 
   const handleSubmit = async () => {
     if (!validateInputs()) return;
+    
+    setIsSubmitting(true);
 
     try {
       const token = Cookies.get("token");
-      await axios.put(`http://localhost:5000/api/superadmin/admins/${admin.id}`, formData, {
+      
+      // Prepare data in the format expected by the API
+      const updateData = {
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        email: formData.email,
+        employee_number: formData.employeeNumber,
+        department: formData.department
+      };
+      
+      console.log("Sending update for admin ID:", admin.id, updateData);
+      
+      await axios.put(`http://localhost:5000/api/superadmin/admins/${admin.id}`, updateData, {
         headers: { Authorization: `Bearer ${token}` },
       });
       
-      alert("Admin updated successfully!");
+      toast.success(`${updateData.first_name} ${updateData.last_name} updated successfully!`);
       onClose();
-      window.location.reload();
+      // Trigger a callback function instead of reloading the page
+      if (typeof window !== 'undefined') {
+        // Create an event to notify that an admin was updated
+        const event = new CustomEvent('admin-updated', { 
+          detail: { 
+            adminId: admin.id,
+            updatedData: updateData
+          } 
+        });
+        window.dispatchEvent(event);
+      }
     } catch (error) {
       console.error("Error updating admin:", error);
-      alert(error.response?.data?.message || "Failed to update admin.");
+      toast.error(error.response?.data?.message || "Failed to update admin");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -173,13 +229,22 @@ export default function EditAdminModal({ admin, onClose }) {
         </form>
 
         <div className="mt-6 flex justify-between">
-          <button onClick={onClose} className="text-red-500">Cancel</button>
+          <button onClick={onClose} className="text-red-500" disabled={isSubmitting}>Cancel</button>
           <div className="space-x-2">
             <button 
               onClick={handleSubmit} 
-              className="bg-blue-600 text-white px-4 py-2 rounded"
+              className={`${isSubmitting ? 'bg-blue-400' : 'bg-blue-600'} text-white px-4 py-2 rounded flex items-center`}
+              disabled={isSubmitting}
             >
-              Save Changes
+              {isSubmitting ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Saving...
+                </>
+              ) : 'Save Changes'}
             </button>
           </div>
         </div>

@@ -20,13 +20,13 @@ export default function AddAdminModal({ onClose }) {
   });
 
   const [departments, setDepartments] = useState([]);
+  const [departmentsWithAdmins, setDepartmentsWithAdmins] = useState([]);
   const [loadingDepartments, setLoadingDepartments] = useState(true);
   const [generatedPassword, setGeneratedPassword] = useState("");
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [errors, setErrors] = useState({});
   const [currentStep, setCurrentStep] = useState(1);
 
-  // Fetch departments when component mounts
   useEffect(() => {
     const fetchDepartments = async () => {
       try {
@@ -62,7 +62,30 @@ export default function AddAdminModal({ onClose }) {
       }
     };
 
+    // Fetch departments that already have admins
+    const fetchDepartmentsWithAdmins = async () => {
+      try {
+        const token = Cookies.get("token");
+        const res = await axios.get("http://localhost:5000/api/superadmin/admins", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        
+        if (res.data && res.data.admins) {
+          // Extract departments that already have admins
+          const departmentMap = res.data.admins
+            .filter(admin => admin.department && admin.is_active)
+            .map(admin => admin.department);
+          
+          console.log("Departments with admins:", departmentMap);
+          setDepartmentsWithAdmins(departmentMap);
+        }
+      } catch (error) {
+        console.error("Error fetching departments with admins:", error);
+      }
+    };
+
     fetchDepartments();
+    fetchDepartmentsWithAdmins();
   }, []);
 
   const handleChange = (e) => {
@@ -82,14 +105,34 @@ export default function AddAdminModal({ onClose }) {
     if (!formData.email.trim() || !formData.email.endsWith("@novaliches.sti.edu.ph")) newErrors.email = "Invalid STI email.";
     if (!formData.employeeNumber.match(/^\d{4,}$/)) newErrors.employeeNumber = "Employee Number must be at least 4 digits.";
     if (!formData.department) newErrors.department = "Select a department.";
+    
+    // Check if department already has an admin
+    if (formData.department && departmentsWithAdmins.includes(formData.department)) {
+      newErrors.department = "This department already has an assigned admin.";
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const generatePassword = (lastName, employeeNumber) => {
-    const lastThreeDigits = employeeNumber.slice(-3);
-    return `${lastName}${lastThreeDigits}!`;
+    // Ensure we get the last 3 digits, even if the employee number is less than 3 digits
+    const lastThreeDigits = employeeNumber.slice(-3).padStart(3, '0');
+    
+    // Clean up lastName - remove any non-alphanumeric characters
+    let cleanLastName = lastName.replace(/[^a-zA-Z0-9]/g, '');
+    
+    // If cleaning resulted in empty string, use a safe default
+    if (!cleanLastName) {
+      cleanLastName = "Admin";
+    }
+    
+    // Ensure first letter is capitalized, preserve rest of case
+    const formattedLastName = cleanLastName.charAt(0).toUpperCase() + cleanLastName.slice(1);
+    
+    // !! IMPORTANT: The backend is using a RANDOM special character from "!@#$%^&*"
+    // We'll use "!" for frontend display, but we need to warn the user about this
+    return `${formattedLastName}${lastThreeDigits}!`;
   };
 
   const handlePermissionChange = (module, action) => {
@@ -136,8 +179,15 @@ export default function AddAdminModal({ onClose }) {
   };
 
   const handleRegister = () => {
+    // Ensure valid data before generating password
+    if (!validateInputs()) return;
+    
+    // Always generate fresh password when registration is confirmed
+    // We're logging the unmodified lastName and the final password for debugging
+    console.log(`Original lastName: ${formData.lastName}`);
     const autoPassword = generatePassword(formData.lastName, formData.employeeNumber);
     setGeneratedPassword(autoPassword);
+    console.log("Generated password:", autoPassword); // For debugging
     setShowPasswordModal(true);
   };
 
@@ -147,7 +197,6 @@ export default function AddAdminModal({ onClose }) {
       const superAdminId = Cookies.get("userId") || localStorage.getItem("userId");
 
       if (!superAdminId) {
-        // Try to extract ID from token as a last resort
         try {
           const token = Cookies.get("token");
           if (token) {
@@ -158,7 +207,6 @@ export default function AddAdminModal({ onClose }) {
               // Save it for future use
               Cookies.set("userId", id, { path: "/", secure: false, sameSite: "strict" });
               
-              // Continue with the registration using this ID
               submitRegistration(id, token);
               return;
             }
@@ -178,10 +226,26 @@ export default function AddAdminModal({ onClose }) {
   };
 
   const submitRegistration = async (adminId, token) => {
+    // Validate again before final submission
+    if (!validateInputs()) {
+      setShowPasswordModal(false);
+      return;
+    }
+    
     try {
+      // Ensure password is correctly generated with the most up-to-date form data
+      // Keep the original lastName casing exactly as entered
+      const finalPassword = generatePassword(formData.lastName, formData.employeeNumber);
+      console.log("Final password for submission:", finalPassword);
+      
+      // Display warning if the lastName has uppercase letters
+      if (/[A-Z]/.test(formData.lastName)) {
+        console.warn("⚠️ WARNING: lastName contains uppercase letters which will be preserved in the password");
+      }
+      
       const adminData = { 
         ...formData, 
-        password: generatedPassword, 
+        password: finalPassword, // Use the latest generated password
         createdBy: adminId,
         permissions: permissions
       };
@@ -232,6 +296,7 @@ export default function AddAdminModal({ onClose }) {
                   onChange={handleChange} 
                   className="border w-full p-2 rounded text-black"
                   disabled={loadingDepartments}
+                  value={formData.department}
                 >
                   {loadingDepartments ? (
                     <option value="">Loading departments...</option>
@@ -239,7 +304,13 @@ export default function AddAdminModal({ onClose }) {
                     <>
                       <option value=""></option>
                       {departments.map((dept) => (
-                        <option key={dept} value={dept}>{dept}</option>
+                        <option 
+                          key={dept} 
+                          value={dept}
+                          disabled={departmentsWithAdmins.includes(dept)}
+                        >
+                          {dept} {departmentsWithAdmins.includes(dept) ? "(Has Admin)" : ""}
+                        </option>
                       ))}
                     </>
                   )}
@@ -472,12 +543,13 @@ export default function AddAdminModal({ onClose }) {
       </div>
 
       {showPasswordModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+        <div className="fixed inset-0 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg w-96">
             <h2 className="text-xl font-bold text-center mb-4 text-black">Generated Password</h2>
-            <p className="text-center text-lg font-semibold text-gray-700">{generatedPassword}</p>
-            <p className="text-sm text-gray-500 text-center mt-2">Make sure to save this password for the admin.</p>
-
+            <div className="border-2 border-blue-200 bg-blue-50 p-3 mb-4 rounded">
+              <p className="text-center text-lg font-semibold text-gray-700 font-mono">{generatedPassword}</p>
+            </div>
+           
             <div className="flex justify-center gap-4 mt-4">
               <button onClick={confirmRegistration} className="bg-green-600 text-white px-4 py-2 rounded">Confirm & Register</button>
               <button onClick={() => setShowPasswordModal(false)} className="bg-gray-500 text-white px-4 py-2 rounded">Cancel</button>

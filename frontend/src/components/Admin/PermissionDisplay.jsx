@@ -133,7 +133,7 @@ export default function PermissionDisplay() {
     return (
       <div className="bg-white shadow rounded-lg p-4">
         <h2 className="text-lg font-semibold mb-3 text-black">Your Permissions</h2>
-        <p className="text-black">No specific permissions set. Please contact a Super Admin if you need access to certain features.</p>
+        <p className="text-black">No specific permissions set. Please contact a System Admin if you need access to certain features.</p>
       </div>
     );
   }

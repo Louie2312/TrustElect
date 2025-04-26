@@ -2,21 +2,16 @@ import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import Cookies from 'js-cookie';
 
-// Create a global timestamp for permission updates that all instances can access
 let GLOBAL_PERMISSIONS_TIMESTAMP = Date.now();
 
-// Function to update the global timestamp - can be called from anywhere
 export const updateGlobalPermissionsTimestamp = () => {
   GLOBAL_PERMISSIONS_TIMESTAMP = Date.now();
-  console.log('Global permissions timestamp updated:', GLOBAL_PERMISSIONS_TIMESTAMP);
   
-  // Dispatch an event to notify all components
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('global-permissions-update'));
   }
 };
 
-// Utility function to extract user ID from token if needed
 export const ensureUserIdFromToken = () => {
   try {
     const userId = Cookies.get('userId');
@@ -25,7 +20,6 @@ export const ensureUserIdFromToken = () => {
       if (token) {
         const tokenData = JSON.parse(atob(token.split('.')[1]));
         if (tokenData && tokenData.id) {
-          console.log('Setting userId cookie from token:', tokenData.id);
           Cookies.set('userId', tokenData.id, { path: '/', secure: false, sameSite: 'strict' });
           return tokenData.id;
         }
@@ -48,7 +42,6 @@ const usePermissions = () => {
   const [permissionsLastUpdated, setPermissionsLastUpdated] = useState(0);
   const [userData, setUserData] = useState(null);
 
-  // Initialize user data from cookies on first load
   useEffect(() => {
     const userId = Cookies.get('userId');
     const userRole = Cookies.get('role');
@@ -61,7 +54,6 @@ const usePermissions = () => {
     }
   }, []);
 
-  // Set up a global timestamp tracker if it doesn't exist
   if (typeof window !== 'undefined' && !window.GLOBAL_PERMISSIONS_TIMESTAMP) {
     window.GLOBAL_PERMISSIONS_TIMESTAMP = Date.now();
     console.log('Initialized global permissions timestamp');
@@ -78,13 +70,10 @@ const usePermissions = () => {
     console.log(`Fetching permissions for user ID: ${userId}`);
     
     try {
-      // Check user role first
       const userRole = Cookies.get('role');
       
-      // For Super Admins, we can skip the API call and just set full permissions
       if (userRole === 'Super Admin') {
         console.log('User is a Super Admin, granting all permissions without API call');
-        // Super admin has all permissions
         setPermissions({
           users: { canView: true, canCreate: true, canEdit: true, canDelete: true },
           elections: { canView: true, canCreate: true, canEdit: true, canDelete: true },
@@ -95,16 +84,11 @@ const usePermissions = () => {
         setPermissionsLoading(false);
         return true;
       }
-      
-      // For regular admins, fetch their permissions from the API
-      // Determine API URL with a fallback
+ 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      
-      // For regular admins, we need to call an endpoint that doesn't require Super Admin privileges
-      // Use /api/admin/permissions instead of /api/admin-permissions
+    
       const url = `${apiUrl}/api/admin/permissions`;
       
-      // Include cache-busting parameter
       const cacheParam = `_t=${Date.now()}`;
       const requestUrl = `${url}?${cacheParam}`;
       
@@ -135,11 +119,9 @@ const usePermissions = () => {
     } catch (error) {
       console.error('Error fetching permissions:', error);
       
-      // Check if user is a super admin
       const userRole = Cookies.get('role');
       if (userRole === 'Super Admin') {
         console.log('User is a Super Admin, granting all permissions by default');
-        // Super admin has all permissions
         setPermissions({
           users: { canView: true, canCreate: true, canEdit: true, canDelete: true },
           elections: { canView: true, canCreate: true, canEdit: true, canDelete: true },
@@ -147,7 +129,8 @@ const usePermissions = () => {
           admins: { canView: true, canCreate: true, canEdit: true, canDelete: true },
         });
       } else {
-        // Set default minimal permissions for non-super admins on error
+
+
         console.log('Setting default permissions due to fetch error');
         setPermissions({
           users: { canView: true, canCreate: false, canEdit: false, canDelete: false },
@@ -174,16 +157,13 @@ const usePermissions = () => {
   }, [userData, fetchPermissions]);
 
   const hasPermission = useCallback((module, action) => {
-    // Super Admin always has all permissions
 
     const userRole = Cookies.get('role');
     if (userRole === 'Super Admin') {
       return true;
     }
   
-    // Check if module and action exist in permissions
     if (permissions && permissions[module]) {
-      // Map from action to permission key format
       const permKey = action.startsWith('can') ? action : `can${action.charAt(0).toUpperCase() + action.slice(1)}`;
       return permissions[module][permKey] === true;
     }
@@ -191,7 +171,6 @@ const usePermissions = () => {
     return false;
   }, [permissions]);
 
-  // Load permissions when userData is available or when cookies change
   useEffect(() => {
     const userId = userData?.id || Cookies.get('userId');
     if (userId) {
@@ -199,9 +178,7 @@ const usePermissions = () => {
     }
   }, [userData, fetchPermissions]);
 
-  // Set up listeners for permission updates
   useEffect(() => {
-    // Function to handle the custom event
     const handlePermissionUpdate = (event) => {
       const { adminId, timestamp } = event.detail;
       console.log(`Permission update event received for admin: ${adminId}, timestamp: ${timestamp}`);
@@ -213,7 +190,6 @@ const usePermissions = () => {
       }
     };
 
-    // Global polling for permission updates
     const checkGlobalPermissionsUpdate = () => {
       if (typeof window !== 'undefined' && window.GLOBAL_PERMISSIONS_TIMESTAMP) {
         if (window.GLOBAL_PERMISSIONS_TIMESTAMP > permissionsLastUpdated) {
@@ -222,12 +198,9 @@ const usePermissions = () => {
         }
       }
     };
-
-    // Add event listener
     window.addEventListener('admin-permissions-updated', handlePermissionUpdate);
     
-    // Set up polling interval
-    const permissionCheckInterval = setInterval(checkGlobalPermissionsUpdate, 10000); // Check every 10 seconds
+    const permissionCheckInterval = setInterval(checkGlobalPermissionsUpdate, 10000); 
 
     // Clean up
     return () => {
@@ -236,7 +209,6 @@ const usePermissions = () => {
     };
   }, [userData, refreshPermissions, permissionsLastUpdated]);
 
-  // Expose a function to manually trigger permission refresh
   const triggerGlobalPermissionsRefresh = useCallback(() => {
     updateGlobalPermissionsTimestamp();
     return refreshPermissions();

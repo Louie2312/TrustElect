@@ -5,7 +5,7 @@ import {
   Calendar, Clock, Users, CheckCircle, 
   ChevronLeft, List, User, PieChart,
   AlertTriangle as ExclamationTriangle,
-  Lock, Award, ArrowDown, ArrowUp, Edit, Plus, AlertCircle
+  Lock, Award, ArrowDown, ArrowUp, Edit, Plus, AlertCircle, X
 } from 'lucide-react';
 import Link from 'next/link';
 import Cookies from 'js-cookie';
@@ -30,10 +30,29 @@ async function fetchWithAuth(url) {
         // Handle forbidden error specifically to show a better error message
         throw new Error('Access denied: You do not have permission to view this election');
       }
-      const error = await response.json();
-      throw new Error(error.message || `Request failed with status ${response.status}`);
+
+      // Check if the response is JSON before trying to parse it
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const error = await response.json();
+        throw new Error(error.message || `Request failed with status ${response.status}`);
+      } else {
+        // For non-JSON responses, get the text
+        const errorText = await response.text();
+        throw new Error(errorText || `Request failed with status ${response.status}`);
+      }
     }
-    return response.json();
+
+    // Check if response is JSON before parsing
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      return response.json();
+    } else {
+      // If not JSON (which should be rare for successful responses), return text
+      const text = await response.text();
+      console.warn('Expected JSON response but got text:', text);
+      return { success: true, message: text };
+    }
   } catch (error) {
     console.error('API request error:', error);
     throw error;
@@ -67,6 +86,8 @@ export default function ElectionDetailsPage() {
   const [candidateImages, setCandidateImages] = useState({});
   const [imageErrors, setImageErrors] = useState({});
   const [activeTab, setActiveTab] = useState('details');
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [isCurrentUserCreator, setIsCurrentUserCreator] = useState(false);
 
   const handleImageError = (candidateId) => {
     if (!imageErrors[candidateId]) {
@@ -89,9 +110,11 @@ export default function ElectionDetailsPage() {
         let electionData = data.election;
        
         if (electionData) {
-
+          // Set as creator by default for admin users (simpler approach)
+          setIsCurrentUserCreator(true);
+          
+          // Rest of the existing code for loading ballot positions
           if (electionData.ballot?.positions) {
-
             electionData.positions = electionData.ballot.positions.map(pos => ({
               id: pos.position_id || pos.id,
               name: pos.position_name || pos.name,
@@ -162,6 +185,62 @@ export default function ElectionDetailsPage() {
       loadElectionDetails();
     }
   }, [params.id]);
+
+  const handleCancelElection = async () => {
+    if (!confirm("Are you sure you want to cancel this election? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      setIsCancelling(true);
+      const token = Cookies.get('token');
+      
+      // Log the request for debugging
+      console.log(`Attempting to delete election: ${election.id}`);
+      
+      // Using DELETE method with proper election endpoint
+      const response = await fetch(`${API_BASE}/elections/${election.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Failed to cancel election';
+        
+        try {
+          // Try to parse as JSON, but handle case where response is not JSON
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await response.json();
+            errorMessage = errorData.message || errorMessage;
+          } else {
+            // Not JSON, use text or status
+            const errorText = await response.text();
+            errorMessage = errorText || `Server returned ${response.status}: ${response.statusText}`;
+          }
+        } catch (parseErr) {
+          console.error('Error parsing error response:', parseErr);
+          errorMessage = `Server error (${response.status})`;
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      toast.success('Election has been cancelled successfully');
+      
+      // After successful cancellation, redirect to the elections list page
+      setTimeout(() => {
+        router.push('/admin/election');
+      }, 1000);
+    } catch (err) {
+      console.error('Error cancelling election:', err);
+      toast.error(`Error: ${err.message}`);
+    } finally {
+      setIsCancelling(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -302,8 +381,8 @@ export default function ElectionDetailsPage() {
             {election.needs_approval ? 'PENDING APPROVAL' : election.status.toUpperCase()}
           </span>
           
-          {/* Edit buttons for upcoming or pending approval elections */}
-          {(election.needs_approval || election.status === 'upcoming') && (
+          {/* Edit buttons for upcoming or pending approval elections - only shown if user is creator */}
+          {(election.needs_approval || election.status === 'upcoming') && isCurrentUserCreator && (
             <>
               <Link
                 href={`/admin/election/${election.id}/edit`}
@@ -330,6 +409,22 @@ export default function ElectionDetailsPage() {
                   Create Ballot
                 </Link>
               )}
+              
+              {/* Cancel button for pending approval elections */}
+              {election.needs_approval && (
+                <button
+                  onClick={handleCancelElection}
+                  disabled={isCancelling}
+                  className="flex items-center px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                >
+                  {isCancelling ? (
+                    <div className="animate-spin h-4 w-4 mr-2 border-2 border-white rounded-full border-t-transparent"></div>
+                  ) : (
+                    <X className="w-4 h-4 mr-2" />
+                  )}
+                  Cancel Election
+                </button>
+              )}
             </>
           )}
           {!(election.needs_approval || election.status === 'upcoming') && (
@@ -344,6 +439,24 @@ export default function ElectionDetailsPage() {
       <h1 className="text-2xl font-bold mb-2 text-black">Title: {election.title}</h1>
       <p className="text-gray-600 mb-6 text-black">Description: {election.description}</p>
 
+      {/* Created By Information */}
+      <div className="mb-4 bg-gray-50 rounded-lg p-3 border border-gray-200">
+        <p className="text-sm text-gray-600">
+          <span className="font-medium">Created by: </span>
+          {election.created_by ? (
+            typeof election.created_by === 'object' ? 
+              `${election.created_by.name || election.created_by.username || 'Unknown'}` :
+              'Admin'
+          ) : 'Unknown'}
+          
+          {election.created_at && (
+            <span className="ml-2">
+              on {new Date(election.created_at).toLocaleDateString()} at {new Date(election.created_at).toLocaleTimeString()}
+            </span>
+          )}
+        </p>
+      </div>
+
       {/* Approval Section */}
       {election.needs_approval && (
         <div className="mb-6 p-4 rounded-lg border-2 border-yellow-400 bg-yellow-50">
@@ -353,11 +466,20 @@ export default function ElectionDetailsPage() {
           </div>
           <p className="mb-2 text-sm text-black">
             This election is waiting for approval from a System Admin before it can be published.
-            You can still edit all aspects of this election while waiting for approval.
+            {isCurrentUserCreator && " You can still edit all aspects of this election while waiting for approval."}
           </p>
-          <p className="text-xs text-black">
-            Only System Admin can approve or reject elections.
-          </p>
+          <div className="flex justify-between items-center">
+            <p className="text-xs text-black">
+              Only System Admin can approve or reject elections.
+            </p>
+            <button
+              onClick={handleCancelElection}
+              disabled={isCancelling}
+              className="text-sm flex items-center text-red-600 hover:text-red-800"
+            >
+              {isCancelling ? 'Cancelling...' : 'Cancel this election request'}
+            </button>
+          </div>
         </div>
       )}
 

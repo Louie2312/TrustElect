@@ -105,7 +105,20 @@ export default function AuditLogsPage() {
       });
       
       if (res.data && res.data.data) {
-        setLogs(res.data.data);
+        // Filter out duplicate logs by creating a unique key for each log
+        // based on action + timestamp + entity_id
+        const uniqueLogs = [];
+        const seenLogs = new Set();
+        
+        res.data.data.forEach(log => {
+          const logKey = `${log.action}-${log.created_at}-${log.entity_id}-${log.user_id}`;
+          if (!seenLogs.has(logKey)) {
+            seenLogs.add(logKey);
+            uniqueLogs.push(log);
+          }
+        });
+        
+        setLogs(uniqueLogs);
         setPage(res.data.pagination?.page || 1);
         setTotalPages(res.data.pagination?.totalPages || 1);
         setTotalItems(res.data.pagination?.totalItems || 0);
@@ -227,36 +240,67 @@ export default function AuditLogsPage() {
     }
   };
   
-  // Get simplified activity description
+  // Get badge color for different user roles
+  const getRoleColor = (role) => {
+    if (!role) return 'bg-gray-100 text-gray-800';
+    
+    switch (role.toLowerCase()) {
+      case 'admin': return 'bg-purple-100 text-purple-800';
+      case 'systemadmin': return 'bg-red-100 text-red-800';
+      case 'student': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+  
+  // Format role display for consistency
+  const formatRoleDisplay = (role) => {
+    if (!role) return 'Unknown';
+    
+    // Standardize role display names
+    switch (role.toLowerCase()) {
+      case 'systemadmin': return 'System Admin';
+      case 'admin': return 'Admin';
+      case 'student': return 'Student';
+      default: return role;
+    }
+  };
+  
+  // Get simplified activity description with more details
   const getActivityDescription = (log) => {
     if (!log) return "-";
     
     const id = log.entity_id ? `#${log.entity_id}` : '';
     
-    // Action-based descriptions (simple and clear)
+    // Action-based descriptions (more specific)
     switch (log.action) {
       case 'LOGIN':
-        return "Logged in";
+        return `User logged in`;
       case 'LOGOUT':
-        return "Logged out";
+        return `User logged out`;
       case 'VOTE':
-        return `Voted in election ${id}`;
+        return `Vote cast in election ${id}`;
       case 'CREATE':
-        if (log.entity_type === 'elections') return `Created election ${id}`;
-        if (log.entity_type === 'ballots') return `Created ballot ${id}`;
-        if (log.entity_type === 'candidates') return `Added candidate ${id}`;
-        return `Created ${log.entity_type} ${id}`;
+        if (log.entity_type === 'elections') return `Election ${id} created`;
+        if (log.entity_type === 'ballots') return `Ballot ${id} created`;
+        if (log.entity_type === 'candidates') return `Candidate ${id} added`;
+        if (log.entity_type === 'positions') return `Position ${id} added`;
+        return `${log.entity_type} ${id} created`;
       case 'UPDATE':
-        if (log.entity_type === 'elections') return `Updated election ${id}`;
-        if (log.entity_type === 'ballots') return `Modified ballot ${id}`;
-        if (log.entity_type === 'user') return `Updated profile`;
-        return `Updated ${log.entity_type} ${id}`;
+        if (log.entity_type === 'elections') return `Election ${id} updated`;
+        if (log.entity_type === 'ballots') return `Ballot ${id} updated`;
+        if (log.entity_type === 'candidates') return `Candidate ${id} updated`;
+        if (log.entity_type === 'user') return `User updated`;
+        if (log.entity_type === 'admin') return `Admin updated`;
+        return `${log.entity_type} ${id} updated`;
       case 'DELETE':
-        return `Deleted ${log.entity_type} ${id}`;
+        if (log.entity_type === 'elections') return `Election ${id} deleted`;
+        if (log.entity_type === 'candidates') return `Candidate ${id} removed`;
+        if (log.entity_type === 'positions') return `Position ${id} removed`;
+        return `${log.entity_type} ${id} deleted`;
       case 'APPROVE':
-        return `Approved election ${id}`;
+        return `Election ${id} approved`;
       case 'REJECT':
-        return `Rejected election ${id}`;
+        return `Election ${id} rejected`;
       default:
         return `${log.action} ${log.entity_type} ${id}`;
     }
@@ -275,19 +319,6 @@ export default function AuditLogsPage() {
       case 'APPROVE': return 'bg-emerald-100 text-emerald-800';
       case 'REJECT': return 'bg-orange-100 text-orange-800';
       case 'VOTE': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-  
-  // Get badge color for different user roles
-  const getRoleColor = (role) => {
-    if (!role) return 'bg-gray-100 text-gray-800';
-    
-    switch (role.toLowerCase()) {
-      case 'admin': return 'bg-purple-100 text-purple-800';
-      case 'systemadmin': return 'bg-red-100 text-red-800';
-      case 'superadmin': return 'bg-blue-100 text-blue-800';
-      case 'student': return 'bg-green-100 text-green-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -354,7 +385,6 @@ export default function AuditLogsPage() {
                 <option value="all">All Roles</option>
                 <option value="Student">Students</option>
                 <option value="Admin">Administrators</option>
-                <option value="SuperAdmin">Super Admins</option>
                 <option value="SystemAdmin">System Admins</option>
               </select>
             </div>
@@ -468,7 +498,6 @@ export default function AuditLogsPage() {
             <option value="all">All Users</option>
             <option value="Student">Students</option>
             <option value="Admin">Admins</option>
-            <option value="SuperAdmin">Super Admins</option>
             <option value="SystemAdmin">System Admins</option>
           </select>
         </div>
@@ -523,7 +552,7 @@ export default function AuditLogsPage() {
                         </div>
                         <div className="text-xs mt-1">
                           <span className={`inline-block px-2 py-0.5 rounded-full ${getRoleColor(log.user_role)}`}>
-                            {log.user_role}
+                            {formatRoleDisplay(log.user_role)}
                           </span>
                         </div>
                       </td>

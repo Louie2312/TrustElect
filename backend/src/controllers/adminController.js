@@ -6,27 +6,21 @@ const crypto = require("crypto");
 const pool = require("../config/db");
 const { setAdminPermissions } = require('../models/adminPermissionModel');
 
-// Function to Generate Auto Password: `{lastName}{last3digits of employee#}{special char}`
 const generatePassword = (lastName, employeeNumber) => {
   const lastThreeDigits = employeeNumber.slice(-3);
-  const specialChars = "!@#$%^&*";
-  const randomSpecialChar = specialChars[Math.floor(Math.random() * specialChars.length)];
+  const specialChars = "!";
 
-  return `${lastName}${lastThreeDigits}${randomSpecialChar}`;
+  return `${lastName}${lastThreeDigits}${specialChars}`;
 };
 
-// Register Admin with Auto-Generated Password
 exports.registerAdmin = async (req, res) => {
   try {
-    console.log("🔹 Received Register Admin Request:", req.body);
 
-    // Validate Request Body
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ message: "Validation failed", errors: errors.array() });
     }
 
-    // Extract all fields including permissions
     const { 
       firstName, 
       lastName, 
@@ -58,15 +52,11 @@ exports.registerAdmin = async (req, res) => {
     if (emailExists) return res.status(400).json({ message: "Email is already registered." });
     if (employeeNumberExists) return res.status(400).json({ message: "Employee Number already exists." });
 
-    // Generate Auto Password
     const autoPassword = generatePassword(lastName, employeeNumber);
-    console.log("Generated Password:", autoPassword); // Debugging
 
-    // Hash Password
+
     const hashedPassword = await bcrypt.hash(autoPassword, 10);
-
-    // Register Admin
-    console.log("Registering Admin:", firstName, lastName, email);
+    
     const username = email;
     const newAdmin = await registerAdmin(
       firstName, 

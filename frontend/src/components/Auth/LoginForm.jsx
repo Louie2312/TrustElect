@@ -77,7 +77,17 @@ export default function LoginForm({ onClose }) {
 
     setLoading(true);
     try {
-      console.log("🔹 Sending login request...");
+      console.log("🔹 Sending login request for email:", email);
+      
+      // Add a special debugging message for admins
+      if (email.includes("admin") || email.includes("superadmin")) {
+        console.log("⚠️ Admin login attempt with password:", 
+          password.length > 3 ? 
+          `${password.substring(0, 2)}...${password.substring(password.length-3)}` : 
+          "[too short]"
+        );
+      }
+      
       const response = await axios.post(
         "http://localhost:5000/api/auth/login",
         { email, password },
@@ -125,8 +135,20 @@ export default function LoginForm({ onClose }) {
       
       setStep(2); 
     } catch (err) {
-      console.error("Login error:", err);
-      setError(err.response?.data?.message || "Login failed. Please try again.");
+      if (err.response && err.response.status === 401) {
+        // Don't log the full error object for 401 errors
+        console.log("Login attempt failed: Invalid credentials");
+        
+        // Add more helpful error messaging
+        if (email.includes("admin") || email.includes("superadmin")) {
+          setError("Admin login failed. Remember that passwords are case-sensitive and must use the exact format: FirstLetterCapitalizedLastName + Last3DigitsOfEmployeeNumber + !");
+        } else {
+          setError("Invalid email or password.");
+        }
+      } else {
+        console.error("Login error:", err);
+        setError(err.response?.data?.message || "Login failed. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -179,8 +201,18 @@ export default function LoginForm({ onClose }) {
         throw new Error("Verification failed. Please try again.");
       }
     } catch (err) {
-      console.error("OTP verification failed:", err);
-      setError(err.response?.data?.message || "Invalid verification code. Please try again.");
+      // Handle OTP verification errors gracefully
+      if (err.response && err.response.status === 400) {
+        // Handle validation errors (wrong OTP code)
+        setError("Invalid verification code. Please check and try again.");
+      } else if (err.response && err.response.status === 401) {
+        // Handle expired or used OTP
+        setError("Verification code has expired or already been used. Please request a new one.");
+      } else {
+        // Don't log full error object for OTP errors
+        console.log("OTP verification failed with error");
+        setError(err.response?.data?.message || "Invalid verification code. Please try again.");
+      }
     } finally {
       setLoading(false);
     }

@@ -202,13 +202,7 @@ export default function AdminDashboard() {
     completed: [],
     to_approve: []
   });
-  const [stats, setStats] = useState({
-    students: 0,
-    departments: 0,
-    elections: 0,
-    activeElections: 0,
-    statuses: []
-  });
+  const [stats, setStats] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -300,25 +294,26 @@ export default function AdminDashboard() {
 
   const loadStats = async () => {
     try {
-      const data = await fetchWithAuth('/elections/stats');
+      const token = Cookies.get('token');
+      const response = await fetch(`${API_BASE}/elections/stats`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       
-      // Transform the data structure to have statuses array for compatibility
-      if (data && !Array.isArray(data.statuses)) {
-        const statusesArray = [];
-        ['ongoing', 'upcoming', 'completed', 'to_approve'].forEach(status => {
-          if (data[status + '_count'] !== undefined) {
-            statusesArray.push({
-              status: status,
-              count: data[status + '_count'] || 0
-            });
-          }
-        });
-        data.statuses = statusesArray;
+      if (!response.ok) {
+        throw new Error(`Failed to load stats: ${response.status}`);
       }
       
-      setStats(data);
+      const data = await response.json();
+      console.log("Stats data received:", data); // Debug log
+      
+      // The API returns an array of stats, just like in superadmin
+      setStats(data || []);
     } catch (err) {
       console.error("Failed to load stats:", err);
+      setStats([]);
     }
   };
 
@@ -333,6 +328,10 @@ export default function AdminDashboard() {
         }
         
         try {
+          // Load all elections first to ensure we have counts for calculations
+          await loadAllElections();
+          
+          // Then load stats
           const token = Cookies.get("token");
           
           // Fetch stats
@@ -340,36 +339,16 @@ export default function AdminDashboard() {
             headers: { Authorization: `Bearer ${token}` },
           });
           
-          // Process stats data
-          const statsData = statsResponse.data;
+          // The API returns an array of stats by status
+          const statsData = statsResponse.data || [];
+          console.log("Raw stats data:", statsData);
           
-          // Make sure counts are properly set
-          if (statsData) {
-            // Ensure we have status counts from the API
-            if (statsData.ongoing_count === undefined) statsData.ongoing_count = allElections.ongoing?.length || 0;
-            if (statsData.upcoming_count === undefined) statsData.upcoming_count = allElections.upcoming?.length || 0;
-            if (statsData.completed_count === undefined) statsData.completed_count = allElections.completed?.length || 0;
-            if (statsData.to_approve_count === undefined) statsData.to_approve_count = allElections.to_approve?.length || 0;
-            
-            // Create statuses array for compatibility
-            if (!Array.isArray(statsData.statuses)) {
-              statsData.statuses = [
-                { status: 'ongoing', count: statsData.ongoing_count || 0 },
-                { status: 'upcoming', count: statsData.upcoming_count || 0 },
-                { status: 'completed', count: statsData.completed_count || 0 },
-                { status: 'to_approve', count: statsData.to_approve_count || 0 }
-              ];
-            }
-          }
-          
+          // Set the stats directly - our component will handle the array format
           setStats(statsData);
-          
-          // Load all elections at once
-          await loadAllElections();
         } catch (error) {
           console.error("Error initializing dashboard:", error);
-          loadStats();
-          loadAllElections();
+          // Try individual functions as fallback
+          await loadStats();
         }
       }
     };
@@ -377,25 +356,40 @@ export default function AdminDashboard() {
     initializeDashboard();
   }, [permissionsLoading, hasPermission]);
 
-  // Update stats when all elections are loaded
+  // Update stats when all elections are loaded - handled differently now
   useEffect(() => {
-    // Update stats with actual counts from loaded elections
-    if (Object.keys(allElections).length > 0) {
-      setStats(prevStats => ({
-        ...prevStats,
-        ongoing_count: allElections.ongoing?.length || 0,
-        upcoming_count: allElections.upcoming?.length || 0,
-        completed_count: allElections.completed?.length || 0,
-        to_approve_count: allElections.to_approve?.length || 0,
-        statuses: [
-          { status: 'ongoing', count: allElections.ongoing?.length || 0 },
-          { status: 'upcoming', count: allElections.upcoming?.length || 0 },
-          { status: 'completed', count: allElections.completed?.length || 0 },
-          { status: 'to_approve', count: allElections.to_approve?.length || 0 }
-        ]
-      }));
+    // If we don't have stats yet but we have elections, this will provide fallback counts
+    if (Object.keys(allElections).length > 0 && (!stats || !stats.length)) {
+      const fallbackStats = [
+        { 
+          status: 'ongoing', 
+          count: allElections.ongoing?.length || 0,
+          total_voters: (allElections.ongoing || []).reduce((sum, e) => sum + (e.voter_count || 0), 0),
+          total_votes: (allElections.ongoing || []).reduce((sum, e) => sum + (e.vote_count || 0), 0)
+        },
+        { 
+          status: 'upcoming', 
+          count: allElections.upcoming?.length || 0,
+          total_voters: (allElections.upcoming || []).reduce((sum, e) => sum + (e.voter_count || 0), 0),
+          total_votes: (allElections.upcoming || []).reduce((sum, e) => sum + (e.vote_count || 0), 0)
+        },
+        { 
+          status: 'completed', 
+          count: allElections.completed?.length || 0,
+          total_voters: (allElections.completed || []).reduce((sum, e) => sum + (e.voter_count || 0), 0),
+          total_votes: (allElections.completed || []).reduce((sum, e) => sum + (e.vote_count || 0), 0)
+        },
+        { 
+          status: 'to_approve', 
+          count: allElections.to_approve?.length || 0,
+          total_voters: (allElections.to_approve || []).reduce((sum, e) => sum + (e.voter_count || 0), 0),
+          total_votes: (allElections.to_approve || []).reduce((sum, e) => sum + (e.vote_count || 0), 0)
+        }
+      ];
+      
+      setStats(fallbackStats);
     }
-  }, [allElections]);
+  }, [allElections, stats]);
 
   // Handle tab change without loading indicator
   useEffect(() => {
@@ -509,26 +503,22 @@ export default function AdminDashboard() {
     }
   };
 
-  const getStatValue = (status, field) => {
-    if (!stats || !stats.statuses) {
+  const getStatValue = (status, field = 'count') => {
+    if (!stats || !Array.isArray(stats)) {
       return 0;
     }
     
-    // Direct access to count properties when available
-    if (status === 'ongoing' && stats.ongoing_count !== undefined) {
-      return stats.ongoing_count;
-    } else if (status === 'upcoming' && stats.upcoming_count !== undefined) {
-      return stats.upcoming_count;
-    } else if (status === 'completed' && stats.completed_count !== undefined) {
-      return stats.completed_count;
-    } else if (status === 'to_approve' && stats.to_approve_count !== undefined) {
-      return stats.to_approve_count;
-    }
+    // Find the stat with matching status
+    const stat = stats.find(s => s.status === status);
     
-    // Fallback to statuses array if available
-    if (Array.isArray(stats.statuses)) {
-      const stat = stats.statuses.find(s => s.status === status);
-      return stat ? (stat.count || 0) : 0;
+    if (stat) {
+      if (field === 'count') {
+        return parseInt(stat.count || 0);
+      } else if (field === 'total_voters') {
+        return parseInt(stat.total_voters || 0);
+      } else if (field === 'total_votes') {
+        return parseInt(stat.total_votes || 0);
+      }
     }
     
     return 0;
@@ -573,8 +563,7 @@ export default function AdminDashboard() {
     <div className="container mx-auto px-4 py-8 bg-gray-50 min-h-screen">
       <div className="flex flex-col lg:flex-row gap-6 mb-8">
         <div className="lg:w-3/4">
-          <h1 className="text-3xl font-bold mb-2 text-black">Election Dashboard</h1>
-          <p className="text-gray-600 mb-6">Manage and monitor all elections</p>
+          <h1 className="text-3xl font-bold mb-2 text-black">Dashboard</h1>
           
           {actionMessage && (
             <div className={`mb-4 p-4 rounded-lg shadow ${actionMessage.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' : 'bg-red-100 text-red-800 border-l-4 border-red-500'}`}>
@@ -586,19 +575,25 @@ export default function AdminDashboard() {
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="font-medium text-gray-500 mb-2 text-black">Total Elections</h3>
               <p className="text-3xl font-bold text-black">
-                {stats.elections || 0}
+                {Array.isArray(stats) 
+                  ? stats.reduce((sum, stat) => sum + parseInt(stat.count || 0), 0)
+                  : stats?.elections_count || 0}
               </p>
             </div>
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="font-medium text-gray-500 mb-2 text-black">Total Voters</h3>
               <p className="text-3xl font-bold text-black">
-                {stats.total_voters || 0}
+                {Array.isArray(stats) 
+                  ? stats.reduce((sum, stat) => sum + parseInt(stat.total_voters || 0), 0)
+                  : stats?.voters_count || 0}
               </p>
             </div>
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="font-medium text-gray-500 mb-2 text-black">Total Votes Cast</h3>
               <p className="text-3xl font-bold text-black">
-                {stats.total_votes || 0}
+                {Array.isArray(stats) 
+                  ? stats.reduce((sum, stat) => sum + parseInt(stat.total_votes || 0), 0)
+                  : stats?.votes_count || 0}
               </p>
             </div>
           </div>
