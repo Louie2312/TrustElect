@@ -10,11 +10,25 @@ import {
 import Link from 'next/link';
 import Cookies from 'js-cookie';
 import Image from 'next/image';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import toast from 'react-hot-toast';
 
 const API_BASE = 'http://localhost:5000/api';
 const BASE_URL = 'http://localhost:5000';
+
+// Add a color palette array at the top of the file, outside the component
+const CHART_COLORS = [
+  '#3b82f6', // blue
+  '#ef4444', // red
+  '#10b981', // green
+  '#f59e0b', // amber
+  '#8b5cf6', // purple
+  '#ec4899', // pink
+  '#06b6d4', // cyan
+  '#f97316', // orange
+  '#6366f1', // indigo
+  '#14b8a6', // teal
+];
 
 async function fetchWithAuth(url) {
   const token = Cookies.get('token');
@@ -110,6 +124,16 @@ export default function ElectionDetailsPage() {
         let electionData = data.election;
        
         if (electionData) {
+          // Check if creator role is specified in the response
+          if (data.created_by_role) {
+            electionData.created_by_role = data.created_by_role;
+          } else if (electionData.created_by && electionData.created_by.role) {
+            electionData.created_by_role = electionData.created_by.role;
+          } else {
+            // Default to regular admin if not specified
+            electionData.created_by_role = 'admin';
+          }
+          
           // Set as creator by default for admin users (simpler approach)
           setIsCurrentUserCreator(true);
           
@@ -286,11 +310,35 @@ export default function ElectionDetailsPage() {
   const getEligibilityCriteria = () => {
     const criteria = election.eligibility_criteria || {};
     
+    // Helper function to remove duplicates from an array (case-insensitive)
+    const removeDuplicates = (array) => {
+      if (!Array.isArray(array)) return [];
+      
+      // Use a Map to track normalized values
+      const seen = new Map();
+      return array.filter(item => {
+        if (!item) return false;
+        
+        // Use lowercase for case-insensitive comparison
+        const normalizedItem = item.toString().toLowerCase();
+        if (seen.has(normalizedItem)) return false;
+        
+        seen.set(normalizedItem, true);
+        return true;
+      });
+    };
+    
+    // Combine and deduplicate year levels from both property names
+    const yearLevels = removeDuplicates([
+      ...(criteria.year_levels || []), 
+      ...(criteria.yearLevels || [])
+    ]);
+    
     // Map the API response fields to our expected structure
     // Handle both naming conventions to ensure compatibility
     return {
       courses: criteria.courses || criteria.programs || [],
-      year_levels: criteria.year_levels || criteria.yearLevels || [],
+      year_levels: yearLevels,
       genders: criteria.genders || criteria.gender || [],
       semesters: criteria.semesters || criteria.semester || [],
       precincts: criteria.precincts || criteria.precinct || []
@@ -339,11 +387,13 @@ export default function ElectionDetailsPage() {
         (b.vote_count || 0) - (a.vote_count || 0)
       );
       
-      // Format for chart
-      const chartData = sortedCandidates.map(candidate => ({
+      // Format for chart with unique colors
+      const chartData = sortedCandidates.map((candidate, index) => ({
         name: `${candidate.first_name} ${candidate.last_name}`,
         votes: candidate.vote_count || 0,
-        party: candidate.party || 'Independent'
+        party: candidate.party || 'Independent',
+        // Assign a color based on index, cycling through the array if needed
+        color: CHART_COLORS[index % CHART_COLORS.length]
       }));
       
       return {
@@ -438,24 +488,6 @@ export default function ElectionDetailsPage() {
 
       <h1 className="text-2xl font-bold mb-2 text-black">Title: {election.title}</h1>
       <p className="text-gray-600 mb-6 text-black">Description: {election.description}</p>
-
-      {/* Created By Information */}
-      <div className="mb-4 bg-gray-50 rounded-lg p-3 border border-gray-200">
-        <p className="text-sm text-gray-600">
-          <span className="font-medium">Created by: </span>
-          {election.created_by ? (
-            typeof election.created_by === 'object' ? 
-              `${election.created_by.name || election.created_by.username || 'Unknown'}` :
-              'Admin'
-          ) : 'Unknown'}
-          
-          {election.created_at && (
-            <span className="ml-2">
-              on {new Date(election.created_at).toLocaleDateString()} at {new Date(election.created_at).toLocaleTimeString()}
-            </span>
-          )}
-        </p>
-      </div>
 
       {/* Approval Section */}
       {election.needs_approval && (
@@ -728,9 +760,20 @@ export default function ElectionDetailsPage() {
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" />
                       <YAxis />
-                      <Tooltip />
+                      <Tooltip 
+                        formatter={(value, name) => [`${value} votes`, 'Votes']}
+                        labelFormatter={(name) => `${name}`}
+                      />
                       <Legend />
-                      <Bar dataKey="votes" fill="#3b82f6" name="Vote Count" />
+                      <Bar 
+                        dataKey="votes" 
+                        name="Vote Count" 
+                        isAnimationActive={true}
+                      >
+                        {position.chartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 </div>

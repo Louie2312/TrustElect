@@ -262,9 +262,9 @@ export default function ContentManagement() {
     const localUrl = URL.createObjectURL(file);
     
     if (type === 'heroVideo') {
-      // Check video file size (10MB limit)
-      if (file.size > 10 * 1024 * 1024) {
-        alert("Video file is too large. Maximum size is 10MB.");
+      // Check video file size (50MB limit)
+      if (file.size > 50 * 1024 * 1024) {
+        alert("Video file is too large. Maximum size is 50MB.");
         e.target.value = '';
         return;
       }
@@ -314,41 +314,6 @@ export default function ContentManagement() {
       // Update UI with local URL preview
       updateFeature(index, 'imageUrl', localUrl);
     }
-    else if (type === 'ctaMedia') {
-      // Handle media type based on file
-      const fileType = file.type;
-      let mediaType = "image";
-      
-      // Check file type and size limits
-      if (fileType.startsWith('video/')) {
-        mediaType = "video";
-        if (file.size > 50 * 1024 * 1024) {
-          alert("Video file is too large. Maximum size is 50MB.");
-          e.target.value = '';
-          return;
-        }
-      } 
-      else if (fileType === 'application/x-shockwave-flash' || file.name.endsWith('.swf')) {
-        mediaType = "flash";
-        if (file.size > 10 * 1024 * 1024) {
-          alert("Flash file is too large. Maximum size is 10MB.");
-          e.target.value = '';
-          return;
-        }
-      } 
-      else {
-        // Assume image
-        if (file.size > 5 * 1024 * 1024) {
-          alert("Image file is too large. Maximum size is 5MB.");
-          e.target.value = '';
-          return;
-        }
-      }
-      
-      console.log(`Updating engagement section media URL (${mediaType}):`, localUrl);
-      updateCTA('mediaUrl', localUrl);
-      updateCTA('mediaType', mediaType);
-    }
   };
 
   // Handle removing images
@@ -361,9 +326,6 @@ export default function ContentManagement() {
     } 
     else if (type === 'featureImage') {
       updateFeature(index, 'imageUrl', null);
-    }
-    else if (type === 'ctaMedia') {
-      updateCTA('mediaUrl', null);
     }
     
     setSaveStatus('Image removed. Click Save to apply changes.');
@@ -524,8 +486,6 @@ export default function ContentManagement() {
           enabled: landingContent.callToAction.enabled,
           bgColor: landingContent.callToAction.bgColor,
           textColor: landingContent.callToAction.textColor,
-          mediaType: landingContent.callToAction.mediaType || 'none',
-          mediaPosition: landingContent.callToAction.mediaPosition || 'background',
           purpose: landingContent.callToAction.purpose || 'default'
         };
         

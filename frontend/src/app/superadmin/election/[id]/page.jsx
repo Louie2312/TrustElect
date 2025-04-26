@@ -11,11 +11,25 @@ import {
 import Link from 'next/link';
 import Cookies from 'js-cookie';
 import Image from 'next/image';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import toast from 'react-hot-toast';
 
 const API_BASE = 'http://localhost:5000/api';
 const BASE_URL = 'http://localhost:5000';
+
+// Add a color palette array at the top of the file, outside the component
+const CHART_COLORS = [
+  '#3b82f6', // blue
+  '#ef4444', // red
+  '#10b981', // green
+  '#f59e0b', // amber
+  '#8b5cf6', // purple
+  '#ec4899', // pink
+  '#06b6d4', // cyan
+  '#f97316', // orange
+  '#6366f1', // indigo
+  '#14b8a6', // teal
+];
 
 async function fetchWithAuth(url) {
   const token = Cookies.get('token');
@@ -138,8 +152,8 @@ export default function ElectionDetailsPage() {
               // For any other numeric or string ID
               console.log('Creator has ID (not 1):', electionData.created_by);
               
-              // Set a generic name based on the role instead of trying to fetch
-              electionData.created_by_name = "Administrator";
+              // Set just the role without a name
+              electionData.created_by_name = "";  // Empty string to only show role
               electionData.created_by_role = "Admin";
             }
             
@@ -280,34 +294,33 @@ export default function ElectionDetailsPage() {
   const getEligibilityCriteria = () => {
     const criteria = election.eligibility_criteria || {};
     
-    // Helper function to remove duplicates and normalize case for year levels
-    const getUniqueYearLevels = () => {
-      // Get year levels from both possible property names
-      const yearLevelsArray = [...(criteria.year_levels || []), ...(criteria.yearLevels || [])];
+    // Helper function to remove duplicates from an array (case-insensitive)
+    const removeDuplicates = (array) => {
+      if (!Array.isArray(array)) return [];
       
-      // Create a Set to store normalized values
-      const uniqueYearLevels = new Set();
-      const result = [];
-      
-      // Normalize and add to result if not already added
-      yearLevelsArray.forEach(year => {
-        if (!year) return; // Skip empty values
+      // Use a Map to track normalized values
+      const seen = new Map();
+      return array.filter(item => {
+        if (!item) return false;
         
-        // Normalize to lowercase for comparison
-        const normalizedYear = year.toString().toLowerCase();
+        // Use lowercase for case-insensitive comparison
+        const normalizedItem = item.toString().toLowerCase();
+        if (seen.has(normalizedItem)) return false;
         
-        if (!uniqueYearLevels.has(normalizedYear)) {
-          uniqueYearLevels.add(normalizedYear);
-          result.push(year); // Add the original value to result
-        }
+        seen.set(normalizedItem, true);
+        return true;
       });
-      
-      return result;
     };
+    
+    // Combine and deduplicate year levels from both property names
+    const yearLevels = removeDuplicates([
+      ...(criteria.year_levels || []), 
+      ...(criteria.yearLevels || [])
+    ]);
     
     return {
       courses: criteria.courses || criteria.programs || [],
-      year_levels: getUniqueYearLevels(),
+      year_levels: yearLevels,
       genders: criteria.genders || criteria.gender || [],
       semesters: criteria.semesters || criteria.semester || [],
       precincts: criteria.precincts || criteria.precinct || []
@@ -349,15 +362,17 @@ export default function ElectionDetailsPage() {
     if (!positions || positions.length === 0) return [];
 
     return positions.map(position => {
-
       const sortedCandidates = [...(position.candidates || [])].sort((a, b) => 
         (b.vote_count || 0) - (a.vote_count || 0)
       );
 
-      const chartData = sortedCandidates.map(candidate => ({
+      // Create chart data with individual colors for each candidate
+      const chartData = sortedCandidates.map((candidate, index) => ({
         name: `${candidate.first_name} ${candidate.last_name}`,
-        votes: candidate.vote_count || 0,
-        party: candidate.party || 'Independent'
+        votes: candidate.vote_count || 0, 
+        party: candidate.party || 'Independent',
+        // Assign a color based on index, cycling through the array if needed
+        color: CHART_COLORS[index % CHART_COLORS.length]
       }));
       
       return {
@@ -459,7 +474,9 @@ export default function ElectionDetailsPage() {
                 </span>
               </span> :
               <span className="text-black">
-                {election.created_by_name ? election.created_by_name : ''}
+                {election.created_by_name && (
+                  <span>{election.created_by_name} </span>
+                )}
                 <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
                   isSystemAdminCreator || election.created_by === 1 || election.created_by === '1'
                     ? 'bg-purple-100 text-purple-800' 
@@ -856,9 +873,23 @@ export default function ElectionDetailsPage() {
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" />
                       <YAxis />
-                      <Tooltip />
+                      <Tooltip 
+                        formatter={(value, name) => [`${value} votes`, 'Votes']}
+                        labelFormatter={(name) => `${name}`}
+                      />
                       <Legend />
-                      <Bar dataKey="votes" fill="#3b82f6" name="Vote Count" />
+                      <Bar 
+                        dataKey="votes" 
+                        name="Vote Count" 
+                        // Use the color property from each data point instead of a fixed fill
+                        fill="#3b82f6" 
+                        // Add this to use individual colors for each bar
+                        isAnimationActive={true}
+                      >
+                        {position.chartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 </div>

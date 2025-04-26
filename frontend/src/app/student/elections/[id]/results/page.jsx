@@ -6,10 +6,24 @@ import { ArrowLeft, Download, User, Award, AlertCircle, SortDesc, SortAsc, Medal
 import axios from 'axios';
 import Cookies from 'js-cookie';
 import Image from 'next/image';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 
 const API_BASE = 'http://localhost:5000/api';
 const BASE_URL = 'http://localhost:5000';
+
+// Add color palette for different candidates
+const CHART_COLORS = [
+  '#3b82f6', // blue
+  '#ef4444', // red
+  '#10b981', // green
+  '#f59e0b', // amber
+  '#8b5cf6', // purple
+  '#ec4899', // pink
+  '#06b6d4', // cyan
+  '#f97316', // orange
+  '#6366f1', // indigo
+  '#14b8a6', // teal
+];
 
 export default function ElectionResultsPage({ params }) {
   const resolvedParams = React.use(params);
@@ -75,11 +89,13 @@ export default function ElectionResultsPage({ params }) {
         sortedCandidates.sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0));
       }
       
-      // Format for chart
-      const chartData = sortedCandidates.map(candidate => ({
+      // Format for chart with unique colors for each candidate
+      const chartData = sortedCandidates.map((candidate, index) => ({
         name: `${candidate.first_name} ${candidate.last_name}`,
         votes: candidate.vote_count || 0,
-        party: candidate.party || 'Independent'
+        party: candidate.party || 'Independent',
+        // Assign a color based on index, cycling through the array if needed
+        color: CHART_COLORS[index % CHART_COLORS.length]
       }));
       
       return {
@@ -264,9 +280,20 @@ export default function ElectionResultsPage({ params }) {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="name" />
                     <YAxis />
-                    <Tooltip />
+                    <Tooltip 
+                      formatter={(value, name) => [`${value} votes`, 'Votes']}
+                      labelFormatter={(name) => `${name}`}
+                    />
                     <Legend />
-                    <Bar dataKey="votes" fill="#3b82f6" name="Vote Count" />
+                    <Bar 
+                      dataKey="votes" 
+                      name="Vote Count" 
+                      isAnimationActive={true}
+                    >
+                      {position.chartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>

@@ -39,6 +39,37 @@ const statusIcons = {
   draft: <AlertCircle className="w-5 h-5" />
 };
 
+// Helper function to check if an election was created by a system admin
+const isCreatedBySystemAdmin = (election) => {
+  // No creator information
+  if (!election.created_by) return false;
+  
+  // If created_by is a number or string, check if it's 1 (system admin ID)
+  if (typeof election.created_by === 'number' || typeof election.created_by === 'string') {
+    return election.created_by === 1 || election.created_by === '1';
+  }
+  
+  // If created_by is an object
+  if (typeof election.created_by === 'object') {
+    // Check by role if available
+    if (election.created_by.role) {
+      const role = election.created_by.role.toLowerCase();
+      return role.includes('superadmin') || 
+             role.includes('system_admin') || 
+             role.includes('systemadmin') ||
+             role.includes('super');
+    }
+    
+    // Check by ID if role not available
+    if (election.created_by.id) {
+      return election.created_by.id === 1 || election.created_by.id === '1';
+    }
+  }
+  
+  // Default to false if we can't determine
+  return false;
+};
+
 export default function ElectionPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('all');
@@ -62,7 +93,20 @@ export default function ElectionPage() {
     try {
       setLoading(true);
       const data = await fetchWithAuth('/elections');
-      setElections(data || []);
+      
+      // Filter out elections created by system admin that need approval
+      // Regular admins should only see their own created elections that need approval
+      const filteredData = data.filter(election => {
+        // If the election needs approval, check who created it
+        if (election.needs_approval) {
+          // Keep only elections NOT created by system admin
+          return !isCreatedBySystemAdmin(election);
+        }
+        // Keep all other elections (not needing approval)
+        return true;
+      });
+      
+      setElections(filteredData || []);
     } catch (err) {
       console.error("Failed to load elections:", err);
       setError("Failed to load elections. Please try again later.");
@@ -81,10 +125,18 @@ export default function ElectionPage() {
       }
       
       setLoading(true);
-      // Use the dedicated endpoint for admin pending approvals
+      // Use the dedicated endpoint for admin pending approval
       const data = await fetchWithAuth('/elections/admin-pending-approval');
-      setPendingApprovals(data || []);
-      setPendingCount(data.length);
+      
+      // Filter to only include elections created by the current admin
+      // This ensures system admin created elections won't appear here
+      const adminCreatedElections = data.filter(election => {
+        // Exclude elections created by system admin
+        return !isCreatedBySystemAdmin(election);
+      });
+      
+      setPendingApprovals(adminCreatedElections || []);
+      setPendingCount(adminCreatedElections.length);
     } catch (err) {
       console.error("Failed to load pending approvals:", err);
       // Don't set the main error state here, just log it

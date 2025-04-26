@@ -322,7 +322,7 @@ function AddDepartmentModal({ onClose, onSuccess }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 flex items-center justify-center z-50">
       <div className="bg-white p-6 rounded-lg shadow-lg w-96 text-black">
         <h2 className="text-xl font-bold mb-4">Add New Department</h2>
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
@@ -336,7 +336,6 @@ function AddDepartmentModal({ onClose, onSuccess }) {
               value={formData.department_name}
               onChange={handleChange}
               className="w-full p-2 border rounded"
-              placeholder="e.g. Information and Communication Technology"
             />
           </div>
 
@@ -416,7 +415,6 @@ function AssignAdminModal({ department, admins, onClose, onSuccess }) {
       onClose();
       if (onSuccess) onSuccess();
     } catch (error) {
-      console.error("Error assigning admin:", error);
       setError(error.response?.data?.message || "Failed to assign admin");
       toast.error(error.response?.data?.message || "Failed to assign admin");
     } finally {

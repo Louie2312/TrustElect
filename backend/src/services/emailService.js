@@ -95,6 +95,9 @@ const getAdminGmail = () => {
 
 const sendOTPEmail = async (userId, email, otp, purpose = 'login') => {
   try {
+    // Log the OTP being sent to the user
+    console.log(` Sending OTP ${otp} to user with email: ${email} for purpose: ${purpose}`);
+    
     // Only check for systemadmin.00000 special case
     const isSuperAdmin = email.toLowerCase() === 'systemadmin.00000@novaliches.sti.edu.ph';
     const originalEmail = email;
@@ -183,8 +186,12 @@ const sendOTPEmail = async (userId, email, otp, purpose = 'login') => {
       };
     }
 
+    // In production mode, also log the OTP (for debugging purposes)
+    console.log(`📧 [PRODUCTION] Sending OTP ${otp} to ${originalEmail}${isSuperAdmin ? ` (forwarded to ${recipientEmail})` : ''}`);
+
     const info = await transporter.sendMail(mailOptions);
     console.log(`Email sent to ${recipientEmail}: ${info.messageId}`);
+    console.log(`✅ OTP ${otp} successfully sent to ${email} (Message ID: ${info.messageId})`);
 
     await logEmailStatus(
       userId, 
@@ -205,7 +212,7 @@ const sendOTPEmail = async (userId, email, otp, purpose = 'login') => {
       isSystemAccount: isSuperAdmin
     };
   } catch (error) {
-    console.error('ERROR SENDING EMAIL:', error.message);
+    console.error(`❌ ERROR SENDING OTP ${otp} to ${email}:`, error.message);
     console.error('Error stack:', error.stack);
 
     try {

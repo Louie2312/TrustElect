@@ -480,7 +480,7 @@ const EditThemeForm = ({
           <h4 className="text-xs font-medium text-gray-800 mb-2">Bulk Update Options</h4>
           
           {/* Change All Backgrounds */}
-          <div className="space-y-2 mb-3">
+          <div className="space-y-2">
             <div className="flex items-center">
               <label className="block text-xs text-gray-700 flex-grow">Change All Landing Page Backgrounds</label>
               <div className="flex items-center">
@@ -499,61 +499,6 @@ const EditThemeForm = ({
               </div>
             </div>
             <p className="text-xs text-gray-500">This will update Hero, Features Section, Feature Cards, and CTA backgrounds.</p>
-          </div>
-          
-          {/* Change CTA */}
-          <div className="space-y-2">
-            <h5 className="text-xs font-medium text-gray-800">Call-to-Action Section</h5>
-            
-            <div className="flex items-center">
-              <label className="block text-xs text-gray-700 flex-grow">CTA Background Color</label>
-              <div className="flex items-center">
-                <input
-                  type="color"
-                  value={bulkCtaColor}
-                  onChange={(e) => setBulkCtaColor(e.target.value)}
-                  className="w-8 h-8 rounded-md border"
-                />
-              </div>
-            </div>
-            
-            <div>
-              <label className="block text-xs text-gray-700 mb-1">CTA Purpose</label>
-              <select 
-                value={ctaPurpose} 
-                onChange={(e) => setCtaPurpose(e.target.value)}
-                className="w-full px-3 py-2 border rounded-md text-black text-sm"
-              >
-                <option value="">Select purpose</option>
-                <option value="signup">Sign up / Registration</option>
-                <option value="demo">Request Demo</option>
-                <option value="contact">Contact Us</option>
-                <option value="learn">Learn More</option>
-                <option value="quote">Get Quote</option>
-                <option value="custom">Custom Message</option>
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-xs text-gray-700 mb-1">CTA Media Type</label>
-              <select 
-                value={ctaMediaType} 
-                onChange={(e) => setCtaMediaType(e.target.value)}
-                className="w-full px-3 py-2 border rounded-md text-black text-sm"
-              >
-                <option value="none">No Media</option>
-                <option value="image">Background Image</option>
-                <option value="video">Background Video</option>
-                <option value="flash">Flash Animation</option>
-              </select>
-            </div>
-            
-            <button
-              onClick={handleCtaUpdate}
-              className="mt-2 w-full px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
-            >
-              Update CTA Settings
-            </button>
           </div>
         </div>
         
