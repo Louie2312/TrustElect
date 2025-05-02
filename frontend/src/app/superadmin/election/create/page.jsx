@@ -514,9 +514,11 @@ export default function CreateElectionPage() {
           <div>
             <h2 className="text-xl font-semibold text-gray-800 mb-4">Eligible Voters</h2>
             <div className="bg-blue-50 p-3 rounded-lg mb-4">
+              {/* 
               <p className="font-medium text-blue-800">
                 {eligibleCount} eligible voters count
               </p>
+              */}
             </div>
 
             {[

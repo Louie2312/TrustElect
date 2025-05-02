@@ -151,6 +151,7 @@ export default function DepartmentsPage() {
           <option value="Academic">Academic</option>
           <option value="Administrative">Administrative</option>
           <option value="Organization">Organization</option>
+          <option value="System"></option>
         </select>
       </div>
 
@@ -349,6 +350,7 @@ function AddDepartmentModal({ onClose, onSuccess }) {
             >
               <option value="Academic">Academic</option>
               <option value="Organization">Organization</option>
+              <option value="System">System</option>
             </select>
           </div>
 

@@ -133,7 +133,7 @@ export default function AdminsPage() {
   }, []);
 
   const isSuperAdmin = (admin) => {
-    return admin.role_id === 1 || (admin.department === "Administration" && !admin.employee_number);
+    return admin.role_id === 1 || (admin.department === "Administrator" && !admin.employee_number);
   };
 
   const isCurrentUser = (admin) => {
@@ -169,7 +169,7 @@ export default function AdminsPage() {
           <option value="Information and Communication Technology (ICT)">Information and Communication Technology (ICT)</option>
           <option value="Tourism and Hospitality Management (THM)">Tourism and Hospitality Management (THM)</option>
           <option value="Business Administration and Accountancy">Business Administration and Accountancy</option>
-          <option value="Administration">Administration</option>
+          <option value="Administration">Administrator</option>
         </select>
       </div>
 

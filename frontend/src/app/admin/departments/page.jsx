@@ -19,9 +19,7 @@ export default function AdminDepartmentsPage() {
   const [filter, setFilter] = useState("All");
   const { hasPermission, loading: permissionsLoading, refreshPermissions } = usePermissions();
 
-  // Fallback permission check for when the permissions API might be failing
   const checkRoleBasedPermission = useCallback((action) => {
-    // If we already have permissions loaded, use them
     if (!permissionsLoading && hasPermission('departments', action)) {
       return true;
     }

@@ -470,7 +470,6 @@ export default function CreateElectionPage() {
               value={eventData.title}
               onChange={handleChange}
               className={`border w-full p-2 rounded ${errors.title ? 'border-red-500' : 'border-gray-300'} text-black`}
-              placeholder="Student Council"
             />
             {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
           </div>
@@ -559,9 +558,11 @@ export default function CreateElectionPage() {
           <div>
             <h2 className="text-xl font-semibold text-gray-800 mb-4">Eligible Voters</h2>
             <div className="bg-blue-50 p-3 rounded-lg mb-4">
+              {/* 
               <p className="font-medium text-blue-800">
                 {eligibleCount} eligible voters count
               </p>
+              */}
             </div>
 
             {[
