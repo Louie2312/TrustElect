@@ -407,7 +407,7 @@ export default function ElectionDetailsPage() {
           </span>
           
           {/* Only show edit buttons if system admin created the election */}
-          {(election.needs_approval || election.status === 'upcoming') ? (
+          {(election.needs_approval || election.status === 'upcoming' || election.status === 'ongoing') ? (
             isSystemAdminCreator ? (
               <>
                 <Link
@@ -417,22 +417,13 @@ export default function ElectionDetailsPage() {
                   <Edit className="w-4 h-4 mr-2" />
                   Edit Election
                 </Link>
-                
-                {election.positions && election.positions.length > 0 ? (
+                {election.status !== 'ongoing' && (
                   <Link
                     href={`/superadmin/election/${election.id}/ballot`}
                     className="flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
                   >
                     <Edit className="w-4 h-4 mr-2" />
                     Edit Ballot
-                  </Link>
-                ) : (
-                  <Link
-                    href={`/superadmin/election/${election.id}/ballot/create`}
-                    className="flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Ballot
                   </Link>
                 )}
               </>

@@ -18,6 +18,7 @@ const path = require("path");
 const app = express();
 const bodyParser = require("body-parser");
 const departmentRoutes = require("./routes/departmentRoutes");  
+const courseRoutes = require("./routes/courseRoutes");
 const fs = require('fs');
 const multer = require('multer');
 const adminPermissionRoutes = require('./routes/adminPermissionRoutes');
@@ -77,6 +78,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/content", contentRoutes);
 app.use("/api/audit-logs", auditLogRoutes);
 app.use('/api/admin-permissions', adminPermissionRoutes);
+app.use('/api/courses', courseRoutes);
 
 // Health check endpoint
 app.get("/api/healthcheck", (req, res) => {

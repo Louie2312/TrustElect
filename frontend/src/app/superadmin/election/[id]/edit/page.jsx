@@ -130,9 +130,8 @@ export default function EditElectionPage() {
 
         const election = electionResponse.data.election;
         
-        // Check if election is upcoming - only upcoming elections can be edited
-        if (election.status !== 'upcoming') {
-          setError("Only upcoming elections can be edited");
+        if (election.status !== 'upcoming' && election.status !== 'ongoing') {
+          setError("Cannot Edit Election\n\nOnly upcoming or ongoing elections can be edited");
           setLoading(prev => ({ ...prev, initial: false }));
           return;
         }
@@ -285,8 +284,20 @@ export default function EditElectionPage() {
     if (!electionData.title) errors.title = "Title is required";
     if (!electionData.date_from) errors.date_from = "Start date is required";
     if (!electionData.date_to) errors.date_to = "End date is required";
-    if (new Date(electionData.date_from) > new Date(electionData.date_to)) {
-      errors.date_to = "End date must be after start date";
+    
+    // For ongoing elections, we need different validation
+    if (electionData.status === 'ongoing') {
+      // Only validate that end date is after current date
+      const now = new Date();
+      const endDate = new Date(electionData.date_to);
+      if (endDate < now) {
+        errors.date_to = "End date must be in the future for ongoing elections";
+      }
+    } else {
+      // Normal validation for upcoming elections
+      if (new Date(electionData.date_from) > new Date(electionData.date_to)) {
+        errors.date_to = "End date must be after start date";
+      }
     }
     
     setFormErrors(errors);
@@ -546,7 +557,7 @@ export default function EditElectionPage() {
         </div>
       )}
 
-      {electionData.status === 'upcoming' && !error && (
+      {(electionData.status === 'upcoming' || electionData.status === 'ongoing') && !error && (
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
             <div className="flex">
@@ -561,6 +572,24 @@ export default function EditElectionPage() {
             </div>
           </div>
           
+          {electionData.status === 'ongoing' && (
+            <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <AlertCircle className="h-5 w-5 text-yellow-500" />
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-yellow-700 font-medium">
+                    Warning: This election is currently ongoing.
+                  </p>
+                  <p className="text-sm text-yellow-700">
+                    Editing details for an ongoing election will affect voters who are currently participating.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* Election Details */}
             <div className="space-y-4">
@@ -611,7 +640,7 @@ export default function EditElectionPage() {
                     name="date_from"
                     value={electionData.date_from}
                     onChange={handleChange}
-                    min={new Date().toISOString().split('T')[0]}
+                    min={electionData.status === 'ongoing' ? undefined : new Date().toISOString().split('T')[0]}
                     className={`border w-full p-2 rounded ${formErrors.date_from ? 'border-red-500' : 'border-gray-300'} text-black`}
                   />
                   {formErrors.date_from && <p className="text-red-500 text-sm mt-1">{formErrors.date_from}</p>}
@@ -729,6 +758,11 @@ export default function EditElectionPage() {
           </div>
 
           <div className="flex justify-end mt-8">
+            {electionData.status === 'ongoing' && (
+              <p className="italic text-gray-600 mr-auto self-center">
+                Note: Changes will be applied immediately to the ongoing election
+              </p>
+            )}
             <button
               type="submit"
               disabled={loading.saving}
@@ -753,4 +787,4 @@ export default function EditElectionPage() {
       )}
     </div>
   );
-} 
+}

@@ -233,11 +233,11 @@ exports.updateElection = async (req, res) => {
       });
     }
     
-    // Only upcoming elections can be updated
-    if (existingElection.status !== 'upcoming') {
+    // Allow updates for both upcoming and ongoing elections
+    if (existingElection.status !== 'upcoming' && existingElection.status !== 'ongoing') {
       return res.status(400).json({
         success: false,
-        message: "Only upcoming elections can be updated"
+        message: "Only upcoming or ongoing elections can be updated"
       });
     }
     

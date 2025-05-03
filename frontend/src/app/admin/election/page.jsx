@@ -39,17 +39,14 @@ const statusIcons = {
   draft: <AlertCircle className="w-5 h-5" />
 };
 
-// Helper function to check if an election was created by a system admin
 const isCreatedBySystemAdmin = (election) => {
   // No creator information
   if (!election.created_by) return false;
   
-  // If created_by is a number or string, check if it's 1 (system admin ID)
   if (typeof election.created_by === 'number' || typeof election.created_by === 'string') {
     return election.created_by === 1 || election.created_by === '1';
   }
   
-  // If created_by is an object
   if (typeof election.created_by === 'object') {
     // Check by role if available
     if (election.created_by.role) {
