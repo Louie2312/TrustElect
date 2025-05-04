@@ -1,7 +1,6 @@
 const pool = require("../config/db");
 const bcrypt = require("bcrypt");
 
-
 const checkStudentNumberExists = async (studentNumber) => {
   const query = "SELECT COUNT(*) FROM students WHERE student_number = $1";
   const result = await pool.query(query, [studentNumber]);
@@ -20,7 +19,7 @@ const getStudentByEmail = async (email) => {
 };
 
 
-const registerStudent = async (firstName, lastName, email, username, hashedPassword, studentNumber, courseName, yearLevel, gender, createdBy, courseId) => {
+const registerStudent = async (firstName, middleName, lastName, email, username, hashedPassword, studentNumber, courseName, yearLevel, gender, birthdate, createdBy, courseId) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -35,7 +34,6 @@ const registerStudent = async (firstName, lastName, email, username, hashedPassw
     const userResult = await client.query(userQuery, userValues);
     const userId = userResult.rows[0].id;
 
-    // If courseId is provided but courseName is not, fetch the course name from the database
     if (courseId && !courseName) {
       try {
         const courseResult = await client.query(
@@ -53,8 +51,7 @@ const registerStudent = async (firstName, lastName, email, username, hashedPassw
         throw new Error(`Failed to get course name for ID ${courseId}: ${error.message}`);
       }
     }
-    
-    // Make sure we have a valid course name by this point
+
     if (!courseName) {
       throw new Error('Course name is required for student registration');
     }
@@ -71,15 +68,15 @@ const registerStudent = async (firstName, lastName, email, username, hashedPassw
     }
 
     const studentQuery = `
-      INSERT INTO students (user_id, first_name, last_name, email, username, student_number, course_name, year_level, gender, registered_by, is_active)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, TRUE);
+      INSERT INTO students (user_id, first_name, middle_name, last_name, email, username, student_number, course_name, year_level, gender, birthdate, registered_by, is_active)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, TRUE);
     `;
-    const studentValues = [userId, firstName, lastName, email, username, studentNumber, courseName, yearLevel, gender, createdBy];
+    const studentValues = [userId, firstName, middleName, lastName, email, username, studentNumber, courseName, yearLevel, gender, birthdate, createdBy];
     await client.query(studentQuery, studentValues);
 
     
     await client.query("COMMIT");
-    return { id: userId, firstName, lastName, email, username, role: "Student", courseName, yearLevel, studentNumber, gender };
+    return { id: userId, firstName, middleName, lastName, email, username, role: "Student", courseName, yearLevel, studentNumber, gender, birthdate };
   } catch (error) {
     await client.query("ROLLBACK");
     console.error("Database Error:", error);
@@ -95,12 +92,14 @@ const getAllStudents = async () => {
     SELECT 
       s.id, 
       s.first_name, 
+      s.middle_name,
       s.last_name, 
       s.email, 
       s.student_number, 
       s.course_name, 
       s.year_level, 
-      s.gender, 
+      s.gender,
+      s.birthdate, 
       s.is_active,
       u.is_locked,
       u.locked_until
@@ -117,12 +116,14 @@ const getStudentById = async (studentId) => {
     SELECT 
       s.id, 
       s.first_name, 
+      s.middle_name,
       s.last_name, 
       s.email, 
       s.student_number, 
       s.course_name, 
       s.year_level, 
-      s.gender, 
+      s.gender,
+      s.birthdate, 
       s.is_active,
       u.is_locked,
       u.locked_until
@@ -149,12 +150,11 @@ const unlockStudentAccount = async (studentId) => {
   return result.rows[0] || null;
 };
 
-const updateStudent = async (studentId, firstName, lastName, courseName, yearLevel, gender) => {
+const updateStudent = async (studentId, firstName, middleName, lastName, courseName, yearLevel, gender, birthdate) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    
-    // Ensure the course exists before updating
+
     if (courseName) {
       try {
         await client.query(
@@ -163,17 +163,17 @@ const updateStudent = async (studentId, firstName, lastName, courseName, yearLev
         );
       } catch (error) {
         console.error(`Failed to ensure course exists during update: ${error.message}`);
-        // Continue anyway - don't break the update flow for this
+
       }
     }
     
     const query = `
       UPDATE students
-      SET first_name = $1, last_name = $2, course_name = $3, year_level = $4, gender = $5, updated_at = NOW()
-      WHERE id = $6
+      SET first_name = $1, middle_name = $2, last_name = $3, course_name = $4, year_level = $5, gender = $6, birthdate = $7, updated_at = NOW()
+      WHERE id = $8
       RETURNING *;
     `;
-    const values = [firstName, lastName, courseName, yearLevel, gender, studentId];
+    const values = [firstName, middleName, lastName, courseName, yearLevel, gender, birthdate, studentId];
     const result = await client.query(query, values);
     
     await client.query("COMMIT");
@@ -300,15 +300,32 @@ const processBatchStudents = async (students, createdBy) => {
           throw new Error('Student number already exists');
         }
 
-        // Generate email and validate
-        const lastSixDigits = student.studentNumber.slice(-6);
-        const email = `${student.lastName.toLowerCase()}.${lastSixDigits}@novaliches.sti.edu.ph`;
+        // Generate email and validate if not already provided
+        let email = student.email;
+        if (!email) {
+          // Use the normalized last name (remove spaces, special characters)
+          const lastSixDigits = student.studentNumber.slice(-6);
+          
+          // Normalize the lastName for email (remove spaces and special chars)
+          let normalizedLastName = student.lastName.toLowerCase().replace(/\s+/g, '');
+          
+          // Replace Spanish characters with ASCII equivalents
+          const charMap = {
+            'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u',
+            'ü': 'u', 'ñ': 'n', 'ç': 'c', 'à': 'a', 'è': 'e',
+            'ì': 'i', 'ò': 'o', 'ù': 'u'
+          };
+          
+          normalizedLastName = normalizedLastName.replace(/[áéíóúüñçàèìòù]/g, match => charMap[match] || match);
+          
+          email = `${normalizedLastName}.${lastSixDigits}@novaliches.sti.edu.ph`;
+          console.log(`Generated email for ${student.firstName} ${student.lastName}: ${email}`);
+        }
         
         // Generate password
         const autoGeneratedPassword = generateStudentPassword(student.lastName, student.studentNumber);
         const hashedPassword = await bcrypt.hash(autoGeneratedPassword, 10);
 
-        // If missing courseName but we have courseId, look it up
         let courseName = student.courseName;
         if (!courseName && student.courseId) {
           try {
@@ -327,26 +344,61 @@ const processBatchStudents = async (students, createdBy) => {
           }
         }
 
-        // If we still don't have a courseName, it's an error
         if (!courseName) {
           throw new Error('Course name is required for student registration');
         }
 
-        // Make sure the course exists in the database
         try {
-          // This query will either find the course or insert it
+     
           await client.query(
             "INSERT INTO courses (course_name) VALUES ($1) ON CONFLICT (course_name) DO NOTHING",
             [courseName]
           );
         } catch (error) {
           console.error(`Error ensuring course exists: ${error.message}`);
-          // Continue anyway - maybe the course already exists or will be added differently
+          
+        }
+
+      
+        let middleName = null;
+        if (student.middleName !== undefined && student.middleName !== null) {
+       
+          const middleNameStr = String(student.middleName).trim();
+          
+          if (middleNameStr.length > 0) {
+            middleName = middleNameStr;
+          }
+        }
+
+        let parsedBirthdate = null;
+        if (student.birthdate) {
+          try {
+           
+            if (typeof student.birthdate === 'string') {
+        
+              parsedBirthdate = new Date(student.birthdate);
+            } else if (student.birthdate instanceof Date) {
+            
+              parsedBirthdate = student.birthdate;
+            } else if (typeof student.birthdate === 'number') {
+           
+              const excelEpoch = new Date(1900, 0, 1);
+              parsedBirthdate = new Date(excelEpoch.getTime() + (student.birthdate - 1) * 24 * 60 * 60 * 1000);
+            }
+            
+            if (isNaN(parsedBirthdate.getTime())) {
+              throw new Error("Invalid date format");
+            }
+          } catch (error) {
+            console.error(`Error parsing birthdate for student ${student.studentNumber}:`, error);
+            throw new Error(`Invalid birthdate format: ${student.birthdate}`);
+          }
         }
 
         // Register student
         await registerStudent(
           student.firstName,
+          middleName,
           student.lastName,
           email,
           email, // username same as email
@@ -355,6 +407,7 @@ const processBatchStudents = async (students, createdBy) => {
           courseName,
           student.yearLevel,
           student.gender,
+          parsedBirthdate,
           createdBy
         );
 
@@ -362,8 +415,11 @@ const processBatchStudents = async (students, createdBy) => {
       } catch (error) {
         results.failed++;
         results.errors.push({
-          studentNumber: student.studentNumber,
-          courseName: student.courseName,
+          studentNumber: student.studentNumber || "Unknown",
+          firstName: student.firstName || "Unknown",
+          middleName: student.middleName || "",
+          lastName: student.lastName || "Unknown",
+          courseName: student.courseName || "Unknown",
           error: error.message
         });
       }

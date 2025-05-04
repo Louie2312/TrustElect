@@ -46,6 +46,82 @@ const deleteItem = async (tableName, id) => {
   return result.rows[0];
 };
 
+// Get the current semester from settings
+const getCurrentSemester = async () => {
+  try {
+    // Check if the settings table exists first
+    const tableCheck = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'settings'
+      );
+    `);
+    
+    // If settings table doesn't exist, create it
+    if (!tableCheck.rows[0].exists) {
+      await pool.query(`
+        CREATE TABLE settings (
+          key VARCHAR(50) PRIMARY KEY,
+          value TEXT NOT NULL
+        )
+      `);
+    }
+    
+    // Get current semester ID from settings
+    const result = await pool.query(
+      `SELECT value FROM settings WHERE key = 'current_semester'`
+    );
+    
+    if (result.rows.length === 0) {
+      return null; // No current semester set
+    }
+    
+    const semesterId = result.rows[0].value;
+    
+    // Get the semester details
+    const semesterResult = await pool.query(
+      `SELECT id, name FROM semesters WHERE id = $1`,
+      [semesterId]
+    );
+    
+    if (semesterResult.rows.length === 0) {
+      // Clean up invalid reference
+      await pool.query(
+        `DELETE FROM settings WHERE key = 'current_semester'`
+      );
+      return null;
+    }
+    
+    return semesterResult.rows[0];
+  } catch (error) {
+    console.error('Error getting current semester:', error);
+    return null;
+  }
+};
+
+// Set the current semester in settings
+const setCurrentSemester = async (semesterId) => {
+  // Verify the semester exists first
+  const semesterCheck = await pool.query(
+    `SELECT id FROM semesters WHERE id = $1`,
+    [semesterId]
+  );
+  
+  if (semesterCheck.rows.length === 0) {
+    throw new Error('Semester not found');
+  }
+  
+  // UPSERT the current semester setting
+  await pool.query(`
+    INSERT INTO settings (key, value)
+    VALUES ('current_semester', $1)
+    ON CONFLICT (key) 
+    DO UPDATE SET value = $1
+  `, [semesterId]);
+  
+  return getCurrentSemester();
+};
+
 module.exports = {
   getPrograms: () => getAllItems('programs'),
   createProgram: (name) => createItem('programs', name),
@@ -75,5 +151,8 @@ module.exports = {
   getPrecincts: () => getAllItems('precincts'),
   createPrecinct: (name) => createItem('precincts', name),
   updatePrecinct: (id, name) => updateItem('precincts', id, name),
-  deletePrecinct: (id) => deleteItem('precincts', id)
+  deletePrecinct: (id) => deleteItem('precincts', id),
+  
+  getCurrentSemester,
+  setCurrentSemester
 };

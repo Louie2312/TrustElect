@@ -7,6 +7,7 @@ import Cookies from "js-cookie";
 export default function AddStudentModal({ onClose }) {
   const [formData, setFormData] = useState({
     firstName: "",
+    middleName: "",
     lastName: "",
     email: "",
     studentNumber: "",
@@ -14,6 +15,7 @@ export default function AddStudentModal({ onClose }) {
     courseId: "",    // Add course ID for the new approach
     yearLevel: "",
     gender: "Male",
+    birthdate: "",
   });
 
   const [courses, setCourses] = useState([]);
@@ -211,6 +213,7 @@ export default function AddStudentModal({ onClose }) {
     if (!formData.studentNumber.match(/^02000[0-9]{6}$/)) newErrors.studentNumber = "Must start with '02000' and be 11 digits.";
     if (!formData.courseId && !formData.courseName) newErrors.courseId = "Select a course.";
     if (!formData.yearLevel) newErrors.yearLevel = "Select a year level.";
+    if (!formData.birthdate) newErrors.birthdate = "Birth date is required.";
 
     setErrors(prev => {
       const preserved = { 
@@ -267,9 +270,20 @@ export default function AddStudentModal({ onClose }) {
         }
       }
 
+      // Format date in MM/DD/YYYY format if it exists
+      let formattedBirthdate = formData.birthdate;
+      if (formData.birthdate) {
+        const date = new Date(formData.birthdate);
+        const month = date.getMonth() + 1; // getMonth() is zero-based
+        const day = date.getDate();
+        const year = date.getFullYear();
+        formattedBirthdate = `${month}/${day}/${year}`;
+      }
+
       // Prepare the data object with all necessary fields
       const studentData = {
         firstName: formData.firstName,
+        middleName: formData.middleName,
         lastName: formData.lastName,
         email: formData.email,
         studentNumber: formData.studentNumber,
@@ -277,6 +291,7 @@ export default function AddStudentModal({ onClose }) {
         courseId: formData.courseId,
         yearLevel: formData.yearLevel,
         gender: formData.gender,
+        birthdate: formattedBirthdate,
         password: generatedPassword,
         createdBy: superAdminId
       };
@@ -329,6 +344,9 @@ export default function AddStudentModal({ onClose }) {
             <input type="text" name="firstName"  onChange={handleChange} required className="border w-full p-2 rounded" />
             {errors.firstName && <p className="text-red-500 text-sm">{errors.firstName}</p>}
           
+            <label name="middleName" className="text-black font-bold">Middle Name:</label>
+            <input type="text" name="middleName" onChange={handleChange} className="border w-full p-2 rounded" />
+          
             <label name="lastName" className="text-black font-bold">Last Name:</label>
             <input type="text" name="lastName"  onChange={handleChange} required className="border w-full p-2 rounded" />
             {errors.lastName && <p className="text-red-500 text-sm">{errors.lastName}</p>}
@@ -340,6 +358,17 @@ export default function AddStudentModal({ onClose }) {
             <label name="studentNumber" className="text-black font-bold">Student Number:</label>
             <input type="text" name="studentNumber"  onChange={handleChange} required className="border w-full p-2 rounded" />
             {errors.studentNumber && <p className="text-red-500 text-sm">{errors.studentNumber}</p>}
+
+            <label name="birthdate" className="text-black font-bold">Birth Date (MM/DD/YYYY):</label>
+            <input 
+              type="date" 
+              name="birthdate" 
+              onChange={handleChange} 
+              required 
+              className="border w-full p-2 rounded"
+              placeholder="MM/DD/YYYY"
+            />
+            {errors.birthdate && <p className="text-red-500 text-sm">{errors.birthdate}</p>}
 
             {/* Course Dropdown */}
             <label name="course" className="text-black font-bold">Select Course:</label>

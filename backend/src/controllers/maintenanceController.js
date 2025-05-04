@@ -4,7 +4,8 @@ const {
   getYearLevels, createYearLevel, updateYearLevel, deleteYearLevel,
   getGenders, createGender, updateGender, deleteGender,
   getSemesters, createSemester, updateSemester, deleteSemester,
-  getPrecincts, createPrecinct, updatePrecinct, deletePrecinct
+  getPrecincts, createPrecinct, updatePrecinct, deletePrecinct,
+  getCurrentSemester, setCurrentSemester
 } = require("../models/maintenanceModel");
 
 const handleResponse = (res, promise) => {
@@ -52,3 +53,50 @@ exports.getPrecincts = (req, res) => handleResponse(res, getPrecincts());
 exports.createPrecinct = (req, res) => handleResponse(res, createPrecinct(req.body.name));
 exports.updatePrecinct = (req, res) => handleResponse(res, updatePrecinct(req.params.id, req.body.name));
 exports.deletePrecinct = (req, res) => handleResponse(res, deletePrecinct(req.params.id));
+
+// Get current semester
+exports.getCurrentSemester = (req, res) => {
+  getCurrentSemester()
+    .then(data => {
+      if (!data) {
+        // Return success but with null data for frontend to handle
+        return res.status(200).json({ success: true, data: null });
+      }
+      res.status(200).json({ success: true, data });
+    })
+    .catch(error => {
+      console.error('Error getting current semester:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to fetch current semester' 
+      });
+    });
+};
+
+// Set current semester
+exports.setCurrentSemester = (req, res) => {
+  const { semesterId } = req.body;
+  
+  if (!semesterId) {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Semester ID is required' 
+    });
+  }
+  
+  setCurrentSemester(semesterId)
+    .then(data => {
+      res.status(200).json({ 
+        success: true, 
+        data,
+        message: 'Current semester updated successfully' 
+      });
+    })
+    .catch(error => {
+      console.error('Error setting current semester:', error);
+      res.status(400).json({ 
+        success: false, 
+        message: error.message || 'Failed to set current semester' 
+      });
+    });
+};

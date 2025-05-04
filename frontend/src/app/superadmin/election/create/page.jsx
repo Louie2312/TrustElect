@@ -6,6 +6,9 @@ import { toast } from "react-toastify";
 import Cookies from "js-cookie";
 import axios from "axios";
 
+// Local storage key for current semester (must match the one in maintenance page)
+const CURRENT_SEMESTER_KEY = "trustElect_currentSemester";
+
 const PreviewModal = ({ 
   electionData, 
   eligibleCount, 
@@ -123,6 +126,7 @@ export default function CreateElectionPage() {
     semesters: [],
     precincts: []
   });
+  const [currentSemester, setCurrentSemester] = useState(null);
   const [loading, setLoading] = useState({
     options: true,
     form: false
@@ -152,6 +156,14 @@ export default function CreateElectionPage() {
             headers: { Authorization: `Bearer ${token}` }
           })
         );
+        
+        // Add request for current semester
+        const currentSemesterRequest = axios.get(
+          "http://localhost:5000/api/maintenance/current-semester", 
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        
+        requests.push(currentSemesterRequest);
 
         const responses = await Promise.all(requests);
         
@@ -167,6 +179,22 @@ export default function CreateElectionPage() {
           setEventData(prev => ({
             ...prev,
             electionType: data.electionTypes[0]
+          }));
+        }
+        
+        // Handle current semester response (last response)
+        const currentSemesterResponse = responses[responses.length - 1];
+        if (currentSemesterResponse.data.success && currentSemesterResponse.data.data) {
+          const currentSemesterName = currentSemesterResponse.data.data.name;
+          setCurrentSemester(currentSemesterName);
+          
+          // Automatically select current semester
+          setEventData(prev => ({
+            ...prev,
+            eligibleVoters: {
+              ...prev.eligibleVoters,
+              semester: [currentSemesterName]
+            }
           }));
         }
       } catch (error) {
@@ -514,20 +542,24 @@ export default function CreateElectionPage() {
           <div>
             <h2 className="text-xl font-semibold text-gray-800 mb-4">Eligible Voters</h2>
             <div className="bg-blue-50 p-3 rounded-lg mb-4">
-            
               <p className="font-medium text-blue-800">
                 {eligibleCount} eligible voters count
               </p>
-              
             </div>
 
             {[
               { category: 'programs', label: 'Programs', items: maintenanceData.programs },
               { category: 'yearLevels', label: 'Year Levels', items: maintenanceData.yearLevels },
-              { category: 'semester', label: 'Semester', items: maintenanceData.semesters },
+              { 
+                category: 'semester', 
+                label: 'Semester', 
+                items: maintenanceData.semesters,
+               
+                readonly: true
+              },
               { category: 'gender', label: 'Gender', items: maintenanceData.genders },
               { category: 'precinct', label: 'Precinct', items: maintenanceData.precincts },
-            ].map(({ category, label, items }) => (
+            ].map(({ category, label, items, note, readonly }) => (
               <div key={category} className="border-b pb-4 last:border-b-0">
                 <div className="flex justify-between items-center mb-2">
                   <h3 className="font-medium text-gray-700">{label}</h3>
@@ -543,37 +575,51 @@ export default function CreateElectionPage() {
                 {criteriaErrors[category] && (
                   <p className="text-red-500 text-sm mb-2">{criteriaErrors[category]}</p>
                 )}
-                <div className="flex flex-wrap gap-3">
-                  {items.map(item => (
-                    <label 
-                      key={item} 
-                      className={`inline-flex items-center px-3 py-1 rounded-full ${
-                        eventData.eligibleVoters[category].includes(item) 
-                          ? 'bg-blue-100 border border-blue-300' 
-                          : 'border border-gray-200'
-                      }`}
-                    >
-                      {category === 'semester' ? (
+                {note && (
+                  <p className={`text-sm ${category === 'semester' ? 'text-green-600 font-medium' : 'text-blue-600'} mb-2`}>
+                    {note}
+                  </p>
+                )}
+                
+                {category === 'semester' ? (
+                  <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
+                    {currentSemester ? (
+                      <div className="flex items-center">
+                        <span className="inline-block w-4 h-4 mr-2 bg-green-500 rounded-full"></span>
+                        <span className="text-gray-800 font-medium">{currentSemester}</span>
+                      </div>
+                    ) : (
+                      <p className="text-amber-600">
+                        No current semester has been set. Please set one in Maintenance → Semesters.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-3">
+                    {items.map(item => (
+                      <label 
+                        key={item} 
+                        className={`inline-flex items-center px-3 py-1 rounded-full ${
+                          eventData.eligibleVoters[category].includes(item) 
+                            ? 'bg-blue-100 border border-blue-300' 
+                            : 'border border-gray-200'
+                        }`}
+                      >
                         <input
-                          type="radio"
-                          name="semester"
+                          type={category === 'semester' ? "radio" : "checkbox"}
+                          name={category === 'semester' ? "semester" : undefined}
                           checked={eventData.eligibleVoters[category].includes(item)}
                           onChange={() => handleCheckboxChange(category, item)}
                           className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"
+                          disabled={readonly}
                         />
-                      ) : (
-                        <input
-                          type="checkbox"
-                          checked={eventData.eligibleVoters[category].includes(item)}
-                          onChange={() => handleCheckboxChange(category, item)}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"
-                        />
-                      )}
-                      <span className="text-gray-700">{item}</span>
-                    </label>
-                  ))}
-                </div>
-                {eventData.eligibleVoters[category].length > 0 && (
+                        <span className="text-gray-700">{item}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                
+                {category !== 'semester' && eventData.eligibleVoters[category].length > 0 && (
                   <p className="text-sm text-gray-500 mt-2">
                     Selected: {eventData.eligibleVoters[category].join(", ")}
                   </p>

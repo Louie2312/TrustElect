@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
@@ -8,14 +8,20 @@ import AddStudentModal from "@/components/Modals/AddStudentModal";
 import EditStudentModal from "@/components/Modals/EditStudentModal";
 import ResetStudentPasswordModal from "@/components/Modals/ResetStudentPasswordModal";
 import { useDropzone } from 'react-dropzone';
+import { debounce } from 'lodash';
 
 export default function ManageStudents() {
   const router = useRouter();
   const [students, setStudents] = useState([]);
   const [filteredStudents, setFilteredStudents] = useState([]);
+  
+  // Add pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [studentsPerPage] = useState(25); // Display 25 students per page
+  const [totalPages, setTotalPages] = useState(1);
 
-  const courses = ["BSIT", "BSCPE", "BSCS", "BMMA", "BSTM", "BSHM", "BSA", "BSBAOM"];
-  const yearLevels = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
+  const [courses, setCourses] = useState([]);
+  const [yearLevels, setYearLevels] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -49,6 +55,45 @@ export default function ManageStudents() {
       setBatchResults(null); // Reset previous results
     }
   });
+
+  const fetchCoursesAndYearLevels = async () => {
+    try {
+      const token = Cookies.get("token");
+      
+      // Fetch programs (courses)
+      const coursesResponse = await axios.get("http://localhost:5000/api/maintenance/programs", {
+        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
+      });
+      
+      if (coursesResponse.data.success) {
+        const programNames = coursesResponse.data.data.map(program => program.name);
+        setCourses(programNames);
+      } else {
+        // Fallback to default courses if API fails
+        setCourses(["BSIT", "BSCPE", "BSCS", "BMMA", "BSTM", "BSHM", "BSA", "BSBAOM"]);
+      }
+      
+      // Fetch year levels
+      const yearLevelsResponse = await axios.get("http://localhost:5000/api/maintenance/year-levels", {
+        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
+      });
+      
+      if (yearLevelsResponse.data.success) {
+        const yearLevelNames = yearLevelsResponse.data.data.map(yearLevel => yearLevel.name);
+        setYearLevels(yearLevelNames);
+      } else {
+        // Fallback to default year levels if API fails
+        setYearLevels(["1st Year", "2nd Year", "3rd Year", "4th Year"]);
+      }
+    } catch (error) {
+      console.error("Error fetching courses and year levels:", error);
+      // Fallback to default values in case of error
+      setCourses(["BSIT", "BSCPE", "BSCS", "BMMA", "BSTM", "BSHM", "BSA", "BSBAOM"]);
+      setYearLevels(["1st Year", "2nd Year", "3rd Year", "4th Year"]);
+    }
+  };
 
   const handleBatchUpload = async () => {
     if (!selectedFile) return;
@@ -85,32 +130,46 @@ export default function ManageStudents() {
   
       setUploadStatus('success');
       setBatchResults(res.data);
-      fetchStudents(); // Refresh the student list
+      // Only refresh the student list if at least one student was added successfully
+      if (res.data.success > 0) {
+        fetchStudents(); 
+      }
       setSelectedFile(null); // Clear selected file after upload
     } catch (error) {
       console.error('Batch upload error:', error);
       setUploadStatus('error');
-      setBatchResults({
-        message: error.response?.data?.message || 'Upload failed',
-        error: error.message
-      });
+      
+      // Check if we have structured error data from the server
+      if (error.response?.data) {
+        setBatchResults({
+          message: error.response.data.message || 'Upload failed',
+          errors: error.response.data.errors || []
+        });
+      } else {
+        setBatchResults({
+          message: error.message || 'Upload failed',
+          error: error.message
+        });
+      }
     }
   };
  
   //Fetch Students from API (Only Active Students)
   const fetchStudents = async () => {
     try {
+      setLoading(true);
       const token = Cookies.get("token");
       const res = await axios.get("http://localhost:5000/api/superadmin/students", {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
 
-      console.log("🔹 Debugging API Response:", res.data.students);
+      // Filter active students
       const activeStudents = res.data.students.filter((student) => student.is_active);
-
       setStudents(activeStudents);
-      setFilteredStudents(activeStudents);
+      
+      // Apply filters and update total pages
+      applyFilters(activeStudents);
       setLoading(false);
     } catch (error) {
       console.error("Error fetching students:", error);
@@ -119,13 +178,9 @@ export default function ManageStudents() {
     }
   };
 
-  useEffect(() => {
-    fetchStudents();
-  }, []);
-
-  
-  useEffect(() => {
-    let filtered = students;
+  // Function to apply filters and handle pagination
+  const applyFilters = (studentsList) => {
+    let filtered = [...studentsList];
 
     if (searchQuery.trim() !== "") {
       filtered = filtered.filter(
@@ -143,17 +198,45 @@ export default function ManageStudents() {
       filtered = filtered.filter((student) => student.year_level === selectedYearLevel);
     }
 
-    setFilteredStudents(filtered);
-  }, [searchQuery, selectedCourse, selectedYearLevel, students]);
+    // Calculate total pages
+    const total = Math.ceil(filtered.length / studentsPerPage);
+    setTotalPages(total > 0 ? total : 1);
+    
+    // Reset to first page if filter changes result in fewer pages
+    if (currentPage > total) {
+      setCurrentPage(1);
+    }
+    
+    // Get current page of students
+    const indexOfLastStudent = currentPage * studentsPerPage;
+    const indexOfFirstStudent = indexOfLastStudent - studentsPerPage;
+    const currentStudents = filtered.slice(indexOfFirstStudent, indexOfLastStudent);
+    
+    setFilteredStudents(currentStudents);
+  };
 
-  
+  useEffect(() => {
+    fetchStudents();
+    fetchCoursesAndYearLevels();
+  }, []);
+
+  useEffect(() => {
+    if (students.length > 0) {
+      applyFilters(students);
+    }
+  }, [searchQuery, selectedCourse, selectedYearLevel, currentPage, students]);
+
   const resetFilters = () => {
     setSearchQuery("");
     setSelectedCourse("");
     setSelectedYearLevel("");
-    setFilteredStudents(students); 
+    setCurrentPage(1);
+    applyFilters(students); 
   };
 
+  const handlePageChange = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
   
   const deleteStudent = async (id) => {
     if (!confirm("Are you sure you want to archive this student?")) return;
@@ -198,7 +281,7 @@ export default function ManageStudents() {
     setBatchResults(null);
   };
 
-  // Calculate statistics for courses and year levels
+  // Memoize stats calculation to prevent recalculation on every render
   const calculateStats = () => {
     // Count by course
     const courseStats = {};
@@ -217,18 +300,90 @@ export default function ManageStudents() {
 
   const stats = calculateStats();
 
+  // Pagination UI component
+  const Pagination = () => {
+    // Maximum number of page buttons to show
+    const maxPageButtons = 5;
+    let pageButtons = [];
+    
+    // Calculate range of pages to show
+    let startPage = Math.max(1, currentPage - Math.floor(maxPageButtons / 2));
+    let endPage = Math.min(totalPages, startPage + maxPageButtons - 1);
+    
+    // Adjust start if we're near the end
+    if (endPage - startPage + 1 < maxPageButtons) {
+      startPage = Math.max(1, endPage - maxPageButtons + 1);
+    }
+    
+    // Generate page buttons
+    for (let i = startPage; i <= endPage; i++) {
+      pageButtons.push(
+        <button
+          key={i}
+          onClick={() => handlePageChange(i)}
+          className={`px-3 py-1 mx-1 rounded ${
+            currentPage === i
+              ? "bg-blue-600 text-white"
+              : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+          }`}
+        >
+          {i}
+        </button>
+      );
+    }
+    
+    return (
+      <div className="flex justify-center items-center my-4">
+        <button
+          onClick={() => handlePageChange(1)}
+          disabled={currentPage === 1}
+          className="px-3 py-1 mx-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50"
+        >
+          &laquo;
+        </button>
+        <button
+          onClick={() => handlePageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="px-3 py-1 mx-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50"
+        >
+          &lt;
+        </button>
+        
+        {pageButtons}
+        
+        <button
+          onClick={() => handlePageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="px-3 py-1 mx-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50"
+        >
+          &gt;
+        </button>
+        <button
+          onClick={() => handlePageChange(totalPages)}
+          disabled={currentPage === totalPages}
+          className="px-3 py-1 mx-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50"
+        >
+          &raquo;
+        </button>
+        
+        <span className="ml-4 text-gray-700">
+          Page {currentPage} of {totalPages}
+        </span>
+      </div>
+    );
+  };
+
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4 text-black">Student Management</h1>
 
-      {loading && <p>Loading students...</p>}
       {error && <p className="text-red-500">{error}</p>}
 
       <div className="flex flex-wrap justify-between items-center mb-4">
         <div className="flex flex-wrap gap-4">
           <input
             type="text"
-            placeholder="Search"
+            placeholder="Search by name or student #"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="border w-64 p-2 rounded text-black"
@@ -251,14 +406,21 @@ export default function ManageStudents() {
               </option>
             ))}
           </select>
+          
+          <button
+            onClick={resetFilters}
+            className="bg-gray-200 text-gray-700 px-3 py-2 rounded hover:bg-gray-300"
+          >
+            Reset Filters
+          </button>
         </div>
         
         <div className="bg-gray-100 px-4 py-2 rounded-lg shadow-sm">
           <span className="text-black font-medium">Total Students: </span>
-          <span className="text-blue-600 font-bold">{filteredStudents.length}</span>
-          {filteredStudents.length !== students.length && (
+          <span className="text-blue-600 font-bold">{students.length}</span>
+          {filteredStudents.length < students.length && (
             <span className="text-gray-500 text-sm ml-2">
-              (Filtered from {students.length})
+              (Showing {filteredStudents.length} with current filters)
             </span>
           )}
           <button 
@@ -310,89 +472,111 @@ export default function ManageStudents() {
         </div>
       )}
 
-      <button onClick={() => setShowAddModal(true)} className="bg-[#01579B]  text-white px-4 py-2 rounded mb-4 ml-4 mr-5">
-        Add New Student
-      </button>
+      <div className="flex gap-4 mb-4">
+        <button onClick={() => setShowAddModal(true)} className="bg-[#01579B] text-white px-4 py-2 rounded">
+          Add New Student
+        </button>
 
-      <button 
-        onClick={() => setShowBatchModal(true)} 
-        className="bg-green-600 text-white px-4 py-2 rounded"
-      >
-        Batch Upload
-      </button>
+        <button 
+          onClick={() => setShowBatchModal(true)} 
+          className="bg-green-600 text-white px-4 py-2 rounded"
+        >
+          Batch Upload
+        </button>
+        
+        <button onClick={() => router.push("/superadmin/students/archive")} className="bg-gray-600 text-white px-4 py-2 rounded">
+          Archived
+        </button>
+      </div>
 
       {showAddModal && <AddStudentModal onClose={() => setShowAddModal(false)} />}
 
-      {/* Student Table (Active Students Only) */}
-      <table className="w-full bg-white shadow-md rounded-lg overflow-hidden text-black">
-        <thead>
-          <tr className="bg-[#01579B] text-white">
-            <th className="p-3">Full Name</th>
-            <th className="p-3">Email</th>
-            <th className="p-3">Student #</th>
-            <th className="p-3">Course</th>
-            <th className="p-3">Year Level</th>
-            <th className="p-3">Status</th>
-            <th className="p-3">Account Status</th>
-            <th className="p-3">Actions</th>
-          </tr>
-        </thead>
+      {/* Pagination - Top */}
+      <Pagination />
 
-        <tbody>
-          {filteredStudents.length > 0 ? (
-            filteredStudents.map((student) => (
-              <tr key={student.id} className="text-center border-b">
-                <td className="p-3">{`${student.first_name} ${student.last_name}`}</td>
-                <td className="p-3">{student.email}</td>
-                <td className="p-3">{student.student_number}</td>
-                <td className="p-3">{student.course_name}</td>
-                <td className="p-3">{student.year_level}</td>
-                <td className="p-3">
-                  <span className={`px-2 py-1 rounded-full text-xs ${
-                    student.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    {student.is_active ? 'Active' : 'Inactive'}
-                  </span>
-                </td>
-                <td className="p-3">
-                  <span className={`px-2 py-1 rounded-full text-xs ${
-                    student.is_locked ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-                  }`}>
-                    {student.is_locked ? 'Locked' : 'Active'}
-                  </span>
-                  {student.is_locked && student.locked_until && (
-                    <div className="text-xs text-gray-500">
-                      Until: {new Date(student.locked_until).toLocaleString()}
-                    </div>
-                  )}
-                </td>
-                <td className="p-3 flex justify-center gap-2">
-                  <button onClick={() => { setSelectedStudent(student); setShowEditModal(true); }} className="bg-green-500 text-white px-3 py-1 rounded">Edit</button>
-                  <button onClick={() => deleteStudent(student.id)} className="bg-red-500 text-white px-3 py-1 rounded">Delete</button>
-                  <button onClick={() => { setSelectedStudent(student); setShowResetModal(true); }} className="bg-[#01579B] text-white px-3 py-1 rounded">Reset Password</button>
-                  {student.is_locked && (
-                    <button 
-                      onClick={() => unlockStudentAccount(student.id)} 
-                      className="bg-yellow-500 text-white px-3 py-1 rounded"
-                    >
-                      Unlock
-                    </button>
-                  )}
+      {/* Student Table (Active Students Only) */}
+      <div className="overflow-x-auto">
+        <table className="w-full bg-white shadow-md rounded-lg overflow-hidden text-black">
+          <thead>
+            <tr className="bg-[#01579B] text-white">
+              <th className="p-3">Full Name</th>
+              <th className="p-3">Email</th>
+              <th className="p-3">Student #</th>
+              <th className="p-3">Course</th>
+              <th className="p-3">Year Level</th>
+              <th className="p-3">Status</th>
+              <th className="p-3">Account Status</th>
+              <th className="p-3">Actions</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan="8" className="text-center py-8">
+                  <div className="flex justify-center items-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                    <span className="ml-2">Loading students...</span>
+                  </div>
                 </td>
               </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan="8" className="text-center py-4 text-gray-500">No active students available.</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+            ) : filteredStudents.length > 0 ? (
+              filteredStudents.map((student) => (
+                <tr key={student.id} className="text-center border-b">
+                  <td className="p-3">{`${student.last_name}, ${student.first_name} ${student.middle_name || ''}`}</td>
+                  <td className="p-3">{student.email}</td>
+                  <td className="p-3">{student.student_number}</td>
+                  <td className="p-3">{student.course_name}</td>
+                  <td className="p-3">{student.year_level}</td>
+                  <td className="p-3">
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      student.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {student.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td className="p-3">
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      student.is_locked ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+                    }`}>
+                      {student.is_locked ? 'Locked' : 'Active'}
+                    </span>
+                    {student.is_locked && student.locked_until && (
+                      <div className="text-xs text-gray-500">
+                        Until: {new Date(student.locked_until).toLocaleString()}
+                      </div>
+                    )}
+                  </td>
+                  <td className="p-3 flex justify-center gap-2">
+                    <button onClick={() => { setSelectedStudent(student); setShowEditModal(true); }} className="bg-green-500 text-white px-3 py-1 rounded">Edit</button>
+                    <button onClick={() => deleteStudent(student.id)} className="bg-red-500 text-white px-3 py-1 rounded">Delete</button>
+                    <button onClick={() => { setSelectedStudent(student); setShowResetModal(true); }} className="bg-[#01579B] text-white px-3 py-1 rounded">Reset</button>
+                    {student.is_locked && (
+                      <button 
+                        onClick={() => unlockStudentAccount(student.id)} 
+                        className="bg-yellow-500 text-white px-3 py-1 rounded"
+                      >
+                        Unlock
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="8" className="text-center py-4 text-gray-500">
+                  {searchQuery || selectedCourse || selectedYearLevel 
+                    ? "No students found matching your criteria." 
+                    : "No active students available."}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
 
-      {/* View Archived Students */}
-      <button onClick={() => router.push("/superadmin/students/archive")} className="mt-7 bg-gray-600 text-white px-4 py-2 rounded">
-        Archived
-      </button>
+      {/* Pagination - Bottom */}
+      {!loading && students.length > 0 && <Pagination />}
 
       {/* Edit Student Modal */}
       {showEditModal && selectedStudent && (
@@ -408,6 +592,7 @@ export default function ManageStudents() {
         <div className="fixed inset-0 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg w-full max-w-2xl">
             <h2 className="text-xl font-bold mb-4 text-black">Batch Upload Students</h2>
+            
             
             <div 
               {...getRootProps()} 
@@ -473,13 +658,32 @@ export default function ManageStudents() {
                 {batchResults.failed > 0 && (
                   <div className="mt-2">
                     <h4 className="font-bold">Errors:</h4>
-                    <ul className="max-h-40 overflow-y-auto">
-                      {batchResults.errors.map((error, index) => (
-                        <li key={index} className="text-sm text-black">
-                          <span className="font-medium text-black">{error.studentNumber}:</span> {error.error}
-                        </li>
-                      ))}
-                    </ul>
+                    <div className="max-h-60 overflow-y-auto border border-gray-200 rounded p-2 bg-white">
+                      <table className="w-full text-sm text-left">
+                        <thead className="bg-gray-100">
+                          <tr>
+                            <th className="px-2 py-1">Row</th>
+                            <th className="px-2 py-1">Student</th>
+                            <th className="px-2 py-1">Error</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {batchResults.errors.map((error, index) => (
+                            <tr key={index} className="border-b border-gray-100">
+                              <td className="px-2 py-1">{error.row || 'N/A'}</td>
+                              <td className="px-2 py-1">
+                                {error.lastName}, {error.firstName} {error.middleName || ''} 
+                                <div className="text-xs text-gray-500">{error.studentNumber}</div>
+                              </td>
+                              <td className="px-2 py-1 text-red-600">{error.error}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="mt-2 text-sm text-gray-600">
+                      Note: Rows with errors were skipped, but valid rows were still processed.
+                    </p>
                   </div>
                 )}
               </div>
@@ -488,7 +692,39 @@ export default function ManageStudents() {
             {uploadStatus === 'error' && (
               <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded">
                 <h3 className="font-bold text-red-800">Upload Failed</h3>
-                <p>{batchResults?.message || 'An error occurred during upload'}</p>
+                <p className="text-red-700">{batchResults?.message || 'An error occurred during upload'}</p>
+                
+                {batchResults?.errors && batchResults.errors.length > 0 && (
+                  <div className="mt-2">
+                    <h4 className="font-bold text-red-800">Error Details:</h4>
+                    <div className="max-h-60 overflow-y-auto border border-red-200 rounded p-2 bg-white">
+                      <table className="w-full text-sm text-left">
+                        <thead className="bg-red-50">
+                          <tr>
+                            <th className="px-2 py-1">Row</th>
+                            <th className="px-2 py-1">Student</th>
+                            <th className="px-2 py-1">Error</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {batchResults.errors.map((error, index) => (
+                            <tr key={index} className="border-b border-red-50">
+                              <td className="px-2 py-1">{error.row || 'N/A'}</td>
+                              <td className="px-2 py-1">
+                                {error.lastName}, {error.firstName} {error.middleName || ''} 
+                                <div className="text-xs text-gray-500">{error.studentNumber}</div>
+                              </td>
+                              <td className="px-2 py-1 text-red-600">{error.error}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="mt-2 text-sm text-red-700">
+                      Please fix these errors and try uploading again.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 

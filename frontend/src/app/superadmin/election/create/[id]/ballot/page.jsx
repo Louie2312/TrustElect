@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Plus, Trash2, Upload, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Upload, Image as ImageIcon, AlertTriangle } from "lucide-react";
 import Cookies from "js-cookie";
 
 const API_BASE = 'http://localhost:5000/api';
@@ -197,6 +197,38 @@ const PreviewModal = ({ ballot, election, onConfirm, onCancel }) => {
   );
 };
 
+const BackConfirmationModal = ({ onConfirm, onCancel }) => {
+  return (
+    <div className="fixed inset-0 flex items-center justify-center z-50 ">
+      <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+        <div className="flex items-center mb-4">
+         
+          <h2 className="text-xl font-semibold text-black">Confirm</h2>
+        </div>
+        <p className="mb-6 text-black">
+          Are you sure you want to go back? Any unsaved changes will be lost.
+        </p>
+        <div className="flex justify-end space-x-3">
+        <button
+            onClick={onConfirm}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Yes, Go Back
+          </button>
+          
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 text-black"
+          >
+            No, Stay Here
+          </button>
+          
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function BallotPage() {
   const router = useRouter();
   const params = useParams();
@@ -220,6 +252,7 @@ export default function BallotPage() {
   });
   const [previewBallot, setPreviewBallot] = useState(false);
   const [imagePreviews, setImagePreviews] = useState({});
+  const [showBackConfirmation, setShowBackConfirmation] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -777,9 +810,16 @@ export default function BallotPage() {
         />
       )}
 
+      {showBackConfirmation && (
+        <BackConfirmationModal
+          onConfirm={() => router.back()}
+          onCancel={() => setShowBackConfirmation(false)}
+        />
+      )}
+
       <div className="flex items-center mb-6">
         <button 
-          onClick={() => router.back()}
+          onClick={() => setShowBackConfirmation(true)}
           className="flex items-center text-blue-600 hover:text-blue-800 mr-4"
         >
           <ArrowLeft className="w-5 h-5 mr-1" />

@@ -23,6 +23,7 @@ const MaintenancePage = () => {
   const [isAdding, setIsAdding] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [editName, setEditName] = useState("");
+  const [currentSemester, setCurrentSemester] = useState(null);
 
   const tabs = [
     { id: "programs", label: "Programs" },
@@ -49,6 +50,25 @@ const MaintenancePage = () => {
       );
       
       setItems(response.data.data);
+      
+      // If we're on the semesters tab, fetch the current semester
+      if (activeTab === "semesters") {
+        try {
+          const currentSemesterResponse = await axios.get(
+            "http://localhost:5000/api/maintenance/current-semester",
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          
+          if (currentSemesterResponse.data.success && currentSemesterResponse.data.data) {
+            setCurrentSemester(currentSemesterResponse.data.data.id);
+          } else {
+            setCurrentSemester(null);
+          }
+        } catch (error) {
+          console.error("Error fetching current semester:", error);
+          setCurrentSemester(null);
+        }
+      }
     } catch (error) {
       toast.error("Failed to fetch items");
       console.error("API Error:", error);
@@ -151,6 +171,27 @@ const MaintenancePage = () => {
     }
   };
 
+  const setAsCurrentSemester = async (semesterId) => {
+    setIsLoading(true);
+    try {
+      const token = Cookies.get("token");
+      
+      await axios.post(
+        `http://localhost:5000/api/maintenance/set-current-semester`,
+        { semesterId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      toast.success("Current semester updated successfully");
+      setCurrentSemester(semesterId);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to set current semester");
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const startEditing = (item) => {
     setEditingItem(item);
     setEditName(item.name);
@@ -194,6 +235,14 @@ const MaintenancePage = () => {
             </button>
           )}
         </div>
+        
+        {activeTab === "semesters" && (
+          <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+            <p className="text-sm text-blue-700">
+              Set a semester as current to have it automatically selected when creating elections.
+            </p>
+          </div>
+        )}
         
         {(isAdding || editingItem) && (
           <div className="mb-6 p-4 bg-gray-50 rounded-lg">
@@ -254,6 +303,11 @@ const MaintenancePage = () => {
                   <tr key={item.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {item.name}
+                      {activeTab === "semesters" && currentSemester === item.id && (
+                        <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">
+                          Current
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex gap-2">
                       <button
@@ -270,6 +324,15 @@ const MaintenancePage = () => {
                       >
                         Delete
                       </button>
+                      {activeTab === "semesters" && currentSemester !== item.id && (
+                        <button
+                          onClick={() => setAsCurrentSemester(item.id)}
+                          className="text-green-600 hover:text-green-900"
+                          disabled={isLoading}
+                        >
+                          Set as Current
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

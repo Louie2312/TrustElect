@@ -18,6 +18,7 @@ export default function EditElectionPage() {
   });
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(null);
+  const [currentSemester, setCurrentSemester] = useState(null);
   const [electionData, setElectionData] = useState({
     title: "",
     description: "",
@@ -185,6 +186,33 @@ export default function EditElectionPage() {
           eligibleVoters
         });
 
+        // Fetch current semester from maintenance
+        try {
+          const currentSemesterResponse = await axios.get(
+            `http://localhost:5000/api/maintenance/current-semester`,
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            }
+          );
+          
+          if (currentSemesterResponse.data.success) {
+            setCurrentSemester(currentSemesterResponse.data.semester);
+          }
+        } catch (err) {
+          console.error("Error fetching current semester:", err);
+          // Fallback to localStorage if API fails
+          try {
+            const storedSemester = localStorage.getItem('currentSemester');
+            if (storedSemester) {
+              setCurrentSemester(JSON.parse(storedSemester));
+            }
+          } catch (e) {
+            console.error("Error getting semester from localStorage:", e);
+          }
+        }
+
         // Fetch maintenance data (options for dropdowns)
         const endpoints = [
           { key: 'programs', url: 'programs' },
@@ -287,16 +315,20 @@ export default function EditElectionPage() {
     
     // For ongoing elections, we need different validation
     if (electionData.status === 'ongoing') {
-      // Only validate that end date is after current date
+      // For ongoing elections, the combined date and time of end should be in the future
       const now = new Date();
-      const endDate = new Date(electionData.date_to);
-      if (endDate < now) {
-        errors.date_to = "End date must be in the future for ongoing elections";
+      const endDateTime = new Date(`${electionData.date_to}T${electionData.end_time || '23:59'}`);
+      
+      if (endDateTime < now) {
+        errors.end_time = "The combined end date and time must be in the future";
       }
     } else {
       // Normal validation for upcoming elections
-      if (new Date(electionData.date_from) > new Date(electionData.date_to)) {
-        errors.date_to = "End date must be after start date";
+      const startDateTime = new Date(`${electionData.date_from}T${electionData.start_time || '00:00'}`);
+      const endDateTime = new Date(`${electionData.date_to}T${electionData.end_time || '23:59'}`);
+      
+      if (startDateTime > endDateTime) {
+        errors.date_to = "End date/time must be after start date/time";
       }
     }
     
@@ -312,7 +344,9 @@ export default function EditElectionPage() {
     if (eligibleVoters.programs.length === 0) newCriteriaErrors.programs = "Select at least one program";
     if (eligibleVoters.yearLevels.length === 0) newCriteriaErrors.yearLevels = "Select at least one year level";
     if (eligibleVoters.gender.length === 0) newCriteriaErrors.gender = "Select at least one gender";
-    if (eligibleVoters.semester.length === 0) newCriteriaErrors.semester = "Select a semester";
+    
+    // Semester is now read-only, so we don't validate it
+    // We'll preserve whatever was selected previously
     
     setCriteriaErrors(newCriteriaErrors);
     return Object.keys(newCriteriaErrors).length === 0;
@@ -326,19 +360,11 @@ export default function EditElectionPage() {
 
   // Handle checkbox changes for eligibility criteria
   const handleCheckboxChange = (category, value) => {
+    // Don't allow changing semester
+    if (category === 'semester') return;
+    
     setElectionData(prev => {
-      // Special handling for semester (radio button behavior)
-      if (category === 'semester') {
-        return {
-          ...prev,
-          eligibleVoters: {
-            ...prev.eligibleVoters,
-            [category]: [value] // Always set as single-item array
-          }
-        };
-      }
-      
-      // Normal checkbox behavior for other categories
+      // Normal checkbox behavior for all categories
       const currentValues = prev.eligibleVoters[category];
       const newValues = currentValues.includes(value)
         ? currentValues.filter(item => item !== value)
@@ -402,7 +428,7 @@ export default function EditElectionPage() {
       
       const token = Cookies.get("token");
       
-      // First get the current election data to preserve any fields we're not updating
+
       const currentElectionResponse = await axios.get(
         `http://localhost:5000/api/elections/${electionId}`,
         {
@@ -413,18 +439,20 @@ export default function EditElectionPage() {
       );
       
       const currentElection = currentElectionResponse.data;
-      
-      // Prepare update payload, only including fields that are part of our form
-      // This maintains any other fields that might exist in the database
+    
       const updatePayload = {
         title: electionData.title,
         description: electionData.description,
         election_type: electionData.election_type,
-        date_from: electionData.date_from,
-        date_to: electionData.date_to,
-        start_time: electionData.start_time,
-        end_time: electionData.end_time
+        end_time: electionData.end_time,
+        date_to: electionData.date_to
       };
+      
+      // Only include start date/time for upcoming elections
+      if (electionData.status !== 'ongoing') {
+        updatePayload.date_from = electionData.date_from;
+        updatePayload.start_time = electionData.start_time;
+      }
       
       // Update election basic details
       const updateResponse = await axios.put(
@@ -437,8 +465,7 @@ export default function EditElectionPage() {
           }
         }
       );
-      
-      // Get current eligibility criteria to see if it's changed
+
       const currentCriteriaResponse = await axios.get(
         `http://localhost:5000/api/elections/${electionId}/criteria`,
         {
@@ -449,8 +476,7 @@ export default function EditElectionPage() {
       );
       
       const currentCriteria = currentCriteriaResponse.data.criteria || {};
-      
-      // Check if eligibility criteria has changed
+
       const hasEligibilityChanged = JSON.stringify({
         programs: electionData.eligibleVoters.programs,
         yearLevels: electionData.eligibleVoters.yearLevels,
@@ -464,18 +490,16 @@ export default function EditElectionPage() {
         semester: currentCriteria.semesters || currentCriteria.semester || [],
         precinct: currentCriteria.precincts || currentCriteria.precinct || []
       });
-      
-      // Only update eligibility criteria if it's changed
+
       if (hasEligibilityChanged) {
-        // Log the eligibility update
+      
         console.log("Updating eligibility criteria");
         
-        // Determine if all options for each category are selected
         const allProgramsSelected = areAllSelected(electionData.eligibleVoters.programs, maintenanceData.programs);
         const allYearLevelsSelected = areAllSelected(electionData.eligibleVoters.yearLevels, maintenanceData.yearLevels);
         const allGendersSelected = areAllSelected(electionData.eligibleVoters.gender, maintenanceData.genders);
         
-        // Create the optimized payload
+
         const optimizedEligibleVoters = {
           programs: allProgramsSelected ? [] : electionData.eligibleVoters.programs,
           yearLevels: allYearLevelsSelected ? [] : electionData.eligibleVoters.yearLevels,
@@ -572,29 +596,12 @@ export default function EditElectionPage() {
             </div>
           </div>
           
-          {electionData.status === 'ongoing' && (
-            <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <AlertCircle className="h-5 w-5 text-yellow-500" />
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm text-yellow-700 font-medium">
-                    Warning: This election is currently ongoing.
-                  </p>
-                  <p className="text-sm text-yellow-700">
-                    Editing details for an ongoing election will affect voters who are currently participating.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
+         
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* Election Details */}
             <div className="space-y-4">
               <div>
-                <label className="block font-medium text-black mb-1">Election Title*</label>
+                <label className="block font-medium text-black mb-1">Election Title</label>
                 <input
                   type="text"
                   name="title"
@@ -634,19 +641,21 @@ export default function EditElectionPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-medium text-black mb-1">Start Date*</label>
+                  <label className="block font-medium text-black mb-1">Start Date</label>
                   <input
                     type="date"
                     name="date_from"
                     value={electionData.date_from}
                     onChange={handleChange}
                     min={electionData.status === 'ongoing' ? undefined : new Date().toISOString().split('T')[0]}
-                    className={`border w-full p-2 rounded ${formErrors.date_from ? 'border-red-500' : 'border-gray-300'} text-black`}
+                    className={`border w-full p-2 rounded ${formErrors.date_from ? 'border-red-500' : 'border-gray-300'} text-black ${electionData.status === 'ongoing' ? 'bg-gray-100' : ''}`}
+                    disabled={electionData.status === 'ongoing'}
                   />
                   {formErrors.date_from && <p className="text-red-500 text-sm mt-1">{formErrors.date_from}</p>}
+                  
                 </div>
                 <div>
-                  <label className="block font-medium text-black mb-1">End Date*</label>
+                  <label className="block font-medium text-black mb-1">End Date</label>
                   <input
                     type="date"
                     name="date_to"
@@ -667,20 +676,27 @@ export default function EditElectionPage() {
                     name="start_time"
                     value={electionData.start_time}
                     onChange={handleChange}
-                    className="border w-full p-2 rounded border-gray-300 text-black"
+                    className={`border w-full p-2 rounded border-gray-300 text-black ${electionData.status === 'ongoing' ? 'bg-gray-100' : ''}`}
+                    disabled={electionData.status === 'ongoing'}
                   />
+                
                 </div>
                 <div>
-                  <label className="block font-medium text-black mb-1">End Time</label>
+                  <label className="block font-medium text-black mb-1">
+                    End Time
+                    
+                  </label>
                   <input
                     type="time"
                     name="end_time"
                     value={electionData.end_time}
                     onChange={handleChange}
-                    className="border w-full p-2 rounded border-gray-300 text-black"
+                    className={`border w-full p-2 rounded ${formErrors.end_time ? 'border-red-500' : 'border-gray-300'} text-black ${electionData.status === 'ongoing' ? 'ring-1 ring-blue-300' : ''}`}
                   />
+                  {formErrors.end_time && <p className="text-red-500 text-sm mt-1">{formErrors.end_time}</p>}
                 </div>
               </div>
+              
             </div>
 
             {/* Eligible Voters */}
@@ -693,66 +709,195 @@ export default function EditElectionPage() {
                   </p>
                 </div>
 
-                {[
-                  { category: 'programs', label: 'Programs', items: maintenanceData.programs },
-                  { category: 'yearLevels', label: 'Year Levels', items: maintenanceData.yearLevels },
-                  { category: 'semester', label: 'Semester', items: maintenanceData.semesters },
-                  { category: 'gender', label: 'Gender', items: maintenanceData.genders },
-                  { category: 'precinct', label: 'Precinct', items: maintenanceData.precincts },
-                ].map(({ category, label, items }) => (
-                  <div key={category} className="border-b pb-4 last:border-b-0">
-                    <div className="flex justify-between items-center mb-2">
-                      <h3 className="font-medium text-black">{label}</h3>
-                      {category !== 'semester' && (
-                        <button
-                          type="button"
-                          onClick={() => toggleAll(category, items)}
-                          className="text-sm text-blue-600 hover:text-blue-800"
-                        >
-                          {electionData.eligibleVoters[category].length === items.length ? 'Deselect all' : 'Select all'}
-                        </button>
-                      )}
-                    </div>
-                    {criteriaErrors[category] && (
-                      <p className="text-red-500 text-sm mb-2">{criteriaErrors[category]}</p>
-                    )}
-                    <div className="flex flex-wrap gap-3">
-                      {items.map(item => (
-                        <label 
-                          key={item} 
-                          className={`inline-flex items-center px-3 py-1 rounded-full ${
-                            electionData.eligibleVoters[category].includes(item) 
-                              ? 'bg-blue-100 border border-blue-300' 
-                              : 'border border-gray-200'
-                          }`}
-                        >
-                          {category === 'semester' ? (
-                            <input
-                              type="radio"
-                              name="semester"
-                              checked={electionData.eligibleVoters[category].includes(item)}
-                              onChange={() => handleCheckboxChange(category, item)}
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"
-                            />
-                          ) : (
-                            <input
-                              type="checkbox"
-                              checked={electionData.eligibleVoters[category].includes(item)}
-                              onChange={() => handleCheckboxChange(category, item)}
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"
-                            />
-                          )}
-                          <span className="text-black">{item}</span>
-                        </label>
-                      ))}
-                    </div>
-                    {electionData.eligibleVoters[category].length > 0 && (
-                      <p className="text-sm text-gray-500 mt-2">
-                        Selected: {electionData.eligibleVoters[category].join(", ")}
-                      </p>
-                    )}
+                {/* Programs */}
+                <div className="border-b pb-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-medium text-black">Programs</h3>
+                    <button
+                      type="button"
+                      onClick={() => toggleAll('programs', maintenanceData.programs)}
+                      className="text-sm text-blue-600 hover:text-blue-800"
+                    >
+                      {electionData.eligibleVoters.programs.length === maintenanceData.programs.length ? 'Deselect all' : 'Select all'}
+                    </button>
                   </div>
-                ))}
+                  {criteriaErrors.programs && (
+                    <p className="text-red-500 text-sm mb-2">{criteriaErrors.programs}</p>
+                  )}
+                  <div className="flex flex-wrap gap-3">
+                    {maintenanceData.programs.map(item => (
+                      <label 
+                        key={item} 
+                        className={`inline-flex items-center px-3 py-1 rounded-full ${
+                          electionData.eligibleVoters.programs.includes(item) 
+                            ? 'bg-blue-100 border border-blue-300' 
+                            : 'border border-gray-200'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={electionData.eligibleVoters.programs.includes(item)}
+                          onChange={() => handleCheckboxChange('programs', item)}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"
+                        />
+                        <span className="text-black">{item}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {electionData.eligibleVoters.programs.length > 0 && (
+                    <p className="text-sm text-gray-500 mt-2">
+                      Selected: {electionData.eligibleVoters.programs.join(", ")}
+                    </p>
+                  )}
+                </div>
+
+                {/* Year Levels */}
+                <div className="border-b pb-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-medium text-black">Year Levels</h3>
+                    <button
+                      type="button"
+                      onClick={() => toggleAll('yearLevels', maintenanceData.yearLevels)}
+                      className="text-sm text-blue-600 hover:text-blue-800"
+                    >
+                      {electionData.eligibleVoters.yearLevels.length === maintenanceData.yearLevels.length ? 'Deselect all' : 'Select all'}
+                    </button>
+                  </div>
+                  {criteriaErrors.yearLevels && (
+                    <p className="text-red-500 text-sm mb-2">{criteriaErrors.yearLevels}</p>
+                  )}
+                  <div className="flex flex-wrap gap-3">
+                    {maintenanceData.yearLevels.map(item => (
+                      <label 
+                        key={item} 
+                        className={`inline-flex items-center px-3 py-1 rounded-full ${
+                          electionData.eligibleVoters.yearLevels.includes(item) 
+                            ? 'bg-blue-100 border border-blue-300' 
+                            : 'border border-gray-200'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={electionData.eligibleVoters.yearLevels.includes(item)}
+                          onChange={() => handleCheckboxChange('yearLevels', item)}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"
+                        />
+                        <span className="text-black">{item}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {electionData.eligibleVoters.yearLevels.length > 0 && (
+                    <p className="text-sm text-gray-500 mt-2">
+                      Selected: {electionData.eligibleVoters.yearLevels.join(", ")}
+                    </p>
+                  )}
+                </div>
+
+                {/* Semester (read-only) */}
+                <div className="border-b pb-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-medium text-black">Semester</h3>
+                  </div>
+                  {criteriaErrors.semester && (
+                    <p className="text-red-500 text-sm mb-2">{criteriaErrors.semester}</p>
+                  )}
+
+                  <div className="border border-gray-200 rounded bg-gray-50 p-4">
+                    <div className="flex items-center">
+                      <span className="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
+                      <span className="text-black font-medium">
+                        {electionData.eligibleVoters.semester.length > 0 
+                          ? electionData.eligibleVoters.semester[0] 
+                          : (currentSemester ? currentSemester.name : 'No semester selected')}
+                      </span>
+                    </div>
+                  </div>
+                
+                </div>
+
+                {/* Gender */}
+                <div className="border-b pb-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-medium text-black">Gender</h3>
+                    <button
+                      type="button"
+                      onClick={() => toggleAll('gender', maintenanceData.genders)}
+                      className="text-sm text-blue-600 hover:text-blue-800"
+                    >
+                      {electionData.eligibleVoters.gender.length === maintenanceData.genders.length ? 'Deselect all' : 'Select all'}
+                    </button>
+                  </div>
+                  {criteriaErrors.gender && (
+                    <p className="text-red-500 text-sm mb-2">{criteriaErrors.gender}</p>
+                  )}
+                  <div className="flex flex-wrap gap-3">
+                    {maintenanceData.genders.map(item => (
+                      <label 
+                        key={item} 
+                        className={`inline-flex items-center px-3 py-1 rounded-full ${
+                          electionData.eligibleVoters.gender.includes(item) 
+                            ? 'bg-blue-100 border border-blue-300' 
+                            : 'border border-gray-200'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={electionData.eligibleVoters.gender.includes(item)}
+                          onChange={() => handleCheckboxChange('gender', item)}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"
+                        />
+                        <span className="text-black">{item}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {electionData.eligibleVoters.gender.length > 0 && (
+                    <p className="text-sm text-gray-500 mt-2">
+                      Selected: {electionData.eligibleVoters.gender.join(", ")}
+                    </p>
+                  )}
+                </div>
+
+                {/* Precinct */}
+                <div className="border-b pb-4 last:border-b-0">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-medium text-black">Precinct</h3>
+                    <button
+                      type="button"
+                      onClick={() => toggleAll('precinct', maintenanceData.precincts)}
+                      className="text-sm text-blue-600 hover:text-blue-800"
+                    >
+                      {electionData.eligibleVoters.precinct.length === maintenanceData.precincts.length ? 'Deselect all' : 'Select all'}
+                    </button>
+                  </div>
+                  {criteriaErrors.precinct && (
+                    <p className="text-red-500 text-sm mb-2">{criteriaErrors.precinct}</p>
+                  )}
+                  <div className="flex flex-wrap gap-3">
+                    {maintenanceData.precincts.map(item => (
+                      <label 
+                        key={item} 
+                        className={`inline-flex items-center px-3 py-1 rounded-full ${
+                          electionData.eligibleVoters.precinct.includes(item) 
+                            ? 'bg-blue-100 border border-blue-300' 
+                            : 'border border-gray-200'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={electionData.eligibleVoters.precinct.includes(item)}
+                          onChange={() => handleCheckboxChange('precinct', item)}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"
+                        />
+                        <span className="text-black">{item}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {electionData.eligibleVoters.precinct.length > 0 && (
+                    <p className="text-sm text-gray-500 mt-2">
+                      Selected: {electionData.eligibleVoters.precinct.join(", ")}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
