@@ -56,7 +56,6 @@ const registerStudent = async (firstName, middleName, lastName, email, username,
       throw new Error('Course name is required for student registration');
     }
 
-    // Ensure the course exists in the database
     try {
       await client.query(
         "INSERT INTO courses (course_name) VALUES ($1) ON CONFLICT (course_name) DO NOTHING",
@@ -64,7 +63,6 @@ const registerStudent = async (firstName, middleName, lastName, email, username,
       );
     } catch (error) {
       console.error(`Failed to ensure course exists: ${error.message}`);
-      // Continue anyway - don't break the registration flow for this
     }
 
     const studentQuery = `
@@ -290,26 +288,21 @@ const processBatchStudents = async (students, createdBy) => {
 
     for (const student of students) {
       try {
-        // Validate student number format
         if (!/^02000[0-9]{6}$/.test(student.studentNumber)) {
           throw new Error('Invalid student number format');
         }
 
-        // Check if student number exists
         if (await checkStudentNumberExists(student.studentNumber)) {
           throw new Error('Student number already exists');
         }
 
-        // Generate email and validate if not already provided
         let email = student.email;
         if (!email) {
           // Use the normalized last name (remove spaces, special characters)
           const lastSixDigits = student.studentNumber.slice(-6);
           
-          // Normalize the lastName for email (remove spaces and special chars)
           let normalizedLastName = student.lastName.toLowerCase().replace(/\s+/g, '');
           
-          // Replace Spanish characters with ASCII equivalents
           const charMap = {
             'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u',
             'ü': 'u', 'ñ': 'n', 'ç': 'c', 'à': 'a', 'è': 'e',

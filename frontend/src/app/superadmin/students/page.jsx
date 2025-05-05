@@ -14,10 +14,9 @@ export default function ManageStudents() {
   const router = useRouter();
   const [students, setStudents] = useState([]);
   const [filteredStudents, setFilteredStudents] = useState([]);
-  
-  // Add pagination state
+
   const [currentPage, setCurrentPage] = useState(1);
-  const [studentsPerPage] = useState(25); // Display 25 students per page
+  const [studentsPerPage, setStudentsPerPage] = useState(25); 
   const [totalPages, setTotalPages] = useState(1);
 
   const [courses, setCourses] = useState([]);
@@ -26,7 +25,6 @@ export default function ManageStudents() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Search & Filter State
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCourse, setSelectedCourse] = useState("");
   const [selectedYearLevel, setSelectedYearLevel] = useState("");
@@ -51,8 +49,8 @@ export default function ManageStudents() {
     maxFiles: 1,
     onDrop: acceptedFiles => {
       setSelectedFile(acceptedFiles[0]);
-      setUploadStatus(null); // Reset upload status when new file is selected
-      setBatchResults(null); // Reset previous results
+      setUploadStatus(null); 
+      setBatchResults(null); 
     }
   });
 
@@ -60,7 +58,7 @@ export default function ManageStudents() {
     try {
       const token = Cookies.get("token");
       
-      // Fetch programs (courses)
+    
       const coursesResponse = await axios.get("http://localhost:5000/api/maintenance/programs", {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
@@ -70,11 +68,11 @@ export default function ManageStudents() {
         const programNames = coursesResponse.data.data.map(program => program.name);
         setCourses(programNames);
       } else {
-        // Fallback to default courses if API fails
+       
         setCourses(["BSIT", "BSCPE", "BSCS", "BMMA", "BSTM", "BSHM", "BSA", "BSBAOM"]);
       }
       
-      // Fetch year levels
+  
       const yearLevelsResponse = await axios.get("http://localhost:5000/api/maintenance/year-levels", {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
@@ -84,12 +82,12 @@ export default function ManageStudents() {
         const yearLevelNames = yearLevelsResponse.data.data.map(yearLevel => yearLevel.name);
         setYearLevels(yearLevelNames);
       } else {
-        // Fallback to default year levels if API fails
+      
         setYearLevels(["1st Year", "2nd Year", "3rd Year", "4th Year"]);
       }
     } catch (error) {
       console.error("Error fetching courses and year levels:", error);
-      // Fallback to default values in case of error
+    
       setCourses(["BSIT", "BSCPE", "BSCS", "BMMA", "BSTM", "BSHM", "BSA", "BSBAOM"]);
       setYearLevels(["1st Year", "2nd Year", "3rd Year", "4th Year"]);
     }
@@ -130,16 +128,15 @@ export default function ManageStudents() {
   
       setUploadStatus('success');
       setBatchResults(res.data);
-      // Only refresh the student list if at least one student was added successfully
+     
       if (res.data.success > 0) {
         fetchStudents(); 
       }
-      setSelectedFile(null); // Clear selected file after upload
+      setSelectedFile(null); 
     } catch (error) {
       console.error('Batch upload error:', error);
       setUploadStatus('error');
-      
-      // Check if we have structured error data from the server
+
       if (error.response?.data) {
         setBatchResults({
           message: error.response.data.message || 'Upload failed',
@@ -153,8 +150,7 @@ export default function ManageStudents() {
       }
     }
   };
- 
-  //Fetch Students from API (Only Active Students)
+
   const fetchStudents = async () => {
     try {
       setLoading(true);
@@ -164,11 +160,10 @@ export default function ManageStudents() {
         withCredentials: true,
       });
 
-      // Filter active students
+
       const activeStudents = res.data.students.filter((student) => student.is_active);
       setStudents(activeStudents);
-      
-      // Apply filters and update total pages
+ 
       applyFilters(activeStudents);
       setLoading(false);
     } catch (error) {
@@ -178,7 +173,6 @@ export default function ManageStudents() {
     }
   };
 
-  // Function to apply filters and handle pagination
   const applyFilters = (studentsList) => {
     let filtered = [...studentsList];
 
@@ -198,16 +192,13 @@ export default function ManageStudents() {
       filtered = filtered.filter((student) => student.year_level === selectedYearLevel);
     }
 
-    // Calculate total pages
     const total = Math.ceil(filtered.length / studentsPerPage);
     setTotalPages(total > 0 ? total : 1);
-    
-    // Reset to first page if filter changes result in fewer pages
+
     if (currentPage > total) {
       setCurrentPage(1);
     }
-    
-    // Get current page of students
+
     const indexOfLastStudent = currentPage * studentsPerPage;
     const indexOfFirstStudent = indexOfLastStudent - studentsPerPage;
     const currentStudents = filtered.slice(indexOfFirstStudent, indexOfLastStudent);
@@ -281,15 +272,12 @@ export default function ManageStudents() {
     setBatchResults(null);
   };
 
-  // Memoize stats calculation to prevent recalculation on every render
   const calculateStats = () => {
-    // Count by course
     const courseStats = {};
     courses.forEach(course => {
       courseStats[course] = students.filter(student => student.course_name === course).length;
     });
 
-    // Count by year level
     const yearStats = {};
     yearLevels.forEach(year => {
       yearStats[year] = students.filter(student => student.year_level === year).length;
@@ -300,22 +288,17 @@ export default function ManageStudents() {
 
   const stats = calculateStats();
 
-  // Pagination UI component
   const Pagination = () => {
-    // Maximum number of page buttons to show
     const maxPageButtons = 5;
     let pageButtons = [];
-    
-    // Calculate range of pages to show
+
     let startPage = Math.max(1, currentPage - Math.floor(maxPageButtons / 2));
     let endPage = Math.min(totalPages, startPage + maxPageButtons - 1);
-    
-    // Adjust start if we're near the end
+
     if (endPage - startPage + 1 < maxPageButtons) {
       startPage = Math.max(1, endPage - maxPageButtons + 1);
     }
-    
-    // Generate page buttons
+
     for (let i = startPage; i <= endPage; i++) {
       pageButtons.push(
         <button
@@ -333,42 +316,60 @@ export default function ManageStudents() {
     }
     
     return (
-      <div className="flex justify-center items-center my-4">
-        <button
-          onClick={() => handlePageChange(1)}
-          disabled={currentPage === 1}
-          className="px-3 py-1 mx-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50"
-        >
-          &laquo;
-        </button>
-        <button
-          onClick={() => handlePageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-          className="px-3 py-1 mx-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50"
-        >
-          &lt;
-        </button>
+      <div className="flex justify-between items-center my-4">
+        <div className="flex items-center">
+          <span className="mr-2 text-gray-700">Items per page:</span>
+          <select 
+            value={studentsPerPage} 
+            onChange={(e) => {
+              setStudentsPerPage(Number(e.target.value));
+              setCurrentPage(1); 
+            }}
+            className="border p-1 rounded text-black"
+          >
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+        </div>
         
-        {pageButtons}
-        
-        <button
-          onClick={() => handlePageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className="px-3 py-1 mx-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50"
-        >
-          &gt;
-        </button>
-        <button
-          onClick={() => handlePageChange(totalPages)}
-          disabled={currentPage === totalPages}
-          className="px-3 py-1 mx-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50"
-        >
-          &raquo;
-        </button>
-        
-        <span className="ml-4 text-gray-700">
-          Page {currentPage} of {totalPages}
-        </span>
+        <div className="flex items-center">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1}
+            className="px-3 py-1 mx-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50"
+          >
+            &laquo;
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="px-3 py-1 mx-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50"
+          >
+            &lt;
+          </button>
+          
+          {pageButtons}
+          
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="px-3 py-1 mx-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50"
+          >
+            &gt;
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages}
+            className="px-3 py-1 mx-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50"
+          >
+            &raquo;
+          </button>
+          
+          <span className="ml-4 text-gray-700">
+            Page {currentPage} of {totalPages}
+          </span>
+        </div>
       </div>
     );
   };
@@ -491,9 +492,6 @@ export default function ManageStudents() {
 
       {showAddModal && <AddStudentModal onClose={() => setShowAddModal(false)} />}
 
-      {/* Pagination - Top */}
-      <Pagination />
-
       {/* Student Table (Active Students Only) */}
       <div className="overflow-x-auto">
         <table className="w-full bg-white shadow-md rounded-lg overflow-hidden text-black">
@@ -575,15 +573,14 @@ export default function ManageStudents() {
         </table>
       </div>
 
-      {/* Pagination - Bottom */}
+
       {!loading && students.length > 0 && <Pagination />}
 
-      {/* Edit Student Modal */}
       {showEditModal && selectedStudent && (
         <EditStudentModal student={selectedStudent} onClose={() => setShowEditModal(false)} />
       )}
 
-      {/* Reset Password Modal */}
+
       {showResetModal && selectedStudent && (
         <ResetStudentPasswordModal student={selectedStudent} onClose={() => setShowResetModal(false)} />
       )}

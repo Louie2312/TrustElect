@@ -7,6 +7,17 @@ const getAllItems = async (tableName) => {
   return result.rows;
 };
 
+// Special version for partylists that includes more fields
+const getAllPartylists = async () => {
+  const result = await pool.query(
+    `SELECT id, name, slogan, advocacy, logo_url, created_at 
+     FROM partylists 
+     WHERE is_active = true 
+     ORDER BY name`
+  );
+  return result.rows;
+};
+
 const createItem = async (tableName, name) => {
   const result = await pool.query(
     `INSERT INTO ${tableName} (name) VALUES ($1) RETURNING id, name`,
@@ -99,9 +110,9 @@ const getCurrentSemester = async () => {
   }
 };
 
-// Set the current semester in settings
+
 const setCurrentSemester = async (semesterId) => {
-  // Verify the semester exists first
+  
   const semesterCheck = await pool.query(
     `SELECT id FROM semesters WHERE id = $1`,
     [semesterId]
@@ -110,8 +121,7 @@ const setCurrentSemester = async (semesterId) => {
   if (semesterCheck.rows.length === 0) {
     throw new Error('Semester not found');
   }
-  
-  // UPSERT the current semester setting
+ 
   await pool.query(`
     INSERT INTO settings (key, value)
     VALUES ('current_semester', $1)
@@ -120,6 +130,25 @@ const setCurrentSemester = async (semesterId) => {
   `, [semesterId]);
   
   return getCurrentSemester();
+};
+
+// Special version for creating partylists
+const createPartylistItem = async (name) => {
+  const result = await pool.query(
+    `INSERT INTO partylists (name) VALUES ($1) RETURNING id, name, slogan, advocacy, logo_url`,
+    [name]
+  );
+  return result.rows[0];
+};
+
+const API_ENDPOINTS = {
+  programs: "programs",
+  "election-types": "election_types",
+  "year-levels": "year_levels",
+  genders: "genders",
+  semesters: "semesters",
+  precincts: "precincts",
+  partylists: "partylists"
 };
 
 module.exports = {
@@ -152,6 +181,11 @@ module.exports = {
   createPrecinct: (name) => createItem('precincts', name),
   updatePrecinct: (id, name) => updateItem('precincts', id, name),
   deletePrecinct: (id) => deleteItem('precincts', id),
+
+  getPartylists: () => getAllPartylists(),
+  createPartylist: (name) => createPartylistItem(name),
+  updatePartylist: (id, name) => updateItem('partylists', id, name),
+  deletePartylist: (id) => deleteItem('partylists', id),
   
   getCurrentSemester,
   setCurrentSemester

@@ -1,0 +1,69 @@
+const express = require('express');
+const router = express.Router();
+const { upload } = require('../middlewares/partylistUploadMiddleware');
+const partylistController = require('../controllers/partylistController');
+const { verifyToken, isSuperAdmin } = require('../middlewares/authMiddleware');
+
+// Create a new partylist
+router.post('/',
+  verifyToken, isSuperAdmin,
+  upload.single('logo'),
+  partylistController.createPartylist
+);
+
+// Get all active partylists
+router.get('/',
+  verifyToken, isSuperAdmin,
+  partylistController.getAllPartylists
+);
+
+// Get all archived partylists
+router.get('/archived',
+  verifyToken, isSuperAdmin,
+  partylistController.getArchivedPartylists
+);
+
+// Get a specific partylist
+router.get('/:id',
+  verifyToken, isSuperAdmin,
+  partylistController.getPartylistById
+);
+
+// Update a partylist
+router.put('/:id',
+  verifyToken, isSuperAdmin,
+  upload.single('logo'),
+  partylistController.updatePartylist
+);
+
+// Archive a partylist (soft delete)
+router.delete('/:id',
+  verifyToken, isSuperAdmin,
+  partylistController.archivePartylist
+);
+
+// Restore an archived partylist
+router.post('/:id/restore',
+  verifyToken, isSuperAdmin,
+  partylistController.restorePartylist
+);
+
+// Permanently delete a partylist
+router.delete('/:id/permanent',
+  verifyToken, isSuperAdmin,
+  partylistController.permanentDeletePartylist
+);
+
+// Add a candidate to a partylist
+router.post('/:partylistId/candidates',
+  verifyToken, isSuperAdmin,
+  partylistController.addPartylistCandidate
+);
+
+// Remove a candidate from a partylist
+router.delete('/:partylistId/candidates/:studentId',
+  verifyToken, isSuperAdmin,
+  partylistController.removePartylistCandidate
+);
+
+module.exports = router; 

@@ -215,7 +215,7 @@ const BackConfirmationModal = ({ onConfirm, onCancel }) => {
           >
             Yes, Go Back
           </button>
-          
+
           <button
             onClick={onCancel}
             className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 text-black"
@@ -359,7 +359,7 @@ export default function BallotPage() {
 
   const handleImageUpload = async (posId, candId, file) => {
     try {
-      // Validate file
+     
       if (!file || !file.type.match('image.*')) {
         setErrors(prev => ({
           ...prev,
@@ -368,7 +368,6 @@ export default function BallotPage() {
         return;
       }
 
-      // Validate file size (max 2MB)
       if (file.size > 2 * 1024 * 1024) {
         setErrors(prev => ({
           ...prev,
@@ -377,29 +376,26 @@ export default function BallotPage() {
         return;
       }
 
-      // Create a preview URL for the image immediately
       const previewUrl = URL.createObjectURL(file);
       setImagePreviews(prev => ({
         ...prev,
         [candId]: previewUrl
       }));
 
-      // First, upload just the image
       const formData = new FormData();
       formData.append('image', file);
       
-      // Upload the image to the dedicated endpoint
+ 
       const imageResponse = await fetchWithAuth('/ballots/candidates/upload-image', {
         method: 'POST',
         body: formData,
-        headers: {} // Remove Content-Type header completely
+        headers: {} 
       });
       
       if (!imageResponse.success || !imageResponse.filePath) {
         throw new Error('Failed to upload image');
       }
-      
-      // Update the ballot state with the new image URL
+
       setBallot(prev => ({
         ...prev,
         positions: prev.positions.map(pos => 
@@ -415,10 +411,8 @@ export default function BallotPage() {
         )
       }));
 
-      // After successful upload, we can revoke the preview URL to free up memory
       URL.revokeObjectURL(previewUrl);
-      
-      // Clear any previous errors
+
       setErrors(prev => {
         const newErrors = { ...prev };
         delete newErrors[`candidate_${candId}_image`];
@@ -430,8 +424,7 @@ export default function BallotPage() {
         ...prev,
         [`candidate_${candId}_image`]: error.message || 'Failed to upload image'
       }));
-      
-      // Clear the preview on error
+
       setImagePreviews(prev => {
         const newPreviews = { ...prev };
         delete newPreviews[candId];

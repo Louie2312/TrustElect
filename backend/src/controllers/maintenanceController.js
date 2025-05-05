@@ -5,6 +5,7 @@ const {
   getGenders, createGender, updateGender, deleteGender,
   getSemesters, createSemester, updateSemester, deleteSemester,
   getPrecincts, createPrecinct, updatePrecinct, deletePrecinct,
+  getPartylists, createPartylist, updatePartylist, deletePartylist,
   getCurrentSemester, setCurrentSemester
 } = require("../models/maintenanceModel");
 
@@ -53,6 +54,12 @@ exports.getPrecincts = (req, res) => handleResponse(res, getPrecincts());
 exports.createPrecinct = (req, res) => handleResponse(res, createPrecinct(req.body.name));
 exports.updatePrecinct = (req, res) => handleResponse(res, updatePrecinct(req.params.id, req.body.name));
 exports.deletePrecinct = (req, res) => handleResponse(res, deletePrecinct(req.params.id));
+
+// Add partylist handlers
+exports.getPartylists = (req, res) => handleResponse(res, getPartylists());
+exports.createPartylist = (req, res) => handleResponse(res, createPartylist(req.body.name));
+exports.updatePartylist = (req, res) => handleResponse(res, updatePartylist(req.params.id, req.body.name));
+exports.deletePartylist = (req, res) => handleResponse(res, deletePartylist(req.params.id));
 
 // Get current semester
 exports.getCurrentSemester = (req, res) => {

@@ -30,7 +30,6 @@ export default function EditStudentModal({ student, onClose }) {
     try {
       const token = Cookies.get("token");
       
-      // Fetch programs (courses)
       const coursesResponse = await axios.get(
         "http://localhost:5000/api/maintenance/programs", 
         {
@@ -38,8 +37,7 @@ export default function EditStudentModal({ student, onClose }) {
           withCredentials: true,
         }
       );
-      
-      // Fetch year levels
+
       const yearLevelsResponse = await axios.get(
         "http://localhost:5000/api/maintenance/year-levels",
         {
@@ -73,12 +71,10 @@ export default function EditStudentModal({ student, onClose }) {
     }
   };
 
-  // Handle Input Change
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  //Validate Inputs
   const validateInputs = () => {
     let newErrors = {};
     if (!formData.firstName.trim()) newErrors.firstName = "First Name is required.";

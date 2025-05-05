@@ -6,7 +6,6 @@ import { toast } from "react-toastify";
 import Cookies from "js-cookie";
 import axios from "axios";
 
-// Local storage key for current semester (must match the one in maintenance page)
 const CURRENT_SEMESTER_KEY = "trustElect_currentSemester";
 
 const PreviewModal = ({ 
@@ -137,7 +136,6 @@ export default function CreateElectionPage() {
   const [apiError, setApiError] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
 
-  // Fetch maintenance data on component mount
   useEffect(() => {
     const fetchMaintenanceData = async () => {
       try {
@@ -157,7 +155,6 @@ export default function CreateElectionPage() {
           })
         );
         
-        // Add request for current semester
         const currentSemesterRequest = axios.get(
           "http://localhost:5000/api/maintenance/current-semester", 
           { headers: { Authorization: `Bearer ${token}` } }
@@ -174,7 +171,6 @@ export default function CreateElectionPage() {
 
         setMaintenanceData(data);
         
-        // Set default election type if available
         if (data.electionTypes.length > 0) {
           setEventData(prev => ({
             ...prev,
@@ -182,13 +178,11 @@ export default function CreateElectionPage() {
           }));
         }
         
-        // Handle current semester response (last response)
         const currentSemesterResponse = responses[responses.length - 1];
         if (currentSemesterResponse.data.success && currentSemesterResponse.data.data) {
           const currentSemesterName = currentSemesterResponse.data.data.name;
           setCurrentSemester(currentSemesterName);
           
-          // Automatically select current semester
           setEventData(prev => ({
             ...prev,
             eligibleVoters: {
@@ -208,7 +202,6 @@ export default function CreateElectionPage() {
     fetchMaintenanceData();
   }, []);
 
-  // Add a helper function to check if all items are selected
   const areAllSelected = (selectedItems, allItems) => {
     return selectedItems.length === allItems.length;
   };
@@ -219,14 +212,11 @@ export default function CreateElectionPage() {
         setLoading(prev => ({ ...prev, form: true }));
         const token = Cookies.get("token");
         
-        // Determine if all options for each category are selected
         const allProgramsSelected = areAllSelected(eventData.eligibleVoters.programs, maintenanceData.programs);
         const allYearLevelsSelected = areAllSelected(eventData.eligibleVoters.yearLevels, maintenanceData.yearLevels);
         const allGendersSelected = areAllSelected(eventData.eligibleVoters.gender, maintenanceData.genders);
         
-        // Create a modified eligible voters object - key to fixing the count
         const optimizedEligibleVoters = {
-          // If all items are selected, send empty array to backend to indicate "all"
           programs: allProgramsSelected ? [] : eventData.eligibleVoters.programs,
           yearLevels: allYearLevelsSelected ? [] : eventData.eligibleVoters.yearLevels,
           gender: allGendersSelected ? [] : eventData.eligibleVoters.gender,
@@ -296,18 +286,18 @@ export default function CreateElectionPage() {
 
   const handleCheckboxChange = (category, value) => {
     setEventData(prev => {
-      // Special handling for semester (radio button behavior)
+    
       if (category === 'semester') {
         return {
           ...prev,
           eligibleVoters: {
             ...prev.eligibleVoters,
-            [category]: [value] // Always set as single-item array
+            [category]: [value] 
           }
         };
       }
       
-      // Normal checkbox behavior for other categories
+      
       const currentValues = prev.eligibleVoters[category];
       const newValues = currentValues.includes(value)
         ? currentValues.filter(item => item !== value)
@@ -332,7 +322,6 @@ export default function CreateElectionPage() {
   };
 
   const toggleAll = (category, items) => {
-    // Skip semester from the "Select All" functionality
     if (category === 'semester') return;
     
     setEventData(prev => {
@@ -369,7 +358,6 @@ export default function CreateElectionPage() {
       setApiError(null);
       const token = Cookies.get("token");
       
-      // Use the same optimization for creation endpoint
       const allProgramsSelected = areAllSelected(eventData.eligibleVoters.programs, maintenanceData.programs);
       const allYearLevelsSelected = areAllSelected(eventData.eligibleVoters.yearLevels, maintenanceData.yearLevels);
       const allGendersSelected = areAllSelected(eventData.eligibleVoters.gender, maintenanceData.genders);

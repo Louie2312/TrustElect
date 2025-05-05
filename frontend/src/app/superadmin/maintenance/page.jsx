@@ -4,6 +4,10 @@ import { useRouter } from "next/navigation";
 import axios from "axios";
 import Cookies from "js-cookie";
 import { toast } from "react-toastify";
+import PartylistForm from "./components/PartylistForm";
+import PartylistCard from "./components/PartylistCard";
+import PartylistDetails from "./components/PartylistDetails";
+import PositionManager from "./components/PositionManager";
 
 const API_ENDPOINTS = {
   programs: "programs",
@@ -24,6 +28,13 @@ const MaintenancePage = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [editName, setEditName] = useState("");
   const [currentSemester, setCurrentSemester] = useState(null);
+  const [partylistList, setPartylistList] = useState([]);
+  const [archivedPartylistList, setArchivedPartylistList] = useState([]);
+  const [isAddingPartylist, setIsAddingPartylist] = useState(false);
+  const [editingPartylist, setEditingPartylist] = useState(null);
+  const [showArchived, setShowArchived] = useState(false);
+  const [selectedPartylist, setSelectedPartylist] = useState(null);
+  const [electionTypesList, setElectionTypesList] = useState([]);
 
   const tabs = [
     { id: "programs", label: "Programs" },
@@ -32,6 +43,8 @@ const MaintenancePage = () => {
     { id: "genders", label: "Genders" },
     { id: "semesters", label: "Semesters" },
     { id: "precincts", label: "Precincts" },
+    { id: "partylists", label: "Partylist" },
+    { id: "positions", label: "Positions" },
   ];
 
   useEffect(() => {
@@ -44,6 +57,7 @@ const MaintenancePage = () => {
       const token = Cookies.get("token");
       const endpoint = API_ENDPOINTS[activeTab];
       
+      if (activeTab !== "partylists") {
       const response = await axios.get(
         `http://localhost:5000/api/maintenance/${endpoint}`,
         { headers: { Authorization: `Bearer ${token}` } }
@@ -51,7 +65,6 @@ const MaintenancePage = () => {
       
       setItems(response.data.data);
       
-      // If we're on the semesters tab, fetch the current semester
       if (activeTab === "semesters") {
         try {
           const currentSemesterResponse = await axios.get(
@@ -67,6 +80,7 @@ const MaintenancePage = () => {
         } catch (error) {
           console.error("Error fetching current semester:", error);
           setCurrentSemester(null);
+          }
         }
       }
     } catch (error) {
@@ -202,15 +216,149 @@ const MaintenancePage = () => {
     setEditName("");
   };
 
+  useEffect(() => {
+    if (activeTab === "partylists") {
+      fetchPartylists();
+      fetchArchivedPartylists();
+    } else if (activeTab === "positions") {
+      fetchElectionTypes();
+    }
+  }, [activeTab]);
+
+  const fetchElectionTypes = async () => {
+    try {
+      const token = Cookies.get("token");
+      const response = await axios.get(
+        "http://localhost:5000/api/maintenance/election-types",
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data.data) {
+        setElectionTypesList(response.data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching election types:", error);
+      toast.error("Failed to fetch election types");
+    }
+  };
+
+  const fetchPartylists = async () => {
+    try {
+      const token = Cookies.get("token");
+      const response = await axios.get(
+        "http://localhost:5000/api/partylists",
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data.success) {
+        setPartylistList(response.data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching partylists:", error);
+      toast.error("Failed to fetch partylists");
+    }
+  };
+
+  const fetchArchivedPartylists = async () => {
+    try {
+      const token = Cookies.get("token");
+      const response = await axios.get(
+        "http://localhost:5000/api/partylists/archived",
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data.success) {
+        setArchivedPartylistList(response.data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching archived partylists:", error);
+      toast.error("Failed to fetch archived partylists");
+    }
+  };
+
+  const handleEditPartylist = (partylist) => {
+    setEditingPartylist(partylist);
+    setIsAddingPartylist(true);
+  };
+
+  const handleArchivePartylist = async (id) => {
+    if (!confirm("Are you sure you want to archive this partylist?")) return;
+
+    try {
+      const token = Cookies.get("token");
+      const response = await axios.delete(
+        `http://localhost:5000/api/partylists/${id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data.success) {
+        toast.success("Partylist archived successfully");
+        fetchPartylists();
+        fetchArchivedPartylists();
+      }
+    } catch (error) {
+      console.error("Error archiving partylist:", error);
+      toast.error("Failed to archive partylist");
+    }
+  };
+
+  const handleRestorePartylist = async (id) => {
+    try {
+      const token = Cookies.get("token");
+      const response = await axios.post(
+        `http://localhost:5000/api/partylists/${id}/restore`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data.success) {
+        toast.success("Partylist restored successfully");
+        fetchPartylists();
+        fetchArchivedPartylists();
+      }
+    } catch (error) {
+      console.error("Error restoring partylist:", error);
+      toast.error("Failed to restore partylist");
+    }
+  };
+
+  const handlePermanentDeletePartylist = async (id) => {
+    if (!confirm("Are you sure you want to PERMANENTLY delete this partylist? This action cannot be undone!")) return;
+
+    try {
+      const token = Cookies.get("token");
+      const response = await axios.delete(
+        `http://localhost:5000/api/partylists/${id}/permanent`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data.success) {
+        toast.success("Partylist permanently deleted");
+        fetchArchivedPartylists();
+      }
+    } catch (error) {
+      console.error("Error permanently deleting partylist:", error);
+      toast.error("Failed to permanently delete partylist");
+    }
+  };
+
+  const handleViewPartylistDetails = (partylist) => {
+    setSelectedPartylist(partylist);
+  };
+  
+  const handleClosePartylistDetails = () => {
+    setSelectedPartylist(null);
+  };
+
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-6 max-w-7xl mx-auto">
       <h1 className="text-2xl font-bold mb-6 text-black">Maintenance</h1>
       
       <div className="flex flex-wrap gap-2 mb-6">
         {tabs.map(tab => (
           <button
             key={tab.id}
-            className={`px-4 py-2 rounded-md ${activeTab === tab.id 
+            className={`px-4 py-2 rounded-md text-base font-medium ${activeTab === tab.id 
               ? 'bg-blue-600 text-white' 
               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
             onClick={() => setActiveTab(tab.id)}
@@ -220,9 +368,99 @@ const MaintenancePage = () => {
         ))}
       </div>
       
-      <div className="bg-white p-6 rounded-lg shadow">
+      <div className="bg-white p-6 rounded-lg shadow w-full">
+        {selectedPartylist ? (
+          <PartylistDetails 
+            partylist={selectedPartylist} 
+            onClose={handleClosePartylistDetails} 
+          />
+        ) : (
+          activeTab === "partylists" ? (
+            <>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-semibold text-black">Partylist</h2>
+                {!isAddingPartylist && (
+                  <button
+                    onClick={() => {
+                      setEditingPartylist(null);
+                      setIsAddingPartylist(true);
+                    }}
+                    className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-md"
+                  >
+                    + Register Partylist
+                  </button>
+                )}
+              </div>
+              
+              {isAddingPartylist && (
+                <PartylistForm 
+                  isAddingPartylist={isAddingPartylist}
+                  setIsAddingPartylist={setIsAddingPartylist}
+                  editingPartylist={editingPartylist}
+                  setEditingPartylist={setEditingPartylist}
+                  fetchPartylists={fetchPartylists}
+                  fetchArchivedPartylists={fetchArchivedPartylists}
+                />
+              )}
+              
+              <div className="border rounded-lg overflow-hidden">
+                <div className="px-6 py-3 bg-gray-50 border-b flex justify-between items-center">
+                  <h3 className="text-xl font-semibold text-black">
+                    {showArchived ? "Archived Partylists" : "Registered Partylists"}
+                  </h3>
+                  <button
+                    onClick={() => setShowArchived(!showArchived)}
+                    className={`px-3 py-1 text-sm rounded ${
+                      showArchived 
+                        ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                        : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                    }`}
+                  >
+                    {showArchived ? "Show Active" : "Show Archived"}
+                  </button>
+                </div>
+                
+                {showArchived ? (
+                  archivedPartylistList.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">No archived partylists found</div>
+                  ) : (
+                    <div className="p-6 space-y-6 bg-gray-50">
+                      {archivedPartylistList.map((pl) => (
+                        <PartylistCard 
+                          key={pl.id}
+                          partylist={pl}
+                          isArchived={true}
+                          onRestore={handleRestorePartylist}
+                          onDelete={handlePermanentDeletePartylist}
+                        />
+                      ))}
+                    </div>
+                  )
+                ) : (
+                  partylistList.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">No partylists found</div>
+                  ) : (
+                    <div className="p-6 space-y-6 bg-gray-50">
+                      {partylistList.map((pl) => (
+                        <PartylistCard 
+                          key={pl.id}
+                          partylist={pl}
+                          onViewDetails={handleViewPartylistDetails}
+                          onEdit={handleEditPartylist}
+                          onArchive={handleArchivePartylist}
+                        />
+                      ))}
+                    </div>
+                  )
+                )}
+              </div>
+            </>
+          ) : activeTab === "positions" ? (
+            <PositionManager electionTypes={electionTypesList} />
+          ) : (
+            <>
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-black">
+          <h2 className="text-2xl font-semibold text-black">
             {tabs.find(t => t.id === activeTab).label}
           </h2>
           
@@ -235,14 +473,6 @@ const MaintenancePage = () => {
             </button>
           )}
         </div>
-        
-        {activeTab === "semesters" && (
-          <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-            <p className="text-sm text-blue-700">
-              Set a semester as current to have it automatically selected when creating elections.
-            </p>
-          </div>
-        )}
         
         {(isAdding || editingItem) && (
           <div className="mb-6 p-4 bg-gray-50 rounded-lg">
@@ -287,13 +517,13 @@ const MaintenancePage = () => {
           <div className="text-center py-8 text-gray-500">No items found</div>
         ) : (
           <div className="border rounded-lg overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
+                  <table className="min-w-full divide-y divide-gray-200 table-fixed">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider w-3/4">
                     Name
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider w-1/4">
                     Actions
                   </th>
                 </tr>
@@ -301,7 +531,7 @@ const MaintenancePage = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {items.map((item) => (
                   <tr key={item.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-base font-medium text-black">
                       {item.name}
                       {activeTab === "semesters" && currentSemester === item.id && (
                         <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">
@@ -309,7 +539,7 @@ const MaintenancePage = () => {
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex gap-2">
+                    <td className="px-6 py-4 whitespace-nowrap text-base font-medium flex gap-2">
                       <button
                         onClick={() => startEditing(item)}
                         className="text-blue-600 hover:text-blue-900"
@@ -339,6 +569,9 @@ const MaintenancePage = () => {
               </tbody>
             </table>
           </div>
+              )}
+            </>
+          )
         )}
       </div>
     </div>

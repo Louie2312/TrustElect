@@ -22,6 +22,7 @@ const courseRoutes = require("./routes/courseRoutes");
 const fs = require('fs');
 const multer = require('multer');
 const adminPermissionRoutes = require('./routes/adminPermissionRoutes');
+const partylistRoutes = require('./routes/partylistRoutes');
 require('./cron/cron');
 app.use(cookieParser());
 app.use(helmet());
@@ -79,6 +80,7 @@ app.use("/api/content", contentRoutes);
 app.use("/api/audit-logs", auditLogRoutes);
 app.use('/api/admin-permissions', adminPermissionRoutes);
 app.use('/api/courses', courseRoutes);
+app.use('/api/partylists', partylistRoutes);
 
 // Health check endpoint
 app.get("/api/healthcheck", (req, res) => {

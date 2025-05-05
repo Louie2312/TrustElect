@@ -6,6 +6,7 @@ const {
   getGenders, createGender, updateGender, deleteGender,
   getSemesters, createSemester, updateSemester, deleteSemester,
   getPrecincts, createPrecinct, updatePrecinct, deletePrecinct,
+  getPartylists, createPartylist, updatePartylist, deletePartylist,
   getCurrentSemester, setCurrentSemester
 } = require("../controllers/maintenanceController");
 const { verifyToken, isSuperAdmin } = require("../middlewares/authMiddleware");
@@ -47,6 +48,12 @@ router.get("/precincts", verifyToken, getPrecincts);
 router.post("/precincts", verifyToken, isSuperAdmin, createPrecinct);
 router.put("/precincts/:id", verifyToken, isSuperAdmin, updatePrecinct);
 router.delete("/precincts/:id", verifyToken, isSuperAdmin, deletePrecinct);
+
+// Partylists
+router.get("/partylists", verifyToken, getPartylists);
+router.post("/partylists", verifyToken, isSuperAdmin, createPartylist);
+router.put("/partylists/:id", verifyToken, isSuperAdmin, updatePartylist);
+router.delete("/partylists/:id", verifyToken, isSuperAdmin, deletePartylist);
 
 // Current Semester
 router.get("/current-semester", verifyToken, getCurrentSemester);

@@ -11,8 +11,8 @@ export default function AddStudentModal({ onClose }) {
     lastName: "",
     email: "",
     studentNumber: "",
-    courseName: "",  // Keep for backward compatibility
-    courseId: "",    // Add course ID for the new approach
+    courseName: "",  
+    courseId: "",   
     yearLevel: "",
     gender: "Male",
     birthdate: "",
@@ -32,12 +32,10 @@ export default function AddStudentModal({ onClose }) {
     hasUnsyncedCourses: false
   });
 
-  // Fetch courses and year levels from the APIs
   useEffect(() => {
     const fetchMaintenanceData = async () => {
       const token = Cookies.get("token");
 
-      // Fetch courses from the direct courses API (which now syncs with maintenance)
       try {
         setLoading(prev => ({ ...prev, courses: true }));
         const coursesResponse = await axios.get("http://localhost:5000/api/courses", {
@@ -48,13 +46,11 @@ export default function AddStudentModal({ onClose }) {
           const courseList = coursesResponse.data.courses;
           setCourses(courseList);
           
-          // Check if there were any sync operations
           setSyncStatus({
             synced: coursesResponse.data.synced || false,
             hasUnsyncedCourses: courseList.some(course => course.not_in_db === true)
           });
-          
-          // Set default value if courses are available - prioritize ones with valid IDs
+ 
           if (courseList.length > 0) {
             const validCourse = courseList.find(course => course.id !== null) || courseList[0];
             setFormData(prev => ({ 
@@ -63,8 +59,7 @@ export default function AddStudentModal({ onClose }) {
               courseName: validCourse.course_name 
             }));
           }
-          
-          // Show warning if some courses don't have IDs yet
+ 
           if (courseList.some(course => course.id === null)) {
             setErrors(prev => ({ 
               ...prev, 
@@ -74,8 +69,7 @@ export default function AddStudentModal({ onClose }) {
         }
       } catch (error) {
         console.error("Error fetching courses from direct API:", error);
-        
-        // Fallback to maintenance API
+
         try {
           console.log("Trying maintenance API as fallback");
           const maintenanceResponse = await axios.get("http://localhost:5000/api/maintenance/programs", {
@@ -83,13 +77,11 @@ export default function AddStudentModal({ onClose }) {
           });
           
           if (maintenanceResponse.data && maintenanceResponse.data.data) {
-            // Warning: This approach doesn't use IDs from the database
-            // It might not work properly with the foreign key constraint
+        
             const courseNames = maintenanceResponse.data.data.map(item => item.name);
             
-            // Convert to expected format with pseudo IDs
             const pseudoCourses = courseNames.map((name, index) => ({
-              id: null, // No valid ID since we couldn't fetch from database
+              id: null, 
               course_name: name,
               not_in_db: true
             }));
@@ -103,14 +95,14 @@ export default function AddStudentModal({ onClose }) {
             if (pseudoCourses.length > 0) {
               setFormData(prev => ({ 
                 ...prev, 
-                courseId: null,  // No valid ID
+                courseId: null, 
                 courseName: pseudoCourses[0].course_name 
               }));
             }
           }
         } catch (fallbackError) {
           console.error("Fallback also failed:", fallbackError);
-          // Hard fallback to hardcoded default courses as a last resort
+       
           const defaultCourses = [
             { id: null, course_name: "BSIT", not_in_db: true },
             { id: null, course_name: "BSCS", not_in_db: true },
@@ -139,7 +131,6 @@ export default function AddStudentModal({ onClose }) {
         setLoading(prev => ({ ...prev, courses: false }));
       }
 
-      // Fetch year levels
       try {
         setLoading(prev => ({ ...prev, yearLevels: true }));
         const yearLevelsResponse = await axios.get("http://localhost:5000/api/maintenance/year-levels", {
@@ -147,18 +138,17 @@ export default function AddStudentModal({ onClose }) {
         });
         
         if (yearLevelsResponse.data && yearLevelsResponse.data.data) {
-          // Extract year level names from the response
+    
           const yearLevelNames = yearLevelsResponse.data.data.map(level => level.name);
           setYearLevels(yearLevelNames);
-          
-          // Set default value if year levels are available
+
           if (yearLevelNames.length > 0) {
             setFormData(prev => ({ ...prev, yearLevel: yearLevelNames[0] }));
           }
         }
       } catch (error) {
         console.error("Error fetching year levels:", error);
-        // Fallback to default year levels if API fails
+
         setYearLevels(["1st Year", "2nd Year", "3rd Year", "4th Year"]);
       } finally {
         setLoading(prev => ({ ...prev, yearLevels: false }));
@@ -170,8 +160,7 @@ export default function AddStudentModal({ onClose }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
-    // Special handling for course selection
+
     if (name === "courseId") {
       const selectedCourse = courses.find(course => 
         course.id === parseInt(value) || 
@@ -184,15 +173,14 @@ export default function AddStudentModal({ onClose }) {
           courseId: selectedCourse.id,
           courseName: selectedCourse.course_name
         }));
-        
-        // Show warning if selected course doesn't have an ID
+
         if (selectedCourse.id === null || selectedCourse.not_in_db) {
           setErrors(prev => ({
             ...prev,
             courseSelection: "This course may not be registered in the database yet. Registration might fail."
           }));
         } else {
-          // Clear the warning if a valid course is selected
+ 
           setErrors(prev => {
             const newErrors = {...prev};
             delete newErrors.courseSelection;
@@ -234,7 +222,6 @@ export default function AddStudentModal({ onClose }) {
   const handleRegister = async () => {
     if (!validateInputs()) return;
 
-    // Show a confirmation dialog if selected course might not be in the database
     if (!formData.courseId && formData.courseName) {
       if (!window.confirm(
         "The selected course may not be registered in the database yet. " +
@@ -270,17 +257,15 @@ export default function AddStudentModal({ onClose }) {
         }
       }
 
-      // Format date in MM/DD/YYYY format if it exists
       let formattedBirthdate = formData.birthdate;
       if (formData.birthdate) {
         const date = new Date(formData.birthdate);
-        const month = date.getMonth() + 1; // getMonth() is zero-based
+        const month = date.getMonth() + 1; 
         const day = date.getDate();
         const year = date.getFullYear();
         formattedBirthdate = `${month}/${day}/${year}`;
       }
 
-      // Prepare the data object with all necessary fields
       const studentData = {
         firstName: formData.firstName,
         middleName: formData.middleName,
@@ -309,8 +294,7 @@ export default function AddStudentModal({ onClose }) {
       console.error("Registration error:", error);
       
       let errorMessage = error.response?.data?.message || "Failed to add student.";
-      
-      // Check if it's a foreign key constraint error
+
       if (error.response?.data?.error?.includes("students_course_name_fkey")) {
         errorMessage = "The selected course is not registered in the database. Please add this course in the courses table first, or use one of the courses already in the database.";
       }
