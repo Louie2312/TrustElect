@@ -25,13 +25,10 @@ const electionModel = require("../models/electionModel");
 exports.createElection = async (req, res) => {
   try {
     const { title, description, date_from, date_to, start_time, end_time, election_type, eligible_voters } = req.body;
-    
-    // Ensure we use role_id for consistent role detection since 'role' column doesn't exist
-    // Admin = role_id 2, SuperAdmin = role_id 1
+
     const isAdmin = req.user.role_id === 2;
     const isSuperAdmin = req.user.role_id === 1;
-    
-    // Election needs approval if created by admin but not if created by superadmin
+
     const needsApproval = isAdmin;
     
     const result = await createElection(
@@ -40,30 +37,28 @@ exports.createElection = async (req, res) => {
       req.user.id, 
       needsApproval
     );
-    
-    // If the election needs approval, send a notification to superadmins
+
     if (needsApproval) {
       try {
-        // Ensure we have comprehensive election data with the creator ID
+
         const electionWithCreator = {
           ...result.election,
-          created_by: req.user.id,  // Set the user ID who created this election
-          title: title || result.election.title, // Ensure title is available
+          created_by: req.user.id, 
+          title: title || result.election.title, 
           description: description || result.election.description
         };
 
         const notificationResult = await notificationService.notifyElectionNeedsApproval(electionWithCreator);
         
         if (!notificationResult || notificationResult.length === 0) {
-          // Additional debug info to help troubleshoot
+       
           try {
-            // Only check role_id since 'role' column doesn't exist
+ 
             const { rows: superadminCheck } = await pool.query(
               `SELECT COUNT(*) as count FROM users WHERE role_id = 1`
             );
             
             if (superadminCheck[0]?.count > 0) {
-              // Query the superadmin details to help debugging
               const { rows: superadminDetails } = await pool.query(
                 `SELECT id, email, active FROM users WHERE role_id = 1`
               );

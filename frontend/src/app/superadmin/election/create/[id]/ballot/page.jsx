@@ -1,8 +1,9 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Plus, Trash2, Upload, Image as ImageIcon, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Upload, Image as ImageIcon, AlertTriangle, X, CheckCircle, Info } from "lucide-react";
 import Cookies from "js-cookie";
+import axios from "axios";
 
 const API_BASE = 'http://localhost:5000/api';
 const BASE_URL = 'http://localhost:5000';
@@ -72,13 +73,6 @@ const getBallotByElection = async (electionId) => {
   return fetchWithAuth(`/elections/${electionId}/ballot`);
 };
 
-const updateBallotDescription = async (ballotId, description) => {
-  return fetchWithAuth(`/ballots/${ballotId}/description`, {
-    method: 'PUT',
-    body: JSON.stringify({ description })
-  });
-};
-
 const createPosition = async (ballotId, positionData) => {
   return fetchWithAuth(`/ballots/${ballotId}/positions`, {
     method: 'POST',
@@ -128,14 +122,10 @@ const PreviewModal = ({ ballot, election, onConfirm, onCancel }) => {
         <div className="mb-6">
           <h3 className="text-xl font-semibold mb-2 text-black">Election Details</h3>
           <p className="text-lg font-medium text-black">Title: {election.title}</p>
+          <p className="text-black mb-2">{election.description || "No description provided"}</p>
           <p className="text-black">
             {new Date(election.date_from).toLocaleDateString()} - {new Date(election.date_to).toLocaleDateString()}
           </p>
-        </div>
-
-        <div className="mb-6">
-          <h3 className="text-xl font-semibold mb-2 text-black">Ballot Description</h3>
-          <p className="text-black">{ballot.description || "No description provided"}</p>
         </div>
 
         <div className="space-y-6">
@@ -213,16 +203,111 @@ const BackConfirmationModal = ({ onConfirm, onCancel }) => {
             onClick={onConfirm}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
-            Yes, Go Back
+            Yes
           </button>
 
           <button
             onClick={onCancel}
             className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 text-black"
           >
-            No, Stay Here
+            No
           </button>
           
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+const PartylistSelectionModal = ({ partylists, onSelect, onCancel }) => {
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) {
+      onCancel();
+    }
+  };
+
+  return (
+    <div 
+      className="fixed inset-0 flex items-center justify-center p-4 z-50"
+      onClick={handleBackdropClick}
+    >
+      <div className="bg-white rounded-lg p-6 max-w-5xl w-full max-h-[90vh] overflow-y-auto shadow-xl border">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold text-black">Select a Partylist</h2>
+          <button 
+            onClick={onCancel}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <X size={24} />
+          </button>
+        </div>
+        
+        {partylists.length === 0 ? (
+          <div className="p-8 text-center">
+            <p className="text-gray-500">No partylists found.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {partylists.map(party => (
+              <div 
+                key={party.id} 
+                className="border rounded-lg p-4 hover:border-blue-500 hover:shadow-md transition-all cursor-pointer"
+                onClick={() => onSelect(party.name)}
+              >
+                <div className="flex items-start">
+                  <div className="mr-4">
+                    {party.logo_url ? (
+                      <img 
+                        src={`${BASE_URL}${party.logo_url}`} 
+                        alt={`${party.name} logo`} 
+                        className="w-24 h-24 object-contain rounded-md border p-1"
+                        onError={(e) => {
+                          e.target.src = '/placeholder-logo.png';
+                        }}
+                      />
+                    ) : (
+                      <div className="w-24 h-24 bg-gray-100 rounded-md border flex items-center justify-center">
+                        <Info className="w-10 h-10 text-gray-300" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-black">{party.name}</h3>
+                    {party.slogan && (
+                      <p className="text-sm text-gray-600 italic mb-2">"{party.slogan}"</p>
+                    )}
+                    {party.advocacy && (
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Platform/Advocacy:</p>
+                        <p className="text-sm text-gray-700 line-clamp-3">{party.advocacy}</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="ml-2">
+                    <button className="p-2 bg-blue-50 rounded-full text-blue-600 hover:bg-blue-100">
+                      <CheckCircle size={20} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        
+        <div className="mt-6 flex justify-between">
+          <button
+            onClick={() => onSelect('manual')}
+            className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 text-black"
+          >
+           Type a partylist
+          </button>
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+          >
+            Cancel
+          </button>
         </div>
       </div>
     </div>
@@ -237,7 +322,6 @@ export default function BallotPage() {
   const [ballot, setBallot] = useState({
     id: null,
     election_id: electionId,
-    description: "",
     positions: []
   });
 
@@ -253,6 +337,56 @@ export default function BallotPage() {
   const [previewBallot, setPreviewBallot] = useState(false);
   const [imagePreviews, setImagePreviews] = useState({});
   const [showBackConfirmation, setShowBackConfirmation] = useState(false);
+  const [isStudentCouncilElection, setIsStudentCouncilElection] = useState(false);
+  const [studentCouncilPositions, setStudentCouncilPositions] = useState([
+    "President",
+    "Vice President",
+    "Secretary",
+    "Treasurer",
+    "Auditor",
+    "Business Manager",
+  ]);
+  const [partylists, setPartylists] = useState([]);
+  const [partylistCandidates, setPartylistCandidates] = useState({});
+  const [manualPartyInput, setManualPartyInput] = useState({});
+  const [showPartylistModal, setShowPartylistModal] = useState(false);
+  const [currentEditingCandidate, setCurrentEditingCandidate] = useState({ posId: null, candId: null });
+
+  useEffect(() => {
+    const fetchPartylists = async () => {
+      try {
+        const token = Cookies.get("token");
+        const response = await axios.get(
+          "http://localhost:5000/api/partylists",
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        
+        if (response.data.success) {
+          const partylistData = response.data.data || [];
+          setPartylists(partylistData);
+
+          const candidatesMap = {};
+          partylistData.forEach(party => {
+  
+            const savedCandidates = localStorage.getItem(`partylist_candidates_${party.id}`);
+            if (savedCandidates) {
+              candidatesMap[party.id] = JSON.parse(savedCandidates);
+            } else {
+              candidatesMap[party.id] = [];
+            }
+          });
+          
+          setPartylistCandidates(candidatesMap);
+        }
+      } catch (error) {
+        console.error("Error fetching partylists:", error);
+
+        setPartylists([]);
+      }
+    };
+
+    fetchPartylists();
+  }, []);
 
   useEffect(() => {
     const loadData = async () => {
@@ -262,6 +396,10 @@ export default function BallotPage() {
         const electionData = await fetchWithAuth(`/elections/${electionId}`);
         setElection(electionData);
         
+        if (electionData.election_type === "Student Council") {
+          setIsStudentCouncilElection(true);
+        }
+        
         try {
           const ballotData = await getBallotByElection(electionId);
           setBallot({
@@ -269,23 +407,43 @@ export default function BallotPage() {
             positions: ballotData.positions || []
           });
         } catch (error) {
-          setBallot(prev => ({
-            ...prev,
-            positions: [{
-              id: Math.floor(Math.random() * 1000000).toString(),
-              name: "",
-              max_choices: 1,
-              candidates: [{
+          if (electionData.election_type === "Student Council") {
+            setBallot(prev => ({
+              ...prev,
+              positions: [{
                 id: Math.floor(Math.random() * 1000000).toString(),
-                first_name: "",
-                last_name: "",
-                party: "",
-                slogan: "",
-                platform: "",
-                image_url: null
+                name: studentCouncilPositions[0],
+                max_choices: 1,
+                candidates: [{
+                  id: Math.floor(Math.random() * 1000000).toString(),
+                  first_name: "",
+                  last_name: "",
+                  party: "",
+                  slogan: "",
+                  platform: "",
+                  image_url: null
+                }]
               }]
-            }]
-          }));
+            }));
+          } else {
+            setBallot(prev => ({
+              ...prev,
+              positions: [{
+                id: Math.floor(Math.random() * 1000000).toString(),
+                name: "",
+                max_choices: 1,
+                candidates: [{
+                  id: Math.floor(Math.random() * 1000000).toString(),
+                  first_name: "",
+                  last_name: "",
+                  party: "",
+                  slogan: "",
+                  platform: "",
+                  image_url: null
+                }]
+              }]
+            }));
+          }
         }
       } catch (error) {
         setApiError("Failed to load data");
@@ -312,14 +470,6 @@ export default function BallotPage() {
   const handleBallotChange = async (e) => {
     const { name, value } = e.target;
     setBallot({ ...ballot, [name]: value });
-    
-    if (ballot.id && name === "description") {
-      try {
-        await updateBallotDescription(ballot.id, value);
-      } catch (error) {
-        setApiError("Failed to update description");
-      }
-    }
   };
 
   const handlePositionChange = async (posId, field, value) => {
@@ -338,7 +488,52 @@ export default function BallotPage() {
     }
   };
 
+  const handlePartylistChange = (posId, candId, value) => {
+    if (value === "manual") {
+      setManualPartyInput(prev => ({
+        ...prev,
+        [`${posId}_${candId}`]: true
+      }));
+      
+      const updatedPositions = ballot.positions.map(pos => ({
+        ...pos,
+        candidates: pos.candidates.map(cand => 
+          cand.id === candId ? { ...cand, party: "" } : cand
+        )
+      }));
+      
+      setBallot(prev => ({ ...prev, positions: updatedPositions }));
+      return;
+    }
+    
+    if (!manualPartyInput[`${posId}_${candId}`]) {
+      const updatedPositions = ballot.positions.map(pos => ({
+        ...pos,
+        candidates: pos.candidates.map(cand => 
+          cand.id === candId ? { ...cand, party: value } : cand
+        )
+      }));
+      
+      setBallot(prev => ({ ...prev, positions: updatedPositions }));
+    }
+  };
+
+  const handleManualPartyInput = (posId, candId, value) => {
+    const updatedPositions = ballot.positions.map(pos => ({
+      ...pos,
+      candidates: pos.candidates.map(cand => 
+        cand.id === candId ? { ...cand, party: value } : cand
+      )
+    }));
+    
+    setBallot(prev => ({ ...prev, positions: updatedPositions }));
+  };
+
   const handleCandidateChange = async (posId, candId, field, value) => {
+    if (field === "party") {
+      return;
+    }
+    
     const updatedPositions = ballot.positions.map(pos => ({
       ...pos,
       candidates: pos.candidates.map(cand => 
@@ -437,35 +632,79 @@ export default function BallotPage() {
     try {
       setIsLoading(true);
       
-      if (ballot.id) {
-        const newPosition = await createPosition(ballot.id, {
-          name: "",
-          max_choices: 1
-        });
+      if (isStudentCouncilElection) {
+        const usedPositionNames = ballot.positions.map(p => p.name);
+        const availablePositions = studentCouncilPositions.filter(
+          pos => !usedPositionNames.includes(pos)
+        );
         
-        setBallot(prev => ({
-          ...prev,
-          positions: [
-            ...prev.positions,
-            {
-              ...newPosition,
-              candidates: []
-            }
-          ]
-        }));
+        if (availablePositions.length === 0) {
+          setApiError("All Student Council positions have been added.");
+          setIsLoading(false);
+          return;
+        }
+        
+        if (ballot.id) {
+          const newPosition = await createPosition(ballot.id, {
+            name: availablePositions[0],
+            max_choices: 1
+          });
+          
+          setBallot(prev => ({
+            ...prev,
+            positions: [
+              ...prev.positions,
+              {
+                ...newPosition,
+                candidates: []
+              }
+            ]
+          }));
+        } else {
+          setBallot(prev => ({
+            ...prev,
+            positions: [
+              ...prev.positions,
+              {
+                id: Math.floor(Math.random() * 1000000).toString(),
+                name: availablePositions[0], 
+                max_choices: 1,
+                candidates: []
+              }
+            ]
+          }));
+        }
       } else {
-        setBallot(prev => ({
-          ...prev,
-          positions: [
-            ...prev.positions,
-            {
-              id: Math.floor(Math.random() * 1000000).toString(),
-              name: "",
-              max_choices: 1,
-              candidates: []
-            }
-          ]
-        }));
+        if (ballot.id) {
+          const newPosition = await createPosition(ballot.id, {
+            name: "",
+            max_choices: 1
+          });
+          
+          setBallot(prev => ({
+            ...prev,
+            positions: [
+              ...prev.positions,
+              {
+                ...newPosition,
+                candidates: []
+              }
+            ]
+          }));
+        } else {
+          setBallot(prev => ({
+            ...prev,
+            positions: [
+              ...prev.positions,
+              {
+                id: Math.floor(Math.random() * 1000000).toString(),
+                name: "",
+                max_choices: 1,
+                candidates: []
+              }
+            ]
+          }));
+        }
       }
     } catch (error) {
       setApiError(error.message);
@@ -655,9 +894,15 @@ export default function BallotPage() {
 
   const validateForm = () => {
     const newErrors = {};
-  
-    if (!ballot.description.trim()) {
-      newErrors.description = "Description is required";
+    
+
+    if (isStudentCouncilElection) {
+      const usedPositions = ballot.positions.map(p => p.name).filter(name => name.trim() !== "");
+      const uniquePositions = new Set(usedPositions);
+      
+      if (uniquePositions.size !== usedPositions.length) {
+        newErrors.duplicatePositions = "Duplicate positions are not allowed in Student Council elections";
+      }
     }
     
     ballot.positions.forEach((pos) => {
@@ -665,7 +910,6 @@ export default function BallotPage() {
         newErrors[`position-${pos.id}`] = "Position name is required";
       }  
       
-      // Check if position has at least 2 candidates
       if (pos.candidates.length < 2) {
         newErrors[`position-${pos.id}-candidates`] = "At least 2 candidates are required per position";
       }
@@ -686,7 +930,6 @@ export default function BallotPage() {
 
   const handlePreview = () => {
     if (!validateForm()) {
-      // Check specifically for positions with insufficient candidates
       const positionsWithTooFewCandidates = ballot.positions.filter(pos => pos.candidates.length < 2);
       
       if (positionsWithTooFewCandidates.length > 0) {
@@ -706,7 +949,6 @@ export default function BallotPage() {
       setIsLoading(true);
       setApiError(null);
 
-
       for (const position of ballot.positions) {
         for (const candidate of position.candidates) {
           if (candidate._isNew || candidate._pendingImage) {
@@ -717,7 +959,7 @@ export default function BallotPage() {
 
       const apiData = {
         election_id: ballot.election_id,
-        description: ballot.description,
+        description: election.description || "",
         positions: ballot.positions.map(pos => ({
           name: pos.name,
           max_choices: pos.max_choices,
@@ -784,6 +1026,42 @@ export default function BallotPage() {
     }
   };
 
+  const openPartylistModal = (posId, candId) => {
+    setCurrentEditingCandidate({ posId, candId });
+    setShowPartylistModal(true);
+  };
+
+  const handlePartylistSelect = (partyName) => {
+    const { posId, candId } = currentEditingCandidate;
+    
+    if (partyName === 'manual') {
+      setManualPartyInput(prev => ({
+        ...prev,
+        [`${posId}_${candId}`]: true
+      }));
+
+      const updatedPositions = ballot.positions.map(pos => ({
+        ...pos,
+        candidates: pos.candidates.map(cand => 
+          cand.id === candId ? { ...cand, party: "" } : cand
+        )
+      }));
+      
+      setBallot(prev => ({ ...prev, positions: updatedPositions }));
+    } else {
+      const updatedPositions = ballot.positions.map(pos => ({
+        ...pos,
+        candidates: pos.candidates.map(cand => 
+          cand.id === candId ? { ...cand, party: partyName } : cand
+        )
+      }));
+      
+      setBallot(prev => ({ ...prev, positions: updatedPositions }));
+    }
+    
+    setShowPartylistModal(false);
+  };
+
   if (!election) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -809,6 +1087,14 @@ export default function BallotPage() {
           onCancel={() => setShowBackConfirmation(false)}
         />
       )}
+      
+      {showPartylistModal && (
+        <PartylistSelectionModal 
+          partylists={partylists} 
+          onSelect={handlePartylistSelect} 
+          onCancel={() => setShowPartylistModal(false)}
+        />
+      )}
 
       <div className="flex items-center mb-6">
         <button 
@@ -830,40 +1116,56 @@ export default function BallotPage() {
         </div>
       )}
 
+      {errors.duplicatePositions && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {errors.duplicatePositions}
+        </div>
+      )}
+
+  
       <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Ballot Description
-        </label>
-        <textarea
-          name="description"
-          value={ballot.description}
-          onChange={handleBallotChange}
-          className={`w-full p-2 border rounded text-black ${
-            errors.description ? "border-red-500" : "border-gray-300"
-          }`}
-          rows={3}
-          placeholder="Describe what this ballot is for"
-        />
-        {errors.description && (
-          <p className="text-red-500 text-sm mt-1">{errors.description}</p>
-        )}
+        <p className="text-black mb-4"><span className="font-medium">Description:</span> {election.description || "No description provided"}</p>
       </div>
 
       {ballot.positions.map((position) => (
         <div key={position.id} className="bg-white rounded-lg shadow p-6 mb-6">
           <div className="flex justify-between items-center mb-4">
             <div className="flex-1 mr-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Position/Title Name 
+              <label className="block text-sm font-medium text-black mb-1">
+                Position Name
               </label>
-              <input
-                type="text"
-                value={position.name}
-                onChange={(e) => handlePositionChange(position.id, "name", e.target.value)}
-                className={`w-full p-2 border rounded text-black ${
-                  errors[`position-${position.id}`] ? "border-red-500" : "border-gray-300"
-                }`}
-              />
+              
+              {isStudentCouncilElection ? (
+                <select
+                  value={position.name}
+                  onChange={(e) => handlePositionChange(position.id, "name", e.target.value)}
+                  className={`w-full p-2 border rounded text-black ${
+                    errors[`position-${position.id}`] ? "border-red-500" : "border-gray-300"
+                  }`}
+                >
+                  {studentCouncilPositions
+                    .filter(posName => 
+                      position.name === posName || 
+                      !ballot.positions.some(p => p.id !== position.id && p.name === posName)
+                    )
+                    .map(posName => (
+                      <option key={posName} value={posName}>
+                        {posName}
+                      </option>
+                    ))
+                  }
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={position.name}
+                  onChange={(e) => handlePositionChange(position.id, "name", e.target.value)}
+                  className={`w-full p-2 border rounded text-black ${
+                    errors[`position-${position.id}`] ? "border-red-500" : "border-gray-300"
+                  }`}
+                />
+              )}
+              
               {errors[`position-${position.id}`] && (
                 <p className="text-red-500 text-sm mt-1">{errors[`position-${position.id}`]}</p>
               )}
@@ -989,15 +1291,46 @@ export default function BallotPage() {
                     <div className="grid grid-cols-2 gap-3 mb-3">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Partylist/Course
+                          Partylist
                         </label>
-                        <input
-                          type="text"
-                          value={candidate.party}
-                          onChange={(e) => handleCandidateChange(position.id, candidate.id, "party", e.target.value)}
-                          className="w-full p-2 border border-gray-300 rounded text-black"
-                          placeholder="Party"
-                        />
+                        
+                        {manualPartyInput[`${position.id}_${candidate.id}`] ? (
+                          <div>
+                            <input
+                              type="text"
+                              value={candidate.party}
+                              onChange={(e) => handleManualPartyInput(position.id, candidate.id, e.target.value)}
+                              className="w-full p-2 border border-gray-300 rounded text-black"
+                              placeholder="Enter a partylist"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setManualPartyInput(prev => {
+                                  const newState = { ...prev };
+                                  delete newState[`${position.id}_${candidate.id}`];
+                                  return newState;
+                                });
+                                openPartylistModal(position.id, candidate.id);
+                              }}
+                              className="text-sm text-blue-600 mt-1"
+                            >
+                              Select from list
+                            </button>
+                          </div>
+                        ) : (
+                          <div>
+                            <div 
+                              onClick={() => openPartylistModal(position.id, candidate.id)}
+                              className={`w-full p-2 border border-gray-300 rounded text-black flex justify-between items-center cursor-pointer hover:border-blue-500 ${candidate.party ? 'bg-gray-50' : ''}`}
+                            >
+                              <span className={candidate.party ? 'text-black' : 'text-gray-400'}>
+                                {candidate.party || "Select a partylist"}
+                              </span>
+                             
+                            </div>
+                          </div>
+                        )}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-black mb-1">

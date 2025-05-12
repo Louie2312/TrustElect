@@ -17,7 +17,6 @@ import toast from 'react-hot-toast';
 const API_BASE = 'http://localhost:5000/api';
 const BASE_URL = 'http://localhost:5000';
 
-// Add a color palette array at the top of the file, outside the component
 const CHART_COLORS = [
   '#3b82f6', // blue
   '#ef4444', // red
@@ -50,8 +49,7 @@ async function fetchWithAuth(url) {
       throw new Error(`Request failed with status ${response.status}`);
     }
   }
-  
-  // Check for empty response
+
   const text = await response.text();
   if (!text) {
     return {}; // Return empty object if no response body
@@ -854,6 +852,60 @@ export default function ElectionDetailsPage() {
               <div key={position.id} className="mb-8 border-b pb-6">
                 <h3 className="text-lg font-medium text-black mb-4">{position.name}</h3>
                 
+                {/* Winner banner (for completed elections) */}
+                {election.status === 'completed' && position.sortedCandidates.length > 0 && (
+                  <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4 shadow-sm">
+                    <h4 className="text-sm font-medium text-blue-800 mb-2 flex items-center">
+                      <Award className="w-4 h-4 mr-1 text-blue-600" />
+                      Winner for {position.name}
+                    </h4>
+                    <div className="flex items-center">
+                      <div className="relative w-16 h-16 mr-4">
+                        {position.sortedCandidates[0].image_url && !imageErrors[position.sortedCandidates[0].id] ? (
+                          <Image
+                            src={candidateImages[position.sortedCandidates[0].id] || getImageUrl(position.sortedCandidates[0].image_url)}
+                            alt={`${position.sortedCandidates[0].first_name} ${position.sortedCandidates[0].last_name}`}
+                            fill
+                            sizes="64px"
+                            className="object-cover rounded-full border-2 border-blue-500"
+                            onError={() => handleImageError(position.sortedCandidates[0].id)}
+                          />
+                        ) : (
+                          <div className="w-16 h-16 rounded-full bg-blue-200 flex items-center justify-center border-2 border-blue-500">
+                            <User className="w-8 h-8 text-blue-600" />
+                          </div>
+                        )}
+                        <div className="absolute -top-2 -right-2 bg-blue-500 rounded-full p-1">
+                          <Award className="w-4 h-4 text-white" />
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-bold text-black text-lg">
+                          {position.sortedCandidates[0].first_name} {position.sortedCandidates[0].last_name}
+                        </h4>
+                        {position.sortedCandidates[0].party && (
+                          <div className="mt-1">
+                            <span className="font-medium text-sm text-black">Partylist:</span>
+                            <span className="ml-1 px-2 py-0.5 bg-blue-100 text-blue-800 text-sm rounded">
+                              {position.sortedCandidates[0].party}
+                            </span>
+                          </div>
+                        )}
+                        <div className="mt-2">
+                          <span className="font-medium text-sm text-black">Votes:</span>
+                          <span className="ml-1 text-black font-bold">
+                            {position.sortedCandidates[0].vote_count || 0} 
+                          </span>
+                          <span className="ml-1 text-blue-600">
+                            ({position.sortedCandidates[0].percentage || 0}%)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 {/* Results chart */}
                 <div className="h-72 mb-6">
                   <ResponsiveContainer width="100%" height="100%">
@@ -941,17 +993,19 @@ export default function ElectionDetailsPage() {
             ))}
             
             {election.status === 'completed' && (
-              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <h3 className="font-medium text-black mb-2">Election Summary</h3>
-                <p className="text-black">
-                  Total Votes Cast: <span className="font-semibold">{election.vote_count || 0}</span> out of <span className="font-semibold">{election.voter_count || 0}</span> eligible voters
-                  ({election.voter_count ? Math.round((election.vote_count / election.voter_count) * 100) : 0}% participation)
-                </p>
-                <p className="text-black mt-1">
-                  Election Completed: {new Date(election.date_to).toLocaleDateString()} at {election.end_time}
-                </p>
-              </div>
-            )}
+                <>
+                  <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h3 className="font-medium text-black mb-2">Election Summary</h3>
+                    <p className="text-black">
+                      Total Votes Cast: <span className="font-semibold">{election.vote_count || 0}</span> out of <span className="font-semibold">{election.voter_count || 0}</span> eligible voters
+                      ({election.voter_count ? Math.round((election.vote_count / election.voter_count) * 100) : 0}% participation)
+                    </p>
+                    <p className="text-black mt-1">
+                      Election Completed: {new Date(election.date_to).toLocaleDateString()} at {election.end_time}
+                    </p>
+                  </div>
+                </>
+              )}
           </div>
         </>
       )}

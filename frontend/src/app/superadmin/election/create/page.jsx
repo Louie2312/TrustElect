@@ -570,26 +570,31 @@ export default function CreateElectionPage() {
                 )}
                 
                 {category === 'semester' ? (
-                  <div className="flex flex-wrap gap-4">
+                  <div className="flex flex-wrap gap-3">
                     {maintenanceData.semesters.map((semester) => (
-                      <div key={semester} className="flex items-center">
+                      <label 
+                        key={semester} 
+                        className={`inline-flex items-center px-3 py-1 rounded-full ${
+                          eventData.eligibleVoters.semester.includes(semester) 
+                            ? 'bg-blue-100 border border-blue-300' 
+                            : 'border border-gray-200'
+                        }`}
+                      >
                         <input
                           type="radio"
                           name="semester"
                           checked={eventData.eligibleVoters.semester.includes(semester)}
                           disabled={semester !== currentSemester}
                           onChange={() => handleCheckboxChange('semester', semester)}
-                          className="rounded-md border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"
+                          className={`rounded-md border-gray-300 text-black focus:ring-blue-500 mr-2 ${semester !== currentSemester ? 'opacity-60' : ''}`}
                         />
-                        <span
-                          className={`text-gray-800 font-medium ${semester !== currentSemester ? 'text-gray-400' : ''}`}
-                        >
+                        <span className="text-black">
                           {semester}
                         </span>
-                      </div>
+                      </label>
                     ))}
                     {!currentSemester && (
-                      <p className="text-amber-600">
+                      <p className="text-amber-600 mt-2 w-full">
                         No current semester has been set.
                       </p>
                     )}

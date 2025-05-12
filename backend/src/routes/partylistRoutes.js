@@ -4,39 +4,36 @@ const { upload } = require('../middlewares/partylistUploadMiddleware');
 const partylistController = require('../controllers/partylistController');
 const { verifyToken, isSuperAdmin } = require('../middlewares/authMiddleware');
 
-// Create a new partylist
 router.post('/',
   verifyToken, isSuperAdmin,
   upload.single('logo'),
   partylistController.createPartylist
 );
 
-// Get all active partylists
 router.get('/',
   verifyToken, isSuperAdmin,
   partylistController.getAllPartylists
 );
 
-// Get all archived partylists
+
 router.get('/archived',
   verifyToken, isSuperAdmin,
   partylistController.getArchivedPartylists
 );
 
-// Get a specific partylist
+
 router.get('/:id',
   verifyToken, isSuperAdmin,
   partylistController.getPartylistById
 );
 
-// Update a partylist
 router.put('/:id',
   verifyToken, isSuperAdmin,
   upload.single('logo'),
   partylistController.updatePartylist
 );
 
-// Archive a partylist (soft delete)
+
 router.delete('/:id',
   verifyToken, isSuperAdmin,
   partylistController.archivePartylist
