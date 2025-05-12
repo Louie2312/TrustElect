@@ -377,7 +377,9 @@ export default function ManageStudents() {
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4 text-black">Student Management</h1>
-
+      <p className="text-black font-bold mb-4">
+      School Year: 2024-2025 
+      </p> 
       {error && <p className="text-red-500">{error}</p>}
 
       <div className="flex flex-wrap justify-between items-center mb-4">
@@ -492,7 +494,6 @@ export default function ManageStudents() {
 
       {showAddModal && <AddStudentModal onClose={() => setShowAddModal(false)} />}
 
-      {/* Student Table (Active Students Only) */}
       <div className="overflow-x-auto">
         <table className="w-full bg-white shadow-md rounded-lg overflow-hidden text-black">
           <thead>

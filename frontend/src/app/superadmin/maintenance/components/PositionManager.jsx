@@ -176,7 +176,7 @@ const PositionManager = ({ electionTypes }) => {
               </form>
             </div>
             
-            {/* Positions List */}
+      
             <div>
               <h3 className="text-lg font-semibold text-black mb-3">
                 Positions for {selectedElectionType.name}

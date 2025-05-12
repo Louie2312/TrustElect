@@ -223,7 +223,6 @@ exports.updateElection = async (req, res) => {
     const { id } = req.params;
     const userId = req.user.id;
     
-    // First get the existing election
     const existingElection = await electionModel.getElectionById(id);
     
     if (!existingElection) {
@@ -232,48 +231,41 @@ exports.updateElection = async (req, res) => {
         message: "Election not found"
       });
     }
-    
-    // Allow updates for both upcoming and ongoing elections
+
     if (existingElection.status !== 'upcoming' && existingElection.status !== 'ongoing') {
       return res.status(400).json({
         success: false,
         message: "Only upcoming or ongoing elections can be updated"
       });
     }
-    
-    // Check if admin has permission (creator or superadmin)
+
     if (req.user.role !== 'SuperAdmin' && existingElection.created_by !== userId) {
       return res.status(403).json({
         success: false,
         message: "You don't have permission to update this election"
       });
     }
-    
-    // Create updates object with only provided fields
+
     const updates = {};
-    
-    // List of allowed fields to update
+
     const allowedFields = [
       'title', 'description', 'election_type', 
       'date_from', 'date_to', 'start_time', 'end_time'
     ];
-    
-    // Only include fields that are provided in the request
+
     allowedFields.forEach(field => {
       if (req.body[field] !== undefined) {
         updates[field] = req.body[field];
       }
     });
-    
-    // Check if there are any updates to apply
+
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({
         success: false,
         message: "No valid fields to update"
       });
     }
-    
-    // Update the election
+
     const updatedElection = await electionModel.updateElection(id, updates);
     
     res.status(200).json({
@@ -317,8 +309,7 @@ exports.getElectionsByStatus = async (req, res) => {
 exports.getElectionStats = async (req, res) => {
   try {
     const stats = await getElectionStatistics();
-    
-    // Add pending approval elections count
+
     let pendingApprovalCount = 0;
     
     if (req.user.role === 'Admin') {
@@ -328,8 +319,7 @@ exports.getElectionStats = async (req, res) => {
       const pendingElections = await getPendingApprovalElections();
       pendingApprovalCount = pendingElections.length;
     }
-    
-    // Add to_approve status to stats
+ 
     stats.push({
       status: 'to_approve',
       count: pendingApprovalCount,
@@ -395,12 +385,10 @@ exports.getElectionStatus = async (req, res) => {
 exports.updateElectionStatuses = async (req, res) => {
   try {
       const result = await updateElectionStatuses();
-      
-      // Process notifications for status changes
+
       if (result.statusChanges && result.statusChanges.length > 0) {
           const notificationPromises = result.statusChanges.map(async (change) => {
               try {
-                  // Get complete election data to pass to notification service
                   const election = await getElectionById(change.id);
                   if (election) {
                       return notificationService.notifyElectionStatusChange(election, change.oldStatus, change.newStatus);
@@ -440,7 +428,6 @@ exports.checkStudentEligibility = async (req, res) => {
       });
     }
 
-    // First check if the election is approved (not needing approval)
     const electionCheck = await pool.query(
       `SELECT needs_approval FROM elections WHERE id = $1`,
       [electionId]
@@ -453,7 +440,6 @@ exports.checkStudentEligibility = async (req, res) => {
       });
     }
 
-    // If election needs approval, student is not eligible
     if (electionCheck.rows[0].needs_approval) {
       return res.status(403).json({
         eligible: false,
@@ -518,7 +504,6 @@ exports.getBallotForStudent = async (req, res) => {
       });
     }
 
-    // First check if the election is approved (not needing approval)
     const electionCheck = await pool.query(
       `SELECT needs_approval FROM elections WHERE id = $1`,
       [electionId]
@@ -530,14 +515,12 @@ exports.getBallotForStudent = async (req, res) => {
       });
     }
 
-    // If election needs approval, student cannot access
     if (electionCheck.rows[0].needs_approval) {
       return res.status(403).json({
         message: "This election is not yet available"
       });
     }
 
-    // Verify eligibility first
     const eligible = await pool.query(
       `SELECT 1 FROM eligible_voters 
        WHERE election_id = $1 AND student_id = $2`,
@@ -590,7 +573,6 @@ exports.getBallotForVoting = async (req, res) => {
       });
     }
 
-    // First check if the election is approved (not needing approval)
     const electionCheck = await pool.query(
       `SELECT needs_approval FROM elections WHERE id = $1`,
       [electionId]
@@ -602,7 +584,6 @@ exports.getBallotForVoting = async (req, res) => {
       });
     }
 
-    // If election needs approval, student cannot vote
     if (electionCheck.rows[0].needs_approval) {
       return res.status(403).json({
         message: "This election is not yet available for voting"
@@ -652,7 +633,7 @@ exports.getBallotForVoting = async (req, res) => {
 
 exports.submitVote = async (req, res) => {
   const client = await pool.connect();
-  // Store these values at the function level so they're available in the catch block
+
   const electionId = req.params.id;
   const studentId = req.user.studentId;
   
@@ -661,7 +642,6 @@ exports.submitVote = async (req, res) => {
     
     const { votes } = req.body;
 
-    // First check if the election is approved (not needing approval)
     const electionCheck = await client.query(
       `SELECT needs_approval FROM elections WHERE id = $1`,
       [electionId]
@@ -675,7 +655,6 @@ exports.submitVote = async (req, res) => {
       });
     }
 
-    // If election needs approval, student cannot vote
     if (electionCheck.rows[0].needs_approval) {
       await client.query('ROLLBACK');
       return res.status(403).json({
@@ -683,15 +662,13 @@ exports.submitVote = async (req, res) => {
         message: "This election is not yet available for voting"
       });
     }
-
-    // Check if student has already voted in this election
     const existingVoteCheck = await client.query(
       'SELECT 1 FROM eligible_voters WHERE election_id = $1 AND student_id = $2 AND has_voted = TRUE',
       [electionId, studentId]
     );
 
     if (existingVoteCheck.rows.length > 0) {
-      // Student has already voted, get their vote token
+
       const tokenResult = await client.query(
         'SELECT DISTINCT vote_token FROM votes WHERE election_id = $1 AND student_id = $2 LIMIT 1',
         [electionId, studentId]
@@ -708,7 +685,6 @@ exports.submitVote = async (req, res) => {
       });
     }
 
-    // Validate votes format
     if (!Array.isArray(votes)) {
       await client.query('ROLLBACK');
       return res.status(400).json({
@@ -717,13 +693,11 @@ exports.submitVote = async (req, res) => {
       });
     }
 
-    // Generate a unique vote token for this submission using our secure function
     const voteToken = cryptoService.generateVoteToken();
-    
-    // Create a blinded identifier for this voter that cannot be traced back
+
     const blindedVoterId = cryptoService.createBlindedId(studentId, electionId);
 
-    // Get all valid positions for this election
+
     const validPositions = await client.query(
       `SELECT p.id, p.max_choices 
        FROM positions p
@@ -731,25 +705,21 @@ exports.submitVote = async (req, res) => {
        WHERE b.election_id = $1`,
       [electionId]
     );
-    
-    // Create a map of valid position IDs for quick lookup
+
     const validPositionMap = {};
     validPositions.rows.forEach(pos => {
       validPositionMap[pos.id] = pos.max_choices;
     });
 
-    // Create a complete ballot record for encryption
     const completeBallot = {
       timestamp: new Date().toISOString(),
       electionId: parseInt(electionId),
-      studentId, // This will be stored with encryption, so it's secure
+      studentId, 
       selections: votes
     };
-    
-    // Encrypt the complete ballot
+
     const encryptedBallot = cryptoService.encryptData(completeBallot);
-    
-    // Store the encrypted complete ballot
+
     await client.query(
       `INSERT INTO encrypted_ballots (
         vote_token, 
@@ -767,11 +737,10 @@ exports.submitVote = async (req, res) => {
         encryptedBallot.encrypted,
         encryptedBallot.iv,
         encryptedBallot.authTag,
-        encryptedBallot.key // In production, consider encrypting this with a master key
+        encryptedBallot.key 
       ]
     );
 
-    // Process and insert individual votes
     for (const vote of votes) {
       const { positionId, candidateIds } = vote;
       
@@ -782,8 +751,7 @@ exports.submitVote = async (req, res) => {
           message: `Invalid vote format for position: ${positionId}. Each vote must have a positionId and an array of candidateIds.`
         });
       }
-      
-      // Check if position is valid for this election
+  
       if (!validPositionMap[positionId]) {
         await client.query('ROLLBACK');
         return res.status(400).json({
@@ -793,8 +761,7 @@ exports.submitVote = async (req, res) => {
       }
 
       const maxChoices = validPositionMap[positionId];
-      
-      // Check if the number of candidates selected exceeds the maximum allowed
+
       if (candidateIds.length > maxChoices) {
         await client.query('ROLLBACK');
         return res.status(400).json({
@@ -803,7 +770,6 @@ exports.submitVote = async (req, res) => {
         });
       }
 
-      // Process each candidate selection
       for (const candidateId of candidateIds) {
         const candidateCheck = await client.query(
           'SELECT id FROM candidates WHERE id = $1 AND position_id = $2',
@@ -818,25 +784,22 @@ exports.submitVote = async (req, res) => {
           });
         }
 
-        // Create individual vote data
         const voteData = {
           timestamp: new Date().toISOString(),
           electionId: parseInt(electionId),
           positionId: parseInt(positionId),
           candidateId: parseInt(candidateId)
         };
-        
-        // Encrypt the individual vote
+
         const encryptedVote = cryptoService.encryptData(voteData);
-        
-        // Check if there's already a vote for this student/election/position/candidate
+
         const duplicateCheck = await client.query(
           'SELECT 1 FROM votes WHERE election_id = $1 AND student_id = $2 AND position_id = $3 AND candidate_id = $4',
           [electionId, studentId, positionId, candidateId]
         );
         
         if (duplicateCheck.rows.length === 0) {
-          // Insert the vote with encryption
+
           await client.query(
             `INSERT INTO votes (
               election_id,
@@ -859,7 +822,7 @@ exports.submitVote = async (req, res) => {
               encryptedVote.encrypted,
               encryptedVote.iv,
               encryptedVote.authTag,
-              encryptedVote.key, // In production, consider encrypting this with a master key
+              encryptedVote.key, 
               blindedVoterId
             ]
           );
@@ -867,7 +830,6 @@ exports.submitVote = async (req, res) => {
       }
     }
 
-    // Mark the student as having voted in the eligible_voters table
     await client.query(
       'UPDATE eligible_voters SET has_voted = TRUE WHERE election_id = $1 AND student_id = $2',
       [electionId, studentId]
@@ -885,8 +847,7 @@ exports.submitVote = async (req, res) => {
     await client.query('ROLLBACK');
     console.error('Error submitting vote:', error);
 
-    if (error.code === '23505') { // Unique violation
-      // Handle duplicate key error - student has already voted
+    if (error.code === '23505') { 
       try {
         const tokenResult = await client.query(
           'SELECT DISTINCT vote_token FROM votes WHERE election_id = $1 AND student_id = $2 LIMIT 1',
@@ -928,16 +889,13 @@ exports.getVoteReceipt = async (req, res) => {
     try {
         const { id } = req.params;
         const studentId = req.user.studentId;
-        
-        // Check for vote token in header
+
         const voteToken = req.headers['x-vote-token'];
-        
-        // Get basic vote information
+
         let voteQuery;
         let voteParams;
         
         if (voteToken) {
-            // If we have a vote token, use it to get the specific vote
             voteQuery = `
                 SELECT DISTINCT ON (v.vote_token)
                     v.vote_token,
@@ -981,10 +939,8 @@ exports.getVoteReceipt = async (req, res) => {
             return res.status(404).json({ message: "No vote found for this election" });
         }
 
-        // Get the voter token from the result
         const retrievedVoteToken = voteResult.rows[0].vote_token;
 
-        // Try to get the complete encrypted ballot first
         const encryptedBallotQuery = `
             SELECT * FROM encrypted_ballots
             WHERE vote_token = $1 AND election_id = $2
@@ -992,68 +948,62 @@ exports.getVoteReceipt = async (req, res) => {
         `;
         
         const encryptedBallotResult = await pool.query(encryptedBallotQuery, [retrievedVoteToken, id]);
-        
-        // If we find the encrypted ballot, we can decrypt it to show the complete vote
+
         let selections = [];
         
         if (encryptedBallotResult.rows.length > 0) {
             try {
                 const encryptedBallot = encryptedBallotResult.rows[0];
-                
-                // Decrypt the complete ballot
+
                 const decryptedBallot = cryptoService.decryptData({
                     encrypted: encryptedBallot.encrypted_data,
                     iv: encryptedBallot.encryption_iv,
                     authTag: encryptedBallot.encryption_tag,
                     key: encryptedBallot.encryption_key
                 });
-                
-                // Use the decrypted ballot to build the selections
-                // We'll still query for candidate details to ensure data integrity
+
                 for (const selection of decryptedBallot.selections) {
                     const positionResult = await pool.query(
                         `SELECT name FROM positions WHERE id = $1`,
                         [selection.positionId]
                     );
                     
-                    if (positionResult.rows.length > 0) {
-                        const positionName = positionResult.rows[0].name;
-                        const candidates = [];
-                        
-                        for (const candidateId of selection.candidateIds) {
-                            const candidateResult = await pool.query(
-                                `SELECT id, first_name, last_name, party, image_url 
-                                 FROM candidates 
-                                 WHERE id = $1`,
-                                [candidateId]
-                            );
-                            
-                            if (candidateResult.rows.length > 0) {
-                                candidates.push({
-                                    id: candidateResult.rows[0].id,
-                                    firstName: candidateResult.rows[0].first_name,
-                                    lastName: candidateResult.rows[0].last_name,
-                                    party: candidateResult.rows[0].party,
-                                    imageUrl: candidateResult.rows[0].image_url
-                                });
-                            }
-                        }
-                        
-                        selections.push({
-                            position: positionName,
-                            candidates: candidates
-                        });
+            if (positionResult.rows.length > 0) {
+                const positionName = positionResult.rows[0].name;
+                const candidates = [];
+                
+                for (const candidateId of selection.candidateIds) {
+                    const candidateResult = await pool.query(
+                        `SELECT id, first_name, last_name, party, image_url 
+                          FROM candidates 
+                          WHERE id = $1`,
+                        [candidateId]
+                    );
+                    
+                if (candidateResult.rows.length > 0) {
+                    candidates.push({
+                        id: candidateResult.rows[0].id,
+                        firstName: candidateResult.rows[0].first_name,
+                        lastName: candidateResult.rows[0].last_name,
+                        party: candidateResult.rows[0].party,
+                        imageUrl: candidateResult.rows[0].image_url
+                    });
+                }
+                }
+                
+                selections.push({
+                    position: positionName,
+                    candidates: candidates
+                });
                     }
                 }
             } catch (decryptError) {
                 console.error('Error decrypting ballot:', decryptError);
-                // Fall back to the individual votes method below
+      
             }
         }
         
-        // If selections array is still empty, fall back to getting individual votes
         if (selections.length === 0) {
-            // Get the vote selections with candidate details from individual encrypted votes
             const selectionsQuery = `
                 SELECT 
                     v.position_id,
@@ -1075,12 +1025,11 @@ exports.getVoteReceipt = async (req, res) => {
                 ORDER BY p.display_order, c.last_name, c.first_name
             `;
             const selectionsResult = await pool.query(selectionsQuery, [id, studentId, retrievedVoteToken]);
-            
-            // Group selections by position
+
             const selectionsByPosition = {};
             
             for (const row of selectionsResult.rows) {
-                // Verify vote integrity by decrypting if encryption data is available
+
                 if (row.encrypted_vote && row.encryption_iv && row.encryption_tag && row.encryption_key) {
                     try {
                         const decryptedVote = cryptoService.decryptData({
@@ -1089,17 +1038,16 @@ exports.getVoteReceipt = async (req, res) => {
                             authTag: row.encryption_tag,
                             key: row.encryption_key
                         });
-                        
-                        // Verify the decrypted vote matches the stored metadata
+
                         if (decryptedVote.positionId != row.position_id || 
                             decryptedVote.candidateId != row.candidate_id) {
                             console.warn(`Vote integrity issue detected: metadata mismatch for vote in election ${id}`);
-                            // Skip this vote as it may have been tampered with
+
                             continue;
                         }
                     } catch (err) {
                         console.error('Error decrypting individual vote:', err);
-                        // Skip this vote as it has decryption issues
+
                         continue;
                     }
                 }
@@ -1123,7 +1071,6 @@ exports.getVoteReceipt = async (req, res) => {
             selections = Object.values(selectionsByPosition);
         }
 
-        // Format the receipt data
         const receipt = {
             electionTitle: voteResult.rows[0].election_title,
             voteDate: voteResult.rows[0].created_at,
@@ -1155,8 +1102,7 @@ exports.getVoteToken = async (req, res) => {
         message: "Authentication required. Student ID not found in token." 
       });
     }
-    
-    // Query to get the vote token
+
     const query = `
       SELECT vote_token 
       FROM votes 
@@ -1197,7 +1143,6 @@ exports.getElectionEligibilityCriteria = async (req, res) => {
       });
     }
 
-    // First check if the election exists
     const electionCheck = await pool.query(
       `SELECT id FROM elections WHERE id = $1`,
       [id]
@@ -1210,7 +1155,6 @@ exports.getElectionEligibilityCriteria = async (req, res) => {
       });
     }
 
-    // Get the unique values of eligibility criteria from eligible_voters table
     const criteriaQuery = `
       SELECT 
         ARRAY_AGG(DISTINCT ev.course_name) FILTER (WHERE ev.course_name IS NOT NULL) AS courses,
@@ -1247,22 +1191,18 @@ exports.getElectionEligibilityCriteria = async (req, res) => {
 exports.approveElection = async (req, res) => {
   try {
     const { id } = req.params;
-    
-    // Get election details before approval
+
     const electionBefore = await getElectionById(id);
     if (!electionBefore) {
       return res.status(404).json({ message: "Election not found" });
     }
-    
-    // Pass the superadmin ID as the approver
+
     const approved = await approveElection(id, req.user.id);
-    
-    // Send notification to the admin who created the election
+
     try {
       if (!electionBefore.created_by) {
         console.warn(`Cannot send notification: Election ${id} has no created_by field`);
       } else {
-        // Check if we have the admin's user ID in the database
         const { rows: adminRows } = await pool.query(`
           SELECT id, role_id FROM users 
           WHERE id = $1
@@ -1270,8 +1210,7 @@ exports.approveElection = async (req, res) => {
         
         if (adminRows.length === 0) {
           console.warn(`Admin user ID ${electionBefore.created_by} not found in users table`);
-          
-          // Try to find user ID through email lookup from admins table
+
           const { rows: adminInfoRows } = await pool.query(`
             SELECT a.id, a.email, u.id as user_id
             FROM admins a
@@ -1288,13 +1227,12 @@ exports.approveElection = async (req, res) => {
           await notificationService.notifyElectionApproved(approved, electionBefore.created_by);
         }
       }
-      
-      // Always notify eligible students when an election is approved
+
       await notificationService.notifyStudentsAboutElection(approved);
     } catch (notifError) {
       console.error('Error sending approval notifications:', notifError);
       console.error(notifError.stack);
-      // Continue without failing the approval process
+
     }
     
     res.status(200).json({ 
@@ -1310,19 +1248,17 @@ exports.approveElection = async (req, res) => {
 exports.rejectElection = async (req, res) => {
   try {
     const { id } = req.params;
-    
-    // Get election details before rejection
+
     const electionBefore = await getElectionById(id);
     if (!electionBefore) {
       return res.status(404).json({ message: "Election not found" });
     }
-    
-    // Send notification before deletion
+
     try {
       await notificationService.notifyElectionRejected(electionBefore, electionBefore.created_by, req.user.id);
     } catch (notifError) {
       console.error('Error sending rejection notification:', notifError);
-      // Continue without failing the rejection process
+
     }
     
     await rejectElection(id);
@@ -1336,12 +1272,10 @@ exports.rejectElection = async (req, res) => {
 exports.getPendingApprovalElections = async (req, res) => {
   try {
     let elections;
-    
-    // If user is an admin, only show their own pending elections
+
     if (req.user.role === 'Admin') {
       elections = await getPendingApprovalElections(req.user.id);
     } else {
-      // If superadmin, show all pending elections
       elections = await getPendingApprovalElections();
     }
     
@@ -1358,8 +1292,7 @@ exports.getPendingApprovalElections = async (req, res) => {
 exports.sendResultNotifications = async (req, res) => {
   try {
     const { id } = req.params;
-    
-    // Get the election details
+
     const election = await getElectionById(id);
     if (!election) {
       return res.status(404).json({
@@ -1367,16 +1300,14 @@ exports.sendResultNotifications = async (req, res) => {
         message: "Election not found"
       });
     }
-    
-    // Check if the election is completed
+
     if (election.status !== 'completed') {
       return res.status(400).json({
         success: false,
         message: `Cannot send result notifications for an election with status "${election.status}". Only completed elections are eligible.`
       });
     }
-    
-    // Send the notifications
+
     const notifications = await notificationService.notifyStudentsAboutElectionResults(election);
     
     return res.status(200).json({
@@ -1404,8 +1335,7 @@ exports.getStudentElectionStatus = async (req, res) => {
         message: "Authentication required. Student ID not found in token."
       });
     }
-    
-    // First check if the election exists and is approved
+
     const electionCheck = await pool.query(
       `SELECT id, status, needs_approval FROM elections WHERE id = $1`,
       [electionId]
@@ -1419,8 +1349,7 @@ exports.getStudentElectionStatus = async (req, res) => {
     }
     
     const election = electionCheck.rows[0];
-    
-    // Check if student is eligible for this election
+
     const eligibilityCheck = await pool.query(
       `SELECT id, has_voted FROM eligible_voters
        WHERE election_id = $1 AND student_id = $2`,
@@ -1430,7 +1359,6 @@ exports.getStudentElectionStatus = async (req, res) => {
     const isEligible = eligibilityCheck.rows.length > 0;
     const hasVoted = isEligible && eligibilityCheck.rows[0].has_voted;
     
-    // Build response with comprehensive status info
     const response = {
       success: true,
       election_id: electionId,
@@ -1442,8 +1370,7 @@ exports.getStudentElectionStatus = async (req, res) => {
       },
       recommended_action: null
     };
-    
-    // If the student has voted, include their vote token
+
     if (hasVoted) {
       const tokenResult = await pool.query(
         `SELECT DISTINCT vote_token FROM votes 
@@ -1457,7 +1384,6 @@ exports.getStudentElectionStatus = async (req, res) => {
       }
     }
     
-    // Add recommended action based on status
     if (election.needs_approval) {
       response.recommended_action = "view_details";
       response.message = "This election is pending approval and not yet available for voting.";
@@ -1520,7 +1446,6 @@ exports.updateElectionCriteria = async (req, res) => {
       });
     }
     
-    // First check if the election exists and is in upcoming status
     const election = await electionModel.getElectionById(id);
     
     if (!election) {
@@ -1536,8 +1461,7 @@ exports.updateElectionCriteria = async (req, res) => {
         message: "Only upcoming elections can have their eligibility criteria updated"
       });
     }
-    
-    // Get students that match the new criteria
+
     const eligibleStudents = await electionModel.getEligibleStudentsForCriteria(eligibility);
     
     if (eligibleStudents.length === 0) {
@@ -1546,8 +1470,7 @@ exports.updateElectionCriteria = async (req, res) => {
         message: "No eligible voters found with the selected criteria"
       });
     }
-    
-    // Update eligible voters
+
     await electionModel.updateEligibleVoters(id, eligibleStudents, eligibility);
     
     res.status(200).json({

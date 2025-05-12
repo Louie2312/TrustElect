@@ -39,11 +39,10 @@ export default function LoginForm({ onClose }) {
   const [confirmResetPassword, setConfirmResetPassword] = useState("");
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [showConfirmResetPassword, setShowConfirmResetPassword] = useState(false);
-  const [resetStep, setResetStep] = useState(1); // 1: email, 2: OTP, 3: new password
+  const [resetStep, setResetStep] = useState(1); 
   
   const router = useRouter();
 
-  // Handle cooldown timer
   useEffect(() => {
     let interval;
     if (cooldownActive && cooldownTime > 0) {
@@ -78,8 +77,7 @@ export default function LoginForm({ onClose }) {
     setLoading(true);
     try {
       console.log("🔹 Sending login request for email:", email);
-      
-      // Add a special debugging message for admins
+
       if (email.includes("admin") || email.includes("superadmin")) {
         console.log("⚠️ Admin login attempt with password:", 
           password.length > 3 ? 
@@ -102,7 +100,6 @@ export default function LoginForm({ onClose }) {
       
       const { token, role, user_id, studentId } = response.data;
 
-      // Store auth info in cookies
       Cookies.set("token", token, { expires: 1, path: "/", secure: false, sameSite: "lax" });
       Cookies.set("role", role, { expires: 1, path: "/", secure: false, sameSite: "strict" });
       Cookies.set("email", email, { expires: 1, path: "/", secure: false, sameSite: "strict" });
@@ -136,10 +133,8 @@ export default function LoginForm({ onClose }) {
       setStep(2); 
     } catch (err) {
       if (err.response && err.response.status === 401) {
-        // Don't log the full error object for 401 errors
         console.log("Login attempt failed: Invalid credentials");
         
-        // Add more helpful error messaging
         if (email.includes("admin") || email.includes("superadmin")) {
           setError("Admin login failed. Remember that passwords are case-sensitive and must use the exact format: FirstLetterCapitalizedLastName + Last3DigitsOfEmployeeNumber + !");
         } else {
@@ -201,15 +196,15 @@ export default function LoginForm({ onClose }) {
         throw new Error("Verification failed. Please try again.");
       }
     } catch (err) {
-      // Handle OTP verification errors gracefully
+ 
       if (err.response && err.response.status === 400) {
-        // Handle validation errors (wrong OTP code)
+    
         setError("Invalid verification code. Please check and try again.");
       } else if (err.response && err.response.status === 401) {
-        // Handle expired or used OTP
+        
         setError("Verification code has expired or already been used. Please request a new one.");
       } else {
-        // Don't log full error object for OTP errors
+     
         console.log("OTP verification failed with error");
         setError(err.response?.data?.message || "Invalid verification code. Please try again.");
       }
@@ -261,7 +256,6 @@ export default function LoginForm({ onClose }) {
         localStorage.removeItem("email");
         localStorage.removeItem("userId");
         
-        // Reset form fields
         setEmail("");
         setPassword("");
         setOtp("");
@@ -356,16 +350,13 @@ export default function LoginForm({ onClose }) {
         "http://localhost:5000/api/auth/forgot-password",
         { email: forgotEmail }
       );
-      
-      // Check for dev mode OTP
+
       if (response.data.devMode && response.data.otp) {
         setDevOtp(response.data.otp);
       }
-      
-      // Move to OTP verification step
+ 
       setResetStep(2);
-      
-      // Initialize cooldown for OTP resend
+ 
       setCooldownActive(true);
       setCooldownTime(COOLDOWN_SECONDS);
     } catch (err) {
@@ -427,7 +418,7 @@ export default function LoginForm({ onClose }) {
       );
       
       if (response.data.success) {
-        // Clear the reset form
+   
         setForgotEmail("");
         setResetOtp("");
         setResetToken("");
@@ -471,7 +462,7 @@ export default function LoginForm({ onClose }) {
       
       setResendMessage("Verification code resent. Check your email.");
       
-      // Start the cooldown
+
       setCooldownActive(true);
       setCooldownTime(COOLDOWN_SECONDS);
     } catch (err) {
@@ -746,7 +737,6 @@ export default function LoginForm({ onClose }) {
                   className="mb-3"
                 />
                 
-                {/* Development OTP display */}
                 {devOtp && (
                   <div className="mt-2 p-2 bg-gray-100 rounded text-center mb-3">
                     <p className="text-xs text-gray-500">Code:</p>

@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import stiLogo from "../assets/sti_logo.png";
 import axios from "axios";
 
-// API base URL
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export default function Home() {
@@ -16,7 +15,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [apiConnected, setApiConnected] = useState(false);
   
-  // Landing content state with defaults
+
   const [landingContent, setLandingContent] = useState({
     hero: {
       title: "Secure Digital Voting Platform",
@@ -51,16 +50,14 @@ export default function Home() {
     }
   });
 
-  // Check API connection and fetch content on mount
   useEffect(() => {
     checkApiConnection();
     fetchContent();
   }, []);
 
-  // Check if API is reachable
+
   const checkApiConnection = async () => {
     try {
-      // Use HEAD request with a short timeout
       await axios.head(`${API_URL}/api/healthcheck`, { timeout: 5000 });
       console.log('API connection successful');
       setApiConnected(true);
@@ -72,7 +69,6 @@ export default function Home() {
     }
   };
 
-  // Cache the landing content
   const cacheLandingContent = (content) => {
     try {
       const cacheData = {
@@ -85,7 +81,6 @@ export default function Home() {
     }
   };
 
-  // Get cached landing content
   const getCachedLandingContent = () => {
     try {
       const cachedData = localStorage.getItem('cachedLandingContent');
@@ -94,8 +89,7 @@ export default function Home() {
       const { content, timestamp } = JSON.parse(cachedData);
       const now = new Date().getTime();
       const cacheAge = now - timestamp;
-      
-      // Cache valid for 30 minutes
+
       if (cacheAge < 30 * 60 * 1000) {
         console.log('Using cached content');
         return content;
@@ -108,30 +102,26 @@ export default function Home() {
     }
   };
 
-  // Fetch content from API
   const fetchContent = async () => {
     setIsLoading(true);
     
     try {
-      // Always attempt to fetch new content, even if API connection failed previously
-      // Add cache-busting timestamp
+    
       const timestamp = new Date().getTime();
       
       console.log("Fetching latest content from API...");
       const response = await axios.get(`${API_URL}/api/content?t=${timestamp}`, {
-        // Set a reasonable timeout
+
         timeout: 5000
       });
       
       if (response.data) {
         console.log("Content fetched from API:", response.data);
-        
-        // Extract the new content
+
         const newHero = response.data.hero || landingContent.hero;
         const newFeatures = response.data.features || landingContent.features;
         const newCTA = response.data.callToAction || landingContent.callToAction;
-        
-        // Create a complete content object with all the latest data and colors
+
         const newContent = {
           hero: {
             title: newHero.title || landingContent.hero.title,
@@ -143,7 +133,6 @@ export default function Home() {
           },
           features: {
             columns: (newFeatures.columns || []).map((column, index) => {
-              // Safely get the existing column if it exists
               const existingColumn = landingContent.features.columns[index] || {};
               
               return {
@@ -168,14 +157,12 @@ export default function Home() {
         
         console.log("Setting updated landing content:", newContent);
         setLandingContent(newContent);
-        
-        // Cache the content for offline use
+
         cacheLandingContent(newContent);
       }
     } catch (error) {
       console.error("Error fetching content:", error);
-      
-      // Try to use cached content on error
+
       const cachedContent = getCachedLandingContent();
       if (cachedContent) {
         console.log("Using cached content due to fetch error");
@@ -188,24 +175,18 @@ export default function Home() {
     }
   };
 
-  // Format image URL
   const formatImageUrl = (url) => {
-    // If URL is null or undefined, return null
-    if (!url) return null;
-    
+    if (!url) return null; 
     try {
-      // Handle blob URLs - don't use these in production
       if (url.startsWith('blob:')) {
         console.warn("Blob URLs cannot be used on the public landing page:", url);
         return null;
       }
-      
-      // If already a complete URL, return as is
+
       if (url.startsWith('http://') || url.startsWith('https://')) {
         return url;
       }
-      
-      // Make sure path starts with a slash
+
       const path = url.startsWith('/') ? url : `/${url}`;
       const fullUrl = `${API_URL}${path}`;
       return fullUrl;
@@ -215,12 +196,10 @@ export default function Home() {
     }
   };
 
-  // Helper function to render image based on URL type
   const renderImage = (url, alt, width, height, className, onErrorAction) => {
     const formattedUrl = formatImageUrl(url);
     if (!formattedUrl) return null;
-    
-    // Use Next.js Image for all URLs (no special blob handling)
+
     return (
       <Image
         src={formattedUrl}
@@ -261,213 +240,202 @@ export default function Home() {
         </Button>
       </header>
 
-      {/* Main content */}
       <main className="flex-grow pt-24">
-        {/* Hero Section */}
         <section 
-          className="text-white py-20 px-6"
-          style={{
-            backgroundColor: landingContent.hero?.bgColor || '#01579B',
-            color: landingContent.hero?.textColor || '#ffffff'
-          }}
-        >
-          <div className="container mx-auto max-w-6xl flex flex-col md:flex-row items-center">
-            <div className="md:w-1/2 space-y-6">
-              <h1 
-                className="text-4xl md:text-5xl font-bold leading-tight"
-                style={{ color: landingContent.hero?.textColor || '#ffffff' }}
-              >
-                {landingContent.hero.title}
-              </h1>
-              <p 
-                className="text-xl md:text-2xl"
-                style={{ color: landingContent.hero?.textColor || '#ffffff' }}
-              >
-                {landingContent.hero.subtitle}
-              </p>
-             
-            </div>
-            <div className="md:w-1/2 mt-10 md:mt-0 flex justify-center">
-              {(() => {
-               
-                const heroVideoUrl = landingContent.hero && landingContent.hero.videoUrl ? 
-                  formatImageUrl(landingContent.hero.videoUrl) : null;
-                
-                // Process poster image URL - ensure it comes from hero section only
-                const heroPosterUrl = landingContent.hero && landingContent.hero.posterImage ? 
-                  formatImageUrl(landingContent.hero.posterImage) : null;
-                
-                console.log("Hero section video URL:", heroVideoUrl);
-                console.log("Hero section poster URL:", heroPosterUrl);
-                
-                // Render video if available
-                if (heroVideoUrl) {
-                  return (
-                    <div className="w-full max-w-md aspect-video bg-black/20 rounded-lg overflow-hidden relative">
-                      <video
-                        src={heroVideoUrl}
-                        poster={heroPosterUrl}
-                        controls
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          console.error("Error loading hero video");
-                          e.currentTarget.style.display = 'none';
-                          const parent = e.currentTarget.parentElement;
-                          if (parent) {
-                            const fallback = document.createElement('div');
-                            fallback.className = 'absolute inset-0 flex items-center justify-center bg-blue-700';
-                            fallback.innerHTML = `<span class="text-white/70">Video unavailable</span>`;
-                            parent.appendChild(fallback);
-                          }
-                        }}
-                      >
-                        Your browser does not support the video tag.
-                      </video>
-                    </div>
-                  );
-                // Render poster image if available
-                } else if (heroPosterUrl) {
-                  return (
-                    <div className="w-full max-w-md aspect-video bg-black/20 rounded-lg overflow-hidden">
-                      <Image
-                        src={heroPosterUrl}
-                        alt="TrustElect Platform"
-                        width={640}
-                        height={360}
-                        className="w-full h-full object-cover"
-                        unoptimized={true}
-                        onError={(e) => {
-                          console.error("Error loading hero poster image");
-                          const container = e.currentTarget.closest('div');
-                          if (container) {
-                            container.innerHTML = `
-                              <div class="w-full h-full flex items-center justify-center bg-blue-700">
-                                <span class="text-xl text-white/70">Demo Video</span>
-                              </div>
-                            `;
-                          }
-                        }}
-                      />
-                    </div>
-                  );
-                // Render placeholder if no media
-                } else {
-                  return (
-                    <div className="w-full max-w-md aspect-video bg-blue-700 rounded-lg flex items-center justify-center">
-                      <span className="text-xl text-white/70">Demo Video</span>
-                    </div>
-                  );
-                }
-              })()}
-            </div>
+        className="text-white py-20 px-6"
+        style={{
+          backgroundColor: landingContent.hero?.bgColor || '#01579B',
+          color: landingContent.hero?.textColor || '#ffffff'
+        }}
+      >
+        <div className="container mx-auto max-w-6xl flex flex-col md:flex-row items-center">
+          <div className="md:w-1/2 space-y-6">
+            <h1 
+              className="text-4xl md:text-5xl font-bold leading-tight"
+              style={{ color: landingContent.hero?.textColor || '#ffffff' }}
+            >
+              {landingContent.hero.title}
+            </h1>
+            <p 
+              className="text-xl md:text-2xl"
+              style={{ color: landingContent.hero?.textColor || '#ffffff' }}
+            >
+              {landingContent.hero.subtitle}
+            </p>
+            
           </div>
-        </section>
+          <div className="md:w-1/2 mt-10 md:mt-0 flex justify-center">
+            {(() => {
+              
+              const heroVideoUrl = landingContent.hero && landingContent.hero.videoUrl ? 
+                formatImageUrl(landingContent.hero.videoUrl) : null;
+              
+              const heroPosterUrl = landingContent.hero && landingContent.hero.posterImage ? 
+                formatImageUrl(landingContent.hero.posterImage) : null;
 
-        {/* Features Section */}
-        <section className="py-20 px-6 bg-gray-50">
-          <div className="container mx-auto max-w-6xl">
-            <h2 className="text-3xl font-bold text-center mb-12 text-gray-800">
-              Key Features
-            </h2>
-            <div className="grid md:grid-cols-3 gap-8">
-              {landingContent.features.columns.map((feature, index) => {
-                // Extra debugging to trace Feature Card 1 image
-                if (index === 0) {
-                  console.log("Feature Card 1 data:", feature);
-                  console.log("Feature Card 1 image URL:", feature.imageUrl);
-                }
-                
-                // Get the formatted image URL only if it exists and belongs to this feature
-                let imageUrl = null;
-                if (feature.imageUrl) {
-                  imageUrl = formatImageUrl(feature.imageUrl);
-                  
-                  // Ensure this is really a feature image (not a hero image)
-                  const isHeroImage = landingContent.hero && 
-                    (feature.imageUrl === landingContent.hero.videoUrl || 
-                     feature.imageUrl === landingContent.hero.posterImage);
-                     
-                  if (isHeroImage) {
-                    console.warn(`Feature ${index} image URL matches a hero image - ignoring`);
-                    imageUrl = null;
-                  }
-                }
-                
-                // More debugging for Feature Card 1
-                if (index === 0) {
-                  console.log("Feature Card 1 final image URL:", imageUrl);
-                }
-                
+          if (heroVideoUrl) {
                 return (
-                  <div 
-                    key={index} 
-                    className="p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow"
-                    style={{
-                      backgroundColor: feature.bgColor || '#ffffff',
-                      color: feature.textColor || '#000000'
-                    }}
-                  >
-                    {imageUrl ? (
-                      <div className="mb-4 h-48 overflow-hidden rounded-lg">
-                        <Image
-                          src={imageUrl}
-                          alt={feature.title || `Feature ${index + 1}`}
-                          width={400}
-                          height={300}
-                          className="w-full h-full object-cover"
-                          unoptimized={true}
-                          onError={(e) => {
-                            console.error(`Error loading feature image ${index}:`, imageUrl);
-                            const container = e.currentTarget.closest('.mb-4');
-                            if (container) {
-                              container.style.display = 'none';
-                            }
-                          }}
-                        />
-                      </div>
-                    ) : null}
-                    <h3 
-                      className="text-xl font-semibold mb-2"
-                      style={{ color: feature.textColor || '#000000' }}
-                    >
-                      {feature.title}
-                    </h3>
-                    <p style={{ color: feature.textColor || '#000000' }}>
-                      {feature.description}
-                    </p>
+            <div className="w-full max-w-md aspect-video bg-black/20 rounded-lg overflow-hidden relative">
+              <video
+                src={heroVideoUrl}
+                poster={heroPosterUrl}
+                controls
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  console.error("Error loading hero video");
+                  e.currentTarget.style.display = 'none';
+                  const parent = e.currentTarget.parentElement;
+                  if (parent) {
+                    const fallback = document.createElement('div');
+                    fallback.className = 'absolute inset-0 flex items-center justify-center bg-blue-700';
+                    fallback.innerHTML = `<span class="text-white/70">Video unavailable</span>`;
+                    parent.appendChild(fallback);
+                  }
+                }}
+              >
+                Your browser does not support the video tag.
+              </video>
+            </div>
+                );
+
+              } else if (heroPosterUrl) {
+                return (
+              <div className="w-full max-w-md aspect-video bg-black/20 rounded-lg overflow-hidden">
+                <Image
+                  src={heroPosterUrl}
+                  alt="TrustElect Platform"
+                  width={640}
+                  height={360}
+                  className="w-full h-full object-cover"
+                  unoptimized={true}
+                  onError={(e) => {
+                  console.error("Error loading hero poster image");
+                  const container = e.currentTarget.closest('div');
+                  if (container) {
+                  container.innerHTML = `
+                    <div class="w-full h-full flex items-center justify-center bg-blue-700">
+                      <span class="text-xl text-white/70">Demo Video</span>
+                    </div>
+                  `;
+                }
+                  }}
+                />
+              </div>
+            );
+
+              } else {
+                return (
+                  <div className="w-full max-w-md aspect-video bg-blue-700 rounded-lg flex items-center justify-center">
+                    <span className="text-xl text-white/70">Demo Video</span>
                   </div>
                 );
-              })}
-            </div>
+              }
+            })()}
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="py-20 px-6 bg-gray-50">
+        <div className="container mx-auto max-w-6xl">
+          <h2 className="text-3xl font-bold text-center mb-12 text-gray-800">
+            Key Features
+          </h2>
+          <div className="grid md:grid-cols-3 gap-8">
+            {landingContent.features.columns.map((feature, index) => {
+              if (index === 0) {
+                console.log("Feature Card 1 data:", feature);
+                console.log("Feature Card 1 image URL:", feature.imageUrl);
+              }
+
+              let imageUrl = null;
+              if (feature.imageUrl) {
+                imageUrl = formatImageUrl(feature.imageUrl);
+
+                const isHeroImage = landingContent.hero && 
+                  (feature.imageUrl === landingContent.hero.videoUrl || 
+                    feature.imageUrl === landingContent.hero.posterImage);
+                    
+                if (isHeroImage) {
+                  console.warn(`Feature ${index} image URL matches a hero image - ignoring`);
+                  imageUrl = null;
+                }
+              }
+
+              if (index === 0) {
+                console.log("Feature Card 1 final image URL:", imageUrl);
+              }
+              
+              return (
+                <div 
+                  key={index} 
+                  className="p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow"
+                  style={{
+                    backgroundColor: feature.bgColor || '#ffffff',
+                    color: feature.textColor || '#000000'
+                  }}
+                >
+                  {imageUrl ? (
+                    <div className="mb-4 h-48 overflow-hidden rounded-lg">
+                  <Image
+                    src={imageUrl}
+                    alt={feature.title || `Feature ${index + 1}`}
+                    width={400}
+                    height={300}
+                    className="w-full h-full object-cover"
+                    unoptimized={true}
+                    onError={(e) => {
+                      console.error(`Error loading feature image ${index}:`, imageUrl);
+                      const container = e.currentTarget.closest('.mb-4');
+                      if (container) {
+                        container.style.display = 'none';
+                      }
+                    }}
+                  />
+                </div>
+                ) : null}
+                <h3 
+                  className="text-xl font-semibold mb-2"
+                  style={{ color: feature.textColor || '#000000' }}
+                >
+                  {feature.title}
+                </h3>
+                <p style={{ color: feature.textColor || '#000000' }}>
+                  {feature.description}
+                </p>
+              </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Call to Action Section */}
+      {landingContent.callToAction.enabled && (
+        <section 
+          className="text-white py-16 px-6"
+          style={{
+            backgroundColor: landingContent.callToAction?.bgColor || '#1e3a8a',
+            color: landingContent.callToAction?.textColor || '#ffffff'
+          }}
+        >
+          <div className="container mx-auto max-w-4xl text-center">
+            <h2 
+              className="text-3xl font-bold mb-4"
+              style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
+            >
+              {landingContent.callToAction.title}
+            </h2>
+            <p 
+              className="text-xl mb-8"
+              style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
+            >
+              {landingContent.callToAction.subtitle}
+            </p>
           </div>
         </section>
-
-        {/* Call to Action Section */}
-        {landingContent.callToAction.enabled && (
-          <section 
-            className="text-white py-16 px-6"
-            style={{
-              backgroundColor: landingContent.callToAction?.bgColor || '#1e3a8a',
-              color: landingContent.callToAction?.textColor || '#ffffff'
-            }}
-          >
-            <div className="container mx-auto max-w-4xl text-center">
-              <h2 
-                className="text-3xl font-bold mb-4"
-                style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
-              >
-                {landingContent.callToAction.title}
-              </h2>
-              <p 
-                className="text-xl mb-8"
-                style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
-              >
-                {landingContent.callToAction.subtitle}
-              </p>
-            </div>
-          </section>
-        )}
-      </main>
+      )}
+    </main>
 
       {/* Footer */}
       <footer className="bg-[#01579B] text-white py-8 px-6">

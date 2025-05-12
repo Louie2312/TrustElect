@@ -1,8 +1,7 @@
 const pool = require("../config/db");
 
-// Function to calculate election status based on dates and times
 const getElectionStatus = (date_from, date_to, start_time, end_time, needs_approval = false) => {
-  // If election needs approval, status is 'pending' regardless of dates
+
   if (needs_approval === true) {
     return 'pending';
   }
@@ -20,7 +19,7 @@ const getElectionStatus = (date_from, date_to, start_time, end_time, needs_appro
   return "completed";
 };
 
-// Alias for backward compatibility
+
 const getDisplayStatus = getElectionStatus;
 
 const getElectionsByStatus = async (status) => {
@@ -130,7 +129,6 @@ const createElection = async (electionData, userId, needsApproval = false) => {
           throw new Error("An election with this title and date range already exists");
       }
 
-      // Let the database trigger determine the status
       const electionInsert = `
           INSERT INTO elections (
               title, 
@@ -160,8 +158,7 @@ const createElection = async (electionData, userId, needsApproval = false) => {
       ]);
       
       const election = electionResult.rows[0];
-      
-      // Get eligible students
+
       let studentQuery = `
           SELECT 
               id, 
@@ -300,8 +297,6 @@ const updateElection = async (id, updates) => {
 
   if (fields.length === 0) return null;
 
-  // No need to set status manually - the database trigger will handle it
-  
   const setClause = fields.map((field, index) => `${field} = $${index + 1}`).join(", ");
   const query = `UPDATE elections SET ${setClause} WHERE id = $${fields.length + 1} RETURNING *;`;
 
@@ -316,7 +311,7 @@ const deleteElection = async (id) => {
 
 const getElectionWithBallot = async (electionId) => {
   try {
-    // Query the election details without the positions and candidates first
+
     const electionResult = await pool.query(`
       SELECT 
         e.*,
@@ -331,8 +326,7 @@ const getElectionWithBallot = async (electionId) => {
     }
     
     const election = electionResult.rows[0];
-    
-    // Get all positions for this election
+
     const positionsResult = await pool.query(`
       SELECT 
         p.id,
@@ -344,12 +338,11 @@ const getElectionWithBallot = async (electionId) => {
       WHERE b.election_id = $1
       ORDER BY p.display_order
     `, [electionId]);
-    
-    // Process each position and its candidates
+
     const positions = [];
     
     for (const position of positionsResult.rows) {
-      // Get candidates for this position with vote counts
+
       const candidatesResult = await pool.query(`
         SELECT 
           c.id,
@@ -381,8 +374,7 @@ const getElectionWithBallot = async (electionId) => {
         total_votes: candidatesResult.rows.reduce((sum, candidate) => sum + parseInt(candidate.vote_count || 0), 0)
       });
     }
-    
-    // Add positions to the election object
+
     election.positions = positions;
     
     return election;
@@ -396,21 +388,17 @@ async function updateElectionStatuses() {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    
-    // First retrieve current statuses for elections before updating
+
     const { rows: currentElections } = await client.query(`
       SELECT id, status FROM elections
       WHERE needs_approval = FALSE
     `);
-    
-    // Create a map of current statuses for easy lookup
+
     const currentStatusMap = {};
     currentElections.forEach(election => {
       currentStatusMap[election.id] = election.status;
     });
-    
-    // Update election statuses based on current timestamp
-    // Only update elections that don't need approval OR have been approved (needs_approval = false)
+
     const result = await client.query(`
       UPDATE elections
       SET status = 
@@ -424,13 +412,12 @@ async function updateElectionStatuses() {
       WHERE needs_approval = FALSE
       RETURNING id, status;
     `);
-    
-    // Track status changes to generate notifications
+
     const statusChanges = [];
     for (const updatedElection of result.rows) {
       const oldStatus = currentStatusMap[updatedElection.id];
       if (oldStatus && oldStatus !== updatedElection.status) {
-        // Status has changed
+
         statusChanges.push({
           id: updatedElection.id,
           oldStatus: oldStatus,
@@ -453,7 +440,6 @@ async function updateElectionStatuses() {
   }
 }
 
-// New function to approve/reject elections
 const approveElection = async (electionId, superAdminId) => {
   const query = `
     UPDATE elections 
@@ -469,13 +455,12 @@ const approveElection = async (electionId, superAdminId) => {
 };
 
 const rejectElection = async (electionId) => {
-  // You can either delete the election or mark it as rejected
+
   const query = `DELETE FROM elections WHERE id = $1`;
   await pool.query(query, [electionId]);
   return { message: "Election rejected and deleted" };
 };
 
-// Function to get all elections that need approval
 const getPendingApprovalElections = async (adminId = null) => {
   let query = `
     SELECT 
@@ -507,7 +492,6 @@ const getPendingApprovalElections = async (adminId = null) => {
   return result.rows;
 };
 
-// Add this function to retrieve elections with creator information
 const getAllElectionsWithCreator = async () => {
   try {
     const query = `
@@ -594,22 +578,20 @@ const getEligibleStudentsForCriteria = async (criteria) => {
 };
 
 /**
- * Update eligible voters for an election
- * @param {Number} electionId - Election ID
- * @param {Array} students - List of eligible students
- * @param {Object} criteria - Eligibility criteria
- * @returns {Promise<Object>} Success message
+ 
+ * @param {Number} electionId 
+ * @param {Array} students 
+ * @param {Object} criteria 
+ * @returns {Promise<Object>} 
  */
 const updateEligibleVoters = async (electionId, students, criteria) => {
   const client = await pool.connect();
   
   try {
     await client.query('BEGIN');
-    
-    // First delete existing eligible voters
+
     await client.query('DELETE FROM eligible_voters WHERE election_id = $1', [electionId]);
-    
-    // Then insert new eligible voters
+
     if (students.length > 0) {
       const voterInsert = `
         INSERT INTO eligible_voters (

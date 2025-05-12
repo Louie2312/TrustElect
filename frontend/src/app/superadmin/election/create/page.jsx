@@ -550,7 +550,7 @@ export default function CreateElectionPage() {
             ].map(({ category, label, items, note, readonly }) => (
               <div key={category} className="border-b pb-4 last:border-b-0">
                 <div className="flex justify-between items-center mb-2">
-                  <h3 className="font-medium text-gray-700">{label}</h3>
+                  <h3 className="font-medium text-black">{label}</h3>
                   {category !== 'semester' && (
                     <button
                       onClick={() => toggleAll(category, items)}
@@ -570,15 +570,27 @@ export default function CreateElectionPage() {
                 )}
                 
                 {category === 'semester' ? (
-                  <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
-                    {currentSemester ? (
-                      <div className="flex items-center">
-                        <span className="inline-block w-4 h-4 mr-2 bg-green-500 rounded-full"></span>
-                        <span className="text-gray-800 font-medium">{currentSemester}</span>
+                  <div className="flex flex-wrap gap-4">
+                    {maintenanceData.semesters.map((semester) => (
+                      <div key={semester} className="flex items-center">
+                        <input
+                          type="radio"
+                          name="semester"
+                          checked={eventData.eligibleVoters.semester.includes(semester)}
+                          disabled={semester !== currentSemester}
+                          onChange={() => handleCheckboxChange('semester', semester)}
+                          className="rounded-md border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"
+                        />
+                        <span
+                          className={`text-gray-800 font-medium ${semester !== currentSemester ? 'text-gray-400' : ''}`}
+                        >
+                          {semester}
+                        </span>
                       </div>
-                    ) : (
+                    ))}
+                    {!currentSemester && (
                       <p className="text-amber-600">
-                        No current semester has been set. Please set one in Maintenance → Semesters.
+                        No current semester has been set.
                       </p>
                     )}
                   </div>

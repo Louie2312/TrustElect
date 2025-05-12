@@ -37,7 +37,6 @@ const PartylistForm = ({
 
       let response;
       if (editingPartylist) {
-        // Update existing partylist
         response = await axios.put(
           `http://localhost:5000/api/partylists/${editingPartylist.id}`,
           formData,
@@ -50,7 +49,6 @@ const PartylistForm = ({
         );
         toast.success("Partylist updated successfully");
       } else {
-        // Create new partylist
         response = await axios.post(
           "http://localhost:5000/api/partylists",
           formData,

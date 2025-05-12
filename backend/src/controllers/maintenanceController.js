@@ -61,12 +61,11 @@ exports.createPartylist = (req, res) => handleResponse(res, createPartylist(req.
 exports.updatePartylist = (req, res) => handleResponse(res, updatePartylist(req.params.id, req.body.name));
 exports.deletePartylist = (req, res) => handleResponse(res, deletePartylist(req.params.id));
 
-// Get current semester
 exports.getCurrentSemester = (req, res) => {
   getCurrentSemester()
     .then(data => {
       if (!data) {
-        // Return success but with null data for frontend to handle
+       
         return res.status(200).json({ success: true, data: null });
       }
       res.status(200).json({ success: true, data });
@@ -80,7 +79,6 @@ exports.getCurrentSemester = (req, res) => {
     });
 };
 
-// Set current semester
 exports.setCurrentSemester = (req, res) => {
   const { semesterId } = req.body;
   

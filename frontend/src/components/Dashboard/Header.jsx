@@ -15,13 +15,12 @@ export default function Header() {
 
   const handleLogout = async () => {
     try {
-      // Get user information before removing cookies
+
       const token = Cookies.get("token");
       const userId = Cookies.get("userId");
       const email = Cookies.get("email");
       const role = Cookies.get("role");
-      
-      // Call the logout API
+
       await axios.post(`${API_URL}/api/auth/logout`, {
         userId,
         email,
@@ -30,7 +29,7 @@ export default function Header() {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      // Then remove cookies and redirect
+
       Cookies.remove("token");
       Cookies.remove("role");
       Cookies.remove("email");
@@ -38,7 +37,7 @@ export default function Header() {
       router.push("/");
     } catch (error) {
       console.error("Logout error:", error);
-      // Still perform client-side logout even if API call fails
+
       Cookies.remove("token");
       Cookies.remove("role");
       Cookies.remove("email");

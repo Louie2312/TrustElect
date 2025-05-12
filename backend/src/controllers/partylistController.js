@@ -32,14 +32,13 @@ const createPartylist = async (req, res) => {
       logoFile: logoFile ? logoFile.filename : 'none'
     });
 
-    // Try-catch the model call for better error logging
     try {
-      // Use the model instead of direct DB access
+
       const partylistData = {
         name,
         slogan: slogan || '',
         advocacy: advocacy || '',
-        logo: logoFile // This will be processed in the model
+        logo: logoFile 
       };
 
       console.log('Calling partylistModel.createPartylist with:', {
@@ -58,8 +57,7 @@ const createPartylist = async (req, res) => {
     } catch (modelError) {
       console.error('Error in partylistModel.createPartylist:', modelError);
       console.error('Error details:', modelError.stack);
-      
-      // Verify if the table exists
+
       try {
         const pool = require('../config/db');
         const checkTable = await pool.query(`
@@ -71,7 +69,7 @@ const createPartylist = async (req, res) => {
         console.log('Partylists table exists:', checkTable.rows[0].exists);
         
         if (checkTable.rows[0].exists) {
-          // Check table structure
+
           const tableInfo = await pool.query(`
             SELECT column_name, data_type 
             FROM information_schema.columns 
@@ -79,7 +77,7 @@ const createPartylist = async (req, res) => {
           `);
           console.log('Partylists table structure:', tableInfo.rows);
         } else {
-          // Create the table if it doesn't exist
+ 
           await pool.query(`
             CREATE TABLE IF NOT EXISTS partylists (
               id SERIAL PRIMARY KEY,
@@ -93,8 +91,7 @@ const createPartylist = async (req, res) => {
             );
           `);
           console.log('Created partylists table');
-          
-          // Try the insert again
+ 
           const result = await pool.query(
             `INSERT INTO partylists (name, slogan, advocacy, logo_url) 
              VALUES ($1, $2, $3, $4) 
@@ -120,7 +117,7 @@ const createPartylist = async (req, res) => {
         console.error('Database check/create error:', dbError);
       }
       
-      throw modelError; // Re-throw to be caught by outer try-catch
+      throw modelError; 
     }
   } catch (error) {
     console.error('Error in createPartylist:', error);

@@ -78,14 +78,13 @@ const MaintenancePage = () => {
             setCurrentSemester(null);
           }
         } catch (error) {
-          console.error("Error fetching current semester:", error);
+         
           setCurrentSemester(null);
           }
         }
       }
     } catch (error) {
       toast.error("Failed to fetch items");
-      console.error("API Error:", error);
     } finally {
       setIsLoading(false);
     }

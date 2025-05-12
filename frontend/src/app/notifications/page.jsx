@@ -19,7 +19,7 @@ export default function NotificationsPage() {
     deleteNotification
   } = useNotifications();
   
-  const [filter, setFilter] = useState('all'); // 'all', 'unread', 'read'
+  const [filter, setFilter] = useState('all'); 
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [allNotifications, setAllNotifications] = useState([]);
@@ -31,7 +31,6 @@ export default function NotificationsPage() {
     setUserRole(role || '');
   }, []);
 
-  // Get dashboard URL based on user role
   const getDashboardUrl = () => {
     switch(userRole?.toLowerCase()) {
       case 'admin':
@@ -45,7 +44,6 @@ export default function NotificationsPage() {
     }
   };
 
-  // Fetch all notifications with pagination
   useEffect(() => {
     const loadNotifications = async () => {
       const newNotifications = await fetchNotifications(itemsPerPage, (page - 1) * itemsPerPage);
@@ -56,7 +54,6 @@ export default function NotificationsPage() {
         setAllNotifications(prev => [...prev, ...newNotifications]);
       }
       
-      // Check if we've reached the end
       if (newNotifications.length < itemsPerPage) {
         setHasMore(false);
       }
@@ -65,7 +62,6 @@ export default function NotificationsPage() {
     loadNotifications();
   }, [fetchNotifications, page]);
 
-  // Filter notifications based on selected filter
   const filteredNotifications = allNotifications.filter(notification => {
     if (filter === 'all') return true;
     if (filter === 'unread') return !notification.is_read;
@@ -73,7 +69,6 @@ export default function NotificationsPage() {
     return true;
   });
 
-  // Get icon based on notification type
   const getTypeIcon = (type) => {
     switch (type) {
       case 'info':
@@ -89,13 +84,11 @@ export default function NotificationsPage() {
     }
   };
 
-  // Generate notification link based on type and user role
   const getNotificationLink = (notification) => {
     const { related_entity, entity_id } = notification;
     
     if (!related_entity || !entity_id) return '#';
     
-    // Get current user role
     const role = userRole?.toLowerCase();
     
     switch (related_entity) {
@@ -128,7 +121,6 @@ export default function NotificationsPage() {
     }
   };
 
-  // Handle notification click
   const handleNotificationClick = async (notification) => {
     if (!notification.is_read) {
       await markAsRead(notification.id);
@@ -136,14 +128,12 @@ export default function NotificationsPage() {
     router.push(getNotificationLink(notification));
   };
 
-  // Handle load more
   const handleLoadMore = () => {
     if (hasMore && !loading) {
       setPage(prev => prev + 1);
     }
   };
 
-  // Handle refresh
   const handleRefresh = () => {
     setPage(1);
     setHasMore(true);

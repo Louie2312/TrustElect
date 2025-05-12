@@ -231,7 +231,6 @@ exports.deleteAllNotifications = async (req, res) => {
  */
 exports.debugNotificationsByRole = async (req, res) => {
   try {
-    // This is just for debugging purposes - REMOVE IN PRODUCTION
     const { role } = req.params;
     
     if (!['Admin', 'SuperAdmin', 'Super Admin', 'Student'].includes(role)) {
@@ -293,10 +292,9 @@ exports.debugSendTestToSuperadmins = async (req, res) => {
 };
 
 /**
- * Mark all notifications for a specific entity type and ID as read for the current user
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- * @returns {Object} - Success or error response
+ * @param {Object} req 
+ * @param {Object} res 
+ * @returns {Object} 
  */
 exports.markReadByEntity = async (req, res) => {
   try {
