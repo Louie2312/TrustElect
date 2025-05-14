@@ -31,10 +31,8 @@ const setAdminPermissions = async (adminId, permissions) => {
   try {
     await client.query("BEGIN");
 
-    // Delete existing permissions
     await client.query("DELETE FROM admin_permissions WHERE admin_id = $1", [adminId]);
 
-    // Insert new permissions for each module
     for (const [module, perms] of Object.entries(permissions)) {
       const query = `
         INSERT INTO admin_permissions 
@@ -71,7 +69,6 @@ const setAdminPermissions = async (adminId, permissions) => {
  */
 const hasPermission = async (adminId, module, action) => {
   try {
-    // Ensure the action is properly formatted (can_view, can_create, etc.)
     const permissionColumn = action.startsWith('can_') ? action : `can_${action}`;
     
     const query = `
@@ -81,8 +78,7 @@ const hasPermission = async (adminId, module, action) => {
     `;
     
     const result = await pool.query(query, [adminId, module]);
-    
-    // If no row exists or the permission is not set, return false
+
     return result.rows.length > 0 ? result.rows[0][permissionColumn] : false;
   } catch (error) {
     console.error("Error checking permission:", error);

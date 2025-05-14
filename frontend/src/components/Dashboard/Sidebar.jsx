@@ -22,8 +22,7 @@ export default function Sidebar() {
       });
   
       console.log("Sidebar updated profile:", res.data);
-  
-      // Update Sidebar Name
+
       const firstName = res.data.firstName || "Louie";
       const lastName = res.data.lastName || "Admin";
       setSuperAdminName(`${firstName} ${lastName}`);

@@ -20,7 +20,7 @@ export default function StudentManagement() {
   }, [permissionsLoading]);
 
   const fetchStudents = async () => {
-    // Only fetch if we have view permission
+
     if (!hasPermission('users', 'view')) {
       setError("You don't have permission to view students");
       setLoading(false);

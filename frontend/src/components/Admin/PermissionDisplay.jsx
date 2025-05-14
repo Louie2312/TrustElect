@@ -10,19 +10,7 @@ export default function PermissionDisplay() {
   const [forceRefresh, setForceRefresh] = useState(0);
   const [error, setError] = useState(null);
 
-  // Ensure user ID is available from token if needed
-  useEffect(() => {
-    const userId = ensureUserIdFromToken();
-    console.log('PermissionDisplay - Ensured User ID:', userId);
-  }, []);
-
-  // For debugging
-  useEffect(() => {
-    console.log('PermissionDisplay - User ID:', Cookies.get('userId'));
-    console.log('PermissionDisplay - Permissions loading:', permissionsLoading);
-    console.log('PermissionDisplay - Permissions:', permissions);
-  }, [permissions, permissionsLoading]);
-
+ 
   useEffect(() => {
     if (permissions && typeof permissions === 'object') {
       const filteredModules = Object.keys(permissions).filter(
@@ -33,9 +21,9 @@ export default function PermissionDisplay() {
   }, [permissions]);
 
   useEffect(() => {
-    // Try to refresh permissions immediately when component mounts
+
     const userId = Cookies.get('userId');
-    console.log('PermissionDisplay - Initial refresh for user:', userId);
+   
     
     if (userId) {
       refreshPermissions().catch(err => {
@@ -47,7 +35,7 @@ export default function PermissionDisplay() {
     }
 
     const refreshInterval = setInterval(() => {
-      console.log('Auto-refreshing permissions...');
+
       refreshPermissions().catch(err => {
         console.error('Error auto-refreshing permissions:', err);
       });
@@ -60,8 +48,6 @@ export default function PermissionDisplay() {
     const handleAdminPermissionUpdate = (event) => {
       const currentUserId = Cookies.get('userId');
       if (currentUserId && event.detail && event.detail.adminId.toString() === currentUserId) {
-        console.log('Detected permission update for current user, refreshing...');
-     
         refreshPermissions();
         setForceRefresh(prev => prev + 1);
       }
@@ -74,7 +60,7 @@ export default function PermissionDisplay() {
       if (currentUserId) {
         const lastUpdateTime = localStorage.getItem(`admin_permissions_updated_${currentUserId}`);
         if (lastUpdateTime) {
-          console.log('Found permission update in storage, refreshing...');
+         
           refreshPermissions();
         }
       }
@@ -128,7 +114,6 @@ export default function PermissionDisplay() {
     );
   }
 
-  // Check if no permissions or empty permissions object
   if (Object.keys(permissions).length === 0) {
     return (
       <div className="bg-white shadow rounded-lg p-4">
@@ -145,7 +130,6 @@ export default function PermissionDisplay() {
   };
 
   const getModuleDisplayName = (module) => {
-    // Convert module names to more readable format
     const displayNames = {
       users: 'Student Management',
       elections: 'Election Management',
@@ -155,13 +139,11 @@ export default function PermissionDisplay() {
     return displayNames[module] || module.charAt(0).toUpperCase() + module.slice(1);
   };
 
-  // Only show modules where the user has at least one permission
   const hasAnyPermission = (module) => {
     const perms = permissions[module];
     return perms.canView || perms.canCreate || perms.canEdit || perms.canDelete;
   };
 
-  // Filter module names to only include those with at least one permission
   const activeModules = moduleNames.filter(hasAnyPermission);
 
   return (

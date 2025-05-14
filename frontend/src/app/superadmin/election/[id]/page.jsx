@@ -403,8 +403,7 @@ export default function ElectionDetailsPage() {
           }`}>
             {election.needs_approval ? 'NEEDS APPROVAL' : election.status.toUpperCase()}
           </span>
-          
-          {/* Only show edit buttons if system admin created the election */}
+   
           {(election.needs_approval || election.status === 'upcoming' || election.status === 'ongoing') ? (
             isSystemAdminCreator ? (
               <>
@@ -443,7 +442,6 @@ export default function ElectionDetailsPage() {
       <h1 className="text-2xl font-bold mb-2 text-black">Title: {election.title}</h1>
       <p className="text-gray-600 mb-6 text-black">Description: {election.description}</p>
 
-      {/* Created By Information */}
       <div className="mb-4 bg-gray-50 rounded-lg p-3 border border-gray-200">
         <p className="text-sm text-gray-600">
           <span className="font-medium">Created by: </span>
@@ -486,7 +484,6 @@ export default function ElectionDetailsPage() {
         </p>
       </div>
 
-      {/* Approval Section */}
       {election.needs_approval && (
         <div className="mb-6 p-4 rounded-lg border-2 border-yellow-400 bg-yellow-50">
           <div className="flex items-center gap-2 mb-2 text-yellow-800">
@@ -502,7 +499,6 @@ export default function ElectionDetailsPage() {
             )}
           </p>
           <div className="flex gap-3">
-            {/* Remove edit button in approval section */}
             
             <button
               onClick={async () => {
@@ -523,7 +519,7 @@ export default function ElectionDetailsPage() {
                   }
                   
                   toast.success('Election approved successfully');
-                  // Refresh the page data
+
                   setTimeout(() => {
                     window.location.reload();
                   }, 1500);
@@ -582,7 +578,6 @@ export default function ElectionDetailsPage() {
         </div>
       )}
 
-      {/* Tabs */}
       <div className="mb-6 border-b border-gray-200">
         <div className="flex space-x-8">
           <button
@@ -610,10 +605,8 @@ export default function ElectionDetailsPage() {
         </div>
       </div>
 
-      {/* Tab Content */}
       {activeTab === 'details' ? (
         <>
-          {/* Election Details */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <div className="bg-white rounded-lg shadow p-4">
               <h3 className="font-medium mb-2 text-black flex items-center gap-2">
@@ -655,7 +648,6 @@ export default function ElectionDetailsPage() {
             </div>
           </div>
 
-          {/* Eligibility Criteria */}
           <div className="bg-white rounded-lg shadow p-6 mb-8">
             <h2 className="text-xl font-semibold mb-4 text-black">Eligibility Criteria</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -722,7 +714,6 @@ export default function ElectionDetailsPage() {
             </div>
           </div>
 
-          {/* Ballot Section */}
           {election.positions && election.positions.length > 0 ? (
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex justify-between items-center mb-4">
@@ -748,62 +739,62 @@ export default function ElectionDetailsPage() {
                 </div>
               )}
               
-              <div className="space-y-6">
-                {election.positions.map(position => (
-                  <div key={position.id} className="border rounded-lg p-4">
-                    <div className="flex justify-between items-center mb-3">
-                      <h3 className="text-lg font-medium text-black">
-                        {position.name} ({position.max_choices === 1 ? 'Single choice' : `Select up to ${position.max_choices}`})
-                      </h3>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {position.candidates && position.candidates.length > 0 ? (
-                        position.candidates.map(candidate => (
-                          <div key={candidate.id} className="border rounded p-3 flex items-center">
-                            <div className="relative w-32 h-32">
-                              {candidate.image_url && !imageErrors[candidate.id] ? (
-                                <Image
-                                  src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
-                                  alt={`${candidate.first_name} ${candidate.last_name}`}
-                                  fill
-                                  sizes="128px"
-                                  className="object-cover rounded-lg"
-                                  onError={() => handleImageError(candidate.id)}
-                                />
-                              ) : (
-                                <div className="w-32 h-32 rounded-lg overflow-hidden mr-4 bg-gray-100 flex-shrink-0 flex items-center justify-center">
-                                  <User className="w-8 h-8 text-gray-400" />
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex-1 ml-4">
-                              <p className="font-medium text-black mb-1">
-                               <span className="">Full Name: </span>{candidate.first_name} {candidate.last_name}
-                              </p>
-                              {candidate.party && (
-                                <p className="text-sm text-black mb-1">  <span className="font-bold">Partylist/Course: </span> {candidate.party}</p>
-                              )}
-                              {candidate.slogan && (
-                                <p className="text-sm italic text-black mb-1">
-                                   <span className="font-bold">Slogan: </span>"{candidate.slogan}"
-                                </p>
-                              )}
-                              {candidate.platform && (
-                                <p className="text-sm text-black"><span className="font-bold">Platform/Description:  </span> {candidate.platform}</p>
-                              )}
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="col-span-full text-center py-4 text-black">
-                          No candidates for this position
-                        </div>
-                      )}
-                    </div>
+          <div className="space-y-6">
+            {election.positions.map(position => (
+              <div key={position.id} className="border rounded-lg p-4">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-lg font-medium text-black">
+              {position.name} ({position.max_choices === 1 ? 'Single choice' : `Select up to ${position.max_choices}`})
+            </h3>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {position.candidates && position.candidates.length > 0 ? (
+              position.candidates.map(candidate => (
+             <div key={candidate.id} className="border rounded p-3 flex items-center">
+              <div className="relative w-32 h-32">
+                {candidate.image_url && !imageErrors[candidate.id] ? (
+                  <Image
+                    src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
+                    alt={`${candidate.first_name} ${candidate.last_name}`}
+                    fill
+                    sizes="128px"
+                    className="object-cover rounded-lg"
+                    onError={() => handleImageError(candidate.id)}
+                  />
+                ) : (
+                  <div className="w-32 h-32 rounded-lg overflow-hidden mr-4 bg-gray-100 flex-shrink-0 flex items-center justify-center">
+                    <User className="w-8 h-8 text-gray-400" />
                   </div>
-                ))}
+                )}
               </div>
+              <div className="flex-1 ml-4">
+                <p className="font-medium text-black mb-1">
+                  <span className="">Full Name: </span>{candidate.first_name} {candidate.last_name}
+                </p>
+                {candidate.party && (
+                  <p className="text-sm text-black mb-1">  <span className="font-bold">Partylist/Course: </span> {candidate.party}</p>
+                )}
+                {candidate.slogan && (
+                  <p className="text-sm italic text-black mb-1">
+                      <span className="font-bold">Slogan: </span>"{candidate.slogan}"
+                  </p>
+                )}
+                {candidate.platform && (
+                  <p className="text-sm text-black"><span className="font-bold">Platform/Description:  </span> {candidate.platform}</p>
+                )}
+              </div>
+            </div>
+                    ))
+              ) : (
+                <div className="col-span-full text-center py-4 text-black">
+                  No candidates for this position
+                </div>
+              )}
+                </div>
+              </div>
+            ))}
+          </div>
             </div>
           ) : (
             <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">

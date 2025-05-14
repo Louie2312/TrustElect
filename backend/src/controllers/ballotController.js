@@ -22,67 +22,55 @@ const fs = require('fs');
 const notificationService = require('../services/notificationService');
 const { getElectionById } = require('../models/electionModel');
 
-// Ensure uploads directory exists
 const uploadDir = path.join(__dirname, '../../uploads/candidates');
 if (!fs.existsSync(uploadDir)) {
 fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// Configure multer for image upload
 const storage = multer.diskStorage({
 destination: (req, file, cb) => {
   cb(null, uploadDir);
 },
 filename: (req, file, cb) => {
-  // Generate unique filename while preserving extension
   const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
   const ext = path.extname(file.originalname);
   cb(null, 'candidate-' + uniqueSuffix + ext);
 }
 });
 
-
-// File filter function
 const fileFilter = (req, file, cb) => {
-// Accept only image files
+
 if (!file.originalname.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
   return cb(new Error('Only image files are allowed!'), false);
 }
 cb(null, true);
 };
 
-// Configure multer upload
 const upload = multer({
 storage: storage,
 fileFilter: fileFilter,
 limits: {
-  fileSize: 5 * 1024 * 1024 // 5MB limit
+  fileSize: 5 * 1024 * 1024 
 }
 });
 
 exports.uploadMiddleware = upload.single('image');
 
-// Helper function to delete image file
 const deleteImageFile = async (imagePath) => {
 if (!imagePath) return;
 
 try {
-  // Handle both relative paths and full paths
+
   let fullPath;
   if (imagePath.startsWith('/uploads/')) {
-    // If it's a URL path, convert to filesystem path
     fullPath = path.join(__dirname, '../..', imagePath);
   } else {
-    // If it's already a filesystem path
     fullPath = imagePath;
   }
-  
-  console.log('Attempting to delete image file:', fullPath);
-  
-  // Check if file exists before trying to delete
+
   if (fs.existsSync(fullPath)) {
     await fs.promises.unlink(fullPath);
-    console.log('Image file deleted successfully');
+
   } else {
     console.warn('Image file not found:', fullPath);
   }
@@ -91,16 +79,12 @@ try {
 }
 };
 
-// Upload candidate image
 exports.uploadCandidateImage = async (req, res) => {
 try {
   if (!req.file) {
     return res.status(400).json({ message: "No file uploaded" });
   }
 
-  console.log("Candidate image uploaded:", req.file.filename);
-
-  // Return full filePath in response
   const filePath = `/uploads/candidates/${req.file.filename}`;
 
   return res.json({ success: true, filePath });
@@ -119,45 +103,34 @@ exports.createBallot = async (req, res) => {
         message: "Election ID and at least one position are required" 
       });
     }
-
-    // Start a transaction to ensure both the ballot is created and election is updated
     const client = await pool.connect();
     
     try {
       await client.query('BEGIN');
-      
-      // Create the ballot with positions
+    
       const ballot = await createBallotWithPositions({
         election_id,
         description,
         positions
       }, client);
 
-      // Mark the election as needing approval
       await client.query(
         'UPDATE elections SET needs_approval = TRUE WHERE id = $1',
         [election_id]
       );
       
       await client.query('COMMIT');
-      
-      // Get election details for notification
+
       const election = await getElectionById(election_id);
-      
-      // Send notification to admin about successful ballot creation
+
       if (election && req.user && req.user.id) {
         try {
-          console.log(`Sending ballot creation notifications for election ${election_id}`);
           await notificationService.notifyBallotCreated(req.user.id, election);
-          
-          // Also notify superadmins that a ballot was created and needs approval
-          console.log(`Notifying superadmins about ballot creation for election ${election_id}`);
           const notificationResult = await notificationService.notifyElectionNeedsApproval(election);
-          console.log(`Sent ${notificationResult.length} notifications to superadmins`);
         } catch (notifError) {
           console.error('Failed to send ballot creation notifications:', notifError);
           console.error(notifError.stack);
-          // Continue without failing the request
+
         }
       }
       
@@ -224,19 +197,17 @@ exports.getBallot = async (req, res) => {
   }
 };
 
-// Now only updates description
 exports.updateBallotdescription = async (req, res) => {
   const { ballotId } = req.params;
   const { description } = req.body;
 
   try {
-    // Start a transaction
+
     const client = await pool.connect();
     
     try {
       await client.query('BEGIN');
-      
-      // Get the election_id from the ballot
+  
       const { rows: [ballotData] } = await client.query(
         'SELECT election_id FROM ballots WHERE id = $1',
         [ballotId]
@@ -245,34 +216,30 @@ exports.updateBallotdescription = async (req, res) => {
       if (!ballotData) {
         throw new Error('Ballot not found');
       }
-      
-      // Update the ballot description
+
       const ballot = await updateBallotDescription(ballotId, description);
-      
-      // Mark the election as needing approval
+
       await client.query(
         'UPDATE elections SET needs_approval = TRUE WHERE id = $1',
         [ballotData.election_id]
       );
       
       await client.query('COMMIT');
-      
-      // Get election details for notification
+
       const election = await getElectionById(ballotData.election_id);
       
-      // Send notification to superadmins about ballot update that needs approval
+    
       if (election) {
         try {
-          // Notify superadmins that a ballot was updated and needs approval
+
           await notificationService.notifyElectionNeedsApproval(election);
-          
-          // Also notify the admin who made the update
+
           if (req.user && req.user.id) {
             await notificationService.notifyBallotCreated(req.user.id, election);
           }
         } catch (notifError) {
           console.error('Failed to send ballot update notifications:', notifError);
-          // Continue without failing the request
+
         }
       }
       
@@ -305,8 +272,6 @@ exports.getBallotById = async (req, res) => {
   }
 };
 
-
-// Delete ballot (unchanged)
 exports.deleteBallot = async (req, res) => {
   const { ballotId } = req.params;
 
@@ -325,9 +290,9 @@ exports.addPosition = async (req, res) => {
   const { name, max_choices } = req.body;
 
   try {
-    // Fix the missing comma in the SQL query parameters
+
     const ballotExists = await pool.query(
-      'SELECT id FROM ballots WHERE id = $1', // Added comma here
+      'SELECT id FROM ballots WHERE id = $1', 
       [ballotId]
     );
 
@@ -335,7 +300,6 @@ exports.addPosition = async (req, res) => {
       return res.status(404).json({ message: "Ballot not found" });
     }
 
-    // Validate input
     if (!name || !max_choices) {
       return res.status(400).json({ 
         message: "Position name and max choices are required" 
@@ -348,7 +312,6 @@ exports.addPosition = async (req, res) => {
       });
     }
 
-    // Create position using the model function
     const position = await createPosition(ballotId, name, max_choices);
     
     return res.status(201).json({
@@ -360,7 +323,6 @@ exports.addPosition = async (req, res) => {
   }
 };
 
-// Update position
 exports.updatePosition = async (req, res) => {
   const { positionId } = req.params;
   const { name, max_choices } = req.body;
@@ -432,7 +394,6 @@ exports.addCandidate = async (req, res) => {
     const { first_name, last_name, party, slogan, platform } = req.body;
     const imageFile = req.file;
 
-    // Validate required fields
     if (!first_name || !last_name) {
       if (imageFile) {
         await deleteImageFile(imageFile.path);
@@ -440,7 +401,6 @@ exports.addCandidate = async (req, res) => {
       return res.status(400).json({ message: "First name and last name are required" });
     }
 
-    // Check if position exists
     const position = await getPositionById(positionId);
     if (!position) {
       if (imageFile) {
@@ -449,13 +409,11 @@ exports.addCandidate = async (req, res) => {
       return res.status(404).json({ message: "Position not found" });
     }
 
-    // Construct image URL if file was uploaded
     let imageUrl = null;
     if (imageFile) {
       imageUrl = `/uploads/candidates/${imageFile.filename}`;
     }
 
-    // Create candidate
     const candidate = await addCandidate({
       position_id: positionId,
       first_name,
@@ -484,8 +442,7 @@ exports.updateCandidate = async (req, res) => {
 try {
   const { candidateId } = req.params;
   const { first_name, last_name, party, slogan, platform, image_url } = req.body;
-  
-  // Get existing candidate
+
   const existingCandidate = await getCandidateById(candidateId);
   if (!existingCandidate) {
     return res.status(404).json({ 
@@ -495,16 +452,15 @@ try {
   }
 
   let finalImageUrl = existingCandidate.image_url;
-  
-  // If a new image file was uploaded, use it
+
   if (req.file) {
-    // Delete old image if exists
+
     if (existingCandidate.image_url) {
       await deleteImageFile(existingCandidate.image_url);
     }
     finalImageUrl = `/uploads/candidates/${req.file.filename}`;
   } 
-  // If an image URL was provided in the request body, use it
+
   else if (image_url) {
     finalImageUrl = image_url;
   }
@@ -549,7 +505,6 @@ try {
     });
   }
 
-  // Delete image file if exists
   if (candidate.image_url) {
     await deleteImageFile(candidate.image_url);
   }
@@ -600,7 +555,6 @@ uploadMiddleware(req, res, async (err) => {
    
     const imageUrl = req.file ? `/uploads/candidates/${req.file.filename}` : null;
 
-    // Create candidate
     const candidate = await createCandidate(
       positionId, 
       first_name, 

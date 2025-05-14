@@ -16,7 +16,6 @@ export default function AuditLogsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   
-  // Advanced filtering options
   const [filters, setFilters] = useState({
     activityType: "all",
     userRole: "all",
@@ -27,8 +26,7 @@ export default function AuditLogsPage() {
   });
   
   const [showFilters, setShowFilters] = useState(false);
-  
-  // Get API URL from env or default
+
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
   
   const fetchAuditLogs = async (pageNum = 1) => {
@@ -41,13 +39,11 @@ export default function AuditLogsPage() {
         setLoading(false);
         return;
       }
-      
-      // Build query parameters
+ 
       const params = new URLSearchParams();
       params.append("page", pageNum);
       params.append("limit", 50);
-      
-      // Filter by action type based on selected activity
+
       if (filters.activityType !== "all") {
         if (filters.activityType === "auth") {
           params.append("action", "LOGIN,LOGOUT");
@@ -67,18 +63,15 @@ export default function AuditLogsPage() {
           params.append("action", "DELETE");
         }
       }
-      
-      // Filter by user role
+
       if (filters.userRole !== "all") {
         params.append("user_role", filters.userRole);
       }
-      
-      // Filter by entity ID if provided
+
       if (filters.entityId) {
         params.append("entity_id", filters.entityId);
       }
-      
-      // Filter by date range
+
       if (filters.dateRange === "custom" && filters.startDate) {
         params.append("start_date", filters.startDate);
       }
@@ -105,8 +98,6 @@ export default function AuditLogsPage() {
       });
       
       if (res.data && res.data.data) {
-        // Filter out duplicate logs by creating a unique key for each log
-        // based on action + timestamp + entity_id
         const uniqueLogs = [];
         const seenLogs = new Set();
         
@@ -128,20 +119,17 @@ export default function AuditLogsPage() {
       }
     } catch (error) {
       console.error("Error fetching audit logs:", error);
-      
-      // Handle different error types
+
       if (error.response) {
-        // Server responded with error status
+
         if (error.response.status === 401 || error.response.status === 403) {
           setError("Authorization error. You might not have permission to view audit logs.");
         } else {
           setError(`Server error: ${error.response.data.message || "Unknown error"}`);
         }
       } else if (error.request) {
-        // Request made but no response received
         setError("Could not connect to the server. Please check your connection.");
       } else {
-        // Other errors
         setError(`Error: ${error.message}`);
       }
       
@@ -191,8 +179,7 @@ export default function AuditLogsPage() {
         toast.error("No logs to export");
         return;
       }
-      
-      // Create CSV content
+
       const headers = ["ID", "Time", "User", "Role", "Action", "Entity Type", "Entity ID"];
       const csvContent = [
         headers.join(","),
@@ -206,8 +193,7 @@ export default function AuditLogsPage() {
           log.entity_id || ""
         ].join(","))
       ].join("\n");
-      
-      // Create blob and download link
+
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -229,7 +215,6 @@ export default function AuditLogsPage() {
     fetchAuditLogs();
   }, []);
   
-  // Format date in a simple way
   const formatDateTime = (dateString) => {
     if (!dateString) return "N/A";
     try {
@@ -239,8 +224,7 @@ export default function AuditLogsPage() {
       return dateString;
     }
   };
-  
-  // Get badge color for different user roles
+
   const getRoleColor = (role) => {
     if (!role) return 'bg-gray-100 text-gray-800';
     
@@ -251,12 +235,10 @@ export default function AuditLogsPage() {
       default: return 'bg-gray-100 text-gray-800';
     }
   };
-  
-  // Format role display for consistency
+ 
   const formatRoleDisplay = (role) => {
     if (!role) return 'Unknown';
-    
-    // Standardize role display names
+
     switch (role.toLowerCase()) {
       case 'systemadmin': return 'System Admin';
       case 'admin': return 'Admin';
@@ -264,14 +246,12 @@ export default function AuditLogsPage() {
       default: return role;
     }
   };
-  
-  // Get simplified activity description with more details
+
   const getActivityDescription = (log) => {
     if (!log) return "-";
     
     const id = log.entity_id ? `#${log.entity_id}` : '';
-    
-    // Action-based descriptions (more specific)
+
     switch (log.action) {
       case 'LOGIN':
         return `User logged in`;
@@ -305,8 +285,7 @@ export default function AuditLogsPage() {
         return `${log.action} ${log.entity_type} ${id}`;
     }
   };
-  
-  // Get badge color for different actions
+
   const getActionColor = (action) => {
     if (!action) return 'bg-gray-100 text-gray-800';
     

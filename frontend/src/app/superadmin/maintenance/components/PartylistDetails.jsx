@@ -14,6 +14,16 @@ const PartylistDetails = ({
     studentNumber: ""
   });
   const [candidates, setCandidates] = useState([]);
+  const [image, setImage] = useState(null);
+  const [preview, setPreview] = useState(null);
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file){
+      setImage(file);
+      setPreview(URL.createObjectURL(file));
+    }
+  };
 
   useEffect(() => {
     if (partylist) {
@@ -130,12 +140,20 @@ const PartylistDetails = ({
             <div className="flex justify-between items-center mb-2">
               <h3 className="text-md font-semibold text-black">Candidates</h3>
               {!isAddingCandidate && (
-                <button 
-                  onClick={() => setIsAddingCandidate(true)}
-                  className="px-3 py-1 text-sm rounded bg-blue-600 text-white hover:bg-blue-700"
-                >
-                  + Add Candidate
-                </button>
+                <div className="flex space-x-2">
+                  <button 
+                    onClick={() => setIsAddingCandidate(true)}
+                    className="px-3 py-1 text-sm rounded bg-blue-600 text-white hover:bg-blue-700"
+                  >
+                    + Add Candidate
+                  </button>
+                  <button 
+                  
+                    className="px-3 py-1 text-sm rounded bg-green-600 text-white hover:bg-green-700"
+                  >
+                    Batch Upload
+                  </button>
+                </div>
               )}
             </div>
             
@@ -144,6 +162,12 @@ const PartylistDetails = ({
                 <h4 className="text-md font-semibold mb-3 text-black">Add New Candidate</h4>
                 <form onSubmit={handleAddCandidate} className="space-y-3">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="text-black border-1 box-sizing: border-box; p-4 pointer">
+                  
+                    {/*  <input type="file" accept="image/*" onChange={handleImageChange} />*/}
+                      
+                    </div>
+
                     <div>
                       <label className="block text-sm font-medium text-black  mb-1">First Name</label>
                       <input

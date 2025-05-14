@@ -124,7 +124,6 @@ const ElectionCard = ({ election, onClick, onDeleteClick }) => {
       className="border rounded-lg overflow-hidden hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1 cursor-pointer bg-white"
       onClick={() => onClick(election.id)}
     >
-      {/* Status Banner */}
       <div className={`w-full py-2 px-4 flex items-center justify-between ${statusColors[displayStatus]}`}>
         <div className="flex items-center">
           {statusIcons[displayStatus]}
@@ -147,7 +146,6 @@ const ElectionCard = ({ election, onClick, onDeleteClick }) => {
         )}
       </div>
 
-      {/* Content */}
       <div className="p-5">
         <h3 className="font-bold text-xl text-black mb-2 truncate">{election.title}</h3>
         <p className="text-gray-600 mb-4 text-sm line-clamp-2 h-10">{election.description}</p>
@@ -178,7 +176,6 @@ const ElectionCard = ({ election, onClick, onDeleteClick }) => {
         </div>
       </div>
 
-      {/* Footer */}
       <div className="bg-gray-50 p-4 border-t">
         <div className="grid grid-cols-2 gap-1 text-sm">
           <div className="text-black">

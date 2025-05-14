@@ -35,13 +35,12 @@ const EligibleVotersDisplay = ({ electionId }) => {
     <div className="bg-white rounded-lg shadow p-6 mb-6">
       <h3 className="text-lg font-semibold mb-4">Eligible Voters</h3>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Summary Statistics */}
+
         <div className="border rounded-lg p-4">
           <h4 className="font-medium mb-2">Total Voters</h4>
           <p className="text-3xl font-bold text-blue-600">{stats?.total || 0}</p>
         </div>
 
-        {/* By Course */}
         <div className="border rounded-lg p-4">
           <h4 className="font-medium mb-2">By Program</h4>
           <ul className="space-y-1">
@@ -54,7 +53,6 @@ const EligibleVotersDisplay = ({ electionId }) => {
           </ul>
         </div>
 
-        {/* By Year Level */}
         <div className="border rounded-lg p-4">
           <h4 className="font-medium mb-2">By Year Level</h4>
           <ul className="space-y-1">
@@ -68,7 +66,6 @@ const EligibleVotersDisplay = ({ electionId }) => {
         </div>
       </div>
 
-      {/* Detailed Voters Table (collapsible) */}
       <details className="mt-6">
         <summary className="cursor-pointer font-medium text-blue-600">
           View Detailed Voter List

@@ -2,12 +2,12 @@
 import axios from 'axios';
 
 /**
- * Fetch content from API
- * @param {string} apiUrl - The API base URL
- * @param {Function} setContent - Function to update the content state
- * @param {Function} setInitialContent - Function to update the initial content state
- * @param {Function} setIsLoading - Function to update the loading state
- * @param {Function} setSaveStatus - Function to update the save status
+
+ * @param {string} apiUrl 
+ * @param {Function} setContent 
+ * @param {Function} setInitialContent 
+ * @param {Function} setIsLoading
+ * @param {Function} setSaveStatus 
  */
 export const fetchContent = async (
   apiUrl,
@@ -21,8 +21,7 @@ export const fetchContent = async (
     const response = await axios.get(`${apiUrl}/api/content`);
     if (response.data) {
       const contentData = response.data;
-      
-      // Ensure features.items exists and has the expected format
+
       if (contentData.features && !contentData.features.items) {
         contentData.features.items = [
           { id: 1, title: "", description: "", icon: "CheckCircleIcon" },
@@ -32,7 +31,7 @@ export const fetchContent = async (
       }
       
       setContent(contentData);
-      setInitialContent(JSON.parse(JSON.stringify(contentData))); // Deep copy for comparison
+      setInitialContent(JSON.parse(JSON.stringify(contentData))); 
     }
   } catch (error) {
     console.error("Error fetching content:", error);
@@ -44,10 +43,10 @@ export const fetchContent = async (
 };
 
 /**
- * Fetch themes from API
- * @param {string} apiUrl - The API base URL
- * @param {Function} setThemes - Function to update the themes state
- * @param {Function} setActiveTheme - Function to update the active theme state
+ 
+ * @param {string} apiUrl
+ * @param {Function} setThemes 
+ * @param {Function} setActiveTheme 
  */
 export const fetchThemes = async (apiUrl, setThemes, setActiveTheme) => {
   try {
@@ -68,20 +67,18 @@ export const fetchThemes = async (apiUrl, setThemes, setActiveTheme) => {
 };
 
 /**
- * Load default themes when API is not available
- * @param {Function} setThemes - Function to update the themes state
- * @param {Function} setActiveTheme - Function to update the active theme state
+
+ * @param {Function} setThemes
+ * @param {Function} setActiveTheme
  */
 export const loadDefaultThemes = (setThemes, setActiveTheme) => {
-  // Try to load themes from localStorage first
+
   const savedThemes = localStorage.getItem('trustElectThemes');
   if (savedThemes) {
     try {
       const parsedThemes = JSON.parse(savedThemes);
-      console.log("Loaded themes from localStorage:", parsedThemes);
       setThemes(parsedThemes);
-      
-      // Find the active theme
+
       const active = parsedThemes.find(theme => theme.isActive);
       if (active) {
         setActiveTheme(active);
@@ -91,8 +88,7 @@ export const loadDefaultThemes = (setThemes, setActiveTheme) => {
       console.error("Error parsing saved themes:", err);
     }
   }
-  
-  // Create default themes when API is not available and no saved themes
+
   const defaultThemes = [
     {
       id: 1,
@@ -101,7 +97,7 @@ export const loadDefaultThemes = (setThemes, setActiveTheme) => {
       colors: {
         heroBg: "#1e40af",
         heroText: "#ffffff",
-        featureSectionBg: "#f9fafb", // Light gray for feature section background
+        featureSectionBg: "#f9fafb", 
         featureBg: "#ffffff",
         featureText: "#000000",
         ctaBg: "#1e3a8a",
@@ -115,7 +111,7 @@ export const loadDefaultThemes = (setThemes, setActiveTheme) => {
       colors: {
         heroBg: "#1f2937",
         heroText: "#f3f4f6",
-        featureSectionBg: "#111827", // Dark background for dark mode
+        featureSectionBg: "#111827", 
         featureBg: "#1f2937",
         featureText: "#f9fafb",
         ctaBg: "#374151",
@@ -126,7 +122,6 @@ export const loadDefaultThemes = (setThemes, setActiveTheme) => {
   
   setThemes(defaultThemes);
   setActiveTheme(defaultThemes[0]);
-  
-  // Save the default themes to localStorage
+
   localStorage.setItem('trustElectThemes', JSON.stringify(defaultThemes));
 }; 

@@ -49,7 +49,6 @@ exports.loginUser = async (req, res) => {
     let role = null;
     let studentId = null;
 
-    //Check if user is Super Admin
     const superAdminQuery = "SELECT * FROM users WHERE email = $1 AND role_id = 1";
     const superAdminResult = await pool.query(superAdminQuery, [email]);
 
@@ -79,7 +78,7 @@ exports.loginUser = async (req, res) => {
     }
 
     if (!user) {
-      // Log failed login attempt for non-existent user
+
       await logAction(
         { id: 0, email: email, role: 'Unknown' },
         'LOGIN_FAILED',
@@ -91,7 +90,6 @@ exports.loginUser = async (req, res) => {
     }
 
     if (user.is_locked && user.locked_until > new Date()) {
-      // Log account locked access attempt
       await logAction(
         { id: user.id, email: user.email, role },
         'LOGIN_FAILED',
@@ -106,7 +104,7 @@ exports.loginUser = async (req, res) => {
     }
 
     if (!user.is_active) {
-      // Log inactive account access attempt
+
       await logAction(
         { id: user.id, email: user.email, role },
         'LOGIN_FAILED',

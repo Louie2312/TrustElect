@@ -216,7 +216,6 @@ const getArchivedPartylists = async () => {
 };
 
 const permanentDeletePartylist = async (id) => {
-  // First check if there are any associations in partylist_candidates
   const candidatesCheck = await pool.query(
     `SELECT EXISTS (
       SELECT 1 FROM partylist_candidates 
@@ -225,7 +224,6 @@ const permanentDeletePartylist = async (id) => {
     [id]
   );
 
-  // If there are associated candidates, delete them first
   if (candidatesCheck.rows[0].exists) {
     await pool.query(
       `DELETE FROM partylist_candidates 
@@ -234,7 +232,6 @@ const permanentDeletePartylist = async (id) => {
     );
   }
 
-  // Now delete the partylist
   const result = await pool.query(
     `DELETE FROM partylists
      WHERE id = $1
@@ -245,7 +242,6 @@ const permanentDeletePartylist = async (id) => {
   return result.rows[0];
 };
 
-// Rename the previous deletePartylist function to make it clear it's archiving
 const deletePartylist = archivePartylist;
 
 const addPartylistCandidate = async (partylistId, studentId, position) => {

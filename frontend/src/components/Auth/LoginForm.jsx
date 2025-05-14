@@ -76,23 +76,13 @@ export default function LoginForm({ onClose }) {
 
     setLoading(true);
     try {
-      console.log("🔹 Sending login request for email:", email);
-
-      if (email.includes("admin") || email.includes("superadmin")) {
-        console.log("⚠️ Admin login attempt with password:", 
-          password.length > 3 ? 
-          `${password.substring(0, 2)}...${password.substring(password.length-3)}` : 
-          "[too short]"
-        );
-      }
-      
+    
       const response = await axios.post(
         "http://localhost:5000/api/auth/login",
         { email, password },
         { withCredentials: true } 
       );
 
-      console.log("Login successful:", response.data);
       
       if (!response.data.user_id) {
         throw new Error("Missing user_id in response.");
@@ -106,7 +96,7 @@ export default function LoginForm({ onClose }) {
       Cookies.set("userId", user_id, { expires: 1, path: "/", secure: false, sameSite: "strict" });
       
       if (studentId) {
-        console.log("Setting studentId in cookie:", studentId);
+    
         Cookies.set("studentId", studentId.toString(), { expires: 1, path: "/", secure: false, sameSite: "strict" });
         localStorage.setItem("studentId", studentId.toString());
       }
@@ -121,7 +111,7 @@ export default function LoginForm({ onClose }) {
         { userId: user_id, email }
       );
       
-      console.log("OTP request response:", otpResponse.data);
+    
 
       if (otpResponse.data.devMode && otpResponse.data.otp) {
         setDevOtp(otpResponse.data.otp);
@@ -136,7 +126,7 @@ export default function LoginForm({ onClose }) {
         console.log("Login attempt failed: Invalid credentials");
         
         if (email.includes("admin") || email.includes("superadmin")) {
-          setError("Admin login failed. Remember that passwords are case-sensitive and must use the exact format: FirstLetterCapitalizedLastName + Last3DigitsOfEmployeeNumber + !");
+          setError("Invalid Email or Password.");
         } else {
           setError("Invalid email or password.");
         }
@@ -156,7 +146,7 @@ export default function LoginForm({ onClose }) {
     }
     setLoading(true);
     try {
-      console.log("🔹 Verifying OTP...");
+     
       const userId = Cookies.get("userId");
 
       const response = await axios.post(
@@ -166,7 +156,7 @@ export default function LoginForm({ onClose }) {
       
       if (response.data.success) {
         const role = Cookies.get("role");
-        console.log("User role:", role);
+        
 
         if (role !== "Super Admin") {
           try {
@@ -302,8 +292,6 @@ export default function LoginForm({ onClose }) {
     try {
       const userId = Cookies.get("userId");
       const userEmail = Cookies.get("email");
-      
-      console.log("Resending OTP for:", userEmail);
       const response = await axios.post(
         "http://localhost:5000/api/auth/request-otp",
         { userId, email: userEmail }
@@ -592,8 +580,7 @@ export default function LoginForm({ onClose }) {
               onChange={(e) => setOtp(e.target.value)}
               required
             />
-            
-            {/* Development OTP display */}
+
             {devOtp && (
               <div className="mt-2 p-2 bg-gray-100 rounded text-center">
                 <p className="text-xs text-gray-500">Development OTP:</p>
@@ -609,7 +596,7 @@ export default function LoginForm({ onClose }) {
               {loading ? "Verifying..." : "Verify"}
             </Button>
             
-            {/* Resend OTP button with cooldown */}
+
             <div className="mt-4 text-center">
               <button 
                 onClick={handleResendOTP}

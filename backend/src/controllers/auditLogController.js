@@ -66,11 +66,9 @@ exports.getAuditLogs = async (req, res) => {
       sort_by = 'created_at',
       sort_order = 'DESC'
     } = req.query;
-    
-    // Convert page to offset
+
     const offset = (parseInt(page, 10) - 1) * parseInt(limit, 10);
-    
-    // Prepare filter options
+
     const filterOptions = {
       user_id,
       user_email,
@@ -86,14 +84,12 @@ exports.getAuditLogs = async (req, res) => {
       sort_by,
       sort_order
     };
-    
-    // Get logs and total count in parallel
+
     const [logs, count] = await Promise.all([
       auditLogModel.getAuditLogs(filterOptions),
       auditLogModel.getAuditLogsCount(filterOptions)
     ]);
-    
-    // Calculate pagination info
+ 
     const totalPages = Math.ceil(count / parseInt(limit, 10));
     
     res.status(200).json({
@@ -124,8 +120,7 @@ exports.getAuditLogsSummary = async (req, res) => {
   try {
     const { days = 30 } = req.query;
     const daysNum = parseInt(days, 10);
-    
-    // Get summary from database
+
     const summary = await auditLogModel.getAuditLogsSummary(daysNum);
     
     res.status(200).json({

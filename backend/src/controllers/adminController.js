@@ -31,7 +31,6 @@ exports.registerAdmin = async (req, res) => {
       permissions 
     } = req.body;
 
-    // Validate Token & Ensure Super Admin
     const token = req.header("Authorization")?.replace("Bearer ", "") || req.cookies?.token;
     if (!token) return res.status(401).json({ message: "Unauthorized. Token is missing." });
 
@@ -45,7 +44,6 @@ exports.registerAdmin = async (req, res) => {
       return res.status(400).json({ message: "Invalid email domain. Only @novaliches.sti.edu.ph emails are allowed." });
     }
 
-    // Ensure Email & Employee Number Are Unique
     const emailExists = await checkAdminEmailExists(email);
     const employeeNumberExists = await checkEmployeeNumberExists(employeeNumber);
 
@@ -69,14 +67,14 @@ exports.registerAdmin = async (req, res) => {
       createdBy
     );
 
-    // Set permissions if provided
+
     if (permissions && typeof permissions === 'object') {
       await setAdminPermissions(newAdmin.id, permissions);
     }
 
     return res.status(201).json({
       message: "Admin registered successfully!",
-      generatedPassword: autoPassword, //Return generated password to frontend
+      generatedPassword: autoPassword, 
       admin: {
         id: newAdmin.id,
         firstName: newAdmin.firstName,
@@ -97,16 +95,14 @@ exports.getAllAdmins = async (req, res) => {
   try {
     const regularAdmins = await getAllAdmins();
     const superAdmins = await getSuperAdmins();
-    
-    // Add role and department info for super admins
+
     const formattedSuperAdmins = superAdmins.map(admin => ({
       ...admin,
-      role_id: 1, // Super Admin role_id
-      employee_number: "", // Super admins don't have employee numbers
-      department: "Administration" // Default department
+      role_id: 1, 
+      employee_number: "", 
+      department: "Administration" 
     }));
-    
-    // Combine both types of admins
+
     const allAdmins = [...regularAdmins, ...formattedSuperAdmins];
     
     res.json({ admins: allAdmins });
@@ -136,7 +132,6 @@ exports.updateAdmin = async (req, res) => {
       return res.status(400).json({ message: "Invalid email domain. Only @novaliches.sti.edu.ph emails are allowed." });
     }
 
-    // Update admin basic info
     const updatedAdmin = await updateAdmin(id, { 
       firstName, 
       lastName, 
@@ -149,12 +144,10 @@ exports.updateAdmin = async (req, res) => {
       return res.status(404).json({ message: "Admin not found." });
     }
 
-    // Update permissions if provided
     if (permissions && typeof permissions === 'object') {
       await setAdminPermissions(id, permissions);
     }
 
-    // Return the updated admin in response
     return res.json({ 
       message: "Admin updated successfully!", 
       admin: updatedAdmin 
@@ -170,7 +163,6 @@ exports.softDeleteAdmin = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Prevent Super Admin from deleting themselves
     if (req.user.id === parseInt(id)) {
       return res.status(403).json({ message: "You cannot delete your own Super Admin account." });
     }
@@ -207,19 +199,16 @@ exports.resetAdminPassword = async (req, res) => {
   try {
     const { id, newPassword } = req.body;
 
-    // Prevent Super Admin from resetting their own password
     if (req.user.id === parseInt(id)) {
       return res.status(403).json({ message: "Super Admin cannot reset their own password." });
     }
 
-    // Ensure password meets security requirements
     if (!newPassword || newPassword.length < 8 || !/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/\d/.test(newPassword) || !/[!@#$%^&*]/.test(newPassword)) {
       return res.status(400).json({
         message: "Password must be at least 8 characters long and include uppercase, lowercase, a number, and a special character.",
       });
     }
 
-    // Reset password in database
     const updatedAdmin = await resetAdminPassword(id, newPassword);
     if (!updatedAdmin) {
       return res.status(404).json({ message: "Admin not found or cannot reset password." });
@@ -237,7 +226,6 @@ exports.permanentlyDeleteAdmin = async (req, res) => {
     const { id } = req.params;
     console.log("Attempting to permanently delete admin with ID:", id);
 
-    // Ensure the admin exists before deletion
     const adminExists = await getAdminById(id);
     console.log("Admin found:", adminExists);
     
@@ -245,12 +233,10 @@ exports.permanentlyDeleteAdmin = async (req, res) => {
       return res.status(404).json({ message: "Admin not found." });
     }
 
-    // Prevent deleting Super Admin account
     if (adminExists.role_id === 1) {
       return res.status(403).json({ message: "Super Admin account cannot be permanently deleted." });
     }
 
-    // Call the model function to delete permanently
     const deletedAdmin = await deleteAdminPermanently(id);
     if (!deletedAdmin) {
       return res.status(500).json({ message: "Failed to delete admin permanently." });
@@ -279,13 +265,12 @@ exports.unlockAdminAccount = async (req, res) => {
   }
 };
 
-// Get admin profile information
+
 exports.getAdminProfile = async (req, res) => {
   try {
-    // Get the authenticated admin's user ID from the token
+
     const userId = req.user.id;
 
-    // Query the database to get admin information
     const query = `
       SELECT 
         a.id, 
@@ -314,17 +299,13 @@ exports.getAdminProfile = async (req, res) => {
   }
 };
 
-// Upload profile picture for admin
 exports.uploadAdminProfilePicture = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
     }
-
-    // Get the authenticated admin's user ID from the token
     const userId = req.user.id;
 
-    // Get the admin ID from the user ID
     const adminQuery = "SELECT id FROM admins WHERE user_id = $1 AND is_active = true";
     const adminResult = await pool.query(adminQuery, [userId]);
 
@@ -334,7 +315,6 @@ exports.uploadAdminProfilePicture = async (req, res) => {
 
     const adminId = adminResult.rows[0].id;
 
-    // Update the admin's profile picture path in the database
     const filePath = `/uploads/admins/${req.file.filename}`;
     const updateQuery = "UPDATE admins SET profile_picture = $1 WHERE id = $2 RETURNING *";
     const updateResult = await pool.query(updateQuery, [filePath, adminId]);

@@ -10,9 +10,6 @@ if (!fs.existsSync(uploadDir)) {
 
 const createPartylist = async (req, res) => {
   try {
-    console.log('Starting partylist creation...');
-    console.log('Request body:', req.body);
-    console.log('File data:', req.file);
     
     const { name, slogan, advocacy } = req.body;
     const logoFile = req.file;
@@ -309,7 +306,6 @@ const permanentDeletePartylist = async (req, res) => {
   }
 };
 
-// Rename existing deletePartylist to be clear it's archiving
 const deletePartylist = archivePartylist;
 
 const addPartylistCandidate = async (req, res) => {

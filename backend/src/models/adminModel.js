@@ -61,7 +61,6 @@ const checkAdminEmailExists = async (email, excludeAdminId = null) => {
   }
 };
 
-//Register a New Admin (Super Admin Only)
 const registerAdmin = async (firstName, lastName, email, username, hashedPassword, employeeNumber, department, createdBy) => {
   const client = await pool.connect();
   try {
@@ -256,27 +255,21 @@ const deleteAdminPermanently = async (adminId) => {
   try {
     await client.query("BEGIN");
 
-    console.log("Permanently deleting admin:", adminId);
-    
-    // Check if the admin exists in the admins table
     const checkAdminQuery = "SELECT * FROM admins WHERE user_id = $1";
     const adminCheck = await client.query(checkAdminQuery, [adminId]);
     
     if (adminCheck.rowCount > 0) {
-      // First, delete the admin from the `admins` table
+
       await client.query("DELETE FROM admins WHERE user_id = $1", [adminId]);
-    } else {
-      console.log("Admin record not found in admins table, will proceed with user deletion only");
     }
 
-    // Then, delete the admin from the `users` table
     const result = await client.query("DELETE FROM users WHERE id = $1 RETURNING *", [adminId]);
 
     await client.query("COMMIT");
     return result.rows[0] || null;
   } catch (error) {
     await client.query("ROLLBACK");
-    console.error("❌ Database Error:", error);
+    console.error("Database Error:", error);
     throw error;
   } finally {
     client.release();

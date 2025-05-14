@@ -61,8 +61,7 @@ export default function ElectionPage() {
       
       const data = await fetchWithAuth('/elections');
       const pendingCount = data.filter(election => election.needs_approval).length;
-      
-      // Update the tab label with the count
+
       const updatedTabs = tabs.map(tab => 
         tab.id === 'to_approve' 
           ? { ...tab, label: `To Approve (${pendingCount})` }
@@ -85,24 +84,20 @@ export default function ElectionPage() {
     }
   }, []);
 
-  // Initial load
   useEffect(() => {
     fetchElections(true);
   }, [fetchElections]);
 
-  // Set up polling for real-time updates
   useEffect(() => {
-    // Only poll for updates if there are ongoing elections
+
     const hasOngoingElections = elections.some(election => election.status === 'ongoing');
     
     if (!hasOngoingElections) return;
-    
-    // Poll every 10 seconds for updates
+
     const intervalId = setInterval(() => {
       fetchElections(false);
     }, 10000);
-    
-    // Clean up on unmount
+
     return () => clearInterval(intervalId);
   }, [elections, fetchElections]);
 

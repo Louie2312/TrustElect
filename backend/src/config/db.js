@@ -10,10 +10,8 @@ const pool = new Pool({
 });
 
 pool.on("error", (err) => {
-  console.error("Unexpected error on idle PostgreSQL client", err);
+  console.error("Error in PostgreSQL", err);
   process.exit(-1);
 });
-
-console.log("PostgreSQL pool created successfully!");
 
 module.exports = pool;

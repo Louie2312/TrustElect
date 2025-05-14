@@ -8,19 +8,15 @@
  */
 export const formatImageUrl = (url, apiUrl) => {
   if (!url) return null;
-  
-  // For blob URLs (local file previews), use them directly
+
   if (url.startsWith('blob:')) {
     return url;
   }
-  
-  // For already complete URLs, use them directly
+
   if (url.startsWith('http://') || url.startsWith('https://')) {
     return url;
   }
   
-  // For relative paths, prepend the API URL
-  // Make sure path starts with a slash
   const path = url.startsWith('/') ? url : `/${url}`;
   return `${apiUrl}${path}`;
 };
@@ -28,8 +24,8 @@ export const formatImageUrl = (url, apiUrl) => {
 /**
  * Check if content has changed since initial load
  * @param {Object} content - The current content
- * @param {Object} initialContent - The initial content (for comparison)
- * @returns {boolean} - Whether content has changed
+ * @param {Object} initialContent 
+ * @returns {boolean} 
  */
 export const hasContentChanged = (content, initialContent) => {
   if (!initialContent) return false;
@@ -37,11 +33,11 @@ export const hasContentChanged = (content, initialContent) => {
 };
 
 /**
- * Update a hero section field
- * @param {string} field - The field to update
- * @param {*} value - The new value
- * @param {Object} landingContent - The current landing content
- * @param {Function} setLandingContent - Function to update the landing content
+
+ * @param {string} field e
+ * @param {*} value
+ * @param {Object} landingContent 
+ * @param {Function} setLandingContent 
  */
 export const updateHero = (field, value, landingContent, setLandingContent) => {
   setLandingContent(prev => ({
@@ -54,15 +50,14 @@ export const updateHero = (field, value, landingContent, setLandingContent) => {
 };
 
 /**
- * Update a feature column field
- * @param {number} index - The index of the feature to update
- * @param {string} field - The field to update
- * @param {*} value - The new value
- * @param {Object} landingContent - The current landing content
- * @param {Function} setLandingContent - Function to update the landing content
+ * @param {number} index 
+ * @param {string} field
+ * @param {*} value
+ * @param {Object} landingContent 
+ * @param {Function} setLandingContent 
  */
 export const updateFeature = (index, field, value, landingContent, setLandingContent) => {
-  console.log(`Updating feature ${index}, field ${field} with value:`, value);
+
   const updatedColumns = [...landingContent.features.columns];
   updatedColumns[index] = {
     ...updatedColumns[index],
@@ -79,11 +74,11 @@ export const updateFeature = (index, field, value, landingContent, setLandingCon
 };
 
 /**
- * Update a call to action field
- * @param {string} field - The field to update
- * @param {*} value - The new value
- * @param {Object} landingContent - The current landing content
- * @param {Function} setLandingContent - Function to update the landing content
+ 
+ * @param {string} field 
+ * @param {*} value 
+ * @param {Object} landingContent 
+ * @param {Function} setLandingContent 
  */
 export const updateCTA = (field, value, landingContent, setLandingContent) => {
   setLandingContent(prev => ({

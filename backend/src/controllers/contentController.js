@@ -177,21 +177,18 @@ const updateSectionContent = async (req, res) => {
             url: videoUrl,
             altText: 'Hero video'
           });
-          
-          // Update content data with new video URL
+
           contentData.videoUrl = videoUrl;
         } else if (shouldRemoveHeroVideo) {
           console.log('Removing hero video');
           contentData.videoUrl = null;
         }
-        
-        // Process hero poster image if uploaded or handle removal
+
         const imageFile = req.files.heroPoster?.[0];
         if (imageFile) {
           const imageUrl = normalizeFilePath(`/uploads/images/${imageFile.filename}`);
           console.log('Saving image media:', imageFile.filename);
-          
-          // Save media to database
+
           const imageMedia = await contentModel.saveMedia({
             filename: imageFile.filename,
             originalFilename: imageFile.originalname,
@@ -202,35 +199,31 @@ const updateSectionContent = async (req, res) => {
             url: imageUrl,
             altText: 'Hero poster image'
           });
-          
-          // Update content data with new image URL
+
           contentData.posterImage = imageUrl;
         } else if (shouldRemoveHeroPoster) {
           console.log('Removing hero poster image');
           contentData.posterImage = null;
         }
-        
-        // Validate hero color properties
+
         if (contentData.bgColor && !isValidColorFormat(contentData.bgColor)) {
-          contentData.bgColor = "#1e40af"; // Default if invalid
+          contentData.bgColor = "#1e40af"; 
         }
         if (contentData.textColor && !isValidColorFormat(contentData.textColor)) {
-          contentData.textColor = "#ffffff"; // Default if invalid
+          contentData.textColor = "#ffffff"; 
         }
         
       } else if (section === 'features') {
-        // Process feature images dynamically based on the number of columns
+
         if (contentData.columns && Array.isArray(contentData.columns)) {
-          // Process each feature column
+       
           for (let i = 0; i < contentData.columns.length; i++) {
             const imageFile = req.files[`featureImage${i}`]?.[0];
             const shouldRemoveFeatureImage = req.body[`removeFeatureImage${i}`] === 'true';
             
             if (imageFile) {
               const imageUrl = normalizeFilePath(`/uploads/images/${imageFile.filename}`);
-              console.log(`Saving feature image ${i}:`, imageFile.filename);
-              
-              // Save media to database
+            
               try {
                 const imageMedia = await contentModel.saveMedia({
                   filename: imageFile.filename,
@@ -242,37 +235,34 @@ const updateSectionContent = async (req, res) => {
                   url: imageUrl,
                   altText: `Feature image ${i + 1}`
                 });
-                
-                // Update feature column with new image URL
+
                 contentData.columns[i].imageUrl = imageUrl;
               } catch (error) {
                 console.error(`Error saving feature image ${i}:`, error);
               }
             } else if (shouldRemoveFeatureImage) {
-              console.log(`Removing feature image ${i}`);
+           
               contentData.columns[i].imageUrl = null;
             }
-            
-            // Validate color properties for each feature card
+
             if (contentData.columns[i].bgColor && !isValidColorFormat(contentData.columns[i].bgColor)) {
-              contentData.columns[i].bgColor = "#ffffff"; // Default to white if invalid
+              contentData.columns[i].bgColor = "#ffffff"; 
             }
             if (contentData.columns[i].textColor && !isValidColorFormat(contentData.columns[i].textColor)) {
-              contentData.columns[i].textColor = "#000000"; // Default to black if invalid
+              contentData.columns[i].textColor = "#000000"; 
             }
           }
         }
       } else if (section === 'callToAction') {
-        // Validate CTA color properties
+
         if (contentData.bgColor && !isValidColorFormat(contentData.bgColor)) {
-          contentData.bgColor = "#1e3a8a"; // Default if invalid
+          contentData.bgColor = "#1e3a8a"; 
         }
         if (contentData.textColor && !isValidColorFormat(contentData.textColor)) {
-          contentData.textColor = "#ffffff"; // Default if invalid
+          contentData.textColor = "#ffffff";
         }
       }
-      
-      // Update section content in database
+
       const updatedContent = await contentModel.updateSectionContent(section, contentData);
       
       res.status(200).json({
@@ -314,22 +304,19 @@ const deleteMedia = async (req, res) => {
     if (!id) {
       return res.status(400).json({ error: 'Media ID parameter is required' });
     }
-    
-    // Get media file info before deleting
+
     const media = await contentModel.getMediaById(id);
     
     if (!media) {
       return res.status(404).json({ error: 'Media not found' });
     }
-    
-    // Delete record from database
+
     const deleted = await contentModel.deleteMedia(id);
     
     if (!deleted) {
       return res.status(500).json({ error: 'Failed to delete media from database' });
     }
-    
-    // Delete file from filesystem
+
     if (fs.existsSync(media.path)) {
       fs.unlinkSync(media.path);
     }
@@ -420,6 +407,7 @@ const createTheme = async (req, res) => {
  * @param {Object} req - Request object
  * @param {Object} res - Response object
  */
+
 const getAllThemes = async (req, res) => {
   try {
     const themes = await contentModel.getAllThemes();
@@ -430,7 +418,6 @@ const getAllThemes = async (req, res) => {
   }
 };
 
-// Add a new theme management endpoint
 const saveTheme = async (req, res) => {
   try {
     const { name, colors } = req.body;
@@ -438,12 +425,11 @@ const saveTheme = async (req, res) => {
     if (!name || !colors) {
       return res.status(400).json({ error: 'Theme name and colors are required' });
     }
-    
-    // Validate color values
+
     const validColors = { ...colors };
     for (const [key, value] of Object.entries(validColors)) {
       if (typeof value === 'string' && !/^#([0-9A-F]{3}){1,2}$/i.test(value)) {
-        // Set a default color if invalid
+
         if (key.includes('bg')) {
           validColors[key] = '#ffffff';
         } else {
@@ -464,7 +450,6 @@ const saveTheme = async (req, res) => {
   }
 };
 
-// Add new function to apply theme to content
 const applyTheme = async (req, res) => {
   try {
     const { themeId } = req.params;
@@ -473,17 +458,16 @@ const applyTheme = async (req, res) => {
       return res.status(400).json({ error: 'Theme ID is required' });
     }
     
-    // Get the theme
+
     const theme = await contentModel.getThemeById(themeId);
     
     if (!theme) {
       return res.status(404).json({ error: 'Theme not found' });
     }
     
-    // Get all content
+
     const content = await contentModel.getAllContent();
-    
-    // Apply theme colors to content
+
     if (content.hero) {
       content.hero.bgColor = theme.colors.heroBg || '#1e40af';
       content.hero.textColor = theme.colors.heroText || '#ffffff';
@@ -502,7 +486,7 @@ const applyTheme = async (req, res) => {
       content.callToAction.textColor = theme.colors.ctaText || '#ffffff';
     }
     
-    // Update each section with themed colors
+
     await contentModel.updateSectionContent('hero', content.hero);
     await contentModel.updateSectionContent('features', content.features);
     await contentModel.updateSectionContent('callToAction', content.callToAction);

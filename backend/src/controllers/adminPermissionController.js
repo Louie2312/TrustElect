@@ -1,14 +1,11 @@
 const { getAdminPermissions, setAdminPermissions, hasPermission } = require('../models/adminPermissionModel');
 
-/**
- * Get permissions for a specific admin
- */
+
 exports.getPermissions = async (req, res) => {
   try {
     const { adminId } = req.params;
     const permissions = await getAdminPermissions(adminId);
-    
-    // Convert from DB format to frontend format
+ 
     const formattedPermissions = {};
     permissions.forEach(perm => {
       formattedPermissions[perm.module] = {
@@ -19,9 +16,8 @@ exports.getPermissions = async (req, res) => {
       };
     });
     
-    // Log the permissions being returned
-    console.log(`GET permissions for admin ${adminId}:`, JSON.stringify(formattedPermissions));
-    
+
+
     res.json({ permissions: formattedPermissions });
   } catch (error) {
     console.error("Error getting permissions:", error);
@@ -29,23 +25,18 @@ exports.getPermissions = async (req, res) => {
   }
 };
 
-/**
- * Update permissions for a specific admin
- */
+
 exports.updatePermissions = async (req, res) => {
   try {
     const { adminId } = req.params;
     const { permissions } = req.body;
 
-    // Log the incoming permissions request
-    console.log(`PUT permissions for admin ${adminId}:`, JSON.stringify(permissions));
+   
 
-    // Basic validation
     if (!permissions || typeof permissions !== 'object') {
       return res.status(400).json({ message: "Invalid permissions format" });
     }
 
-    // Validate each module's permissions
     const validModules = ['users', 'elections', 'departments', 'notifications', 'reports'];
     const validActions = ['canView', 'canCreate', 'canEdit', 'canDelete'];
 
@@ -64,10 +55,8 @@ exports.updatePermissions = async (req, res) => {
       }
     }
 
-    // Save permissions to database
     await setAdminPermissions(adminId, permissions);
-    
-    // Log successful update
+ 
     console.log(`Successfully updated permissions for admin ${adminId}`);
     
     res.json({ 
@@ -81,15 +70,12 @@ exports.updatePermissions = async (req, res) => {
   }
 };
 
-/**
- * Debug endpoint to check permissions status for an admin
- */
+
 exports.checkPermissions = async (req, res) => {
   try {
     const { adminId } = req.params;
     const { module, action } = req.query;
-    
-    // Get all permissions for the admin
+
     const permissions = await getAdminPermissions(adminId);
     
     const formattedPermissions = {};
@@ -103,8 +89,7 @@ exports.checkPermissions = async (req, res) => {
     });
     
     let permissionCheck = null;
-    
-    // If module and action are specified, check that specific permission
+
     if (module && action) {
       permissionCheck = await hasPermission(adminId, module, action);
     }

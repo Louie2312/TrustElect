@@ -11,7 +11,6 @@ async function updateElectionStatuses() {
   try {
     await client.query('BEGIN');
     
-    // Get all elections that might need status updates
     const { rows: elections } = await client.query(
       `SELECT id, title, date_from, date_to, start_time, end_time, status 
        FROM elections 

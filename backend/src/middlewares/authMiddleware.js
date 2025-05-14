@@ -16,10 +16,8 @@ const verifyToken = async (req, res, next) => {
 
     const now = Math.floor(Date.now() / 1000);
     const timeToExpire = decoded.exp - now;
-    console.log(`Token expires in ${timeToExpire} seconds (${Math.floor(timeToExpire / 60)} minutes)`);
-
+ 
     req.user = decoded; 
-    // Set userId for easy access in controller functions
     req.userId = decoded.id;
     
   
@@ -31,13 +29,11 @@ const verifyToken = async (req, res, next) => {
         );
         
         if (rows.length > 0) {
-          // Add role_id to the user object
+        
           req.user.role_id = rows[0].role_id;
-          // Add is_first_login flag to the user object
+
           req.user.is_first_login = rows[0].is_first_login;
-      
-          
-          // Normalize role name for consistent checks
+
           if (req.user.role_id === 1) {
             req.user.normalizedRole = 'Super Admin';
           } else if (req.user.role_id === 2) {
@@ -51,54 +47,38 @@ const verifyToken = async (req, res, next) => {
         }
       } catch (dbError) {
         console.error('Error fetching user role_id:', dbError);
-        // Continue with token info only
+       
       }
     }
     
     next();
   } catch (error) {
-    console.error('Token verification failed:', error); // Debug log
+    console.error('Token verification failed:', error); 
     return res.status(403).json({ message: "Unauthorized. Invalid or expired token." });
   }
 };
 
-
-//Generic Role-Based Access Middleware
 const allowRoles = (...roles) => {
   return (req, res, next) => {
-    console.log('Checking roles:', { 
-      required: roles, 
-      user: req.user?.role,
-      role_id: req.user?.role_id,
-      normalizedRole: req.user?.normalizedRole
-    });
-    
-    // Check with multiple methods to ensure reliable role verification
+
     const roleMatch = roles.some(role => {
-      // Method 1: Direct match with token role string
+
       if (req.user?.role && req.user.role === role) {
-        console.log(`Role match by direct string: ${role}`);
         return true;
       }
-      
-      // Method 2: Match with normalized role
+
       if (req.user?.normalizedRole && req.user.normalizedRole === role) {
-        console.log(`Role match by normalized role: ${role}`);
         return true;
       }
-      
-      // Method 3: Match by role_id
+
       if (req.user?.role_id) {
         if (role === 'Super Admin' && req.user.role_id === 1) {
-          console.log(`Role match by role_id: Super Admin (1)`);
           return true;
         }
         if (role === 'Admin' && req.user.role_id === 2) {
-          console.log(`Role match by role_id: Admin (2)`);
           return true;
         }
         if (role === 'Student' && req.user.role_id === 3) {
-          console.log(`Role match by role_id: Student (3)`);
           return true;
         }
       }
@@ -107,13 +87,8 @@ const allowRoles = (...roles) => {
     });
     
     if (!roleMatch) {
-      console.log('Access denied for role:', {
-        requestedRole: roles,
-        userRole: req.user?.role,
-        userRoleId: req.user?.role_id
-      });
-      
-      return res.status(403).json({ 
+     
+    return res.status(403).json({ 
         message: `Access Denied. Only ${roles.join(", ")} allowed.`,
         currentRole: req.user?.normalizedRole || req.user?.role || 'No role'
       });
@@ -152,8 +127,6 @@ const verifyStudentRecord = async (req, res, next) => {
         });
       }
     }
-
-    // Verify student record exists and is active
     const student = await pool.query(
       `SELECT 1 FROM students WHERE id = $1 AND is_active = TRUE`,
       [req.user.studentId]
@@ -171,7 +144,7 @@ const verifyStudentRecord = async (req, res, next) => {
     res.status(500).json({ message: error.message });
   }
 };
-//Define Role-Based Middlewares
+
 const isSuperAdmin = allowRoles("Super Admin");
 const isAdmin = allowRoles("Admin");
 const isStudent = allowRoles("Student");

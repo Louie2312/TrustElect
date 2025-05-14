@@ -40,7 +40,6 @@ const createBallotWithPositions = async ({ election_id, description, positions }
         [ballot.id, position.name, position.max_choices || 1]
       );
 
-      // Create candidates with image URLs
       if (position.candidates?.length) {
         const candidateValues = position.candidates.map(candidate => 
           `(${createdPosition.id}, 

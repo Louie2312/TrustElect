@@ -119,12 +119,9 @@ exports.previewEligibleVoters = async (req, res) => {
 exports.getElections = async (req, res) => {
   try {
     let elections;
-    
-    // For superadmins, include creator information
-    if (req.user && req.user.role === 'superadmin') {
+      if (req.user && req.user.role === 'superadmin') {
       elections = await getAllElectionsWithCreator();
     } else {
-      // For regular admins and students, use the existing function
       elections = await getAllElections();
     }
     

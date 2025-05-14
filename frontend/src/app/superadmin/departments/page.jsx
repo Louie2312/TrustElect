@@ -37,13 +37,12 @@ export default function DepartmentsPage() {
         withCredentials: true
       });
   
-      console.log("Departments Response:", res.data);
+    
   
-      // Handle different response formats
+
       const departmentsArray = res.data.departments || res.data || [];
       setDepartments(departmentsArray);
-      
-      // After fetching departments, also refresh the admin list
+
       fetchAdmins();
     } catch (error) {
       console.error("Error fetching departments:", error);
@@ -79,7 +78,7 @@ export default function DepartmentsPage() {
         !(admin.role_id === 1 || (admin.department === "Administration" && !admin.employee_number))
       );
       
-      console.log("Filtered Admins:", filteredAdmins);
+
       setAdmins(filteredAdmins);
     } catch (error) {
       console.error("Error fetching admins:", error);
@@ -121,10 +120,9 @@ export default function DepartmentsPage() {
 
 
   const getAdminDetails = (adminId) => {
-    // Convert adminId to number for consistent comparison
+   
     const numericAdminId = Number(adminId);
     const admin = admins.find(admin => admin.id === numericAdminId);
-    console.log(`Looking for admin with ID ${numericAdminId}`, admin ? "Found" : "Not found", admins.length ? `(${admins.length} admins available)` : "(No admins loaded)");
     return admin;
   };
 
@@ -133,7 +131,6 @@ export default function DepartmentsPage() {
       <h1 className="text-2xl font-bold mb-4 text-black">Department Management</h1>
       {error && <p className="text-red-500 mb-4">{error}</p>}
 
-      {/* Search and Filter */}
       <div className="flex justify-between mb-4">
         <input
           type="text"

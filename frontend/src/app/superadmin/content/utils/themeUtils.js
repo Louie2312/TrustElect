@@ -86,8 +86,7 @@ export const updateCTASettings = (colorValue, purpose, mediaType, theme, landing
       buttonUrl: landingContent?.callToAction?.buttonUrl || "/contact"
     }
   };
-  
-  // Update landing content if available
+
   if (landingContent && setLandingContent) {
     const ctaConfig = purpose && ctaConfigs[purpose] ? ctaConfigs[purpose] : ctaConfigs.custom;
     

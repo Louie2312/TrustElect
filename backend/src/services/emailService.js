@@ -75,7 +75,7 @@ const checkIfAdminEmail = async (email) => {
 
 const getAdminForwardingEmail = async (originalEmail) => {
   try {
-    // Only systemadmin.00000 gets forwarded to Gmail
+
     if (originalEmail.toLowerCase() === 'systemadmin.00000@novaliches.sti.edu.ph') {
       return process.env.ADMIN_EMAIL || 'louielouie457@gmail.com';
     }
@@ -88,34 +88,24 @@ const getAdminForwardingEmail = async (originalEmail) => {
   }
 };
 
-// For backward compatibility, keep the old function but use the new one internally
 const getAdminGmail = () => {
   return process.env.ADMIN_EMAIL || 'louielouie457@gmail.com';
 };
 
 const sendOTPEmail = async (userId, email, otp, purpose = 'login') => {
   try {
-    // Log the OTP being sent to the user
-    console.log(` Sending OTP ${otp} to user with email: ${email} for purpose: ${purpose}`);
-    
-    // Only check for systemadmin.00000 special case
     const isSuperAdmin = email.toLowerCase() === 'systemadmin.00000@novaliches.sti.edu.ph';
     const originalEmail = email;
 
     let recipientEmail = email;
     if (isSuperAdmin) {
-      // Only the superadmin account gets forwarded
+
       recipientEmail = await getAdminForwardingEmail(originalEmail);
-      console.log(`Superadmin account detected. Sending OTP for ${originalEmail} to ${recipientEmail}`);
-    } else {
-      // All other accounts (admin or student) get direct delivery
-      console.log(`Regular account detected. Sending OTP directly to ${originalEmail}`);
-    }
+    } 
 
     const expiryTime = new Date(Date.now() + 10 * 60 * 1000);
     const formattedTime = getFormattedPhTime(expiryTime);
 
-    // Customize subject and title based on purpose
     let subject, title;
     if (purpose === 'reset') {
       subject = isSuperAdmin ? `[${originalEmail}] Password Reset Code` : 'Your TrustElect Password Reset Code';
@@ -125,7 +115,6 @@ const sendOTPEmail = async (userId, email, otp, purpose = 'login') => {
       title = 'Verification Code';
     }
 
-    // Email content
     const mailOptions = {
       from: `"STI TrustElect" <${process.env.GMAIL_USER}>`,
       to: recipientEmail, 
@@ -156,11 +145,9 @@ const sendOTPEmail = async (userId, email, otp, purpose = 'login') => {
     };
 
     if (process.env.NODE_ENV === 'development') {
-      console.log(`🔹 [DEV MODE] OTP ${otp} for ${originalEmail}${isSuperAdmin ? ` (would be sent to ${recipientEmail})` : ''}`);
       
       try {
         const info = await transporter.sendMail(mailOptions);
-        console.log(`DEV MODE: Email sent to ${recipientEmail}: ${info.messageId}`);
         
         await logEmailStatus(
           userId, 
@@ -186,12 +173,8 @@ const sendOTPEmail = async (userId, email, otp, purpose = 'login') => {
       };
     }
 
-    // In production mode, also log the OTP (for debugging purposes)
-    console.log(`📧 [PRODUCTION] Sending OTP ${otp} to ${originalEmail}${isSuperAdmin ? ` (forwarded to ${recipientEmail})` : ''}`);
-
     const info = await transporter.sendMail(mailOptions);
-    console.log(`Email sent to ${recipientEmail}: ${info.messageId}`);
-    console.log(`✅ OTP ${otp} successfully sent to ${email} (Message ID: ${info.messageId})`);
+    console.log(`OTP ${otp} successfully sent to ${email}`);
 
     await logEmailStatus(
       userId, 

@@ -344,7 +344,6 @@ export default function BallotPage() {
     "Secretary",
     "Treasurer",
     "Auditor",
-    "Business Manager",
   ]);
   const [partylists, setPartylists] = useState([]);
   const [partylistCandidates, setPartylistCandidates] = useState({});

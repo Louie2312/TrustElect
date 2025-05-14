@@ -10,15 +10,13 @@ import {
 import Image from 'next/image';
 import React from 'react';
 
-// Import components
 import CandidateFormModal from './components/CandidateFormModal';
 import PositionItem from './components/PositionItem';
 
 const fetchWithAuth = async (endpoint, options = {}) => {
   const token = Cookies.get('token');
   const apiUrl = BASE_URL || 'http://localhost:5000';
-  
-  // Remove /api prefix from the endpoint if it exists
+
   const normalizedEndpoint = endpoint.startsWith('/api') 
     ? endpoint 
     : `/api${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
@@ -42,41 +40,37 @@ const fetchWithAuth = async (endpoint, options = {}) => {
       },
     });
 
-    // Clone the response for error handling
     const responseClone = response.clone();
 
-    // Check if response is ok (status in the range 200-299)
     if (!response.ok) {
-      // Try to parse error as JSON first
+   
       try {
         const errorData = await response.json();
-        
-        // Special handling for "No ballot found" error - don't treat as fatal error
+
         if (errorData.message && errorData.message.includes('No ballot found')) {
           return null;
         }
         
         throw new Error(errorData.message || 'Request failed');
       } catch (e) {
-        // If JSON parsing fails, check if it's HTML
+
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('text/html')) {
           if (response.status === 404) {
-            // Return null instead of throwing for 404 errors to allow fallback logic
+
             return null;
           }
           throw new Error('Server returned an HTML error page. Please try again later.');
         }
-        
-        // If not HTML, try to get text content
+
         const errorText = await responseClone.text();
         if (errorText) {
-          // Check if the text might be unparseable JSON
+
           if (errorText.includes('{') && errorText.includes('}')) {
-            // Try to extract message with regex
+
             const messageMatch = errorText.match(/"message"\s*:\s*"([^"]+)"/);
             if (messageMatch && messageMatch[1]) {
-              // Special handling for "No ballot found" error - don't treat as fatal error
+
               if (messageMatch[1].includes('No ballot found')) {
                 return null;
               }
@@ -86,46 +80,36 @@ const fetchWithAuth = async (endpoint, options = {}) => {
           
           throw new Error(errorText);
         }
-        
-        // If all else fails, throw a generic error with status
+
         throw new Error(`Request failed with status ${response.status}`);
       }
     }
 
-    // Try to parse the response as JSON
     try {
       const jsonData = await response.json();
       console.log('API response:', jsonData);
       return jsonData;
     } catch (e) {
-      // If JSON parsing fails, check content type
       const contentType = response.headers.get('content-type');
       if (contentType && contentType.includes('text/html')) {
         throw new Error('Server returned HTML instead of JSON. Please try again later.');
       }
-      
-      // Try to get text content as a fallback
       try {
         const textData = await responseClone.text();
-        
-        // Check if the text might be JSON
+
         if (textData.includes('{') && textData.includes('}')) {
           try {
-            // Try to parse it as JSON
             return JSON.parse(textData);
           } catch (parseError) {
             console.error('Failed to parse text as JSON:', parseError);
           }
         }
-        
-        // If it's not JSON, return the text
         return textData;
       } catch (textError) {
         throw new Error('Invalid response from server');
       }
     }
   } catch (error) {
-    // Add more context to the error message
     if (error.message.includes('Failed to fetch')) {
       throw new Error('Unable to connect to the server. Please check your internet connection.');
     }
@@ -135,7 +119,7 @@ const fetchWithAuth = async (endpoint, options = {}) => {
 
 const fetchWithFormData = async (endpoint, formData, method = 'POST') => {
   const token = Cookies.get('token');
-  const apiUrl = BASE_URL || 'http://localhost:5000'; // Add fallback for BASE_URL
+  const apiUrl = BASE_URL || 'http://localhost:5000';
   
   console.log(`Making form data API request to: ${apiUrl}${endpoint}`);
   
@@ -147,26 +131,21 @@ const fetchWithFormData = async (endpoint, formData, method = 'POST') => {
       },
       body: formData,
     });
-    
-    console.log(`FormData response status: ${response.status} ${response.statusText}`);
-    
-    // Clone response for error handling
+  
     const responseClone = response.clone();
 
     if (!response.ok) {
       let errorMessage = `Request failed with status ${response.status}`;
       
       try {
-        // Try to parse as JSON first
         const errorData = await response.json();
         errorMessage = errorData.message || errorMessage;
       } catch (jsonError) {
-        // If not JSON, try to get the text
+
         try {
           const errorText = await responseClone.text();
-          // Check if the text might be JSON (but not parsed correctly)
+
           if (errorText.includes('{') && errorText.includes('}')) {
-            // Try to extract message with regex as a fallback
             const messageMatch = errorText.match(/"message"\s*:\s*"([^"]+)"/);
             if (messageMatch && messageMatch[1]) {
               errorMessage = messageMatch[1];
@@ -177,7 +156,6 @@ const fetchWithFormData = async (endpoint, formData, method = 'POST') => {
             errorMessage = errorText;
           }
         } catch (textError) {
-          // If both approaches fail, use the default error message
           console.error('Error extracting error details:', textError);
         }
       }
@@ -185,20 +163,16 @@ const fetchWithFormData = async (endpoint, formData, method = 'POST') => {
       throw new Error(errorMessage);
     }
 
-    // Try to parse the response
     try {
       const jsonData = await response.json();
       console.log('FormData API response:', jsonData);
       return jsonData;
     } catch (jsonError) {
-      // If JSON parsing fails, try text
       const textResponse = await responseClone.text();
       console.error('Invalid JSON in FormData response:', textResponse);
-      
-      // Try to parse the text as JSON manually
+
       if (textResponse.includes('{') && textResponse.includes('}')) {
         try {
-          // Last attempt with manual JSON parsing
           return JSON.parse(textResponse);
         } catch (e) {
           throw new Error('Failed to parse response from server');
@@ -230,65 +204,47 @@ const getImageUrl = (imagePath) => {
   return `${BASE_URL}/uploads/${imagePath}`;
 };
 
-// Helper function to extract ballot data regardless of response structure
 const extractBallotData = (response) => {
   console.log('Extracting ballot data from response:', response);
   
   if (!response) return null;
-  
-  // Case: Direct ballot object with positions
+
   if (response.positions && Array.isArray(response.positions)) {
     console.log('Found direct ballot with positions');
     return response;
   }
-  
-  // Case: { ballot: {...} }
+
   if (response.ballot && typeof response.ballot === 'object') {
     console.log('Found ballot in response.ballot');
     return response.ballot;
   }
-  
-  // Case: { data: {...} }
+
   if (response.data) {
-    // Case: { data: { ballot: {...} } }
     if (response.data.ballot && typeof response.data.ballot === 'object') {
-      console.log('Found ballot in response.data.ballot');
       return response.data.ballot;
     }
-    
-    // Case: { data: { positions: [...] } }
+
     if (response.data.positions && Array.isArray(response.data.positions)) {
-      console.log('Found positions in response.data.positions');
       return response.data;
     }
-    
-    // Case: data is the ballot itself
-    if (response.data.id || (response.data.positions && Array.isArray(response.data.positions))) {
-      console.log('Found ballot directly in response.data');
+
+    if (response.data.id || (response.data.positions && Array.isArray(response.data.positions))) { 
       return response.data;
     }
   }
-  
-  // Case: Direct API response with election info containing ballot
-  if (response.election && response.election.ballot) {
-    console.log('Found ballot in response.election.ballot');
+  if (response.election && response.election.ballot) {  
     return response.election.ballot;
   }
   
-  // Case: Response is array of ballots
+
   if (Array.isArray(response) && response.length > 0) {
-    console.log('Response is an array of ballots, using first item');
     return response[0];
   }
-  
-  console.log('Could not extract ballot data from response');
       return null;
 };
 
-// Direct function to get ballot by election
 const directGetBallotByElection = async (electionId) => {
-  console.log(`Directly fetching ballot for election ID: ${electionId}`);
-  
+ 
   const endpoints = [
     `/api/elections/${electionId}/ballot`,
     `/api/ballots/election/${electionId}`,
@@ -297,16 +253,13 @@ const directGetBallotByElection = async (electionId) => {
   ];
   
   for (const endpoint of endpoints) {
-    try {
-      console.log(`Trying endpoint: ${endpoint}`);
-      const response = await fetchWithAuth(endpoint);
-      console.log(`Response from ${endpoint}:`, response);
-      
+    try { 
+      const response = await fetchWithAuth(endpoint);    
       if (!response) continue;
       
       const ballotData = extractBallotData(response);
       if (ballotData) {
-        console.log('Successfully extracted ballot data:', ballotData);
+      
         return ballotData;
       }
   } catch (error) {
@@ -400,7 +353,7 @@ const deleteCandidate = async (candidateId) => {
   return response.json();
 };
 
-// Preview Modal Component
+
 const PreviewModal = ({ isOpen, onClose, ballot, onSave, election }) => {
   return (
     <div className="fixed inset-0 flex items-center justify-center p-4 z-50 bg-black bg-opacity-50">
@@ -479,18 +432,14 @@ const PreviewModal = ({ isOpen, onClose, ballot, onSave, election }) => {
   );
 };
 
-// Clean up the processor function
 const processElectionDetailsData = (electionResponse) => {
   if (!electionResponse) return null;
-  
-  // Extract ballot data either from ballot property or positions directly
   let ballotData = {
     id: electionResponse.ballot_id || (electionResponse.ballot ? electionResponse.ballot.id : null) || null,
     description: (electionResponse.ballot ? electionResponse.ballot.description : '') || '',
     positions: []
   };
-  
-  // Get positions - check all possible structures where positions could be located
+
   let positions = [];
   
   if (Array.isArray(electionResponse.positions)) {
@@ -498,19 +447,17 @@ const processElectionDetailsData = (electionResponse) => {
   } else if (electionResponse.ballot && Array.isArray(electionResponse.ballot.positions)) {
     positions = electionResponse.ballot.positions;
   }
-  
-  // If we have positions, process them
+
   if (positions.length > 0) {
     ballotData.positions = positions.map(position => {
-      // Handle both naming conventions (snake_case from API, camelCase from frontend)
+
       const processedPosition = {
         id: position.id || position.position_id,
         name: position.name || position.position_name || '',
         max_choices: parseInt(position.max_choices || 1, 10),
         candidates: []
       };
-      
-      // Process candidates
+
       if (position.candidates && Array.isArray(position.candidates)) {
         processedPosition.candidates = position.candidates.map(candidate => ({
           id: candidate.id,
@@ -526,8 +473,7 @@ const processElectionDetailsData = (electionResponse) => {
       return processedPosition;
     });
   }
-  
-  // Important: If we have positions but no ballot ID, create a temporary ID
+
   if (!ballotData.id && ballotData.positions.length > 0) {
     ballotData.id = `temp_${Date.now()}`;
   }
@@ -535,7 +481,6 @@ const processElectionDetailsData = (electionResponse) => {
   return ballotData;
 };
 
-// Helper functions to create default empty position and candidate objects
 const getEmptyPosition = () => ({
   id: `temp_${Date.now()}`,
   name: '',
@@ -558,8 +503,7 @@ export default function BallotPage() {
   const router = useRouter();
   const params = useParams();
   const electionId = params.id;
-  
-  // States
+
   const [ballot, setBallot] = useState({
     id: null,
     election_id: electionId,
@@ -580,44 +524,34 @@ export default function BallotPage() {
   const [previewBallot, setPreviewBallot] = useState(false);
   const [imagePreviews, setImagePreviews] = useState({});
 
-  // Fetch election and ballot data
   useEffect(() => {
     const loadData = async () => {
       try {
         setIsLoading(true);
         setApiError(null);
-        
-        console.log('Loading data for election ID:', electionId);
-        
-        // Step 1: Get election details
-        console.log('Fetching election details');
+      
         let electionDetails = null;
         
         try {
           const electionResponse = await fetchWithAuth(`/elections/${electionId}/details`);
-          console.log('Election response from primary endpoint:', electionResponse);
+        
           if (electionResponse && electionResponse.election) {
             electionDetails = electionResponse.election;
-            console.log('Election details from primary endpoint:', electionDetails);
+
           }
         } catch (error) {
           console.error('Error fetching from primary endpoint:', error);
         }
-        
-        // Try alternate endpoint if the first one fails
+
         if (!electionDetails) {
           try {
-            console.log('First endpoint failed, trying alternate endpoint');
-            const altElectionResponse = await fetchWithAuth(`/elections/${electionId}`);
-            console.log('Election response from alternate endpoint:', altElectionResponse);
-            
+          
+            const altElectionResponse = await fetchWithAuth(`/elections/${electionId}`);     
             if (altElectionResponse && altElectionResponse.election) {
               electionDetails = altElectionResponse.election;
             } else if (altElectionResponse) {
               electionDetails = altElectionResponse;
             }
-            
-            console.log('Election details from alternate endpoint:', electionDetails);
           } catch (error) {
             console.error('Error fetching from alternate endpoint:', error);
           throw new Error('Failed to fetch election details');
@@ -629,101 +563,78 @@ export default function BallotPage() {
         }
         
         setElection(electionDetails);
-        console.log('Successfully set election details to state');
-        
-        // Debug: Check if the election has a ballot already
+   
         if (electionDetails.ballot) {
-          console.log('Election already has ballot data attached:', electionDetails.ballot);
+          
         }
         
-        // Check if election is upcoming or pending approval
         if (electionDetails.status !== 'upcoming' && !electionDetails.needs_approval) {
           setApiError("Only upcoming or pending elections can be edited");
           setIsLoading(false);
           return;
         }
-        
-        // Step 2: Try to get existing ballot directly
-        console.log('Directly fetching ballot data for election:', electionId);
+
         const ballotData = await directGetBallotByElection(electionId);
-        
-        // Process the ballot data if found
+
         if (ballotData) {
-          console.log('Processing existing ballot data:', ballotData);
-          
-          // Try to get positions from different possible locations in the response
+       
           let positions = [];
           
           if (Array.isArray(ballotData.positions)) {
             positions = ballotData.positions;
-            console.log('Found positions in ballotData.positions:', positions.length);
+          
           } else if (ballotData.ballot && Array.isArray(ballotData.ballot.positions)) {
             positions = ballotData.ballot.positions;
-            console.log('Found positions in ballotData.ballot.positions:', positions.length);
+         
           } else if (electionDetails.ballot && Array.isArray(electionDetails.ballot.positions)) {
             positions = electionDetails.ballot.positions;
-            console.log('Found positions in electionDetails.ballot.positions:', positions.length);
+         
           } else if (electionDetails.positions && Array.isArray(electionDetails.positions)) {
             positions = electionDetails.positions;
-            console.log('Found positions in electionDetails.positions:', positions.length);
+          
           }
-          
-          console.log('Found positions:', positions);
-          
+    
           if (positions.length === 0) {
             console.warn('No positions found in ballot data, checking for alternate formats');
-            
-            // Check for voting ballot format (different API structure)
+          
             if (ballotData.id && !ballotData.positions && ballotData.ballot_id) {
-              console.log('Ballot appears to be in a different format, trying to fetch positions separately');
-              
+             
               try {
                 const positionsResponse = await fetchWithAuth(`/api/ballots/${ballotData.id}/positions`);
                 if (positionsResponse && Array.isArray(positionsResponse)) {
                   positions = positionsResponse;
-                  console.log('Found positions from separate request:', positions.length);
                 }
               } catch (error) {
                 console.error('Error fetching positions separately:', error);
               }
             }
           }
-          
-          // Map positions and candidates with proper structure for editing
+
           const formattedPositions = positions.map(position => {
-            console.log('Formatting position:', position);
             
-            // Get candidates array, handling different possible structures
             let candidates = [];
             if (Array.isArray(position.candidates)) {
               candidates = position.candidates;
               console.log(`Found ${candidates.length} candidates in position`);
             } else if (position.position_id) {
-              // Try alternate format with position_id and candidates as a JSON string
+            
               try {
                 if (typeof position.candidates === 'string' && position.candidates.startsWith('[')) {
                   candidates = JSON.parse(position.candidates);
-                  console.log(`Parsed ${candidates.length} candidates from JSON string`);
+              
                 }
               } catch (error) {
                 console.error('Error parsing candidates JSON:', error);
               }
-            } else {
-              console.log('No candidates array found in position, checking for separate API endpoint');
-              
-              // Try to fetch candidates separately if needed (for future implementation)
-            }
+            } 
             
-            // Map candidates to a consistent format
             const formattedCandidates = candidates.map(candidate => {
-              console.log('Formatting candidate:', candidate);
-              
-              // Extract first and last names if they are combined
+          
               let firstName = candidate.first_name || '';
               let lastName = candidate.last_name || '';
               
               if (!firstName && !lastName && candidate.name) {
-                // Split the full name into first and last
+              
                 const nameParts = candidate.name.split(' ');
                 if (nameParts.length > 1) {
                   firstName = nameParts[0];
@@ -733,14 +644,11 @@ export default function BallotPage() {
                 }
               }
               
-              // Prepare image
                       let imageUrl = null;
                       if (candidate.image_url || candidate.photo) {
                         const imagePath = candidate.image_url || candidate.photo;
                 imageUrl = getImageUrl(imagePath);
-                console.log('Processed image URL:', imageUrl);
-                          
-                // Add to image previews
+            
                 if (imageUrl) {
                         setImagePreviews(prev => ({
                           ...prev,
@@ -759,8 +667,7 @@ export default function BallotPage() {
                         image_url: candidate.image_url || candidate.photo || null
                       };
             });
-            
-            // Extract position id and name
+
             const positionId = position.id || position.position_id || `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
             const positionName = position.name || position.position_name || '';
             const maxChoices = parseInt(position.max_choices || position.max_selection || 1, 10);
@@ -781,12 +688,10 @@ export default function BallotPage() {
                 }
               ]
             };
-            
-            console.log('Formatted position:', formattedPosition);
+
             return formattedPosition;
           });
-          
-          // Update ballot state with existing data
+
           const newBallotState = {
             id: ballotData.id || ballotData.ballot_id || `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             election_id: electionId,
@@ -810,13 +715,11 @@ export default function BallotPage() {
               }
             ]
           };
-          
-          console.log('Setting ballot state to:', newBallotState);
+           
           setBallot(newBallotState);
-          console.log('Ballot state set successfully with positions:', formattedPositions.length);
+
         } else {
-          // Initialize empty ballot for a new creation
-          console.log('No existing ballot found, initializing empty ballot');
+
           setBallot({
             id: null,
             election_id: electionId,
@@ -854,10 +757,9 @@ export default function BallotPage() {
     }
   }, [electionId]);
 
-  // Add a window beforeunload event listener to warn about unsaved changes
   useEffect(() => {
     const handleBeforeUnload = (e) => {
-      // Check if there are any modified fields that aren't saved
+
       const hasPendingChanges = ballot.positions.some(position => 
         position.candidates.some(candidate => candidate._pendingImage)
       );
@@ -876,7 +778,6 @@ export default function BallotPage() {
     };
   }, [ballot]);
 
-  // Show loading state
   if (isLoading || !election) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -888,7 +789,6 @@ export default function BallotPage() {
     );
   }
 
-  // Show error state
   if (apiError) {
     return (
       <div className="max-w-3xl mx-auto p-6 mt-10">
@@ -911,11 +811,8 @@ export default function BallotPage() {
       </div>
     );
   }
-
-  // Update position change handler without trackChanges
   const handlePositionChange = (positionId, field, value) => {
-    console.log(`Updating position ${positionId}, field ${field} to:`, value);
-    
+  
     setBallot(prev => ({
       ...prev,
       positions: prev.positions.map(pos => 
@@ -924,9 +821,7 @@ export default function BallotPage() {
     }));
   };
 
-  // Update candidate change handler without trackChanges
   const handleCandidateChange = (positionId, candidateId, field, value) => {
-    console.log(`Updating candidate ${candidateId} in position ${positionId}, field ${field} to:`, value);
     
     setBallot(prev => ({
       ...prev,
@@ -941,16 +836,14 @@ export default function BallotPage() {
     }));
   };
 
-  // Update description change handler
   const handleBallotChange = (e) => {
     const { name, value } = e.target;
-    console.log(`Updating ballot ${name} to:`, value);
+   
     setBallot(prev => ({ ...prev, [name]: value }));
   };
 
-  // Adding a new position
   const handleAddPosition = () => {
-    // Create a new position with a temporary ID and one empty candidate
+  
     const newPosition = {
       id: `temp_${Date.now()}`,
       name: '',
@@ -958,8 +851,7 @@ export default function BallotPage() {
       display_order: ballot.positions.length + 1,
       candidates: [getEmptyCandidate()]
     };
-    
-    console.log("Adding new position:", newPosition);
+
     
     setBallot(prev => ({
       ...prev,
@@ -967,7 +859,7 @@ export default function BallotPage() {
     }));
   };
 
-  // Deleting a position
+ 
   const handleDeletePosition = async (positionId) => {
     if (window.confirm('Are you sure you want to delete this position? This will also delete all candidates under this position.')) {
       setIsLoading(prev => ({
@@ -976,16 +868,13 @@ export default function BallotPage() {
       }));
       
       try {
-        // Check if it's a temporary position (not yet saved to database)
         const isTemporary = positionId.toString().startsWith('temp_');
-        
-        // Just remove it from the state
+
         setBallot(prev => ({
           ...prev,
           positions: prev.positions.filter(pos => pos.id !== positionId)
         }));
-        
-        // If it was empty, add an empty position
+
         setBallot(prev => {
           if (prev.positions.length === 0) {
             return {
@@ -997,15 +886,13 @@ export default function BallotPage() {
         });
         
         setSuccess(isTemporary ? 'Position removed' : 'Position deleted');
-        
-        // Clear any success message after 3 seconds
+
         setTimeout(() => {
           setSuccess(null);
         }, 3000);
       } catch (error) {
         setApiError(`Error deleting position: ${error.message}`);
-        
-        // Clear error after 3 seconds
+
         setTimeout(() => {
           setApiError(null);
         }, 3000);
@@ -1018,7 +905,6 @@ export default function BallotPage() {
     }
   };
 
-  // Start adding a new candidate
   const handleAddCandidate = (positionId) => {
     try {
       setIsLoading(true);
@@ -1057,7 +943,7 @@ export default function BallotPage() {
   // Handle direct image upload for a candidate
   const handleImageUpload = async (posId, candId, file) => {
     try {
-      // Validate file
+
       if (!file || !file.type.match('image.*')) {
         setErrors(prev => ({
           ...prev,
@@ -1065,8 +951,7 @@ export default function BallotPage() {
         }));
         return;
       }
-      
-      // Validate file size (max 2MB)
+
       if (file.size > 2 * 1024 * 1024) {
         setErrors(prev => ({
           ...prev,
@@ -1074,39 +959,31 @@ export default function BallotPage() {
         }));
         return;
       }
-      
-      // Create a preview URL for the image immediately
+
       const previewUrl = URL.createObjectURL(file);
         setImagePreviews(prev => ({
           ...prev,
         [candId]: previewUrl
         }));
-      
-      // First, upload just the image
+
       const formData = new FormData();
       formData.append('image', file);
       
       try {
-        // Upload the image to the dedicated endpoint
         const imageResponse = await fetchWithFormData('/api/ballots/candidates/upload-image', formData);
-        
-        console.log('Image upload response:', imageResponse);
-        
+      
         if (!imageResponse || (!imageResponse.success && !imageResponse.filePath && !imageResponse.image_url)) {
           throw new Error('Failed to upload image');
         }
-        
-        // Extract the file path from the response
+
         const filePath = imageResponse.filePath || imageResponse.image_url || 
                         (imageResponse.data ? imageResponse.data.filePath || imageResponse.data.image_url : null);
         
         if (!filePath) {
           throw new Error('No file path returned from server');
         }
-        
-        console.log('Image uploaded successfully, file path:', filePath);
-        
-        // Update the ballot state with the new image URL
+
+
         setBallot(prev => ({
         ...prev,
           positions: prev.positions.map(pos => 
@@ -1116,20 +993,18 @@ export default function BallotPage() {
                 cand.id === candId ? {
                   ...cand,
                   image_url: filePath,
-                  _pendingImage: null // Clear pending image
+                  _pendingImage: null 
                 } : cand
               )
             } : pos
           )
         }));
-        
-        // Show success message
+
         setSuccess('Image uploaded successfully');
         setTimeout(() => setSuccess(null), 3000);
       } catch (uploadError) {
         console.error('Image upload failed:', uploadError);
-        
-        // Store the file for later upload when saving the candidate
+
         setBallot(prev => ({
           ...prev,
           positions: prev.positions.map(pos => 
@@ -1144,15 +1019,13 @@ export default function BallotPage() {
             } : pos
           )
         }));
-        
-        // Show error
+
         setErrors(prev => ({
           ...prev,
           [`candidate_${candId}_image`]: uploadError.message || 'Failed to upload image'
         }));
       }
-      
-      // Clear any previous errors
+
       setErrors(prev => {
         const newErrors = { ...prev };
         delete newErrors[`candidate_${candId}_image`];
@@ -1167,7 +1040,6 @@ export default function BallotPage() {
     }
   };
 
-  // Delete candidate
   const handleDeleteCandidate = async (positionId, candidateId) => {
     if (window.confirm('Are you sure you want to delete this candidate?')) {
       setIsLoading(prev => ({
@@ -1176,10 +1048,8 @@ export default function BallotPage() {
       }));
       
       try {
-        // Check if it's a temporary candidate (not yet saved to database)
         const isTemporary = candidateId.toString().startsWith('temp_');
-        
-        // Remove from state
+
         setBallot(prev => ({
           ...prev,
           positions: prev.positions.map(pos => {
@@ -1192,8 +1062,6 @@ export default function BallotPage() {
             return pos;
           })
         }));
-        
-        // If this was the last candidate, add an empty one
         setBallot(prev => {
           const updatedPositions = prev.positions.map(pos => {
             if (pos.id === positionId && pos.candidates.length === 0) {
@@ -1212,8 +1080,7 @@ export default function BallotPage() {
         });
         
         setSuccess(isTemporary ? 'Candidate removed' : 'Candidate deleted');
-        
-        // Clear success message after 3 seconds
+
         setTimeout(() => {
           setSuccess(null);
         }, 3000);
@@ -1234,7 +1101,6 @@ export default function BallotPage() {
     }
   };
 
-  // Validate form
   const validateForm = () => {
     const newErrors = {};
   
@@ -1269,19 +1135,16 @@ export default function BallotPage() {
     setPreviewBallot(true);
   };
 
-  // Add handleSaveFromPreview function
   const handleSaveFromPreview = async () => {
     setPreviewBallot(false);
     await handleSaveAllChanges();
   };
 
-  // Handle save all changes
   const handleSaveAllChanges = async () => {
     try {
       setIsLoading(true);
       setApiError(null);
-      
-      // Validate positions before saving
+
       const positionErrors = {};
       ballot.positions.forEach(position => {
         if (!position.name || position.name.trim() === '') {
@@ -1299,16 +1162,10 @@ export default function BallotPage() {
         setErrors(prev => ({ ...prev, ...positionErrors }));
         throw new Error('Please fix the errors before saving');
       }
-      
-      console.log('Saving ballot changes... Current ballot state:', ballot);
-      
-      // Step 1: Determine if we're updating or creating
+
       let ballotId = ballot.id;
       const isUpdate = ballotId && !ballotId.toString().startsWith('temp_');
-      
-      console.log(`Operation type: ${isUpdate ? 'UPDATE' : 'CREATE'}, Ballot ID: ${ballotId}`);
-      
-      // Prepare ballot data for API submission
+
       const apiData = {
         election_id: ballot.election_id,
         description: ballot.description,
@@ -1327,13 +1184,11 @@ export default function BallotPage() {
           }))
         }))
       };
-      
-      console.log('Submitting ballot data:', apiData);
-      
+
       let response;
       try {
         if (ballot.id && !ballot.id.startsWith('temp_')) {
-          // Update existing ballot
+
           response = await fetchWithAuth(`/ballots/${ballot.id}`, {
             method: 'PUT',
             body: JSON.stringify(apiData)
@@ -1350,18 +1205,15 @@ export default function BallotPage() {
         
         setIsLoading(false);
         setPreviewBallot(false);
-        
-        // Navigate back to election details page
+
         router.push(`/superadmin/election/${electionId}`);
       } catch (apiError) {
         console.error('API error saving ballot:', apiError);
         
         if (apiError.message === "Ballot created successfully" || 
             apiError.message === "Ballot updated successfully") {
-          // This is actually a success message formatted as an error
           setIsLoading(false);
-          
-          // Navigate back to election details page
+
           router.push(`/superadmin/election/${electionId}`);
           } else {
           throw apiError;
@@ -1372,7 +1224,6 @@ export default function BallotPage() {
       
       if (error.message === "Ballot created successfully" || 
           error.message === "Ballot updated successfully") {
-        // Navigate back to election details page
         router.push(`/superadmin/election/${electionId}`);
       } else {
         setApiError(error.message || "An unexpected error occurred");
@@ -1382,17 +1233,14 @@ export default function BallotPage() {
     }
   };
 
-  // Handler to confirm deletion of a position or candidate
   const confirmDelete = (type, id) => {
     setDeleteConfirm({ type, id, show: true });
   };
 
-  // Handler to cancel deletion
   const cancelDelete = () => {
     setDeleteConfirm({ type: "", id: null, show: false });
   };
 
-  // Handler to execute the deletion
   const executeDelete = async () => {
     try {
       setIsLoading(true);
@@ -1433,7 +1281,6 @@ export default function BallotPage() {
     }
   };
 
-  // Return the JSX for the ballot editing UI
   return (
     <div className="max-w-4xl mx-auto p-4">
       {previewBallot && (

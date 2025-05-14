@@ -14,7 +14,7 @@ const PartylistCard = ({
       <div className="grid grid-cols-12 gap-4">
    
         <div className="col-span-2">
-          <div className="text-sm font-medium text-gray-500 mb-2">Logo</div>
+          <div className="text-sm font-medium text-black mb-2">Logo</div>
           {partylist.logo_url ? (
             <img 
               src={`http://localhost:5000${partylist.logo_url}`} 
@@ -29,28 +29,28 @@ const PartylistCard = ({
         </div>
 
         <div className="col-span-2">
-          <div className="text-sm font-medium text-gray-500 mb-2">Partylist Name</div>
-          <h4 className={`text-lg font-semibold ${isArchived ? 'text-gray-600' : 'text-black'}`}>
+          <div className="text-sm font-medium text-black mb-2">Partylist Name</div>
+          <h4 className={`text-lg font-semibold ${isArchived ? 'text-black' : 'text-black'}`}>
             {partylist.name}
           </h4>
         </div>
  
         <div className="col-span-2">
-          <div className="text-sm font-medium text-gray-500 mb-2">Slogan</div>
-          <p className={`text-sm ${isArchived ? 'text-gray-500' : 'text-gray-600'}`}>
+          <div className="text-sm font-medium text-black  mb-2">Slogan</div>
+          <p className={`text-sm ${isArchived ? 'text-black' : 'text-black'}`}>
             {partylist.slogan || "-"}
           </p>
         </div>
 
         <div className="col-span-3">
-          <div className="text-sm font-medium text-gray-500 mb-2">Platform/Advocacy</div>
-          <div className={`text-sm max-h-28 overflow-y-auto pr-2 whitespace-pre-wrap ${isArchived ? 'text-gray-500' : 'text-gray-600'}`}>
+          <div className="text-sm font-medium text-black mb-2">Platform/Advocacy</div>
+          <div className={`text-sm max-h-28 overflow-y-auto pr-2 whitespace-pre-wrap ${isArchived ? 'text-black' : 'text-black'}`}>
             {partylist.advocacy || "-"}
           </div>
         </div>
 
         <div className="col-span-3">
-          <div className="text-sm font-medium text-gray-500 mb-2">Actions</div>
+          <div className="text-sm font-medium text-black mb-2">Actions</div>
           {isArchived ? (
             <div className="flex flex-wrap gap-2">
               <button

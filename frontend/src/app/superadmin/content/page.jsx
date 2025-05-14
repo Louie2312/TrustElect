@@ -5,7 +5,6 @@ import { HeroSection, FeaturesSection, CTASection, ThemesSection, CandidatesSect
 import * as utils from './utils';
 import { updateAllBackgrounds, updateCTASettings } from './utils/themeUtils';
 
-// API base URL
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export default function ContentManagement() {
@@ -13,8 +12,7 @@ export default function ContentManagement() {
   const [saveStatus, setSaveStatus] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
-  
-  // Theme management state
+
   const [themes, setThemes] = useState([]);
   const [activeTheme, setActiveTheme] = useState(null);
   const [newTheme, setNewTheme] = useState({
@@ -30,11 +28,9 @@ export default function ContentManagement() {
     }
   });
   
-  // Track initial content for detecting changes
   const [initialContent, setInitialContent] = useState(null);
-  const [contentTab, setContentTab] = useState('hero'); // Track active content tab
+  const [contentTab, setContentTab] = useState('hero'); 
 
-  // Content sections state
   const [content, setContent] = useState({
     hero: {
       title: "",
@@ -73,20 +69,20 @@ export default function ContentManagement() {
   const [landingContent, setLandingContent] = useState({
     hero: {
       title: "Secure Digital Voting Platform",
-      subtitle: "Empower your educational institution with reliable election technology",
+      subtitle: "STI TrustElect Voting System",
       videoUrl: null,
       posterImage: null,
-      bgColor: "#1e40af", // Default hero background color
-      textColor: "#ffffff" // Default hero text color
+      bgColor: "#1e40af",
+      textColor: "#ffffff" 
     },
     features: {
       columns: [
         {
           title: "Easy Setup",
-          description: "Simple election configuration process",
+          description: "Simple election  process",
           imageUrl: null,
-          bgColor: "#ffffff", // Default card background color
-          textColor: "#000000"  // Default card text color
+          bgColor: "#ffffff", 
+          textColor: "#000000"  
         },
         {
           title: "Secure Voting",
@@ -97,7 +93,7 @@ export default function ContentManagement() {
         },
         {
           title: "Real-time Results",
-          description: "Instant counting and visualization",
+          description: "Instant counting and results",
           imageUrl: null,
           bgColor: "#ffffff",
           textColor: "#000000"
@@ -105,12 +101,12 @@ export default function ContentManagement() {
       ]
     },
     callToAction: {
-      title: "Ready to modernize your election process?",
-      subtitle: "Join thousands of educational institutions using TrustElect",
+      title: "Ready to Vote?",
+      subtitle: "Start your experience with TrustElect.",
       buttonText: "Contact Us",
       enabled: true,
-      bgColor: "#1e3a8a", // Default CTA background color
-      textColor: "#ffffff",  // Default CTA text color
+      bgColor: "#1e3a8a", 
+      textColor: "#ffffff",  
       mediaType: null,
       mediaPosition: null,
       purpose: null
@@ -118,8 +114,8 @@ export default function ContentManagement() {
     candidates: {
       title: "Election Candidates",
       subtitle: "Meet the candidates running in this election",
-      sectionBgColor: "#f9fafb", // Default section background
-      textColor: "#000000", // Default text color
+      sectionBgColor: "#f9fafb", 
+      textColor: "#000000", 
       items: []
     }
   });
@@ -129,7 +125,6 @@ export default function ContentManagement() {
     fetchThemes();
   }, []);
 
-  // Apply active theme when it changes
   useEffect(() => {
     if (activeTheme) {
       console.log("Active theme changed, applying colors:", activeTheme.name);
@@ -144,9 +139,7 @@ export default function ContentManagement() {
     }
   }, [landingContent, initialContent]);
 
-  // Validate Feature Card 1 content
   const validateFeatureCard1 = () => {
-    // Check if feature card 1 exists and has valid image URL
     if (landingContent.features?.columns?.[0]?.imageUrl) {
       console.log("Feature Card 1 has an image URL:", landingContent.features.columns[0].imageUrl);
       return true;
@@ -156,7 +149,6 @@ export default function ContentManagement() {
     }
   };
 
-  // Fetch content from API
   const fetchContent = async () => {
     await utils.fetchContent(
       API_URL,
@@ -167,32 +159,26 @@ export default function ContentManagement() {
     );
   };
 
-  // Fetch themes from API
   const fetchThemes = async () => {
     await utils.fetchThemes(API_URL, setThemes, setActiveTheme);
   };
 
-  // Save themes to localStorage
   const saveThemes = (updatedThemes) => {
     localStorage.setItem('trustElectThemes', JSON.stringify(updatedThemes));
   };
 
-  // Update hero section
   const updateHero = (field, value) => {
     utils.updateHero(field, value, landingContent, setLandingContent);
   };
 
-  // Update feature column
   const updateFeature = (index, field, value) => {
     utils.updateFeature(index, field, value, landingContent, setLandingContent);
   };
 
-  // Update call to action
   const updateCTA = (field, value) => {
     utils.updateCTA(field, value, landingContent, setLandingContent);
   };
 
-  // Update candidates section
   const updateCandidates = (field, value) => {
     setLandingContent(prev => ({
       ...prev,
@@ -203,27 +189,22 @@ export default function ContentManagement() {
     }));
   };
 
-  // Handle theme color change
   const handleThemeColorChange = (colorKey, colorValue) => {
     utils.handleThemeColorChange(colorKey, colorValue, newTheme, setNewTheme);
   };
-  
-  // Handle bulk background update
+
   const handleBulkBackgroundUpdate = (color, theme) => {
-    // Update the theme with the new background color
+ 
     const updatedTheme = updateAllBackgrounds(color, theme);
-    
-    // If this is the active theme, apply changes immediately
+
     if (theme.isActive) {
       applyThemeColors(updatedTheme);
     }
     
     return updatedTheme;
   };
-  
-  // Handle CTA update
+
   const handleCTAUpdate = (color, purpose, mediaType, theme) => {
-    // Update the theme with new CTA settings
     const updatedTheme = updateCTASettings(
       color, 
       purpose, 
@@ -232,8 +213,7 @@ export default function ContentManagement() {
       landingContent, 
       setLandingContent
     );
-    
-    // If this is the active theme, apply changes immediately
+ 
     if (theme.isActive) {
       applyThemeColors(updatedTheme);
     }
@@ -241,7 +221,6 @@ export default function ContentManagement() {
     return updatedTheme;
   };
 
-  // Apply theme colors
   const handleApplyThemeColors = (theme) => {
     utils.applyThemeColors(
       theme, 
@@ -253,16 +232,13 @@ export default function ContentManagement() {
     );
   };
 
-  // Handle file uploads
   const handleFileUpload = (type, index, e) => {
     const file = e.target.files[0];
     if (!file) return;
-    
-    // Create preview URL
+
     const localUrl = URL.createObjectURL(file);
     
     if (type === 'heroVideo') {
-      // Check video file size (50MB limit)
       if (file.size > 50 * 1024 * 1024) {
         alert("Video file is too large. Maximum size is 50MB.");
         e.target.value = '';
@@ -272,7 +248,6 @@ export default function ContentManagement() {
       updateHero('videoUrl', localUrl);
     } 
     else if (type === 'heroPoster') {
-      // Check image file size (5MB limit)
       if (file.size > 5 * 1024 * 1024) {
         alert("Image file is too large. Maximum size is 5MB.");
         e.target.value = '';
@@ -282,41 +257,33 @@ export default function ContentManagement() {
       updateHero('posterImage', localUrl);
     } 
     else if (type === 'featureImage') {
-      // Check image file size (5MB limit)
       if (file.size > 5 * 1024 * 1024) {
         alert("Image file is too large. Maximum size is 5MB.");
         e.target.value = '';
         return;
       }
-      
-      // Special debugging for Feature Card 1 (index 0)
+
       if (index === 0) {
         console.log("FEATURE CARD 1 IMAGE UPLOAD - index:" + index);
         console.log("Element ID:", e.target.id);
         console.log("Element data-feature-index before:", e.target.getAttribute('data-feature-index'));
       }
-      
-      // Log the index to verify correct association
+
       console.log(`Updating feature image ${index} with URL ${localUrl}`);
-      
-      // Set ID first to ensure it's properly set
+
       e.target.id = `feature-image-${index}`;
-      
-      // Ensure data attribute is correctly set - force it to be a string
+
       e.target.setAttribute('data-feature-index', String(index));
-      
-      // Double-check that attributes were correctly set
+ 
       if (index === 0) {
         console.log("Element data-feature-index after:", e.target.getAttribute('data-feature-index'));
         console.log("Element ID after:", e.target.id);
       }
-      
-      // Update UI with local URL preview
+
       updateFeature(index, 'imageUrl', localUrl);
     }
   };
 
-  // Handle removing images
   const removeImage = (type, index) => {
     if (type === 'heroVideo') {
       updateHero('videoUrl', null);
@@ -332,38 +299,30 @@ export default function ContentManagement() {
     setTimeout(() => setSaveStatus(''), 3000);
   };
 
-  // Special handler for Feature Card 1 to completely isolate it from other components
   const handleFeatureCard1Upload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    
-    // Check image file size (5MB limit)
+
     if (file.size > 5 * 1024 * 1024) {
       alert("Image file is too large. Maximum size is 5MB.");
       e.target.value = '';
       return;
     }
-    
-    // Create preview URL
+
     const localUrl = URL.createObjectURL(file);
     
-    console.log("FEATURE CARD 1 IMAGE UPLOAD (DEDICATED HANDLER)");
-    console.log("File name:", file.name);
-    console.log("Preview URL:", localUrl);
-    
-    // Explicitly set attributes to ensure correct processing
+   
+
     const input = document.getElementById('feature-image-0');
     if (input) {
       input.setAttribute('data-feature-index', '0');
       input.setAttribute('data-section', 'feature');
-      console.log("Input attributes set correctly for Feature Card 1");
+
     }
-    
-    // Update the state for feature card 1
+
     updateFeature(0, 'imageUrl', localUrl);
   };
 
-  // Save section content to API
   const saveSectionContent = async (section) => {
     setIsLoading(true);
     setSaveStatus(`Saving ${section} content...`);
@@ -371,8 +330,7 @@ export default function ContentManagement() {
     try {
       const formData = new FormData();
       let contentData;
-      
-      // Add section-specific content to formData
+
       if (section === 'hero') {
         contentData = {
           title: landingContent.hero.title,
@@ -383,7 +341,6 @@ export default function ContentManagement() {
           textColor: landingContent.hero.textColor
         };
 
-        // Add video file if selected
         const videoInput = document.querySelector('input[type="file"][accept*="video"]');
         if (videoInput && videoInput.files.length > 0) {
           formData.append('heroVideo', videoInput.files[0]);
@@ -394,86 +351,61 @@ export default function ContentManagement() {
         }
 
         const imageInput = document.querySelector('#hero-poster-input');
-        console.log('Hero image input found:', imageInput ? 'Yes' : 'No');
+
         
         if (imageInput && imageInput.files.length > 0) {
-          console.log('Adding hero poster file:', imageInput.files[0].name);
+       
           formData.append('heroPoster', imageInput.files[0]);
         }
         
-        // Add removal flag if poster was removed
         if (landingContent.hero.posterImage === null) {
           formData.append('removeHeroPoster', 'true');
         }
       } else if (section === 'features') {
-        // Get theme colors if they exist
+   
         const themeFeatureBg = activeTheme?.colors?.featureBg || "#ffffff";
         const themeFeatureText = activeTheme?.colors?.featureText || "#000000";
         const themeFeatureSectionBg = activeTheme?.colors?.featureSectionBg || "#f9fafb";
-        
-        // Create a deep copy to avoid reference issues
+
         contentData = {
-          // Add section background color
+
           sectionBgColor: themeFeatureSectionBg,
           columns: landingContent.features.columns.map(column => ({
             title: column.title,
             description: column.description,
             imageUrl: column.imageUrl,
-            // Apply consistent theme colors - individual column colors are deprecated
             bgColor: themeFeatureBg,
             textColor: themeFeatureText
           }))
         };
 
-        console.log('Features content data before sending:', JSON.stringify(contentData));
-
-        // Diagnostic: list all file inputs on the page
         const allFileInputs = document.querySelectorAll('input[type="file"]');
-        console.log(`Found ${allFileInputs.length} file inputs on the page`);
         allFileInputs.forEach((input, i) => {
           const dataIndex = input.getAttribute('data-feature-index');
-          console.log(`File input ${i}:`, input.accept, 'data-feature-index:', dataIndex);
         });
 
-        // Add feature images if selected - using more specific selector with exact feature index
         landingContent.features.columns.forEach((column, index) => {
-          // For Feature Card 1 (index 0), use the specific ID selector
           let fileInput;
           if (index === 0) {
             fileInput = document.getElementById('feature-image-0');
-            console.log("FEATURE CARD 1: Using ID selector for upload, input found:", fileInput ? "Yes" : "No");
-            
-            // Extra validation for Feature Card 1
             if (fileInput) {
-              console.log("Feature Card 1 input properties:");
-              console.log("- data-feature-index:", fileInput.getAttribute('data-feature-index'));
-              console.log("- data-section:", fileInput.getAttribute('data-section'));
-              console.log("- id:", fileInput.id);
-              console.log("- Has files:", fileInput.files.length > 0 ? "Yes" : "No");
-              
+             
               if (fileInput.files.length > 0) {
-                console.log("- First file name:", fileInput.files[0].name);
-                
-                // Explicitly create the feature image entry for index 0
+         
                 formData.append("featureImage0", fileInput.files[0]);
-                console.log("Explicitly added Feature Card 1 image to formData as 'featureImage0'");
+          
               }
             }
           } else {
-            // For other features, use attribute selector
-            fileInput = document.querySelector(`input[type="file"][data-feature-index="${index}"]`);
-            
-            // Process normally
+
             if (fileInput && fileInput.files.length > 0) {
-              console.log(`Found file for feature ${index}:`, fileInput.files[0].name);
               formData.append(`featureImage${index}`, fileInput.files[0]);
-              console.log(`Added featureImage${index} to formData`);
+     
             }
           }
-          
-          // Add removal flag if image was removed for this feature
+                  
           if (column.imageUrl === null) {
-            console.log(`Adding removal flag for feature ${index}`);
+           
             formData.append(`removeFeatureImage${index}`, 'true');
           }
         });
@@ -488,14 +420,13 @@ export default function ContentManagement() {
           textColor: landingContent.callToAction.textColor,
           purpose: landingContent.callToAction.purpose || 'default'
         };
-        
-        // Add media file if selected
+
         const mediaInput = document.querySelector('#cta-media-input');
         if (mediaInput && mediaInput.files.length > 0) {
           formData.append('ctaMedia', mediaInput.files[0]);
         }
         
-        // Add removal flag if media was removed
+     
         if (landingContent.callToAction.mediaUrl === null) {
           formData.append('removeCtaMedia', 'true');
         }
@@ -508,11 +439,11 @@ export default function ContentManagement() {
           items: landingContent.candidates.items || []
         };
         
-        // For each candidate with a photo
+      
         if (landingContent.candidates.items && landingContent.candidates.items.length > 0) {
           landingContent.candidates.items.forEach((candidate, index) => {
             if (candidate.photoUrl && candidate.photoUrl.startsWith('blob:')) {
-              // This would be where we'd grab files from a file input
+            
               const candidatePhotoInput = document.querySelector(`#candidate-photo-${index}`);
               if (candidatePhotoInput && candidatePhotoInput.files.length > 0) {
                 formData.append(`candidatePhoto${index}`, candidatePhotoInput.files[0]);
@@ -532,8 +463,6 @@ export default function ContentManagement() {
         }
       };
       
-      // Send the request to the API
-      console.log(`Sending ${section} content to API:`, contentData);
       const response = await axios.post(
         `${API_URL}/api/content/${section}?t=${timestamp}`, 
         formData,
@@ -541,24 +470,15 @@ export default function ContentManagement() {
       );
       
       if (response.data && response.data.content) {
-        // Update the state with the returned content
+ 
         const newContent = { ...landingContent };
-        
-        // For features section, make sure we properly update each feature's imageUrl
+
         if (section === 'features' && response.data.content.columns) {
-          console.log('Response features data:', JSON.stringify(response.data.content));
-          
-          // Create a deep copy to avoid reference issues
+  
           newContent.features = {
             columns: response.data.content.columns.map((column, index) => {
-              console.log(`Processing feature ${index} from response:`, column);
-              
-              // Make sure the image URL from the response is correct
-              if (column.imageUrl) {
-                console.log(`Updated feature ${index} with image URL:`, column.imageUrl);
-              }
-              
-              // Return a clean copy of the column data
+        
+            
               return {
                 title: column.title || '',
                 description: column.description || '',
@@ -569,7 +489,7 @@ export default function ContentManagement() {
             })
           };
         } else if (section === 'hero') {
-          // For hero section, explicitly set hero properties
+
           newContent.hero = {
             title: response.data.content.title || '',
             subtitle: response.data.content.subtitle || '',
@@ -579,30 +499,22 @@ export default function ContentManagement() {
             textColor: response.data.content.textColor || "#ffffff"
           };
         } else {
-          // For other sections, just update with the response data
+ 
         newContent[section] = response.data.content;
         }
         
-        console.log(`Setting updated landingContent for ${section}:`, newContent);
         setLandingContent(newContent);
-        
-        console.log(`Updated ${section} content from API response:`, response.data.content);
-        
-        // Update the initial content to match current content after save
         setInitialContent(JSON.stringify(newContent));
         setShowPreview(false);
-        
-        // Also save to localStorage as fallback
+
         localStorage.setItem('landingContent', JSON.stringify(newContent));
       }
       
-      // Clear the file inputs
       const fileInputs = document.querySelectorAll('input[type="file"]');
       fileInputs.forEach(input => {
         input.value = '';
       });
-      
-      // Set appropriate success message based on section
+    
       let successMessage = '';
       if (section === 'hero') {
         successMessage = 'Banner updated successfully!';
@@ -625,23 +537,17 @@ export default function ContentManagement() {
     }
   };
 
-  // Save all content
   const saveContent = async () => {
     setSaveStatus("Applying all changes...");
     
     try {
-      // Save features first to prevent hero from overriding feature card 1
-      console.log("First saving features section...");
+
       await saveSectionContent('features');
-      
-      console.log("Now saving hero section...");
+
       await saveSectionContent('hero');
-      
-      console.log("Finally saving callToAction section...");
+
       await saveSectionContent('callToAction');
-      
-      // Fetch updated content to ensure everything is in sync
-      console.log("Fetching fresh content after all saves...");
+
       await fetchContent();
       
       setSaveStatus("All changes applied successfully!");
@@ -653,17 +559,14 @@ export default function ContentManagement() {
     }
   };
 
-  // Function to toggle preview manually
   const togglePreview = () => {
     setShowPreview(!showPreview);
   };
 
-  // Format image URL to ensure it points to the API
   const formatImageUrl = (url) => {
     return utils.formatImageUrl(url, API_URL);
   };
 
-  // Add a new feature card
   const addFeatureCard = () => {
     setLandingContent(prev => ({
       ...prev,
@@ -683,9 +586,9 @@ export default function ContentManagement() {
     }));
   };
 
-  // Delete a feature card
+
   const deleteFeatureCard = (index) => {
-    // Don't allow deleting if there's only one card left
+
     if (landingContent.features.columns.length <= 1) {
       setSaveStatus("Cannot delete the last feature card");
       setTimeout(() => setSaveStatus(""), 3000);
@@ -704,7 +607,7 @@ export default function ContentManagement() {
     setTimeout(() => setSaveStatus(''), 3000);
   };
 
-  // Handle content change
+
   const handleContentChange = (section, field, value) => {
     setContent(prev => ({
       ...prev,
@@ -715,7 +618,7 @@ export default function ContentManagement() {
     }));
   };
 
-  // Handle feature item change
+
   const handleFeatureItemChange = (index, field, value) => {
     setContent(prev => {
       const updatedFeatures = {...prev.features};
@@ -731,12 +634,10 @@ export default function ContentManagement() {
     });
   };
 
-  // Check if content has changed
   const hasContentChanged = () => {
     return utils.hasContentChanged(content, initialContent);
   };
 
-  // Save content changes
   const saveContentChanges = async () => {
     setSaveStatus('saving');
     try {

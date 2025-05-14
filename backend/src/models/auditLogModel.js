@@ -18,7 +18,6 @@ const createAuditLog = async (logData) => {
     user_agent
   } = logData;
 
-  // Validate required fields
   if (!user_id) {
     console.error('Failed to create audit log: Missing user_id');
     throw new Error('user_id is required for audit logging');
@@ -35,9 +34,7 @@ const createAuditLog = async (logData) => {
   }
 
   try {
-    console.log(`Inserting audit log to database: ${action} by user ${user_id}`);
-    
-    // Convert details to string if it's an object
+
     let detailsValue = details;
     if (typeof details === 'object' && details !== null) {
       detailsValue = JSON.stringify(details);
@@ -65,7 +62,6 @@ const createAuditLog = async (logData) => {
     ];
 
     const result = await pool.query(query, values);
-    console.log(`Audit log created successfully with ID: ${result.rows[0].id}`);
     return result.rows[0];
   } catch (error) {
     console.error('Error creating audit log in database:', error);
@@ -79,8 +75,6 @@ const createAuditLog = async (logData) => {
  * @returns {Promise<Array>} List of audit logs
  */
 const getAuditLogs = async (options = {}) => {
-  console.log('Fetching audit logs with options:', JSON.stringify(options, null, 2));
-  
   const {
     user_id,
     user_email,
@@ -115,7 +109,7 @@ const getAuditLogs = async (options = {}) => {
     }
 
     if (user_role) {
-      // Support for comma-separated roles
+
       if (user_role.includes(',')) {
         const roles = user_role.split(',');
         query += ` AND user_role IN (${roles.map((_, i) => `$${paramCount + i}`).join(',')})`;
@@ -129,7 +123,6 @@ const getAuditLogs = async (options = {}) => {
     }
 
     if (action) {
-      // Support for comma-separated actions
       if (action.includes(',')) {
         const actions = action.split(',');
         query += ` AND action IN (${actions.map((_, i) => `$${paramCount + i}`).join(',')})`;
@@ -143,7 +136,6 @@ const getAuditLogs = async (options = {}) => {
     }
 
     if (entity_type) {
-      // Support for comma-separated entity types
       if (entity_type.includes(',')) {
         const entityTypes = entity_type.split(',');
         query += ` AND entity_type IN (${entityTypes.map((_, i) => `$${paramCount + i}`).join(',')})`;
@@ -187,38 +179,28 @@ const getAuditLogs = async (options = {}) => {
       paramCount++;
     }
 
-    // Validate sort_by to prevent SQL injection
     const allowedSortColumns = ['created_at', 'user_id', 'user_email', 'action', 'entity_type', 'id'];
     const validSortBy = allowedSortColumns.includes(sort_by) ? sort_by : 'created_at';
-    
-    // Validate sort_order to prevent SQL injection
+
     const validSortOrder = sort_order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
     query += ` ORDER BY ${validSortBy} ${validSortOrder}`;
-    
-    // Add pagination
+
     query += ` LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
     values.push(limit, offset);
 
-    console.log(`Executing query: ${query}`);
-    console.log('With values:', values);
-
     const result = await pool.query(query, values);
-    
-    // Process the results to parse JSON details if needed
+
     const processedLogs = result.rows.map(log => {
-      // Try to parse details JSON if it's a string
+
       if (log.details && typeof log.details === 'string') {
         try {
           log.details = JSON.parse(log.details);
         } catch (e) {
-          // Keep as string if can't parse as JSON
         }
       }
       return log;
     });
-    
-    console.log(`Fetched ${processedLogs.length} audit logs`);
     return processedLogs;
   } catch (error) {
     console.error('Error getting audit logs:', error);
@@ -262,7 +244,6 @@ const getAuditLogsCount = async (options = {}) => {
     }
 
     if (user_role) {
-      // Support for comma-separated roles
       if (user_role.includes(',')) {
         const roles = user_role.split(',');
         query += ` AND user_role IN (${roles.map((_, i) => `$${paramCount + i}`).join(',')})`;
@@ -276,7 +257,6 @@ const getAuditLogsCount = async (options = {}) => {
     }
 
     if (action) {
-      // Support for comma-separated actions
       if (action.includes(',')) {
         const actions = action.split(',');
         query += ` AND action IN (${actions.map((_, i) => `$${paramCount + i}`).join(',')})`;
@@ -290,7 +270,6 @@ const getAuditLogsCount = async (options = {}) => {
     }
 
     if (entity_type) {
-      // Support for comma-separated entity types
       if (entity_type.includes(',')) {
         const entityTypes = entity_type.split(',');
         query += ` AND entity_type IN (${entityTypes.map((_, i) => `$${paramCount + i}`).join(',')})`;
@@ -336,7 +315,6 @@ const getAuditLogsCount = async (options = {}) => {
 
     const result = await pool.query(query, values);
     const count = parseInt(result.rows[0].count, 10);
-    console.log(`Total audit logs count: ${count}`);
     return count;
   } catch (error) {
     console.error('Error getting audit logs count:', error);
@@ -351,12 +329,11 @@ const getAuditLogsCount = async (options = {}) => {
  */
 const getAuditLogsSummary = async (days = 30) => {
   try {
-    // Get date for filtering
+
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     const startDateStr = startDate.toISOString();
-    
-    // Queries for different summaries
+
     const queries = {
       actionSummary: `
         SELECT action, COUNT(*) as count 
@@ -409,17 +386,12 @@ const getAuditLogsSummary = async (days = 30) => {
         LIMIT 20
       `
     };
-    
-    // Execute all queries in parallel
+
     const results = await Promise.all(Object.entries(queries).map(async ([key, query]) => {
       const result = await pool.query(query, [startDateStr]);
       return { [key]: result.rows };
     }));
-    
-    // Convert array of objects into a single object
     const summary = Object.assign({}, ...results);
-    
-    // Get total count
     const totalCountResult = await pool.query(
       'SELECT COUNT(*) as total FROM audit_logs WHERE created_at >= $1',
       [startDateStr]
