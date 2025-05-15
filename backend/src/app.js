@@ -23,6 +23,7 @@ const fs = require('fs');
 const multer = require('multer');
 const adminPermissionRoutes = require('./routes/adminPermissionRoutes');
 const partylistRoutes = require('./routes/partylistRoutes');
+const partylistCandidateRoutes = require('./routes/partylistCandidateRoutes');
 require('./cron/cron');
 app.use(cookieParser());
 app.use(helmet());
@@ -34,37 +35,173 @@ const adminsDir = path.join(uploadsDir, 'admins');
 const imagesDir = path.join(uploadsDir, 'images');
 const videosDir = path.join(uploadsDir, 'videos');
 
-// Ensure all necessary directories exist
 [uploadsDir, candidatesDir, adminsDir, imagesDir, videosDir].forEach(dir => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
 });
 
-// Enhanced CORS configuration
 app.use(cors({ 
   origin: ["http://localhost:3000", "http://127.0.0.1:3000"],
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Student-ID", "X-Vote-Token"],
   credentials: true,
-  maxAge: 86400 // cache preflight requests for 1 day
+  maxAge: 86400 
 }));
 app.options('*', cors());
 
-// Increase request size limits for file uploads
 app.use(express.json({ limit: '50mb' })); 
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Disable cache for API routes to ensure fresh content
+// Request logging middleware - log all incoming requests
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+  next();
+});
+
 app.use('/api', (req, res, next) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   next();
 });
 
-// Apply audit log middleware to all API routes
 app.use('/api', createAuditLog);
 
-// Routes
+app.get('/api/direct/positions', async (req, res) => {
+  try {
+    const { electionTypeId } = req.query;
+    const { getPositionsForElectionType, getAllPositions } = require('./models/positionModel');
+    
+    let positions;
+    if (electionTypeId && electionTypeId !== 'undefined' && !isNaN(parseInt(electionTypeId))) {
+      positions = await getPositionsForElectionType(parseInt(electionTypeId));
+    } else {
+      console.log("Invalid or missing electionTypeId, returning all positions");
+      positions = await getAllPositions();
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: positions
+    });
+  } catch (error) {
+    console.error("Position API error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch positions"
+    });
+  }
+});
+
+app.post('/api/direct/positions', async (req, res) => {
+  try {
+    const { name, electionTypeId } = req.body;
+    
+    if (!name || !electionTypeId) {
+      return res.status(400).json({
+        success: false,
+        message: "Position name and election type ID are required"
+      });
+    }
+    
+    const { createPosition } = require('./models/positionModel');
+    const newPosition = await createPosition(name, electionTypeId);
+    
+    res.status(201).json({
+      success: true,
+      data: newPosition,
+      message: "Position created successfully"
+    });
+  } catch (error) {
+    console.error("Position API error:", error);
+    res.status(400).json({
+      success: false,
+      message: error.message || "Failed to create position"
+    });
+  }
+});
+
+app.put('/api/direct/positions/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+    
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        message: "Position name is required"
+      });
+    }
+    
+    const { updatePosition } = require('./models/positionModel');
+    const updatedPosition = await updatePosition(id, name);
+    
+    res.status(200).json({
+      success: true,
+      data: updatedPosition,
+      message: "Position updated successfully"
+    });
+  } catch (error) {
+    console.error("Position API error:", error);
+    res.status(400).json({
+      success: false,
+      message: error.message || "Failed to update position"
+    });
+  }
+});
+
+app.delete('/api/direct/positions/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const { deletePosition } = require('./models/positionModel');
+    const result = await deletePosition(id);
+    
+    res.status(200).json({
+      success: true,
+      data: result,
+      message: "Position deleted successfully"
+    });
+  } catch (error) {
+    console.error("Position API error:", error);
+    res.status(400).json({
+      success: false,
+      message: error.message || "Failed to delete position"
+    });
+  }
+});
+
+// Define direct routes for student validation and search
+app.get('/api/students/validate', (req, res) => {
+  const { validateStudentByNumber } = require('./controllers/studentController');
+  validateStudentByNumber(req, res);
+});
+
+app.get('/api/students/search', (req, res) => {
+  const { searchStudents } = require('./controllers/studentController');
+  searchStudents(req, res);
+});
+
+// Define direct routes for partylist candidates
+app.get('/api/partylists/:partylistId/candidates', (req, res) => {
+  const { getPartylistCandidates } = require('./controllers/partylistCandidateController');
+  getPartylistCandidates(req, res);
+});
+
+app.post('/api/partylists/:partylistId/candidates', (req, res) => {
+  const { addPartylistCandidate } = require('./controllers/partylistCandidateController');
+  addPartylistCandidate(req, res);
+});
+
+app.delete('/api/candidates/:candidateId', (req, res) => {
+  const { removePartylistCandidate } = require('./controllers/partylistCandidateController');
+  removePartylistCandidate(req, res);
+});
+
+app.put('/api/candidates/:candidateId', (req, res) => {
+  const { updatePartylistCandidate } = require('./controllers/partylistCandidateController');
+  updatePartylistCandidate(req, res);
+});
+
 app.use("/api/superadmin", superAdminRoutes);
 app.use("/api/superadmin", adminRoutes); 
 app.use("/api/admin", adminRoutes);
@@ -82,7 +219,6 @@ app.use('/api/admin-permissions', adminPermissionRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/partylists', partylistRoutes);
 
-// Health check endpoint
 app.get("/api/healthcheck", (req, res) => {
   res.status(200).json({
     status: "ok",
@@ -90,13 +226,11 @@ app.get("/api/healthcheck", (req, res) => {
   });
 });
 
-// Static file serving with improved content type detection
 app.use('/uploads', express.static(path.join(__dirname, '../uploads'), {
   setHeaders: (res, filePath) => {
     res.set('Cross-Origin-Resource-Policy', 'cross-origin');
     res.set('Access-Control-Allow-Origin', '*');
-    
-    // Proper content type based on file extension
+
     if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
       res.set('Content-Type', 'image/jpeg');
     } else if (filePath.endsWith('.png')) {
@@ -110,8 +244,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads'), {
     } else if (filePath.endsWith('.webm')) {
       res.set('Content-Type', 'video/webm');
     }
-    
-    // No cache for media files to ensure changes are always shown
+
     res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
@@ -119,7 +252,6 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads'), {
 }));
 console.log('Static files served from:', path.join(__dirname, '../uploads'));
 
-// Also serve public directory for static assets
 app.use('/public', express.static(path.join(__dirname, '../public'), {
   setHeaders: (res, path) => {
     res.set('Cross-Origin-Resource-Policy', 'cross-origin');
@@ -127,7 +259,6 @@ app.use('/public', express.static(path.join(__dirname, '../public'), {
   }
 }));
 
-// Error handling for file uploads
 app.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     return res.status(400).json({

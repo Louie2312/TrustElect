@@ -375,6 +375,17 @@ exports.uploadStudentsBatch = async (req, res) => {
           else if (yearLevelStr.toLowerCase().includes('fourth') || yearLevelStr.toLowerCase().includes('4th')) {
             year = 4;
           }
+          // Handle senior high school year levels
+          else if (yearLevelStr.toLowerCase() === 'g11' || yearLevelStr.toLowerCase() === 'grade 11') {
+            student.yearLevel = 'Grade 11';
+            validatedData.push(student);
+            return; // Skip the rest of the validation for year level
+          }
+          else if (yearLevelStr.toLowerCase() === 'g12' || yearLevelStr.toLowerCase() === 'grade 12') {
+            student.yearLevel = 'Grade 12';
+            validatedData.push(student);
+            return; // Skip the rest of the validation for year level
+          }
 
           if (year >= 1 && year <= 4) {
             const yearLevelMap = {
@@ -390,7 +401,7 @@ exports.uploadStudentsBatch = async (req, res) => {
               studentNumber: student.studentNumber,
               firstName: student.firstName || 'Unknown',
               lastName: student.lastName || 'Unknown',
-              error: `Invalid year level: "${yearLevelStr}". Must be 1st-4th Year or contain a digit 1-4.`
+              error: `Invalid year level: "${yearLevelStr}". Must be 1st-4th Year, G11, G12, or contain a digit 1-4.`
             });
             return; 
           }
@@ -784,6 +795,109 @@ exports.getStudentsByCourses = async (req, res) => {
       success: false, 
       message: "Failed to fetch students by courses",
       error: error.message 
+    });
+  }
+};
+
+exports.validateStudentByNumber = async (req, res) => {
+  try {
+    const { studentNumber } = req.query;
+ 
+    
+    if (!studentNumber) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Student number is required" 
+      });
+    }
+    
+    // Validate student number format
+    if (!/^02000[0-9]{6}$/.test(studentNumber)) {
+
+      return res.status(400).json({
+        success: false,
+        message: "Invalid student number format. Must be 11 digits starting with 02000"
+      });
+    }
+    
+    // Query to find the student
+    const query = `
+      SELECT 
+        s.id, 
+        s.first_name, 
+        s.last_name, 
+        s.student_number, 
+        s.course_name,
+        s.year_level,
+        s.is_active
+      FROM students s
+      WHERE s.student_number = $1 AND s.is_active = TRUE
+    `;
+    
+    const result = await pool.query(query, [studentNumber]);
+    console.log(`Query results for ${studentNumber}:`, result.rows);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found or inactive"
+      });
+    }
+    
+    return res.status(200).json({
+      success: true,
+      student: result.rows[0]
+    });
+  } catch (error) {
+    console.error("Error validating student:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to validate student",
+      error: error.message
+    });
+  }
+};
+
+exports.searchStudents = async (req, res) => {
+  try {
+    const { term } = req.query;
+    console.log(`Searching for students with term: ${term}`);
+    
+    if (!term || term.length < 4) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Search term must be at least 4 characters" 
+      });
+    }
+    
+    // Search by student number (partial match)
+    const query = `
+      SELECT 
+        s.id, 
+        s.first_name, 
+        s.last_name, 
+        s.student_number, 
+        s.course_name
+      FROM students s
+      WHERE s.student_number LIKE $1 AND s.is_active = TRUE
+      ORDER BY s.student_number
+      LIMIT 10
+    `;
+    
+    const searchTerm = `%${term}%`;
+    const result = await pool.query(query, [searchTerm]);
+    console.log(`Search results for "${term}":`, result.rows);
+    
+    return res.status(200).json({
+      success: true,
+      students: result.rows
+    });
+  } catch (error) {
+    console.error("Error searching students:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to search students",
+      error: error.message
     });
   }
 };

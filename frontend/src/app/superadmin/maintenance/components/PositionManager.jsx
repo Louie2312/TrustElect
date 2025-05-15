@@ -1,6 +1,16 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { toast } from "react-toastify";
+import axios from 'axios';
+
+// Configure axios with base URL
+const api = axios.create({
+  baseURL: 'http://localhost:5000',
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
 
 const PositionManager = ({ electionTypes }) => {
   const [selectedElectionType, setSelectedElectionType] = useState(null);
@@ -8,34 +18,48 @@ const PositionManager = ({ electionTypes }) => {
   const [newPositionName, setNewPositionName] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [editingPosition, setEditingPosition] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (selectedElectionType) {
-      const storedPositions = getPositionsForElectionType(selectedElectionType.id);
-      setPositions(storedPositions);
+      fetchPositions(selectedElectionType.id);
     } else {
       setPositions([]);
     }
   }, [selectedElectionType]);
 
-  useEffect(() => {
-    if (!localStorage.getItem('electionPositions')) {
-      localStorage.setItem('electionPositions', JSON.stringify({}));
+  const fetchPositions = async (electionTypeId) => {
+    try {
+      setLoading(true);
+      const response = await api.get(`/api/direct/positions?electionTypeId=${electionTypeId}`);
+      
+      if (response.data.success) {
+        setPositions(response.data.data);
+      } else {
+        toast.error("Failed to fetch positions");
+        tryLocalStorageFallback(electionTypeId);
+      }
+    } catch (error) {
+      console.error("Error fetching positions:", error);
+      toast.error("Failed to connect to server. Using local storage fallback.");
+      tryLocalStorageFallback(electionTypeId);
+    } finally {
+      setLoading(false);
     }
-  }, []);
-
-  const getPositionsForElectionType = (electionTypeId) => {
-    const positionsData = JSON.parse(localStorage.getItem('electionPositions') || '{}');
-    return positionsData[electionTypeId] || [];
+  };
+  
+  const tryLocalStorageFallback = (electionTypeId) => {
+    try {
+      const positionsData = JSON.parse(localStorage.getItem('electionPositions') || '{}');
+      const storedPositions = positionsData[electionTypeId] || [];
+      setPositions(storedPositions);
+      toast.info("Using local storage as fallback. API connection issue.");
+    } catch (localStorageError) {
+      console.error("LocalStorage fallback failed:", localStorageError);
+    }
   };
 
-  const savePositionsForElectionType = (electionTypeId, positions) => {
-    const positionsData = JSON.parse(localStorage.getItem('electionPositions') || '{}');
-    positionsData[electionTypeId] = positions;
-    localStorage.setItem('electionPositions', JSON.stringify(positionsData));
-  };
-
-  const handleAddPosition = (e) => {
+  const handleAddPosition = async (e) => {
     e.preventDefault();
 
     if (!selectedElectionType) {
@@ -48,41 +72,93 @@ const PositionManager = ({ electionTypes }) => {
       return;
     }
 
-    if (isEditing) {
-      const updatedPositions = positions.map(pos => 
-        pos.id === editingPosition.id 
-          ? { ...pos, name: newPositionName } 
-          : pos
-      );
+    try {
+      setLoading(true);
       
-      setPositions(updatedPositions);
-      savePositionsForElectionType(selectedElectionType.id, updatedPositions);
-      toast.success("Position updated successfully");
-    } else {
-      const positionExists = positions.some(p => 
-        p.name.toLowerCase() === newPositionName.toLowerCase()
-      );
-      
-      if (positionExists) {
-        toast.error("A position with this name already exists");
-        return;
+      if (isEditing) {
+        const response = await api.put(`/api/direct/positions/${editingPosition.id}`, {
+          name: newPositionName
+        });
+        
+        if (response.data.success) {
+          setPositions(positions.map(pos => 
+            pos.id === editingPosition.id 
+              ? response.data.data
+              : pos
+          ));
+          toast.success("Position updated successfully");
+        } else {
+          toast.error("Failed to update position");
+        }
+      } else {
+        const response = await api.post('/api/direct/positions', {
+          name: newPositionName,
+          electionTypeId: selectedElectionType.id
+        });
+        
+        if (response.data.success) {
+          setPositions([...positions, response.data.data]);
+          toast.success("Position added successfully");
+        } else {
+          toast.error("Failed to create position");
+        }
       }
-
-      const newPosition = {
-        name: newPositionName,
-        id: Date.now().toString(),
-        dateAdded: new Date().toISOString()
-      };
       
-      const updatedPositions = [...positions, newPosition];
-      setPositions(updatedPositions);
-      savePositionsForElectionType(selectedElectionType.id, updatedPositions);
-      toast.success("Position added successfully");
-    }
+      setNewPositionName("");
+      setIsEditing(false);
+      setEditingPosition(null);
+    } catch (error) {
+      console.error("Error saving position:", error);
+      toast.error(error.response?.data?.message || "An error occurred while saving the position");
 
-    setNewPositionName("");
-    setIsEditing(false);
-    setEditingPosition(null);
+      handleLocalStorageFallback(isEditing, editingPosition, newPositionName, selectedElectionType);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLocalStorageFallback = (isEditing, editingPosition, newName, selectedType) => {
+    try {
+      if (isEditing) {
+        const updatedPositions = positions.map(pos => 
+          pos.id === editingPosition.id 
+            ? { ...pos, name: newName } 
+            : pos
+        );
+        setPositions(updatedPositions);
+        
+        // Save to localStorage as fallback
+        const positionsData = JSON.parse(localStorage.getItem('electionPositions') || '{}');
+        positionsData[selectedType.id] = updatedPositions;
+        localStorage.setItem('electionPositions', JSON.stringify(positionsData));
+        
+        toast.info("Used local storage as fallback. Position updated locally.");
+      } else {
+        const newPosition = {
+          name: newName,
+          id: Date.now().toString(),
+          election_type_id: selectedType.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        
+        const updatedPositions = [...positions, newPosition];
+        setPositions(updatedPositions);
+        
+        // Save to localStorage as fallback
+        const positionsData = JSON.parse(localStorage.getItem('electionPositions') || '{}');
+        positionsData[selectedType.id] = updatedPositions;
+        localStorage.setItem('electionPositions', JSON.stringify(positionsData));
+        
+        toast.info("Used local storage as fallback. Position added locally.");
+      }
+      
+      setNewPositionName("");
+      setIsEditing(false);
+      setEditingPosition(null);
+    } catch (localStorageError) {
+      console.error("LocalStorage fallback failed:", localStorageError);
+    }
   };
 
   const handleEditPosition = (position) => {
@@ -91,13 +167,40 @@ const PositionManager = ({ electionTypes }) => {
     setEditingPosition(position);
   };
 
-  const handleDeletePosition = (positionId) => {
+  const handleDeletePosition = async (positionId) => {
     if (!window.confirm("Are you sure you want to delete this position?")) return;
     
-    const updatedPositions = positions.filter(p => p.id !== positionId);
-    setPositions(updatedPositions);
-    savePositionsForElectionType(selectedElectionType.id, updatedPositions);
-    toast.success("Position deleted successfully");
+    try {
+      setLoading(true);
+      const response = await api.delete(`/api/direct/positions/${positionId}`);
+      
+      if (response.data.success) {
+        setPositions(positions.filter(p => p.id !== positionId));
+        toast.success("Position deleted successfully");
+      } else {
+        toast.error("Failed to delete position");
+      }
+    } catch (error) {
+      console.error("Error deleting position:", error);
+      toast.error(error.response?.data?.message || "An error occurred while deleting the position");
+      
+      // Fallback to localStorage if API fails
+      try {
+        const updatedPositions = positions.filter(p => p.id !== positionId);
+        setPositions(updatedPositions);
+        
+        // Save to localStorage as fallback
+        const positionsData = JSON.parse(localStorage.getItem('electionPositions') || '{}');
+        positionsData[selectedElectionType.id] = updatedPositions;
+        localStorage.setItem('electionPositions', JSON.stringify(positionsData));
+        
+        toast.info("Used local storage as fallback. Position deleted locally.");
+      } catch (localStorageError) {
+        console.error("LocalStorage fallback failed:", localStorageError);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCancelEdit = () => {
@@ -151,7 +254,7 @@ const PositionManager = ({ electionTypes }) => {
                     value={newPositionName}
                     onChange={(e) => setNewPositionName(e.target.value)}
                     className="w-150 p-2 border rounded text-black"
-                    
+                    disabled={loading}
                     required
                   />
                 </div>
@@ -162,6 +265,7 @@ const PositionManager = ({ electionTypes }) => {
                       type="button"
                       onClick={handleCancelEdit}
                       className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 text-black"
+                      disabled={loading}
                     >
                       Cancel
                     </button>
@@ -169,8 +273,9 @@ const PositionManager = ({ electionTypes }) => {
                   <button
                     type="submit"
                     className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                    disabled={loading}
                   >
-                    {isEditing ? "Update Position" : "Add Position"}
+                    {loading ? "Processing..." : (isEditing ? "Update Position" : "Add Position")}
                   </button>
                 </div>
               </form>
@@ -181,7 +286,11 @@ const PositionManager = ({ electionTypes }) => {
               <h3 className="text-lg font-semibold text-black mb-3">
                 Positions for {selectedElectionType.name}
               </h3>
-              {positions.length === 0 ? (
+              {loading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              ) : positions.length === 0 ? (
                 <p className="text-gray-500 bg-gray-50 p-4 rounded border">
                   No positions created.
                 </p>
@@ -205,12 +314,14 @@ const PositionManager = ({ electionTypes }) => {
                               <button
                                 onClick={() => handleEditPosition(position)}
                                 className="w-20 h-8 bg-amber-500 text-white rounded hover:bg-amber-600 font-medium text-xs inline-flex items-center justify-center"
+                                disabled={loading}
                               >
                                 Edit
                               </button>
                               <button
                                 onClick={() => handleDeletePosition(position.id)}
                                 className="w-20 h-8 bg-red-500 text-white rounded hover:bg-red-600 font-medium text-xs inline-flex items-center justify-center"
+                                disabled={loading}
                               >
                                 Delete
                               </button>

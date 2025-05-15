@@ -196,21 +196,21 @@ const BackConfirmationModal = ({ onConfirm, onCancel }) => {
           <h2 className="text-xl font-semibold text-black">Confirm</h2>
         </div>
         <p className="mb-6 text-black">
-          Are you sure you want to go back? Any unsaved changes will be lost.
+          Are you sure you want to exit this page?
         </p>
         <div className="flex justify-end space-x-3">
-        <button
-            onClick={onConfirm}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Yes
-          </button>
-
           <button
             onClick={onCancel}
             className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 text-black"
           >
             No
+          </button>
+
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Yes
           </button>
           
         </div>
@@ -246,9 +246,51 @@ const PartylistSelectionModal = ({ partylists, onSelect, onCancel }) => {
         {partylists.length === 0 ? (
           <div className="p-8 text-center">
             <p className="text-gray-500">No partylists found.</p>
+            <div 
+              className="mt-4 border rounded-lg p-4 hover:border-blue-500 hover:shadow-md transition-all cursor-pointer mx-auto max-w-md"
+              onClick={() => onSelect("Independent")}
+            >
+              <div className="flex items-start">
+                <div className="mr-4">
+                  <div className="w-24 h-24 bg-gray-100 rounded-md border flex items-center justify-center">
+                    <Info className="w-10 h-10 text-gray-300" />
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-black">Independent</h3>
+                  <p className="text-sm text-gray-600 italic mb-2">No partylist affiliation</p>
+                </div>
+                <div className="ml-2">
+                  <button className="p-2 bg-blue-50 rounded-full text-blue-600 hover:bg-blue-100">
+                    <CheckCircle size={20} />
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div 
+              key="independent" 
+              className="border rounded-lg p-4 hover:border-blue-500 hover:shadow-md transition-all cursor-pointer"
+              onClick={() => onSelect("Independent")}
+            >
+              <div className="flex items-start">
+                <div className="mr-4">
+                 
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-black">Independent</h3>
+                  <p className="text-sm text-gray-600 italic mb-2">For no partylist candidates</p>
+                </div>
+                <div className="ml-2">
+                  <button className="p-2 bg-blue-50 rounded-full text-blue-600 hover:bg-blue-100">
+                    <CheckCircle size={20} />
+                  </button>
+                </div>
+              </div>
+            </div>
+            
             {partylists.map(party => (
               <div 
                 key={party.id} 
@@ -295,13 +337,7 @@ const PartylistSelectionModal = ({ partylists, onSelect, onCancel }) => {
           </div>
         )}
         
-        <div className="mt-6 flex justify-between">
-          <button
-            onClick={() => onSelect('manual')}
-            className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 text-black"
-          >
-           Type a partylist
-          </button>
+        <div className="mt-6 flex justify-end">
           <button
             onClick={onCancel}
             className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
@@ -338,18 +374,146 @@ export default function BallotPage() {
   const [imagePreviews, setImagePreviews] = useState({});
   const [showBackConfirmation, setShowBackConfirmation] = useState(false);
   const [isStudentCouncilElection, setIsStudentCouncilElection] = useState(false);
-  const [studentCouncilPositions, setStudentCouncilPositions] = useState([
-    "President",
-    "Vice President",
-    "Secretary",
-    "Treasurer",
-    "Auditor",
-  ]);
+  const [studentCouncilPositions, setStudentCouncilPositions] = useState([]);
   const [partylists, setPartylists] = useState([]);
   const [partylistCandidates, setPartylistCandidates] = useState({});
-  const [manualPartyInput, setManualPartyInput] = useState({});
   const [showPartylistModal, setShowPartylistModal] = useState(false);
   const [currentEditingCandidate, setCurrentEditingCandidate] = useState({ posId: null, candId: null });
+
+  useEffect(() => {
+    const fetchStudentCouncilPositions = async () => {
+      try {
+        const token = Cookies.get("token");
+
+        const typesResponse = await axios.get("http://localhost:5000/api/maintenance/election-types", {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          withCredentials: true
+        });
+        
+        let studentCouncilTypeId = null;
+        if (typesResponse.data.success && typesResponse.data.data) {
+          const scType = typesResponse.data.data.find(type => 
+            type.name.toLowerCase() === "student council"
+          );
+          if (scType) {
+            studentCouncilTypeId = scType.id;
+          }
+        }
+
+        if (studentCouncilTypeId) {
+          const response = await axios.get(`http://localhost:5000/api/direct/positions?electionTypeId=${studentCouncilTypeId}`, {
+            headers: { 
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            withCredentials: true
+          });
+          
+          if (response.data.success && response.data.data && response.data.data.length > 0) {
+            const scPositions = response.data.data;
+            const positionNames = scPositions.map(pos => pos.name);
+            setStudentCouncilPositions(positionNames);
+            return;
+          }
+        }
+
+        const response = await axios.get("http://localhost:5000/api/direct/positions", {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          withCredentials: true
+        });
+        
+        if (response.data.success && response.data.data) {
+          const allPositions = response.data.data;
+
+          const scPositions = allPositions.filter(pos => 
+            ["president", "vice president", "secretary", "treasurer", "auditor", "vp"].some(
+              term => pos.name.toLowerCase().includes(term)
+            )
+          );
+          
+          if (scPositions.length > 0) {
+            const positionNames = scPositions.map(pos => pos.name);
+            setStudentCouncilPositions(positionNames);
+            return;
+          }
+        }
+
+        tryLocalStorageForPositions();
+      } catch (error) {
+        console.error("Error fetching positions from API:", error);
+
+        tryLocalStorageForPositions();
+      }
+    };
+    
+    const tryLocalStorageForPositions = () => {
+      try {
+        const allPositionsData = JSON.parse(localStorage.getItem('electionPositions') || '{}');
+
+        const electionTypes = JSON.parse(localStorage.getItem('election_types') || '[]');
+        const scType = electionTypes.find(type => 
+          type.name && type.name.toLowerCase() === "student council"
+        );
+        
+        let scPositions = [];
+
+        if (scType && scType.id && allPositionsData[scType.id]) {
+          scPositions = allPositionsData[scType.id];
+        } else {
+
+          // Go through each election type to find Student Council positions
+          Object.values(allPositionsData).forEach(positionsArray => {
+            if (Array.isArray(positionsArray) && positionsArray.length > 0) {
+
+              const foundSCPositions = positionsArray.filter(pos => 
+                ["president", "vice president", "secretary", "treasurer", "auditor", "vp"].some(
+                  term => pos.name && pos.name.toLowerCase().includes(term)
+                )
+              );
+              
+              if (foundSCPositions.length > 0) {
+              
+                scPositions = [...scPositions, ...foundSCPositions];
+              }
+            }
+          });
+        }
+        
+        // If we found SC positions, extract their names
+        if (scPositions.length > 0) {
+          const positionNames = scPositions.map(pos => pos.name);
+          setStudentCouncilPositions(positionNames);
+        } else {
+
+          console.log("No Student Council positions found, using default positions");
+          setStudentCouncilPositions([
+            "President",
+            "Vice President",
+            "Secretary",
+            "Treasurer",
+            "Auditor",
+          ]);
+        }
+      } catch (error) {
+        console.error("Error loading Student Council positions from localStorage:", error);
+        setStudentCouncilPositions([
+          "President",
+          "Vice President",
+          "Secretary",
+          "Treasurer",
+          "Auditor",
+        ]);
+      }
+    };
+    
+    fetchStudentCouncilPositions();
+  }, []);
 
   useEffect(() => {
     const fetchPartylists = async () => {
@@ -407,23 +571,28 @@ export default function BallotPage() {
           });
         } catch (error) {
           if (electionData.election_type === "Student Council") {
-            setBallot(prev => ({
-              ...prev,
-              positions: [{
-                id: Math.floor(Math.random() * 1000000).toString(),
-                name: studentCouncilPositions[0],
-                max_choices: 1,
-                candidates: [{
+            if (studentCouncilPositions.length > 0) {
+              setBallot(prev => ({
+                ...prev,
+                positions: [{
                   id: Math.floor(Math.random() * 1000000).toString(),
-                  first_name: "",
-                  last_name: "",
-                  party: "",
-                  slogan: "",
-                  platform: "",
-                  image_url: null
+                  name: studentCouncilPositions[0],
+                  max_choices: 1,
+                  candidates: [{
+                    id: Math.floor(Math.random() * 1000000).toString(),
+                    first_name: "",
+                    last_name: "",
+                    party: "",
+                    slogan: "",
+                    platform: "",
+                    image_url: null
+                  }]
                 }]
-              }]
-            }));
+              }));
+            } else {
+              // Wait for positions to be loaded
+              console.log("Waiting for Student Council positions to be loaded");
+            }
           } else {
             setBallot(prev => ({
               ...prev,
@@ -452,7 +621,121 @@ export default function BallotPage() {
       }
     };
     loadData();
-  }, [electionId]);
+  }, [electionId, studentCouncilPositions]);
+
+  const reloadStudentCouncilPositions = async () => {
+    try {
+      const token = Cookies.get("token");
+      console.log("Manually reloading Student Council positions");
+
+      const typesResponse = await axios.get("http://localhost:5000/api/maintenance/election-types", {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        withCredentials: true
+      });
+      
+      let studentCouncilTypeId = null;
+      if (typesResponse.data.success && typesResponse.data.data) {
+        const scType = typesResponse.data.data.find(type => 
+          type.name.toLowerCase() === "student council"
+        );
+        if (scType) {
+          studentCouncilTypeId = scType.id;
+          console.log("Found Student Council election type ID:", studentCouncilTypeId);
+        }
+      }
+
+      if (studentCouncilTypeId) {
+        const response = await axios.get(`http://localhost:5000/api/direct/positions?electionTypeId=${studentCouncilTypeId}`, {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          withCredentials: true
+        });
+        
+        if (response.data.success && response.data.data && response.data.data.length > 0) {
+          const scPositions = response.data.data;
+          console.log("Found Student Council positions from API for type ID:", scPositions);
+          const positionNames = scPositions.map(pos => pos.name);
+          setStudentCouncilPositions(positionNames);
+          return true;
+        }
+      }
+      
+      // Fallback to regular fetch and filter
+      const response = await axios.get("http://localhost:5000/api/direct/positions", {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        withCredentials: true
+      });
+      
+      if (response.data.success && response.data.data) {
+        const allPositions = response.data.data;
+        
+        // Filter for positions that look like Student Council positions
+        const scPositions = allPositions.filter(pos => 
+          ["president", "vice president", "secretary", "treasurer", "auditor", "vp"].some(
+            term => pos.name.toLowerCase().includes(term)
+          )
+        );
+        
+        if (scPositions.length > 0) {
+          console.log("Found Student Council positions on reload:", scPositions);
+          const positionNames = scPositions.map(pos => pos.name);
+          setStudentCouncilPositions(positionNames);
+          return true;
+        }
+      }
+      
+      // Fall back to localStorage
+      const allPositionsData = JSON.parse(localStorage.getItem('electionPositions') || '{}');
+      let foundPositions = false;
+      
+      // Try to find the Student Council type ID in localStorage
+      const electionTypes = JSON.parse(localStorage.getItem('election_types') || '[]');
+      const scType = electionTypes.find(type => 
+        type.name && type.name.toLowerCase() === "student council"
+      );
+      
+      // If we found the SC type, check for its positions directly
+      if (scType && scType.id && allPositionsData[scType.id]) {
+        const scPositions = allPositionsData[scType.id];
+        console.log("Found Student Council positions in localStorage by type ID:", scPositions);
+        const positionNames = scPositions.map(pos => pos.name);
+        setStudentCouncilPositions(positionNames);
+        return true;
+      }
+      
+      // Otherwise search all positions
+      Object.values(allPositionsData).forEach(positionsArray => {
+        if (!foundPositions && Array.isArray(positionsArray) && positionsArray.length > 0) {
+          // Filter positions that match common Student Council position names
+          const foundSCPositions = positionsArray.filter(pos => 
+            ["president", "vice president", "secretary", "treasurer", "auditor", "vp"].some(
+              term => pos.name && pos.name.toLowerCase().includes(term)
+            )
+          );
+          
+          if (foundSCPositions.length > 0) {
+            console.log("Found Student Council positions in localStorage on reload:", foundSCPositions);
+            const positionNames = foundSCPositions.map(pos => pos.name);
+            setStudentCouncilPositions(positionNames);
+            foundPositions = true;
+          }
+        }
+      });
+      
+      return foundPositions;
+    } catch (error) {
+      console.error("Error reloading Student Council positions:", error);
+      return false;
+    }
+  };
 
   const validateField = (field, value) => {
     if (!value.trim()) return `${field} is required`;
@@ -488,36 +771,6 @@ export default function BallotPage() {
   };
 
   const handlePartylistChange = (posId, candId, value) => {
-    if (value === "manual") {
-      setManualPartyInput(prev => ({
-        ...prev,
-        [`${posId}_${candId}`]: true
-      }));
-      
-      const updatedPositions = ballot.positions.map(pos => ({
-        ...pos,
-        candidates: pos.candidates.map(cand => 
-          cand.id === candId ? { ...cand, party: "" } : cand
-        )
-      }));
-      
-      setBallot(prev => ({ ...prev, positions: updatedPositions }));
-      return;
-    }
-    
-    if (!manualPartyInput[`${posId}_${candId}`]) {
-      const updatedPositions = ballot.positions.map(pos => ({
-        ...pos,
-        candidates: pos.candidates.map(cand => 
-          cand.id === candId ? { ...cand, party: value } : cand
-        )
-      }));
-      
-      setBallot(prev => ({ ...prev, positions: updatedPositions }));
-    }
-  };
-
-  const handleManualPartyInput = (posId, candId, value) => {
     const updatedPositions = ballot.positions.map(pos => ({
       ...pos,
       candidates: pos.candidates.map(cand => 
@@ -1033,31 +1286,14 @@ export default function BallotPage() {
   const handlePartylistSelect = (partyName) => {
     const { posId, candId } = currentEditingCandidate;
     
-    if (partyName === 'manual') {
-      setManualPartyInput(prev => ({
-        ...prev,
-        [`${posId}_${candId}`]: true
-      }));
-
-      const updatedPositions = ballot.positions.map(pos => ({
-        ...pos,
-        candidates: pos.candidates.map(cand => 
-          cand.id === candId ? { ...cand, party: "" } : cand
-        )
-      }));
-      
-      setBallot(prev => ({ ...prev, positions: updatedPositions }));
-    } else {
-      const updatedPositions = ballot.positions.map(pos => ({
-        ...pos,
-        candidates: pos.candidates.map(cand => 
-          cand.id === candId ? { ...cand, party: partyName } : cand
-        )
-      }));
-      
-      setBallot(prev => ({ ...prev, positions: updatedPositions }));
-    }
+    const updatedPositions = ballot.positions.map(pos => ({
+      ...pos,
+      candidates: pos.candidates.map(cand => 
+        cand.id === candId ? { ...cand, party: partyName } : cand
+      )
+    }));
     
+    setBallot(prev => ({ ...prev, positions: updatedPositions }));
     setShowPartylistModal(false);
   };
 
@@ -1123,7 +1359,9 @@ export default function BallotPage() {
 
   
       <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <p className="text-black mb-4"><span className="font-medium">Description:</span> {election.description || "No description provided"}</p>
+        <p className="text-black mb-4"> {election.description || "No description provided"}</p>
+        
+        
       </div>
 
       {ballot.positions.map((position) => (
@@ -1293,43 +1531,16 @@ export default function BallotPage() {
                           Partylist
                         </label>
                         
-                        {manualPartyInput[`${position.id}_${candidate.id}`] ? (
-                          <div>
-                            <input
-                              type="text"
-                              value={candidate.party}
-                              onChange={(e) => handleManualPartyInput(position.id, candidate.id, e.target.value)}
-                              className="w-full p-2 border border-gray-300 rounded text-black"
-                              placeholder="Enter a partylist"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setManualPartyInput(prev => {
-                                  const newState = { ...prev };
-                                  delete newState[`${position.id}_${candidate.id}`];
-                                  return newState;
-                                });
-                                openPartylistModal(position.id, candidate.id);
-                              }}
-                              className="text-sm text-blue-600 mt-1"
-                            >
-                              Select from list
-                            </button>
+                        <div>
+                          <div 
+                            onClick={() => openPartylistModal(position.id, candidate.id)}
+                            className={`w-full p-2 border border-gray-300 rounded text-black flex justify-between items-center cursor-pointer hover:border-blue-500 ${candidate.party ? 'bg-gray-50' : ''}`}
+                          >
+                            <span className={candidate.party ? 'text-black' : 'text-gray-400'}>
+                              {candidate.party || "Select a partylist"}
+                            </span>
                           </div>
-                        ) : (
-                          <div>
-                            <div 
-                              onClick={() => openPartylistModal(position.id, candidate.id)}
-                              className={`w-full p-2 border border-gray-300 rounded text-black flex justify-between items-center cursor-pointer hover:border-blue-500 ${candidate.party ? 'bg-gray-50' : ''}`}
-                            >
-                              <span className={candidate.party ? 'text-black' : 'text-gray-400'}>
-                                {candidate.party || "Select a partylist"}
-                              </span>
-                             
-                            </div>
-                          </div>
-                        )}
+                        </div>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-black mb-1">

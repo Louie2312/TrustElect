@@ -1,6 +1,6 @@
 const express = require("express");
 const { check } = require("express-validator");
-const { registerStudent, getAllStudents, getStudentById, editStudent, deleteStudent, restoreStudent, resetStudentPassword, permanentDeleteStudent, unlockStudentAccount, uploadStudentsBatch, getStudentElections, getStudentProfile, uploadProfilePicture, getAvailableCriteria, getStudentsByCourses } = require("../controllers/studentController");
+const { registerStudent, getAllStudents, getStudentById, editStudent, deleteStudent, restoreStudent, resetStudentPassword, permanentDeleteStudent, unlockStudentAccount, uploadStudentsBatch, getStudentElections, getStudentProfile, uploadProfilePicture, getAvailableCriteria, getStudentsByCourses, validateStudentByNumber, searchStudents } = require("../controllers/studentController");
 const { verifyToken, isStudent, isSuperAdmin, allowRoles } = require("../middlewares/authMiddleware");
 const router = express.Router();
 const upload = require('../middlewares/uploadMiddleware');
@@ -9,7 +9,12 @@ const path = require('path');
 const fs = require('fs');
 const { checkPermission } = require('../middlewares/permissionMiddleware');
 
-// Student-specific routes (should be defined first)
+// Student validation for candidate registration - no auth for development
+router.get("/students/validate", validateStudentByNumber);
+
+// Student search for autocomplete - no auth for development
+router.get("/students/search", searchStudents);
+
 router.get("/students/elections", verifyToken, isStudent, getStudentElections);
 router.get("/students/profile", verifyToken, isStudent, getStudentProfile);
 router.post("/students/upload", verifyToken, isStudent, profileUpload.single('profilePic'), uploadProfilePicture);

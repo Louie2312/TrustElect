@@ -411,17 +411,17 @@ const MaintenancePage = () => {
                     onClick={() => setShowArchived(!showArchived)}
                     className={`px-3 py-1 text-sm rounded ${
                       showArchived 
-                        ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                        ? 'bg-blue-600 text-white hover:bg-blue-700'  
                         : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
                     }`}
                   >
-                    {showArchived ? "Show Active" : "Show Archived"}
+                    {showArchived ? "Active" : "Archived"}
                   </button>
                 </div>
                 
                 {showArchived ? (
                   archivedPartylistList.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">No archived partylists found</div>
+                    <div className="text-center py-8 text-gray-500">No archived partylists</div>
                   ) : (
                     <div className="p-6 space-y-6 bg-gray-50">
                       {archivedPartylistList.map((pl) => (

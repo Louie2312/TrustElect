@@ -383,17 +383,26 @@ const processBatchStudents = async (students, createdBy) => {
           }
         }
 
-        // Register student
+        let yearLevel = student.yearLevel;
+        if (typeof yearLevel === 'string') {
+          const normalizedYearLevel = yearLevel.trim().toUpperCase();
+          if (normalizedYearLevel === 'G11' || normalizedYearLevel === 'GRADE 11') {
+            yearLevel = 'Grade 11';
+          } else if (normalizedYearLevel === 'G12' || normalizedYearLevel === 'GRADE 12') {
+            yearLevel = 'Grade 12';
+          }
+        }
+
         await registerStudent(
           student.firstName,
           middleName,
           student.lastName,
           email,
-          email, // username same as email
+          email, 
           hashedPassword,
           student.studentNumber,
           courseName,
-          student.yearLevel,
+          yearLevel,
           student.gender,
           parsedBirthdate,
           createdBy

@@ -83,13 +83,13 @@ export default function ManageStudents() {
         setYearLevels(yearLevelNames);
       } else {
       
-        setYearLevels(["1st Year", "2nd Year", "3rd Year", "4th Year"]);
+        setYearLevels(["1st Year", "2nd Year", "3rd Year", "4th Year", "Grade 11", "Grade 12"]);
       }
     } catch (error) {
       console.error("Error fetching courses and year levels:", error);
     
       setCourses(["BSIT", "BSCPE", "BSCS", "BMMA", "BSTM", "BSHM", "BSA", "BSBAOM"]);
-      setYearLevels(["1st Year", "2nd Year", "3rd Year", "4th Year"]);
+      setYearLevels(["1st Year", "2nd Year", "3rd Year", "4th Year", "Grade 11", "Grade 12"]);
     }
   };
 
@@ -421,11 +421,7 @@ export default function ManageStudents() {
         <div className="bg-gray-100 px-4 py-2 rounded-lg shadow-sm">
           <span className="text-black font-medium">Total Students: </span>
           <span className="text-blue-600 font-bold">{students.length}</span>
-          {filteredStudents.length < students.length && (
-            <span className="text-gray-500 text-sm ml-2">
-              (Showing {filteredStudents.length} with current filters)
-            </span>
-          )}
+          
           <button 
             onClick={() => setShowStatsPanel(!showStatsPanel)}
             className="ml-3 text-blue-600 hover:text-blue-800 underline text-sm"
@@ -437,10 +433,10 @@ export default function ManageStudents() {
 
       {showStatsPanel && (
         <div className="bg-white rounded-lg shadow p-4 mb-4">
-          <h2 className="text-lg font-semibold mb-3 text-black">Student Distribution</h2>
+          <h2 className="text-lg font-semibold mb-3 text-black">Student Count</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <h3 className="text-md font-medium mb-2 text-gray-700">By Course</h3>
+              <h3 className="text-md font-medium mb-2 text-black">Courses and Strands</h3>
               <div className="space-y-2">
                 {Object.entries(stats.courseStats).map(([course, count]) => (
                   <div key={course} className="flex justify-between">
@@ -456,7 +452,7 @@ export default function ManageStudents() {
               </div>
             </div>
             <div>
-              <h3 className="text-md font-medium mb-2 text-gray-700">By Year Level</h3>
+              <h3 className="text-md font-medium mb-2 text-black">Year Levels</h3>
               <div className="space-y-2">
                 {Object.entries(stats.yearStats).map(([year, count]) => (
                   <div key={year} className="flex justify-between">
