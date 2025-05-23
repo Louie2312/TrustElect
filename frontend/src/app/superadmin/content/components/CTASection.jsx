@@ -75,18 +75,7 @@ const CTASection = ({
           />
         </div>
         
-        <div>
-          <label className="block text-sm font-medium text-black mb-1">
-            Button URL
-          </label>
-          <input 
-            type="text" 
-            value={landingContent.callToAction.buttonUrl || "/contact"}
-            onChange={(e) => updateCTA('buttonUrl', e.target.value)}
-            className="w-full px-3 py-2 border rounded-md text-black"
-          />
-        </div>
-
+       
         {/* Color pickers for CTA section */}
         <div className="grid grid-cols-2 gap-4">
           <div>

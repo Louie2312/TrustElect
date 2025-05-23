@@ -30,6 +30,22 @@ const CHART_COLORS = [
   '#14b8a6', // teal
 ];
 
+function formatNameSimple(lastName, firstName, fallback) {
+  const cap = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
+  if ((!lastName && !firstName) && fallback) {
+    const words = fallback.trim().split(/\s+/);
+    if (words.length === 1) {
+      return cap(words[0]);
+    } else {
+      const last = cap(words[words.length - 1]);
+      const first = words.slice(0, -1).map(cap).join(' ');
+      return `${last}, ${first}`;
+    }
+  }
+  if (!lastName && !firstName) return 'No Name';
+  return `${cap(lastName)}, ${cap(firstName)}`;
+}
+
 async function fetchWithAuth(url) {
   const token = Cookies.get('token');
   const response = await fetch(`${API_BASE}${url}`, {
@@ -39,20 +55,20 @@ async function fetchWithAuth(url) {
   });
   
   if (!response.ok) {
-    // Check if the response is JSON before trying to parse it
+
     const contentType = response.headers.get('content-type');
     if (contentType && contentType.includes('application/json')) {
       const error = await response.json();
       throw new Error(error.message || 'Request failed');
     } else {
-      // If not JSON, throw error with status
+
       throw new Error(`Request failed with status ${response.status}`);
     }
   }
 
   const text = await response.text();
   if (!text) {
-    return {}; // Return empty object if no response body
+    return {}; 
   }
   
   try {
@@ -119,27 +135,21 @@ export default function ElectionDetailsPage() {
         if (electionData && electionData.created_by) {
           try {
             console.log('Creator data:', JSON.stringify(electionData.created_by));
-            
-            // Default to NOT being able to edit - more secure this way
+
             let isSysAdmin = false;
-            
-            // Special handling for ID 1 which is typically the system admin
+
             if (typeof electionData.created_by === 'object') {
               const creatorId = electionData.created_by.id || '';
               if (creatorId === 1 || creatorId === '1') {
-                console.log('Creator has ID 1, treating as system admin');
+            
                 isSysAdmin = true;
               }
             } else if (electionData.created_by === 1 || electionData.created_by === '1') {
-              console.log('Creator has ID 1, treating as system admin');
+            
               isSysAdmin = true;
               
-              // If we only have the ID but not the creator details, try to fetch them
               try {
-                console.log('Attempting to fetch creator details for ID:', electionData.created_by);
-                
-                // Instead of attempting to fetch user details which may not exist,
-                // set a default system admin name
+
                 electionData.created_by_name = "System Administrator";
                 electionData.created_by_role = "SuperAdmin";
               } catch (creatorFetchError) {
@@ -147,20 +157,14 @@ export default function ElectionDetailsPage() {
                 electionData.created_by_name = "System Administrator";
               }
             } else if (typeof electionData.created_by === 'number' || typeof electionData.created_by === 'string') {
-              // For any other numeric or string ID
-              console.log('Creator has ID (not 1):', electionData.created_by);
-              
-              // Set just the role without a name
-              electionData.created_by_name = "";  // Empty string to only show role
+
+              electionData.created_by_name = "";  
               electionData.created_by_role = "Admin";
             }
-            
-            // Check creator role if available
+
             if (typeof electionData.created_by === 'object' && electionData.created_by.role) {
               const creatorRole = electionData.created_by.role.toLowerCase();
-              console.log('Creator role from object:', creatorRole);
-              
-              // Check if creator is a system admin based on role
+
               const isSysAdminByRole = 
                 creatorRole.includes('superadmin') || 
                 creatorRole.includes('system_admin') || 
@@ -170,10 +174,9 @@ export default function ElectionDetailsPage() {
               if (isSysAdminByRole) {
                 isSysAdmin = true;
               }
-              
-              console.log('Creator role:', creatorRole, 'Is System Admin by role:', isSysAdminByRole);
+                   
             } else if (electionData.created_by_role) {
-              // Check if there's a separate created_by_role field
+
               const creatorRole = electionData.created_by_role.toLowerCase();
               console.log('Creator role from separate field:', creatorRole);
               
@@ -189,17 +192,16 @@ export default function ElectionDetailsPage() {
               
               console.log('Creator role from field:', creatorRole, 'Is System Admin by role:', isSysAdminByRole);
             }
-            
-            // Set the final determination
+
             setIsSystemAdminCreator(isSysAdmin);
             console.log('Final determination - Can edit (is system admin created):', isSysAdmin);
           } catch (error) {
             console.error('Error checking creator:', error);
-            // Default to false for safety
+
             setIsSystemAdminCreator(false);
           }
         } else {
-          // Default to false if no creator info
+
           setIsSystemAdminCreator(false);
         }
 
@@ -291,17 +293,14 @@ export default function ElectionDetailsPage() {
 
   const getEligibilityCriteria = () => {
     const criteria = election.eligibility_criteria || {};
-    
-    // Helper function to remove duplicates from an array (case-insensitive)
+
     const removeDuplicates = (array) => {
       if (!Array.isArray(array)) return [];
-      
-      // Use a Map to track normalized values
+
       const seen = new Map();
       return array.filter(item => {
         if (!item) return false;
-        
-        // Use lowercase for case-insensitive comparison
+
         const normalizedItem = item.toString().toLowerCase();
         if (seen.has(normalizedItem)) return false;
         
@@ -309,8 +308,7 @@ export default function ElectionDetailsPage() {
         return true;
       });
     };
-    
-    // Combine and deduplicate year levels from both property names
+
     const yearLevels = removeDuplicates([
       ...(criteria.year_levels || []), 
       ...(criteria.yearLevels || [])
@@ -364,12 +362,11 @@ export default function ElectionDetailsPage() {
         (b.vote_count || 0) - (a.vote_count || 0)
       );
 
-      // Create chart data with individual colors for each candidate
       const chartData = sortedCandidates.map((candidate, index) => ({
-        name: `${candidate.first_name} ${candidate.last_name}`,
+        name: formatNameSimple(candidate.last_name, candidate.first_name, candidate.name),
         votes: candidate.vote_count || 0, 
         party: candidate.party || 'Independent',
-        // Assign a color based on index, cycling through the array if needed
+
         color: CHART_COLORS[index % CHART_COLORS.length]
       }));
       
@@ -385,7 +382,7 @@ export default function ElectionDetailsPage() {
 
   return (
     <div className="max-w-6xl mx-auto p-4">
-      {/* Header */}
+
       <div className="flex items-center justify-between mb-6">
         <button 
           onClick={() => router.back()}
@@ -404,7 +401,7 @@ export default function ElectionDetailsPage() {
             {election.needs_approval ? 'NEEDS APPROVAL' : election.status.toUpperCase()}
           </span>
    
-          {(election.needs_approval || election.status === 'upcoming' || election.status === 'ongoing') ? (
+          {(election.needs_approval || election.status === 'upcoming' || election.status === 'ongoing' || election.status === 'completed') ? (
             isSystemAdminCreator ? (
               <>
                 <Link
@@ -414,7 +411,7 @@ export default function ElectionDetailsPage() {
                   <Edit className="w-4 h-4 mr-2" />
                   Edit Election
                 </Link>
-                {election.status !== 'ongoing' && (
+                {(election.status !== 'ongoing' && election.status !== 'completed') && (
                   <Link
                     href={`/superadmin/election/${election.id}/ballot`}
                     className="flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
@@ -770,10 +767,10 @@ export default function ElectionDetailsPage() {
               </div>
               <div className="flex-1 ml-4">
                 <p className="font-medium text-black mb-1">
-                  <span className="">Full Name: </span>{candidate.first_name} {candidate.last_name}
+                  <span className="">Full Name: </span>{formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
                 </p>
                 {candidate.party && (
-                  <p className="text-sm text-black mb-1">  <span className="font-bold">Partylist/Course: </span> {candidate.party}</p>
+                  <p className="text-sm text-black mb-1">  <span className="font-bold">Partylist: </span> {candidate.party}</p>
                 )}
                 {candidate.slogan && (
                   <p className="text-sm italic text-black mb-1">
@@ -781,7 +778,7 @@ export default function ElectionDetailsPage() {
                   </p>
                 )}
                 {candidate.platform && (
-                  <p className="text-sm text-black"><span className="font-bold">Platform/Description:  </span> {candidate.platform}</p>
+                  <p className="text-sm text-black"><span className="font-bold">Platform/Advocacy:  </span> {candidate.platform}</p>
                 )}
               </div>
             </div>
@@ -873,7 +870,7 @@ export default function ElectionDetailsPage() {
                       
                       <div>
                         <h4 className="font-bold text-black text-lg">
-                          {position.sortedCandidates[0].first_name} {position.sortedCandidates[0].last_name}
+                          {formatNameSimple(position.sortedCandidates[0].last_name, position.sortedCandidates[0].first_name, position.name)}
                         </h4>
                         {position.sortedCandidates[0].party && (
                           <div className="mt-1">
@@ -957,7 +954,7 @@ export default function ElectionDetailsPage() {
                       <div className="flex-1">
                         <div className="flex items-center">
                           <h4 className="font-medium text-black">
-                            {candidate.first_name} {candidate.last_name}
+                            {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
                           </h4>
                           {candidate.party && (
                             <span className="ml-2 px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">

@@ -100,7 +100,7 @@ const HeroSection = ({
               type="file" 
               accept="video/mp4,video/webm"
               onChange={(e) => handleFileUpload('heroVideo', null, e)}
-              className="w-full border rounded p-1 text-sm file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-blue-50 file:text-black"
+              className="w-full border rounded p-1 text-sm file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-blue-50 file:text-black text-black"
             />
               {landingContent.hero.videoUrl && (
                 <button
@@ -128,7 +128,7 @@ const HeroSection = ({
               type="file" 
               accept="image/jpeg,image/png,image/webp"
               onChange={(e) => handleFileUpload('heroPoster', null, e)}
-              className="w-full border rounded p-1 text-sm file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-blue-50 file:text-black"
+              className="w-full border rounded p-1 text-sm file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-blue-50 file:text-black text-black"
                 id="hero-poster-input"
                 data-section="hero"
               />

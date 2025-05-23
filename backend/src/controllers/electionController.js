@@ -224,10 +224,10 @@ exports.updateElection = async (req, res) => {
       });
     }
 
-    if (existingElection.status !== 'upcoming' && existingElection.status !== 'ongoing') {
+    if (existingElection.status !== 'upcoming' && existingElection.status !== 'ongoing' && existingElection.status !== 'completed') {
       return res.status(400).json({
         success: false,
-        message: "Only upcoming or ongoing elections can be updated"
+        message: "Only upcoming, ongoing, or completed elections can be updated"
       });
     }
 

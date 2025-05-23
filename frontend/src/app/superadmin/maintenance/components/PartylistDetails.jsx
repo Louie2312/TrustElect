@@ -3,8 +3,9 @@ import { useState, useEffect } from 'react';
 import { toast } from "react-toastify";
 import axios from 'axios';
 import Cookies from "js-cookie";
+import { useDropzone } from 'react-dropzone';
 
-// Configure axios with base URL
+
 const api = axios.create({
   baseURL: 'http://localhost:5000',
   withCredentials: true,
@@ -12,6 +13,22 @@ const api = axios.create({
     'Content-Type': 'application/json'
   }
 });
+
+function formatNameSimple(lastName, firstName, fallback) {
+  const cap = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
+  if ((!lastName && !firstName) && fallback) {
+    const words = fallback.trim().split(/\s+/);
+    if (words.length === 1) {
+      return cap(words[0]);
+    } else {
+      const last = cap(words[words.length - 1]);
+      const first = words.slice(0, -1).map(cap).join(' ');
+      return `${last}, ${first}`;
+    }
+  }
+  if (!lastName && !firstName) return 'No Name';
+  return `${cap(lastName)}, ${cap(firstName)}`;
+}
 
 const PartylistDetails = ({ 
   partylist, 
@@ -37,6 +54,47 @@ const PartylistDetails = ({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [allStudents, setAllStudents] = useState([]);
   const [positions, setPositions] = useState([]);
+  const [takenPositions, setTakenPositions] = useState([]);
+  const [studentValidationError, setStudentValidationError] = useState('');
+  const [allPartylistCandidates, setAllPartylistCandidates] = useState([]);
+  const [firstNameSuggestions, setFirstNameSuggestions] = useState([]);
+  const [lastNameSuggestions, setLastNameSuggestions] = useState([]);
+  const [showFirstNameSuggestions, setShowFirstNameSuggestions] = useState(false);
+  const [showLastNameSuggestions, setShowLastNameSuggestions] = useState(false);
+  const [showBatchModal, setShowBatchModal] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploadStatus, setUploadStatus] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [batchResults, setBatchResults] = useState(null);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    accept: {
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      'application/vnd.ms-excel': ['.xls']
+    },
+    maxFiles: 1,
+    onDrop: acceptedFiles => {
+      setSelectedFile(acceptedFiles[0]);
+      setUploadStatus(null);
+      setBatchResults(null);
+    }
+  });
+
+  const clearSelectedFile = () => {
+    setSelectedFile(null);
+    setUploadStatus(null);
+    setBatchResults(null);
+  };
+
+  useEffect(() => {
+    if (positions.length > 0) {
+
+      setCandidateForm(prev => ({
+        ...prev,
+        position: ""
+      }));
+    }
+  }, [positions]);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -52,7 +110,7 @@ const PartylistDetails = ({
   }, []);
 
   useEffect(() => {
-    if (partylist) {
+    if (partylist && partylist.id) {
       fetchPartylistCandidates(partylist.id);
     }
   }, [partylist]);
@@ -78,23 +136,39 @@ const PartylistDetails = ({
   const fetchPartylistCandidates = async (partylistId) => {
     setIsLoading(true);
     try {
-      console.log(`Fetching candidates for partylist ID: ${partylistId}`);
-      // For now, just use empty array since the API is not working
-      setCandidates([]);
-      setIsLoading(false);
+      const token = Cookies.get("token");
+      const response = await axios.get(`http://localhost:5000/api/partylists/${partylistId}/candidates`, {
+        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
+      });
+      
+      if (response.data && response.data.success) {
+        const candidatesData = response.data.candidates || [];
+        setCandidates(candidatesData);
+
+        const taken = candidatesData
+          .filter(c => !c.is_representative && c.position)
+          .map(c => c.position);
+
+        setTakenPositions(taken);
+      } else {
+        setCandidates([]);
+        setTakenPositions([]);
+      }
     } catch (error) {
       console.error("Error fetching candidates:", error);
       toast.error("Failed to load candidates");
+      setCandidates([]);
+      setTakenPositions([]);
+    } finally {
       setIsLoading(false);
     }
   };
 
   const fetchPositions = async () => {
     try {
-      // Instead of assuming ID 1, let's fetch all election types first to find Student Council
       const token = Cookies.get("token");
-      
-      // First, fetch election types to find Student Council
+    
       const electionTypesResponse = await axios.get("http://localhost:5000/api/maintenance/election-types", {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
@@ -103,38 +177,33 @@ const PartylistDetails = ({
       let studentCouncilElectionTypeId = null;
       
       if (electionTypesResponse.data && electionTypesResponse.data.data) {
-        // Find Student Council election type
+
         const studentCouncilType = electionTypesResponse.data.data.find(
           type => type.name.toLowerCase().includes('student council') || type.name.toLowerCase().includes('student body')
         );
         
         if (studentCouncilType) {
           studentCouncilElectionTypeId = studentCouncilType.id;
-          console.log("Found Student Council election type ID:", studentCouncilElectionTypeId);
         }
       }
 
       if (!studentCouncilElectionTypeId) {
-
         studentCouncilElectionTypeId = 1;
-        console.log("Using fallback Student Council election type ID:", studentCouncilElectionTypeId);
       }
       
-   
       const response = await axios.get(`http://localhost:5000/api/direct/positions?electionTypeId=${studentCouncilElectionTypeId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
       if (response.data && response.data.success && response.data.data) {
-
-        setPositions(response.data.data);
+        const positionsData = response.data.data;
+      
+        setPositions(positionsData);
       } else {
-
         tryLocalStorageFallback(studentCouncilElectionTypeId);
       }
     } catch (error) {
       console.error("Error fetching positions:", error);
-      // Fallback to localStorage
       tryLocalStorageFallback();
     }
   };
@@ -147,7 +216,6 @@ const PartylistDetails = ({
       let storedPositions = positionsData[electionTypeId] || [];
 
       if (storedPositions.length === 0 && electionTypeId !== 1) {
-        console.log("No positions found for ID:", electionTypeId, "Trying ID 1 instead");
         storedPositions = positionsData["1"] || [];
       }
       
@@ -183,12 +251,11 @@ const PartylistDetails = ({
       setShowSuggestions(false);
       return;
     }
-    
+  
     try {
 
       const matchingStudents = allStudents.filter(
-        student => student.student_number.includes(searchTerm) || 
-                  `${student.first_name} ${student.last_name}`.toLowerCase().includes(searchTerm.toLowerCase())
+        student => student.student_number.includes(searchTerm)
       ).slice(0, 10); 
       
       setStudentSuggestions(matchingStudents);
@@ -196,8 +263,7 @@ const PartylistDetails = ({
 
       const exactMatch = matchingStudents.find(s => s.student_number === searchTerm);
       if (exactMatch) {
-        console.log('Found exact match:', exactMatch.student_number);
- 
+
       }
     } catch (error) {
       console.error("Error filtering student suggestions:", error);
@@ -238,72 +304,206 @@ const PartylistDetails = ({
     }
   };
 
-  const handleAddCandidate = async (e) => {
-    e.preventDefault();
-
-    if (!candidateForm.firstName || !candidateForm.lastName || !candidateForm.course || !candidateForm.studentNumber) {
-      toast.error("Please fill in all required candidate fields");
-      return;
-    }
-
-    if (candidates.some(c => c.student_number === candidateForm.studentNumber)) {
-      toast.error("A candidate with this student number already exists");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const newCandidate = {
-        id: Date.now().toString(),
-        partylist_id: partylist.id,
-        student_id: studentData?.id,
-        first_name: candidateForm.firstName,
-        last_name: candidateForm.lastName,
-        student_number: candidateForm.studentNumber,
-        course: candidateForm.course,
-        position: candidateForm.position,
-        is_representative: candidateForm.isRepresentative
-      };
-      
-      setCandidates(prev => [...prev, newCandidate]);
-      toast.success("Candidate added successfully");
-      
-      setCandidateForm({
-        studentNumber: "",
-        firstName: "",
-        lastName: "",
-        course: "",
-        position: "",
-        isRepresentative: false
-      });
-      setIsAddingCandidate(false);
-      setStudentFound(false);
-      setStudentData(null);
-    } catch (error) {
-      console.error("Error adding candidate:", error);
-      toast.error("Failed to add candidate");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const handleRemoveCandidate = async (candidateId, candidateName) => {
-    if (!window.confirm(`Are you sure you want to remove this candidate?`)) return;
+  const validateStudentExists = (firstName, lastName) => {
+    const studentExists = allStudents.some(student => 
+      student.first_name.toLowerCase() === firstName.toLowerCase() && 
+      student.last_name.toLowerCase() === lastName.toLowerCase()
+    );
     
-    setIsLoading(true);
-    try {
+    if (!studentExists) {
+      setStudentValidationError('This student is not in the student list');
+      return false;
+    }
+    
+    setStudentValidationError('');
+    return true;
+  };
 
-      setCandidates(prev => prev.filter(c => c.id !== candidateId));
-      toast.success("Candidate removed successfully");
+  const handleCandidateChange = async (posId, candId, field, value) => {
+    if (field === "party") {
+      return;
+    }
+    
+    const updatedPositions = ballot.positions.map(pos => ({
+      ...pos,
+      candidates: pos.candidates.map(cand => 
+        cand.id === candId ? { ...cand, [field]: value } : cand
+      )
+    }));
+    
+    setBallot(prev => ({ ...prev, positions: updatedPositions }));
+
+    if (field === 'first_name' || field === 'last_name') {
+      const candidate = updatedPositions.find(pos => 
+        pos.candidates.some(c => c.id === candId)
+      )?.candidates.find(c => c.id === candId);
+      
+      if (candidate && candidate.first_name && candidate.last_name) {
+        validateStudentExists(candidate.first_name, candidate.last_name);
+      }
+    }
+    
+    try {
+      if (ballot.id && field !== '_pendingImage') {
+        await updateCandidate(candId, { [field]: value });
+      }
     } catch (error) {
-      console.error("Error removing candidate:", error);
-      toast.error("Failed to remove candidate");
-    } finally {
-      setIsLoading(false);
+      setApiError(`Failed to update candidate: ${error.message}`);
     }
   };
-  
-  const handleCandidateInputChange = (e) => {
+
+  const fetchAllPartylistCandidates = async () => {
+    try {
+      const token = Cookies.get("token");
+
+      const partylistsResponse = await axios.get(
+        "http://localhost:5000/api/partylists",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          withCredentials: true,
+        }
+      );
+
+      if (!partylistsResponse.data || !partylistsResponse.data.success) {
+        console.error("Failed to fetch partylists");
+        return;
+      }
+
+      const allCandidates = [];
+      for (const party of partylistsResponse.data.data) {
+        try {
+          const candidatesResponse = await axios.get(
+            `http://localhost:5000/api/partylists/${party.id}/candidates`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+              withCredentials: true,
+            }
+          );
+
+          if (candidatesResponse.data && candidatesResponse.data.success) {
+            const candidates = candidatesResponse.data.candidates || [];
+            allCandidates.push(...candidates);
+          }
+        } catch (error) {
+          console.error(`Error fetching candidates for partylist ${party.id}:`, error);
+
+          continue;
+        }
+      }
+
+      setAllPartylistCandidates(allCandidates);
+    } catch (error) {
+      console.error("Error fetching partylists:", error);
+      toast.error("Failed to load partylist candidates. Some data may be incomplete.");
+
+      setAllPartylistCandidates([]);
+    }
+  };
+
+  useEffect(() => {
+    fetchAllPartylistCandidates();
+  }, []);
+
+  const isStudentAlreadyCandidate = (studentNumber) => {
+    if (!studentNumber) return false;
+    
+    const existingCandidate = allPartylistCandidates.find(candidate => 
+      candidate.student_number === studentNumber && 
+      candidate.partylist_id !== partylist.id
+    );
+
+    if (existingCandidate) {
+      console.log('Found existing candidate:', existingCandidate);
+      return true;
+    }
+    return false;
+  };
+
+  const validateStudentForPartylist = async (studentNumber) => {
+    if (!studentNumber) return false;
+
+    const isAlreadyCandidate = allPartylistCandidates.some(candidate => 
+      candidate.student_number === studentNumber && 
+      candidate.partylist_id !== partylist.id
+    );
+
+    if (isAlreadyCandidate) {
+      return false;
+    }
+
+    return true;
+  };
+
+  const checkExistingCandidateByName = (firstName, lastName) => {
+    if (!firstName || !lastName) return false;
+    
+    return allPartylistCandidates.some(candidate => 
+      candidate.first_name.toLowerCase() === firstName.toLowerCase() && 
+      candidate.last_name.toLowerCase() === lastName.toLowerCase() &&
+      candidate.partylist_id !== partylist.id
+    );
+  };
+
+  const fetchNameSuggestions = (searchTerm, type) => {
+    if (!searchTerm || searchTerm.length < 2) {
+      if (type === 'firstName') {
+        setFirstNameSuggestions([]);
+        setShowFirstNameSuggestions(false);
+      } else {
+        setLastNameSuggestions([]);
+        setShowLastNameSuggestions(false);
+      }
+      return;
+    }
+    
+    try {
+      const matchingStudents = allStudents.filter(student => {
+        if (type === 'firstName') {
+          return student.first_name.toLowerCase().includes(searchTerm.toLowerCase());
+        } else {
+          return student.last_name.toLowerCase().includes(searchTerm.toLowerCase());
+        }
+      }).slice(0, 10);
+
+      if (type === 'firstName') {
+        setFirstNameSuggestions(matchingStudents);
+        setShowFirstNameSuggestions(matchingStudents.length > 0);
+      } else {
+        setLastNameSuggestions(matchingStudents);
+        setShowLastNameSuggestions(matchingStudents.length > 0);
+      }
+    } catch (error) {
+      console.error("Error filtering name suggestions:", error);
+      if (type === 'firstName') {
+        setFirstNameSuggestions([]);
+        setShowFirstNameSuggestions(false);
+      } else {
+        setLastNameSuggestions([]);
+        setShowLastNameSuggestions(false);
+      }
+    }
+  };
+
+  const selectNameSuggestion = (student, type) => {
+    setCandidateForm(prev => ({
+      ...prev,
+      studentNumber: student.student_number,
+      firstName: student.first_name,
+      lastName: student.last_name,
+      course: student.course_name,
+      position: ""
+    }));
+    setStudentData(student);
+    setStudentFound(true);
+    
+    if (type === 'firstName') {
+      setShowFirstNameSuggestions(false);
+    } else {
+      setShowLastNameSuggestions(false);
+    }
+  };
+
+  const handleCandidateInputChange = async (e) => {
     const { name, value, type, checked } = e.target;
 
     setCandidateForm(prev => ({
@@ -312,10 +512,13 @@ const PartylistDetails = ({
     }));
 
     if (name === 'studentNumber') {
- 
       if (value.length >= 4) {
-  
         fetchStudentSuggestions(value);
+        
+        if (isStudentAlreadyCandidate(value)) {
+          toast.warning("This student is already registered as a candidate in another partylist");
+          return;
+        }
       } else {
         setShowSuggestions(false);
         setStudentSuggestions([]);
@@ -326,21 +529,183 @@ const PartylistDetails = ({
           ...prev,
           firstName: "",
           lastName: "",
-          course: ""
+          course: "",
+          position: ""
         }));
         setStudentFound(false);
         setStudentData(null);
       }
+    } else if (name === 'firstName') {
+      fetchNameSuggestions(value, 'firstName');
+ 
+      if (value && candidateForm.lastName) {
+        if (checkExistingCandidateByName(value, candidateForm.lastName)) {
+          toast.warning("A candidate with this name is already registered in another partylist");
+          setStudentValidationError("This student is already registered as a candidate in another partylist");
+        } else {
+          setStudentValidationError('');
+        }
+      }
+    } else if (name === 'lastName') {
+      fetchNameSuggestions(value, 'lastName');
+ 
+      if (value && candidateForm.firstName) {
+        if (checkExistingCandidateByName(candidateForm.firstName, value)) {
+          toast.warning("A candidate with this name is already registered in another partylist");
+          setStudentValidationError("This student is already registered as a candidate in another partylist");
+        } else {
+          setStudentValidationError('');
+        }
+      }
+    } else if (name === 'isRepresentative') {
+      setCandidateForm(prev => ({
+        ...prev,
+        position: ""
+      }));
     }
   };
 
-  const selectStudentSuggestion = (student) => {
+  const handleAddCandidate = async (e) => {
+    e.preventDefault();
+
+    if (!candidateForm.firstName || !candidateForm.lastName || !candidateForm.course || !candidateForm.studentNumber) {
+      toast.error("Please fill in all required candidate fields");
+      return;
+    }
+
+    if (!validateStudentExists(candidateForm.firstName, candidateForm.lastName)) {
+      toast.error("This student is not in the student list");
+      return;
+    }
+
+    if (isStudentAlreadyCandidate(candidateForm.studentNumber)) {
+      toast.error("This student is already registered as a candidate in another partylist");
+      return;
+    }
+
+    if (checkExistingCandidateByName(candidateForm.firstName, candidateForm.lastName)) {
+      toast.error("A candidate with this name is already registered in another partylist");
+      return;
+    }
+
+    if (candidates.some(c => c.student_number === candidateForm.studentNumber)) {
+      toast.error("A candidate with this student number already exists in this partylist");
+      return;
+    }
+
+    if (!candidateForm.isRepresentative && takenPositions.includes(candidateForm.position)) {
+      toast.error("This position is already taken");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const token = Cookies.get("token");
+      const requestData = {
+        studentId: studentData?.id,
+        firstName: candidateForm.firstName,
+        lastName: candidateForm.lastName,
+        studentNumber: candidateForm.studentNumber,
+        course: candidateForm.course,
+        position: candidateForm.position,
+        isRepresentative: candidateForm.isRepresentative
+      };
+      
+      console.log('Adding candidate with data:', requestData);
+      
+      const response = await axios.post(
+        `http://localhost:5000/api/partylists/${partylist.id}/candidates`, 
+        requestData,
+        {
+          headers: { 
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}` 
+          },
+          withCredentials: true
+        }
+      );
+      
+      if (response.data && response.data.success) {
+        toast.success("Candidate added successfully");
+        
+        // Reset form
+        setCandidateForm({
+          studentNumber: "",
+          firstName: "",
+          lastName: "",
+          course: "",
+          position: "",
+          isRepresentative: false
+        });
+        setIsAddingCandidate(false);
+        setStudentFound(false);
+        setStudentData(null);
+        setStudentValidationError('');
+
+        await Promise.all([
+          fetchPartylistCandidates(partylist.id),
+          fetchAllPartylistCandidates()
+        ]);
+      } else {
+        toast.error(response.data?.message || "Failed to add candidate");
+      }
+    } catch (error) {
+      console.error("Error adding candidate:", error);
+      if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error("Failed to add candidate. Please try again.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleRemoveCandidate = async (candidateId, candidateName) => {
+    if (!window.confirm(`Are you sure you want to remove this candidate?`)) return;
+    
+    setIsLoading(true);
+    try {
+      const token = Cookies.get("token");
+      const response = await axios.delete(`http://localhost:5000/api/candidates/${candidateId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true
+      });
+      
+      if (response.data && response.data.success) {
+        toast.success("Candidate removed successfully");
+
+        fetchPartylistCandidates(partylist.id);
+      } else {
+        toast.error(response.data?.message || "Failed to remove candidate");
+      }
+    } catch (error) {
+      console.error("Error removing candidate:", error);
+      toast.error(error.response?.data?.message || "Failed to remove candidate");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const selectStudentSuggestion = async (student) => {
+
+    if (isStudentAlreadyCandidate(student.student_number)) {
+      toast.error("This student is already registered as a candidate in another partylist");
+      return;
+    }
+
+    if (checkExistingCandidateByName(student.first_name, student.last_name)) {
+      toast.error("A candidate with this name is already registered in another partylist");
+      return;
+    }
+
     setCandidateForm(prev => ({
       ...prev,
       studentNumber: student.student_number,
       firstName: student.first_name,
       lastName: student.last_name,
-      course: student.course_name
+      course: student.course_name,
+      position: ""
     }));
     setStudentData(student);
     setStudentFound(true);
@@ -354,6 +719,10 @@ const PartylistDetails = ({
     if (!candidates || candidates.length === 0) {
       return { positionGroups, representatives };
     }
+
+    positions.forEach(position => {
+      positionGroups[position.name] = [];
+    });
     
     candidates.forEach(candidate => {
       if (candidate.is_representative) {
@@ -368,24 +737,35 @@ const PartylistDetails = ({
     
     return { positionGroups, representatives };
   };
-  
+
   const { positionGroups, representatives } = getCandidatesByPosition();
+
+  const positionOrder = [
+    'President',
+    'Vice President',
+    'Secretary',
+    'Treasurer',
+    'Auditor',
+    'PRO'
+  ];
 
   return (
     <div>
       {isLoading && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 flex items-center justify-center z-50">
           <div className="animate-spin h-12 w-12 border-4 border-blue-500 rounded-full border-t-transparent"></div>
         </div>
       )}
       
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold text-black">Partylist: {partylist.name}</h2>
+        {/*
+          <h2 className="text-xl font-semibold text-black">Partylist: {partylist.name}</h2>
+        */}
         <button
           onClick={onClose}
           className="px-3 py-1 text-sm rounded bg-gray-200 text-gray-800 hover:bg-gray-300"
         >
-          Back to List
+          Back
         </button>
       </div>
 
@@ -428,7 +808,7 @@ const PartylistDetails = ({
                     + Add Candidate
                   </button>
                   <button 
-                  
+                    onClick={() => setShowBatchModal(true)}
                     className="px-3 py-1 text-sm rounded bg-green-600 text-white hover:bg-green-700"
                   >
                     Batch Upload
@@ -452,7 +832,7 @@ const PartylistDetails = ({
                           onChange={handleCandidateInputChange}
                           className={`w-full p-2 border rounded text-black ${studentFound ? 'border-green-500' : ''}`}
                           required
-                          placeholder="Enter student number"
+                         
                           autoComplete="off"
                         />
                         {isValidating && <div className="ml-2 flex items-center">
@@ -479,28 +859,67 @@ const PartylistDetails = ({
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-black mb-1">First Name </label>
-                      <input
-                        type="text"
-                        name="firstName"
-                        value={candidateForm.firstName}
-                        onChange={handleCandidateInputChange}
-                        className="w-full p-2 border rounded text-black"
-                        required
-                        readOnly={studentFound}
-                      />
+                      <label className="block text-sm font-medium text-black mb-1">First Name</label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          name="firstName"
+                          value={candidateForm.firstName}
+                          onChange={handleCandidateInputChange}
+                          className={`w-full p-2 border rounded text-black ${
+                            studentValidationError ? "border-red-500" : "border-gray-300"
+                          }`}
+                          required
+                          readOnly={studentFound}
+                        />
+                        {showFirstNameSuggestions && firstNameSuggestions.length > 0 && (
+                          <div className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md border max-h-60 overflow-y-auto">
+                            {firstNameSuggestions.map(student => (
+                              <div 
+                                key={student.id} 
+                                className="p-2 hover:bg-gray-100 cursor-pointer border-b"
+                                onClick={() => selectNameSuggestion(student, 'firstName')}
+                              >
+                                <div className="font-medium text-black">{student.first_name} {student.last_name}</div>
+                                <div className="text-sm text-gray-600">{student.student_number} - {student.course_name}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      {studentValidationError && (
+                        <p className="text-red-500 text-sm mt-1">{studentValidationError}</p>
+                      )}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-black mb-1">Last Name </label>
-                      <input
-                        type="text"
-                        name="lastName"
-                        value={candidateForm.lastName}
-                        onChange={handleCandidateInputChange}
-                        className="w-full p-2 border rounded text-black"
-                        required
-                        readOnly={studentFound}
-                      />
+                      <label className="block text-sm font-medium text-black mb-1">Last Name</label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          name="lastName"
+                          value={candidateForm.lastName}
+                          onChange={handleCandidateInputChange}
+                          className={`w-full p-2 border rounded text-black ${
+                            studentValidationError ? "border-red-500" : "border-gray-300"
+                          }`}
+                          required
+                          readOnly={studentFound}
+                        />
+                        {showLastNameSuggestions && lastNameSuggestions.length > 0 && (
+                          <div className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md border max-h-60 overflow-y-auto">
+                            {lastNameSuggestions.map(student => (
+                              <div 
+                                key={student.id} 
+                                className="p-2 hover:bg-gray-100 cursor-pointer border-b"
+                                onClick={() => selectNameSuggestion(student, 'lastName')}
+                              >
+                                <div className="font-medium text-black">{student.first_name} {student.last_name}</div>
+                                <div className="text-sm text-gray-600">{student.student_number} - {student.course_name}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-black mb-1">Course </label>
@@ -522,9 +941,15 @@ const PartylistDetails = ({
                         onChange={handleCandidateInputChange}
                         className="w-full p-2 border rounded text-black"
                         disabled={candidateForm.isRepresentative}
+                        required={!candidateForm.isRepresentative}
                       >
+                        <option value="">Select Position</option>
                         {positions.map(pos => (
-                          <option key={pos.id} value={pos.name}>
+                          <option 
+                            key={pos.id} 
+                            value={pos.name}
+                            disabled={takenPositions.includes(pos.name)}
+                          >
                             {pos.name}
                           </option>
                         ))}
@@ -571,60 +996,66 @@ const PartylistDetails = ({
                 </div>
               ) : (
                 <div>
-                  {/* Display candidates by position */}
-                  {Object.entries(positionGroups).map(([position, positionCandidates]) => (
-                    <div key={position} className="mb-6">
-                      <h4 className="px-4 py-2 bg-gray-100 font-medium text-black">{position}</h4>
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Name</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Student #</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Course</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {positionCandidates.map(candidate => (
-                            <tr key={candidate.id}>
-                              <td className="px-4 py-3 whitespace-nowrap">
-                                <div className="text-sm font-medium text-gray-900">
-                                  {candidate.first_name} {candidate.last_name}
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-black">
-                                {candidate.student_number}
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-black">
-                                {candidate.course}
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap">
-                                <button
-                                  onClick={() => handleRemoveCandidate(candidate.id, `${candidate.first_name} ${candidate.last_name}`)}
-                                  className="w-20 h-8 bg-red-500 text-white rounded hover:bg-red-600 font-medium text-xs inline-flex items-center justify-center"
-                                  disabled={isLoading}
-                                >
-                                  Remove
-                                </button>
-                              </td>
+                  {Object.entries(positionGroups)
+                    .filter(([_, candidates]) => candidates.length > 0)
+                    .sort(([posA], [posB]) => {
+                      const indexA = positionOrder.indexOf(posA);
+                      const indexB = positionOrder.indexOf(posB);
+                      return indexA - indexB;
+                    })
+                    .map(([position, positionCandidates]) => (
+                      <div key={position} className="mb-6">
+                        <h4 className="px-4 py-2 bg-gray-100 font-bold text-black">{position}</h4>
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider w-1/3">Name</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider w-1/4">Student #</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider w-1/4">Course</th>
+                              <th className="px-4 py-3 text-center text-xs font-medium text-black uppercase tracking-wider w-1/6">Actions</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ))}
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {positionCandidates.map(candidate => (
+                              <tr key={candidate.id}>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-black">
+                                  {candidate.student_number}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-black">
+                                  {candidate.course}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-center">
+                                  <button
+                                    onClick={() => handleRemoveCandidate(candidate.id, `${candidate.first_name} ${candidate.last_name}`)}
+                                    className="w-20 h-8 bg-red-500 text-white rounded hover:bg-red-600 font-medium text-xs inline-flex items-center justify-center"
+                                    disabled={isLoading}
+                                  >
+                                    Remove
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ))}
                   
-                  {/* Display representatives */}
+                  {/* Display representatives only if there are any */}
                   {representatives.length > 0 && (
                     <div className="mb-6">
-                      <h4 className="px-4 py-2 bg-gray-100 font-medium text-black">Representatives</h4>
+                      <h4 className="px-4 py-2 bg-gray-100 font-bold text-black">Representatives</h4>
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                           <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Name</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Student #</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Course</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">Actions</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider w-1/3">Name</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider w-1/4">Student #</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider w-1/4">Course</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-black uppercase tracking-wider w-1/6">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
@@ -632,7 +1063,7 @@ const PartylistDetails = ({
                             <tr key={candidate.id}>
                               <td className="px-4 py-3 whitespace-nowrap">
                                 <div className="text-sm font-medium text-gray-900">
-                                  {candidate.first_name} {candidate.last_name}
+                                  {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
                                 </div>
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap text-sm text-black">
@@ -641,7 +1072,7 @@ const PartylistDetails = ({
                               <td className="px-4 py-3 whitespace-nowrap text-sm text-black">
                                 {candidate.course}
                               </td>
-                              <td className="px-4 py-3 whitespace-nowrap">
+                              <td className="px-4 py-3 whitespace-nowrap text-center">
                                 <button
                                   onClick={() => handleRemoveCandidate(candidate.id, `${candidate.first_name} ${candidate.last_name}`)}
                                   className="w-20 h-8 bg-red-500 text-white rounded hover:bg-red-600 font-medium text-xs inline-flex items-center justify-center"
@@ -662,6 +1093,161 @@ const PartylistDetails = ({
           </div>
         </div>
       </div>
+
+      {showBatchModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-2xl">
+            <h2 className="text-xl font-bold mb-4 text-black">Batch Upload Candidates</h2>
+            
+            <div 
+              {...getRootProps()} 
+              className={`border-2 border-dashed p-8 text-center cursor-pointer ${
+                isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+              }`}
+            >
+              <input {...getInputProps()} />
+              {isDragActive ? (
+                <p>Drop the Excel file here...</p>
+              ) : (
+                <p className="text-black">Drag & drop an Excel file here, or click to select a file</p>
+              )}
+            </div>
+
+            {selectedFile && (
+              <div className="mt-4 p-4 bg-gray-50 rounded border">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="font-medium text-black">{selectedFile.name}</p>
+                    <p className="text-sm text-gray-500">
+                      {(selectedFile.size / 1024).toFixed(2)} KB
+                    </p>
+                  </div>
+                  <button 
+                    onClick={clearSelectedFile}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    Remove
+                  </button>
+                </div>
+                
+                {!uploadStatus && (
+                  <button
+                    className="mt-4 bg-blue-600 text-white px-4 py-2 rounded w-full"
+                  >
+                    Upload File
+                  </button>
+                )}
+              </div>
+            )}
+
+            {uploadStatus === 'uploading' && (
+              <div className="mt-4">
+                <div className="w-full bg-gray-200 rounded-full h-2.5">
+                  <div 
+                    className="bg-blue-600 h-2.5 rounded-full" 
+                    style={{ width: `${uploadProgress}%` }}
+                  ></div>
+                </div>
+                <p className="text-center mt-2">Uploading: {uploadProgress}%</p>
+              </div>
+            )}
+
+            {uploadStatus === 'success' && batchResults && (
+              <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded">
+                <h3 className="font-bold text-black">Upload Complete!</h3>
+                <p className="text-black">Total: {batchResults.total}</p>
+                <p className="text-black">Success: {batchResults.success}</p>
+                <p className="text-black">Failed: {batchResults.failed}</p>
+                
+                {batchResults.failed > 0 && (
+                  <div className="mt-2">
+                    <h4 className="font-bold">Errors:</h4>
+                    <div className="max-h-60 overflow-y-auto border border-gray-200 rounded p-2 bg-white">
+                      <table className="w-full text-sm text-left">
+                        <thead className="bg-gray-100">
+                          <tr>
+                            <th className="px-2 py-1">Row</th>
+                            <th className="px-2 py-1">Candidate</th>
+                            <th className="px-2 py-1">Error</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {batchResults.errors.map((error, index) => (
+                            <tr key={index} className="border-b border-gray-100">
+                              <td className="px-2 py-1">{error.row || 'N/A'}</td>
+                              <td className="px-2 py-1">
+                                {error.lastName}, {error.firstName}
+                                <div className="text-xs text-gray-500">{error.studentNumber}</div>
+                              </td>
+                              <td className="px-2 py-1 text-red-600">{error.error}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="mt-2 text-sm text-gray-600">
+                      Note: Rows with errors were skipped, but valid rows were still processed.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {uploadStatus === 'error' && (
+              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded">
+                <h3 className="font-bold text-red-800">Upload Failed</h3>
+                <p className="text-red-700">{batchResults?.message || 'An error occurred during upload'}</p>
+                
+                {batchResults?.errors && batchResults.errors.length > 0 && (
+                  <div className="mt-2">
+                    <h4 className="font-bold text-red-800">Error Details:</h4>
+                    <div className="max-h-60 overflow-y-auto border border-red-200 rounded p-2 bg-white">
+                      <table className="w-full text-sm text-left">
+                        <thead className="bg-red-50">
+                          <tr>
+                            <th className="px-2 py-1">Row</th>
+                            <th className="px-2 py-1">Candidate</th>
+                            <th className="px-2 py-1">Error</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {batchResults.errors.map((error, index) => (
+                            <tr key={index} className="border-b border-red-50">
+                              <td className="px-2 py-1">{error.row || 'N/A'}</td>
+                              <td className="px-2 py-1">
+                                {error.lastName}, {error.firstName}
+                                <div className="text-xs text-gray-500">{error.studentNumber}</div>
+                              </td>
+                              <td className="px-2 py-1 text-red-600">{error.error}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="mt-2 text-sm text-red-700">
+                      Please fix these errors and try uploading again.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex justify-end mt-4 gap-2">
+              <button 
+                onClick={() => {
+                  setShowBatchModal(false);
+                  setSelectedFile(null);
+                  setUploadStatus(null);
+                  setBatchResults(null);
+                }} 
+                className="bg-gray-500 text-white px-4 py-2 rounded"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

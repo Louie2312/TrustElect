@@ -12,6 +12,22 @@ import { toast } from 'react-hot-toast';
 const API_BASE = 'http://localhost:5000/api';
 const BASE_URL = 'http://localhost:5000';
 
+function formatNameSimple(lastName, firstName, fallback) {
+  const cap = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
+  if ((!lastName && !firstName) && fallback) {
+    const words = fallback.trim().split(/\s+/);
+    if (words.length === 1) {
+      return cap(words[0]);
+    } else {
+      const last = cap(words[words.length - 1]);
+      const first = words.slice(0, -1).map(cap).join(' ');
+      return `${last}, ${first}`;
+    }
+  }
+  if (!lastName && !firstName) return 'No Name';
+  return `${cap(lastName)}, ${cap(firstName)}`;
+}
+
 const getImageUrl = (imageUrl) => {
   if (!imageUrl) return '/default-candidate.png';
   
@@ -49,7 +65,7 @@ export default function VotePage({ params }) {
   const [submissionConfirmed, setSubmissionConfirmed] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const [submissionError, setSubmissionError] = useState(null);
-  const [encryptionStatus, setEncryptionStatus] = useState('idle'); // 'idle', 'encrypting', 'encrypted', 'error'
+  const [encryptionStatus, setEncryptionStatus] = useState('idle'); 
 
   useEffect(() => {
     const fetchBallot = async () => {
@@ -69,21 +85,19 @@ export default function VotePage({ params }) {
         
         setElection(response.data.election);
         setPositions(response.data.positions);
-        
-        // Initialize selected candidates
+
         const initialSelections = {};
         response.data.positions.forEach(position => {
           initialSelections[position.position_id] = [];
         });
         setSelectedCandidates(initialSelections);
-        
-        // Pre-process and cache candidate images
+
         const newImageCache = {};
         
         response.data.positions.forEach(position => {
           position.candidates.forEach(candidate => {
             if (candidate.image_url) {
-              // Process the image URL
+
               const processedUrl = getImageUrl(candidate.image_url);
               newImageCache[candidate.id] = processedUrl;
             }
@@ -106,12 +120,11 @@ export default function VotePage({ params }) {
   const handleCandidateSelect = (positionId, candidateId, maxChoices) => {
     setSelectedCandidates(prev => {
       const currentSelections = [...prev[positionId]];
-      
-      // Check if candidate is already selected
+
       const index = currentSelections.indexOf(candidateId);
       
       if (index === -1) {
-        // Add candidate if not already selected and under max choices
+
         if (currentSelections.length < maxChoices) {
           return {
             ...prev,
@@ -119,7 +132,7 @@ export default function VotePage({ params }) {
           };
         }
       } else {
-        // Remove candidate if already selected
+
         currentSelections.splice(index, 1);
         return {
           ...prev,
@@ -129,8 +142,7 @@ export default function VotePage({ params }) {
       
       return prev;
     });
-    
-    // Clear validation error for this position
+
     setValidationErrors(prev => {
       const newErrors = { ...prev };
       delete newErrors[positionId];
@@ -174,13 +186,11 @@ export default function VotePage({ params }) {
       setSubmitting(true);
       setSubmitError(null);
 
-      // Get authentication token
       const token = Cookies.get('token');
       if (!token) {
         throw new Error('Authentication required. Please log in again.');
       }
 
-      // Validate votes before submitting
       const missingPositions = positions.filter(position => 
         !selectedCandidates[position.position_id] || selectedCandidates[position.position_id].length === 0
       );
@@ -190,7 +200,6 @@ export default function VotePage({ params }) {
         throw new Error(`Please select candidates for: ${positionNames}`);
       }
 
-      // Prepare votes data in the format expected by the backend
       const votes = positions.map(position => {
         const candidateIds = selectedCandidates[position.position_id] || [];
         return {
@@ -199,22 +208,17 @@ export default function VotePage({ params }) {
         };
       }).filter(vote => vote.candidateIds.length > 0);
 
-      // Show encryption status
       setEncryptionStatus('encrypting');
-      
-      // Here we would actually encrypt the data in a real client-side implementation
-      // For now, we'll simulate it with a timeout to show the process to the user
+
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Set encryption as complete
+
       setEncryptionStatus('encrypted');
 
       console.log('Submitting votes:', JSON.stringify(votes, null, 2));
       console.log('Election ID:', electionId);
 
-      // Submit votes to backend
       const response = await axios.post(`${API_BASE}/elections/${electionId}/vote`, 
-        { votes }, // In a real implementation with client-side encryption, this would be { encryptedVoteData }
+        { votes }, 
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -226,18 +230,15 @@ export default function VotePage({ params }) {
 
       console.log('Vote submission response:', response.data);
 
-      // Handle the response
       if (response.data.success) {
-        // Store vote token for receipt verification
+
         if (response.data.voteToken) {
           console.log('Saving vote token to localStorage:', response.data.voteToken);
           localStorage.setItem(`vote_token_${electionId}`, response.data.voteToken);
         }
 
-        // Show success message with toast
         toast.success('Vote submitted successfully! Redirecting to receipt...');
-        
-        // Redirect to receipt page immediately
+
         router.push(`/student/elections/${electionId}/receipt`);
       } else {
         setEncryptionStatus('error');
@@ -246,32 +247,27 @@ export default function VotePage({ params }) {
     } catch (error) {
       setEncryptionStatus('error');
       console.error('Error submitting vote:', error);
-      
-      // Log detailed error information
+
       if (error.response) {
         console.error('Error response data:', error.response.data);
         console.error('Error response status:', error.response.status);
         console.error('Error response headers:', error.response.headers);
-        
-        // Check if the student has already voted (alreadyVoted flag in response)
+
         if (error.response.data && error.response.data.alreadyVoted) {
           toast.info('You have already voted in this election. Redirecting to your receipt...');
-          
-          // Try to get the token from the error response
+
           if (error.response.data && error.response.data.voteToken) {
             console.log('Saving vote token from error response:', error.response.data.voteToken);
             localStorage.setItem(`vote_token_${electionId}`, error.response.data.voteToken);
           } else {
-            // If there's no token in the response, try to fetch it
+
             fetchExistingVoteToken(electionId, token);
           }
-          
-          // Redirect immediately to receipt page
+
           router.push(`/student/elections/${electionId}/receipt`);
           return;
         }
-        
-        // Show specific error message from server if available
+
         if (error.response.data && error.response.data.message) {
           toast.error(error.response.data.message);
         } else {
@@ -289,10 +285,9 @@ export default function VotePage({ params }) {
     }
   };
 
-  // Helper function to fetch the existing vote token
   const fetchExistingVoteToken = async (electionId, token) => {
     try {
-      // Make a request to get the existing vote token
+
       const response = await axios.get(`${API_BASE}/elections/${electionId}/vote-token`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -311,7 +306,7 @@ export default function VotePage({ params }) {
   };
 
   const handleImageError = (candidateId) => {
-    // Mark the image as having an error to prevent repeated error logs
+
     if (!imageErrors[candidateId]) {
       setImageErrors(prev => ({
         ...prev,
@@ -328,7 +323,6 @@ export default function VotePage({ params }) {
     return null;
   };
 
-  // Add a function to calculate voting progress
   const calculateVotingProgress = () => {
     if (!positions || positions.length === 0) return 0;
     
@@ -340,7 +334,6 @@ export default function VotePage({ params }) {
     return Math.round((filledPositions / totalPositions) * 100);
   };
 
-  // Add a function to get the next incomplete position
   const getNextIncompletePosition = () => {
     if (!positions) return null;
     
@@ -350,7 +343,6 @@ export default function VotePage({ params }) {
     );
   };
 
-  // Add a function to generate a random receipt number
   const generateReceiptNumber = () => {
     const date = new Date();
     const year = date.getFullYear().toString().substr(-2);
@@ -400,13 +392,12 @@ export default function VotePage({ params }) {
       <div className="bg-white shadow-md rounded-lg p-6 mb-6">
         <h1 className="text-2xl font-bold text-gray-800 mb-2">{election?.title}</h1>
         <p className="text-gray-600 mb-4">{election?.description}</p>
-        
-        {/* Add progress indicator */}
+
         {!showPreview && (
           <div className="mb-6">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-gray-700">Voting Progress</span>
-              <span className="text-sm font-medium text-gray-700">{calculateVotingProgress()}%</span>
+              <span className="text-sm font-medium text-black">Voting Progress</span>
+              <span className="text-sm font-medium text-black">{calculateVotingProgress()}%</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2.5">
               <div 
@@ -415,7 +406,7 @@ export default function VotePage({ params }) {
               ></div>
             </div>
             {calculateVotingProgress() < 100 && (
-              <p className="text-sm text-gray-600 mt-2">
+              <p className="text-sm text-black mt-2">
                 {getNextIncompletePosition() 
                   ? `Next: Select candidates for ${getNextIncompletePosition().position_name}`
                   : 'Complete all positions to proceed'}
@@ -424,20 +415,7 @@ export default function VotePage({ params }) {
           </div>
         )}
         
-        {/* Add secure voting info box */}
-        <div className="bg-green-50 border-l-4 border-green-500 p-4 mb-6">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <Shield className="h-5 w-5 text-green-500" />
-            </div>
-            <div className="ml-3">
-              <h3 className="text-lg font-medium text-green-800">Secure Voting System</h3>
-              <p className="text-sm text-green-700">
-                Your vote is encrypted and securely stored. No one can link your identity to your specific voting choices.
-              </p>
-            </div>
-          </div>
-        </div>
+        
         
         <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
           <div className="flex">
@@ -446,7 +424,7 @@ export default function VotePage({ params }) {
             </div>
             <div className="ml-3">
               <p className="text-sm text-blue-700">
-                Please select your candidates for each position. Your vote is confidential and cannot be changed once submitted.
+                Select or Vote Candidates per position
               </p>
             </div>
           </div>
@@ -486,7 +464,7 @@ export default function VotePage({ params }) {
                           {candidate.image_url && !imageErrors[candidate.id] ? (
                             <img 
                               src={imageCache[candidate.id] || getImageUrl(candidate.image_url)}
-                              alt={`${candidate.name}`}
+                              alt={`${formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}`}
                               className="w-full h-full object-cover"
                               onError={() => handleImageError(candidate.id)}
                             />
@@ -506,18 +484,18 @@ export default function VotePage({ params }) {
                               <div className="h-5 w-5 rounded-full border-2 border-gray-300"></div>
                             )}
                           </div>
-                          <span className="text-sm text-gray-600">
+                          <span className="text-sm text-black">
                             {selectedCandidates[position.position_id]?.includes(candidate.id) ? 'Selected' : 'Click to select'}
                           </span>
                         </div>
                         
                         {/* Candidate Details */}
                         <div>
-                          <h3 className="font-medium text-gray-800 text-lg">Full Name: {candidate.name}</h3>
+                          <h3 className="font-medium text-gray-800 text-lg">Full Name: {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}</h3>
                           {candidate.party && (
                             <div className="mt-1">
-                              <span className="text-xs font-medium text-gray-500">Party:</span>
-                              <p className="text-sm text-gray-600">{candidate.party}</p>
+                              <span className="text-md font-medium text-black ">Partylist:</span>
+                              <p className="text-sm text-black">{candidate.party}</p>
                             </div>
                           )}
                         </div>
@@ -548,7 +526,7 @@ export default function VotePage({ params }) {
                 <div className="ml-3">
                   <h3 className="text-lg font-medium text-green-800">Review Your Votes</h3>
                   <p className="text-sm text-green-700">
-                    Please review your selections carefully before submitting. You cannot change your votes after submission.
+                    Please review your selections carefully before submitting.
                   </p>
                 </div>
               </div>
@@ -597,7 +575,7 @@ export default function VotePage({ params }) {
                               {candidate.image_url && !imageErrors[candidate.id] ? (
                                 <img 
                                   src={imageCache[candidate.id] || getImageUrl(candidate.image_url)}
-                                  alt={`${candidate.name}`}
+                                  alt={`${formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}`}
                                   className="w-full h-full object-cover"
                                   onError={() => handleImageError(candidate.id)}
                                 />
@@ -610,7 +588,7 @@ export default function VotePage({ params }) {
                             
                             {/* Candidate Details */}
                             <div>
-                              <h3 className="font-medium text-gray-800 text-lg">{candidate.name}</h3>
+                              <h3 className="font-medium text-gray-800 text-lg">{formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}</h3>
                               {candidate.party && (
                                 <div className="mt-1">
                                   <span className="text-xs font-medium text-gray-500">Party:</span>

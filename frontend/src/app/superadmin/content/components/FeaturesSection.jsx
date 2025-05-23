@@ -18,7 +18,6 @@ const FeaturesSection = ({
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-base font-medium text-black">Feature Cards</h2>
-          <p className="text-xs text-gray-600 mt-1">Feature card colors are now managed through the Themes tab</p>
         </div>
         <div className="flex space-x-2">
           <button
@@ -157,7 +156,6 @@ const FeaturesSection = ({
                   <div className="p-3">
                     <h3 className="text-md font-medium mb-1" style={{color: feature.textColor || '#000000'}}>{feature.title}</h3>
                     <p className="text-sm" style={{color: feature.textColor || '#000000'}}>{feature.description}</p>
-                    <p className="text-xs text-gray-500 mt-2 italic">Colors will be applied from the active theme</p>
                   </div>
                 </div>
               </div>

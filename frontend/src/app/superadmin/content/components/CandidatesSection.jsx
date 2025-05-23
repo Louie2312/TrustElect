@@ -21,19 +21,16 @@ const CandidatesSection = ({
   const [candidatesByPosition, setCandidatesByPosition] = useState({});
   const [imageErrors, setImageErrors] = useState({});
 
-  // Fetch elections when component mounts
   useEffect(() => {
     fetchElections();
   }, []);
-  
-  // Fetch candidates when selected election changes
+
   useEffect(() => {
     if (selectedElection) {
       fetchElectionDetails(selectedElection);
     }
   }, [selectedElection]);
-  
-  // Handle image error fallbacks
+
   const handleImageError = (candidateId) => {
     if (!imageErrors[candidateId]) {
       setImageErrors(prev => ({
@@ -43,7 +40,6 @@ const CandidatesSection = ({
     }
   };
 
-  // Format image URLs consistently
   const getImageUrl = (imageUrl) => {
     if (!imageUrl) return null;
     
@@ -61,8 +57,7 @@ const CandidatesSection = ({
     
     return `${API_BASE}${imageUrl}`;
   };
-  
-  // Use fetchWithAuth pattern from the election details page
+
   async function fetchWithAuth(url) {
     // Try to get token from cookies first
     let token = Cookies.get('token');

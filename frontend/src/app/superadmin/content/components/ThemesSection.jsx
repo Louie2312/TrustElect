@@ -20,20 +20,10 @@ const ThemesSection = ({
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-base font-medium text-black">Theme Management</h2>
-          <p className="text-xs text-gray-600 mt-1">
-            Themes control all colors site-wide including:
-          </p>
-          <ul className="list-disc ml-5 mt-1 text-xs text-gray-600">
-            <li>Banner background and text</li>
-            <li>Features section background</li>
-            <li>Feature cards background and text</li>
-            <li>Call-to-action section background and text</li>
-          </ul>
         </div>
         <div className="flex space-x-2">
           <button
             onClick={() => {
-              // Create a new theme and add it to the themes list
               const newThemeObj = {
                 id: themes.length + 1,
                 name: newTheme.name || `Theme ${themes.length + 1}`,
@@ -42,9 +32,7 @@ const ThemesSection = ({
               };
               const updatedThemes = [...themes, newThemeObj];
               setThemes(updatedThemes);
-              // Save to localStorage
               saveThemes(updatedThemes);
-              // Reset the new theme form
               setNewTheme({
                 name: "",
                 colors: {
@@ -59,7 +47,7 @@ const ThemesSection = ({
               setSaveStatus("New theme created");
               setTimeout(() => setSaveStatus(""), 3000);
             }}
-            className="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
+            className="px-2 py-1 bg-green-600 text-black text-xs rounded hover:bg-green-700"
           >
             Add Theme
           </button>
@@ -81,19 +69,18 @@ const ThemesSection = ({
                   {!theme.isActive && (
                     <button
                       onClick={() => {
-                        // Set this theme as active
+ 
                         const updatedThemes = themes.map(t => ({
                           ...t,
                           isActive: t.id === theme.id
                         }));
                         setThemes(updatedThemes);
                         setActiveTheme(theme);
-                        // Save to localStorage
+
                         saveThemes(updatedThemes);
                         setSaveStatus(`Theme "${theme.name}" activated`);
                         setTimeout(() => setSaveStatus(""), 3000);
-                        
-                        // Apply theme colors to current content
+
                         applyThemeColors(theme);
                       }}
                       className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
@@ -114,7 +101,6 @@ const ThemesSection = ({
                   </button>
                   <button
                     onClick={() => {
-                      // Remove the theme
                       if (theme.isActive) {
                         setSaveStatus("Cannot delete the active theme");
                         setTimeout(() => setSaveStatus(""), 3000);
@@ -140,14 +126,14 @@ const ThemesSection = ({
                     className="w-6 h-6 rounded-full mr-2 border" 
                     style={{ backgroundColor: theme.colors.heroBg }}
                   ></div>
-                  <span className="text-xs text-gray-600">Hero Bg</span>
+                  <span className="text-xs text-gray-600">Background</span>
                 </div>
                 <div className="flex items-center">
                   <div 
                     className="w-6 h-6 rounded-full mr-2 border" 
                     style={{ backgroundColor: theme.colors.heroText }}
                   ></div>
-                  <span className="text-xs text-gray-600">Hero Text</span>
+                  <span className="text-xs text-gray-600">Text</span>
                 </div>
                 <div className="flex items-center">
                   <div 
@@ -175,14 +161,14 @@ const ThemesSection = ({
                     className="w-6 h-6 rounded-full mr-2 border" 
                     style={{ backgroundColor: theme.colors.ctaBg }}
                   ></div>
-                  <span className="text-xs text-gray-600">CTA Bg</span>
+                  <span className="text-xs text-gray-600">Background</span>
                 </div>
                 <div className="flex items-center">
                   <div 
                     className="w-6 h-6 rounded-full mr-2 border" 
                     style={{ backgroundColor: theme.colors.ctaText }}
                   ></div>
-                  <span className="text-xs text-gray-600">CTA Text</span>
+                  <span className="text-xs text-gray-600">Text</span>
                 </div>
               </div>
             </div>
@@ -257,7 +243,6 @@ const ThemeCreationForm = ({
           <div className="space-y-3">
             <ColorPickerField 
               label="Primary Color"
-              description="(buttons, accents)"
               id="primaryColor"
               value={newTheme.colors.primary}
               onChange={(value) => handleThemeColorChange('primary', value)}
@@ -265,23 +250,21 @@ const ThemeCreationForm = ({
 
             <ColorPickerField 
               label="Secondary Color"
-              description="(highlights, focus)"
+             
               id="secondaryColor"
               value={newTheme.colors.secondary}
               onChange={(value) => handleThemeColorChange('secondary', value)}
             />
 
             <ColorPickerField 
-              label="Hero Background"
-              description="(main banner)"
+              label="Background"
               id="heroBg"
               value={newTheme.colors.heroBg}
               onChange={(value) => handleThemeColorChange('heroBg', value)}
             />
 
             <ColorPickerField 
-              label="Hero Text"
-              description="(banner text)"
+              label="Text"
               id="heroText"
               value={newTheme.colors.heroText}
               onChange={(value) => handleThemeColorChange('heroText', value)}
@@ -291,7 +274,6 @@ const ThemeCreationForm = ({
           <div className="space-y-3">
             <ColorPickerField 
               label="Feature Section Background"
-              description="(features area)"
               id="featureSectionBg"
               value={newTheme.colors.featureSectionBg}
               onChange={(value) => handleThemeColorChange('featureSectionBg', value)}
@@ -299,7 +281,6 @@ const ThemeCreationForm = ({
 
             <ColorPickerField 
               label="Feature Card Background"
-              description="(card bg)"
               id="featureBg"
               value={newTheme.colors.featureBg}
               onChange={(value) => handleThemeColorChange('featureBg', value)}
@@ -307,15 +288,14 @@ const ThemeCreationForm = ({
 
             <ColorPickerField 
               label="Feature Text Color"
-              description="(card text)"
               id="featureText"
               value={newTheme.colors.featureText}
               onChange={(value) => handleThemeColorChange('featureText', value)}
             />
 
             <ColorPickerField 
-              label="CTA Background"
-              description="(call to action)"
+              label="Background"
+
               id="ctaBg"
               value={newTheme.colors.ctaBg}
               onChange={(value) => handleThemeColorChange('ctaBg', value)}
@@ -327,7 +307,6 @@ const ThemeCreationForm = ({
       <div className="pt-2">
         <button
           onClick={() => {
-            // Create a new theme and add it to the themes list
             const newThemeObj = {
               id: themes.length + 1,
               name: newTheme.name || `Theme ${themes.length + 1}`,
@@ -336,9 +315,9 @@ const ThemeCreationForm = ({
             };
             const updatedThemes = [...themes, newThemeObj];
             setThemes(updatedThemes);
-            // Save to localStorage
+       
             saveThemes(updatedThemes);
-            // Reset the new theme form
+   
             setNewTheme({
               name: "",
               colors: {
@@ -362,7 +341,6 @@ const ThemeCreationForm = ({
   );
 }
 
-// Edit Theme Form Component
 const EditThemeForm = ({ 
   theme, 
   setTheme, 
@@ -396,17 +374,14 @@ const EditThemeForm = ({
     );
     setThemes(updatedThemes);
     saveThemes(updatedThemes);
-    
-    // If the active theme was edited, update it
+
     if (activeTheme && activeTheme.id === editedTheme.id) {
       setActiveTheme(editedTheme);
       applyThemeColors(editedTheme);
     }
     
     setSaveStatus(`Theme "${editedTheme.name}" updated`);
-    setTimeout(() => setSaveStatus(""), 3000);
-    
-    // Close the edit form
+
     setTheme(null);
   };
 
@@ -474,12 +449,10 @@ const EditThemeForm = ({
             className="w-full px-3 py-2 border rounded-md text-black"
           />
         </div>
-        
-        {/* Bulk Update Options */}
+
         <div className="bg-white p-3 rounded-md border border-gray-200 mb-4">
           <h4 className="text-xs font-medium text-gray-800 mb-2">Bulk Update Options</h4>
-          
-          {/* Change All Backgrounds */}
+
           <div className="space-y-2">
             <div className="flex items-center">
               <label className="block text-xs text-gray-700 flex-grow">Change All Landing Page Backgrounds</label>
@@ -501,8 +474,7 @@ const EditThemeForm = ({
             <p className="text-xs text-gray-500">This will update Hero, Features Section, Feature Cards, and CTA backgrounds.</p>
           </div>
         </div>
-        
-        {/* Individual Color pickers for theme */}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 mt-3">
           <div className="space-y-3">
             <ColorPickerField 
@@ -579,8 +551,7 @@ const EditThemeForm = ({
             Cancel
           </button>
         </div>
-        
-        {/* Theme Preview */}
+
         <div className="mt-4">
           <h4 className="text-xs font-medium text-gray-800 mb-2">Theme Preview</h4>
           <div className="border rounded-md p-3 bg-white">
@@ -617,7 +588,6 @@ const EditThemeForm = ({
   );
 }
 
-// Color Preview Component
 const ColorPreview = ({ newTheme }) => {
   return (
     <div className="border rounded-md p-4 mt-6">
@@ -684,13 +654,12 @@ const ColorPreview = ({ newTheme }) => {
   );
 }
 
-// Theme UI Preview
 const ThemeUIPreview = ({ newTheme }) => {
   return (
     <div className="border rounded-md p-4 mt-6">
       <h3 className="text-sm font-medium text-black mb-3">Theme UI Preview</h3>
       <div className="space-y-4 border rounded overflow-hidden">
-        {/* Mock Hero Section */}
+
         <div 
           className="p-4 text-center"
           style={{ backgroundColor: newTheme.colors.heroBg, color: newTheme.colors.heroText }}  
@@ -708,8 +677,7 @@ const ThemeUIPreview = ({ newTheme }) => {
             Get Started
           </button>
         </div>
-        
-        {/* Mock Features Section */}
+
         <div 
           className="p-4"
           style={{ backgroundColor: newTheme.colors.featureSectionBg }}  
@@ -733,8 +701,7 @@ const ThemeUIPreview = ({ newTheme }) => {
             ))}
           </div>
         </div>
-        
-        {/* Mock CTA Section */}
+
         <div 
           className="p-4 text-center"
           style={{ backgroundColor: newTheme.colors.ctaBg, color: newTheme.colors.ctaText }}  
@@ -757,7 +724,6 @@ const ThemeUIPreview = ({ newTheme }) => {
   );
 };
 
-// Color Picker Field Component
 const ColorPickerField = ({ label, description, id, value, onChange }) => {
   return (
     <div>

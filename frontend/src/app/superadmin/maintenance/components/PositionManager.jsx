@@ -126,8 +126,7 @@ const PositionManager = ({ electionTypes }) => {
             : pos
         );
         setPositions(updatedPositions);
-        
-        // Save to localStorage as fallback
+
         const positionsData = JSON.parse(localStorage.getItem('electionPositions') || '{}');
         positionsData[selectedType.id] = updatedPositions;
         localStorage.setItem('electionPositions', JSON.stringify(positionsData));
@@ -144,8 +143,7 @@ const PositionManager = ({ electionTypes }) => {
         
         const updatedPositions = [...positions, newPosition];
         setPositions(updatedPositions);
-        
-        // Save to localStorage as fallback
+
         const positionsData = JSON.parse(localStorage.getItem('electionPositions') || '{}');
         positionsData[selectedType.id] = updatedPositions;
         localStorage.setItem('electionPositions', JSON.stringify(positionsData));

@@ -20,6 +20,22 @@ if (typeof window !== 'undefined') {
 const API_BASE = 'http://localhost:5000/api';
 const BASE_URL = 'http://localhost:5000';
 
+function formatNameSimple(lastName, firstName, fallback) {
+  const cap = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
+  if ((!lastName && !firstName) && fallback) {
+    const words = fallback.trim().split(/\s+/);
+    if (words.length === 1) {
+      return cap(words[0]);
+    } else {
+      const last = cap(words[words.length - 1]);
+      const first = words.slice(0, -1).map(cap).join(' ');
+      return `${last}, ${first}`;
+    }
+  }
+  if (!lastName && !firstName) return 'No Name';
+  return `${cap(lastName)}, ${cap(firstName)}`;
+}
+
 export default function VoteReceiptPage({ params }) {
   const resolvedParams = use(params);
   const { id: electionId } = resolvedParams;
@@ -209,7 +225,7 @@ export default function VoteReceiptPage({ params }) {
       const studentInfo = document.createElement('div');
       studentInfo.style.marginBottom = '10px';
       studentInfo.innerHTML = `
-        <p style="margin: 5px 0; font-size: 14px; color: #000;"><strong>Student:</strong> ${receipt.student.firstName} ${receipt.student.lastName}</p>
+        <p style="margin: 5px 0; font-size: 14px; color: #000;"><strong>Student:</strong> ${formatNameSimple(receipt.student.lastName, receipt.student.firstName, receipt.student.name)}</p>
         <p style="margin: 5px 0; font-size: 14px; color: #000;"><strong>Student Number:</strong> ${receipt.student.student_number || receipt.student.studentNumber || receipt.student.studentId}</p>
       `;
       infoSection.appendChild(studentInfo);
@@ -263,7 +279,7 @@ export default function VoteReceiptPage({ params }) {
             candidateDiv.style.width = 'calc(33% - 10px)';
             
             candidateDiv.innerHTML = `
-              <p style="margin: 5px 0; font-size: 14px; color: #000;"><strong>${candidate.firstName} ${candidate.lastName}</strong></p>
+              <p style="margin: 5px 0; font-size: 14px; color: #000;"><strong>${formatNameSimple(candidate.lastName, candidate.firstName, candidate.name)}</strong></p>
               ${candidate.party ? `<p style="margin: 5px 0; font-size: 14px; color: #666;">${candidate.party}</p>` : ''}
             `;
             
@@ -418,7 +434,7 @@ export default function VoteReceiptPage({ params }) {
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
                   <p className="text-sm text-black">Student</p>
-                  <p className="font-medium text-black">{receipt.student.firstName} {receipt.student.lastName}</p>
+                  <p className="font-medium text-black">{formatNameSimple(receipt.student.lastName, receipt.student.firstName, receipt.student.name)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-black">Student Number</p>
@@ -463,7 +479,7 @@ export default function VoteReceiptPage({ params }) {
                             </div>
                             
                             <div className="ml-3">
-                              <p className="font-medium text-gray-800">{candidate.firstName} {candidate.lastName}</p>
+                              <p className="font-medium text-gray-800">{formatNameSimple(candidate.lastName, candidate.firstName, candidate.name)}</p>
                               {candidate.party && (
                                 <p className="text-sm text-gray-600">{candidate.party}</p>
                               )}

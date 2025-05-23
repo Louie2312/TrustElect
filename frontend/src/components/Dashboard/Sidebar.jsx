@@ -26,8 +26,7 @@ export default function Sidebar() {
       const firstName = res.data.firstName || "Louie";
       const lastName = res.data.lastName || "Admin";
       setSuperAdminName(`${firstName} ${lastName}`);
-  
-      //Ensure Image Path is Correct
+
       const imageUrl = res.data.profile_picture
         ? `http://localhost:5000${res.data.profile_picture}?timestamp=${new Date().getTime()}`
         : "https://via.placeholder.com/80";
@@ -74,8 +73,7 @@ export default function Sidebar() {
             </div>
           </div>
         )}
-        
-        {/* Navigation */}
+ 
         <nav className="flex-1 p-4 space-y-4 overflow-y-auto">
           <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/superadmin")}>
             Home

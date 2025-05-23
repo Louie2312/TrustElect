@@ -63,7 +63,7 @@ export default function ManageStudents() {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
-      
+
       if (coursesResponse.data.success) {
         const programNames = coursesResponse.data.data.map(program => program.name);
         setCourses(programNames);

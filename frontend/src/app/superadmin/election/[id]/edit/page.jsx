@@ -131,12 +131,6 @@ export default function EditElectionPage() {
 
         const election = electionResponse.data.election;
         
-        if (election.status !== 'upcoming' && election.status !== 'ongoing') {
-          setError("Cannot Edit Election\n\nOnly upcoming or ongoing elections can be edited");
-          setLoading(prev => ({ ...prev, initial: false }));
-          return;
-        }
-
         // Get eligibility criteria
         let eligibilityResponse;
         try {
@@ -581,20 +575,9 @@ export default function EditElectionPage() {
         </div>
       )}
 
-      {(electionData.status === 'upcoming' || electionData.status === 'ongoing') && !error && (
+      {(electionData.status === 'upcoming' || electionData.status === 'ongoing' || electionData.status === 'completed') && !error && (
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <InfoIcon className="h-5 w-5 text-blue-500" />
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-blue-700">
-                  Only changed fields will be updated. All other details will be preserved.
-                </p>
-              </div>
-            </div>
-          </div>
+          
           
          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -648,8 +631,8 @@ export default function EditElectionPage() {
                     value={electionData.date_from}
                     onChange={handleChange}
                     min={electionData.status === 'ongoing' ? undefined : new Date().toISOString().split('T')[0]}
-                    className={`border w-full p-2 rounded ${formErrors.date_from ? 'border-red-500' : 'border-gray-300'} text-black ${electionData.status === 'ongoing' ? 'bg-gray-100' : ''}`}
-                    disabled={electionData.status === 'ongoing'}
+                    className={`border w-full p-2 rounded ${formErrors.date_from ? 'border-red-500' : 'border-gray-300'} text-black ${electionData.status === 'ongoing' || electionData.status === 'completed' ? 'bg-gray-100' : ''}`}
+                    disabled={electionData.status === 'ongoing' || electionData.status === 'completed'}
                   />
                   {formErrors.date_from && <p className="text-red-500 text-sm mt-1">{formErrors.date_from}</p>}
                   
@@ -676,8 +659,8 @@ export default function EditElectionPage() {
                     name="start_time"
                     value={electionData.start_time}
                     onChange={handleChange}
-                    className={`border w-full p-2 rounded border-gray-300 text-black ${electionData.status === 'ongoing' ? 'bg-gray-100' : ''}`}
-                    disabled={electionData.status === 'ongoing'}
+                    className={`border w-full p-2 rounded border-gray-300 text-black ${(electionData.status === 'ongoing' || electionData.status === 'completed') ? 'bg-gray-100' : ''}`}
+                    disabled={electionData.status === 'ongoing' || electionData.status === 'completed'}
                   />
                 
                 </div>
@@ -802,17 +785,32 @@ export default function EditElectionPage() {
                     <p className="text-red-500 text-sm mb-2">{criteriaErrors.semester}</p>
                   )}
 
-                  <div className="border border-gray-200 rounded bg-gray-50 p-4">
-                    <div className="flex items-center">
-                      <span className="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
-                      <span className="text-black font-medium">
-                        {electionData.eligibleVoters.semester.length > 0 
-                          ? electionData.eligibleVoters.semester[0] 
-                          : (currentSemester ? currentSemester.name : 'No semester selected')}
-                      </span>
-                    </div>
+                  <div className="flex flex-wrap gap-3">
+                    {maintenanceData.semesters.map((semester) => (
+                      <label 
+                        key={semester} 
+                        className={`inline-flex items-center px-3 py-1 rounded-full ${
+                          electionData.eligibleVoters.semester.includes(semester) 
+                            ? 'bg-blue-100 border border-blue-300' 
+                            : 'border border-gray-200'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="semester"
+                          checked={electionData.eligibleVoters.semester.includes(semester)}
+                          disabled={semester !== currentSemester?.name}
+                          onChange={() => handleCheckboxChange('semester', semester)}
+                          style={{ accentColor: '#000' }}
+                          className={`rounded-md border-black text-black focus:ring-black mr-2 ${semester !== currentSemester?.name ? 'opacity-60' : ''}`}
+                        />
+                        <span className="text-black">
+                          {semester}
+                        </span>
+                      </label>
+                    ))}
+                   
                   </div>
-                
                 </div>
 
                 {/* Gender */}
@@ -903,11 +901,7 @@ export default function EditElectionPage() {
           </div>
 
           <div className="flex justify-end mt-8">
-            {electionData.status === 'ongoing' && (
-              <p className="italic text-gray-600 mr-auto self-center">
-                Note: Changes will be applied immediately to the ongoing election
-              </p>
-            )}
+            
             <button
               type="submit"
               disabled={loading.saving}
