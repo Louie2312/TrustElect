@@ -62,9 +62,8 @@ const upload = multer({
   fileFilter: fileFilter
 });
 
-// Helper to normalize file paths for URLs
 const normalizeFilePath = (filePath) => {
-  // Replace backslashes with forward slashes and ensure path starts with /
+
   return filePath.replace(/\\/g, '/').replace(/^(?!\/)/, '/');
 };
 
@@ -84,9 +83,9 @@ const getAllContent = async (req, res) => {
 };
 
 /**
- * Get content for a specific section
- * @param {Object} req - Request object
- * @param {Object} res - Response object
+ * 
+ * @param {Object} req 
+ * @param {Object} res 
  */
 const getSectionContent = async (req, res) => {
   try {
@@ -110,12 +109,12 @@ const getSectionContent = async (req, res) => {
 };
 
 /**
- * Update content for a specific section
- * @param {Object} req - Request object
- * @param {Object} res - Response object
+ * 
+ * @param {Object} req 
+ * @param {Object} res 
  */
 const updateSectionContent = async (req, res) => {
-  // Create dynamic upload fields for feature images
+ 
   const uploadFields = [
     { name: 'heroVideo', maxCount: 1 },
     { name: 'heroPoster', maxCount: 1 }

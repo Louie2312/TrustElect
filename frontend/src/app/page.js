@@ -18,8 +18,8 @@ export default function Home() {
 
   const [landingContent, setLandingContent] = useState({
     hero: {
-      title: "Secure Digital Voting Platform",
-      subtitle: "Empower your educational institution with reliable election technology",
+      title: "TrustElect Voting Platform",
+      subtitle: "STI TrustElect Voting System",
       videoUrl: null,
       posterImage: null
     },
@@ -27,24 +27,24 @@ export default function Home() {
       columns: [
         {
           title: "Easy Setup",
-          description: "Simple election configuration process",
+          description: "Simple election  process",
           imageUrl: null
         },
         {
           title: "Secure Voting",
-          description: "End-to-end encrypted ballot submission",
+          description: "End-to-end encryption votes",
           imageUrl: null
         },
         {
           title: "Real-time Results",
-          description: "Instant counting and visualization",
+          description: "Instant counting and results",
           imageUrl: null
         }
       ]
     },
     callToAction: {
-      title: "Ready to modernize your election process?",
-      subtitle: "Join thousands of educational institutions using TrustElect",
+      title: "Ready to Vote?",
+      subtitle: "Start your experience with TrustElect",
       buttonText: "Contact Us",
       enabled: true
     }
@@ -326,7 +326,7 @@ export default function Home() {
               } else {
                 return (
                   <div className="w-full max-w-md aspect-video bg-blue-700 rounded-lg flex items-center justify-center">
-                    <span className="text-xl text-white/70">Demo Video</span>
+                   
                   </div>
                 );
               }

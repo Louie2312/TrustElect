@@ -1,10 +1,10 @@
 "use client"
 
 /**
- * Format image URL to ensure it points to the API
- * @param {string} url - The image URL
- * @param {string} apiUrl - The API base URL
- * @returns {string|null} - The formatted URL or null if no URL provided
+ *
+ * @param {string} url 
+ * @param {string} apiUrl
+ * @returns {string|null} 
  */
 export const formatImageUrl = (url, apiUrl) => {
   if (!url) return null;
@@ -22,8 +22,8 @@ export const formatImageUrl = (url, apiUrl) => {
 };
 
 /**
- * Check if content has changed since initial load
- * @param {Object} content - The current content
+
+ * @param {Object} content 
  * @param {Object} initialContent 
  * @returns {boolean} 
  */

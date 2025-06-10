@@ -30,12 +30,9 @@ const CTASection = ({
             className="w-full px-3 py-2 border rounded-md text-black"
           >
             <option value="default">Default</option>
-            <option value="signup">Sign up / Registration</option>
-            <option value="demo">Request Demo</option>
             <option value="contact">Contact Us</option>
             <option value="learn">Learn More</option>
-            <option value="quote">Get Quote</option>
-            <option value="custom">Custom Message</option>
+
           </select>
         </div>
       

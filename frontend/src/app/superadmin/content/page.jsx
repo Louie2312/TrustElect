@@ -68,7 +68,7 @@ export default function ContentManagement() {
 
   const [landingContent, setLandingContent] = useState({
     hero: {
-      title: "Secure Digital Voting Platform",
+      title: "TrustElect Voting Platform",
       subtitle: "STI TrustElect Voting System",
       videoUrl: null,
       posterImage: null,
@@ -86,7 +86,7 @@ export default function ContentManagement() {
         },
         {
           title: "Secure Voting",
-          description: "End-to-end encrypted ballot submission",
+          description: "End-to-end encryption votes",
           imageUrl: null,
           bgColor: "#ffffff",
           textColor: "#000000"
