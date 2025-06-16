@@ -47,7 +47,16 @@ const getElectionsByStatus = async (status) => {
       LEFT JOIN eligible_voters ev ON e.id = ev.election_id
       LEFT JOIN votes v ON e.id = v.election_id
       LEFT JOIN ballots b ON e.id = b.election_id
-      WHERE e.status = $1 AND (e.needs_approval = FALSE OR e.needs_approval IS NULL)
+      WHERE e.status = $1 
+      AND (
+          e.needs_approval = FALSE 
+          OR e.needs_approval IS NULL
+          OR EXISTS (
+              SELECT 1 FROM users u 
+              WHERE u.id = e.created_by 
+              AND u.role_id = 1
+          )
+      )
       GROUP BY e.id, b.id
       ORDER BY e.date_from DESC
   `, [status]);
@@ -71,7 +80,15 @@ const getElectionStatistics = async () => {
       FROM elections e
       LEFT JOIN eligible_voters ev ON e.id = ev.election_id
       LEFT JOIN votes v ON e.id = v.election_id
-      WHERE (e.needs_approval = FALSE OR e.needs_approval IS NULL)
+      WHERE (
+          e.needs_approval = FALSE 
+          OR e.needs_approval IS NULL
+          OR EXISTS (
+              SELECT 1 FROM users u 
+              WHERE u.id = e.created_by 
+              AND u.role_id = 1
+          )
+      )
       GROUP BY e.id
     ) as stats
     GROUP BY status
@@ -116,6 +133,19 @@ const createElection = async (electionData, userId, needsApproval = false) => {
   try {
       await client.query("BEGIN");
 
+      // Check if user is superadmin
+      const userCheck = await client.query(
+          `SELECT role_id FROM users WHERE id = $1`,
+          [userId]
+      );
+
+      const isSuperAdmin = userCheck.rows[0]?.role_id === 1;
+      
+      // Override needsApproval for superadmin and set status to approved
+      if (isSuperAdmin) {
+          needsApproval = false;
+      }
+
       const duplicateCheck = await client.query(
           `SELECT id FROM elections 
            WHERE title = $1 
@@ -139,11 +169,26 @@ const createElection = async (electionData, userId, needsApproval = false) => {
               end_time, 
               election_type,
               created_by,
-              needs_approval
+              needs_approval,
+              status,
+              approved_by,
+              approved_at
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
           RETURNING *;
       `;
+      
+      // Determine initial status based on dates and creator
+      const now = new Date();
+      const start = new Date(`${electionData.dateFrom}T${electionData.startTime}`);
+      const end = new Date(`${electionData.dateTo}T${electionData.endTime}`);
+      
+      let initialStatus = 'draft';
+      if (isSuperAdmin) {
+          if (now < start) initialStatus = 'upcoming';
+          else if (now >= start && now <= end) initialStatus = 'ongoing';
+          else if (now > end) initialStatus = 'completed';
+      }
       
       const electionResult = await client.query(electionInsert, [
           electionData.title,
@@ -154,7 +199,10 @@ const createElection = async (electionData, userId, needsApproval = false) => {
           electionData.endTime,
           electionData.electionType,
           userId,
-          needsApproval
+          needsApproval,
+          initialStatus,
+          isSuperAdmin ? userId : null,  // Set approved_by for superadmin
+          isSuperAdmin ? now : null      // Set approved_at for superadmin
       ]);
       
       const election = electionResult.rows[0];
@@ -389,9 +437,15 @@ async function updateElectionStatuses() {
   try {
     await client.query('BEGIN');
 
+    // Get current statuses of all elections
     const { rows: currentElections } = await client.query(`
       SELECT id, status FROM elections
-      WHERE needs_approval = FALSE
+      WHERE needs_approval = FALSE 
+      OR EXISTS (
+        SELECT 1 FROM users u 
+        WHERE u.id = elections.created_by 
+        AND u.role_id = 1
+      )
     `);
 
     const currentStatusMap = {};
@@ -399,17 +453,27 @@ async function updateElectionStatuses() {
       currentStatusMap[election.id] = election.status;
     });
 
+    // Update statuses for all elections that don't need approval or are created by superadmin
     const result = await client.query(`
       UPDATE elections
       SET status = 
         CASE
-          WHEN needs_approval = TRUE THEN 'pending'
+          WHEN needs_approval = TRUE AND NOT EXISTS (
+            SELECT 1 FROM users u 
+            WHERE u.id = elections.created_by 
+            AND u.role_id = 1
+          ) THEN 'pending'
           WHEN CURRENT_TIMESTAMP BETWEEN (date_from::date + start_time::time) AND (date_to::date + end_time::time) THEN 'ongoing'
           WHEN CURRENT_TIMESTAMP < (date_from::date + start_time::time) THEN 'upcoming'
           WHEN CURRENT_TIMESTAMP > (date_to::date + end_time::time) THEN 'completed'
           ELSE status
         END
-      WHERE needs_approval = FALSE
+      WHERE needs_approval = FALSE 
+      OR EXISTS (
+        SELECT 1 FROM users u 
+        WHERE u.id = elections.created_by 
+        AND u.role_id = 1
+      )
       RETURNING id, status;
     `);
 
@@ -417,7 +481,6 @@ async function updateElectionStatuses() {
     for (const updatedElection of result.rows) {
       const oldStatus = currentStatusMap[updatedElection.id];
       if (oldStatus && oldStatus !== updatedElection.status) {
-
         statusChanges.push({
           id: updatedElection.id,
           oldStatus: oldStatus,
@@ -477,6 +540,11 @@ const getPendingApprovalElections = async (adminId = null) => {
     LEFT JOIN eligible_voters ev ON e.id = ev.election_id
     LEFT JOIN votes v ON e.id = v.election_id
     WHERE e.needs_approval = TRUE
+    AND NOT EXISTS (
+        SELECT 1 FROM users u 
+        WHERE u.id = e.created_by 
+        AND u.role_id = 1
+    )
   `;
   
   const params = [];

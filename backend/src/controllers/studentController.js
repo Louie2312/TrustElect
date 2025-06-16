@@ -573,11 +573,30 @@ exports.getStudentElections = async (req, res) => {
           EXISTS (
             SELECT 1 FROM ballots b 
             WHERE b.election_id = e.id
-          ) AS ballot_exists
+          ) AS ballot_exists,
+          CASE
+            WHEN EXISTS (
+              SELECT 1 FROM users u 
+              WHERE u.id = e.created_by 
+              AND u.role_id = 1
+            ) THEN TRUE
+            ELSE e.needs_approval = FALSE OR e.status = 'approved'
+          END as is_available
         FROM elections e
         INNER JOIN eligible_voters ev ON e.id = ev.election_id
         WHERE ev.student_id = $1
-        AND (e.needs_approval = FALSE OR e.needs_approval IS NULL)
+        AND e.status != 'draft'
+        AND (
+          (e.needs_approval = FALSE AND e.status != 'draft')
+          OR 
+          (e.status = 'approved' AND e.needs_approval = TRUE)
+          OR
+          EXISTS (
+            SELECT 1 FROM users u 
+            WHERE u.id = e.created_by 
+            AND u.role_id = 1
+          )
+        )
         ORDER BY 
           CASE 
             WHEN e.status = 'ongoing' THEN 1

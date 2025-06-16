@@ -497,7 +497,14 @@ exports.getBallotForStudent = async (req, res) => {
     }
 
     const electionCheck = await pool.query(
-      `SELECT needs_approval FROM elections WHERE id = $1`,
+      `SELECT e.needs_approval, e.status, 
+              EXISTS (
+                SELECT 1 FROM users u 
+                WHERE u.id = e.created_by 
+                AND u.role_id = 1
+              ) as is_superadmin_created
+       FROM elections e 
+       WHERE e.id = $1`,
       [electionId]
     );
 
@@ -507,9 +514,19 @@ exports.getBallotForStudent = async (req, res) => {
       });
     }
 
-    if (electionCheck.rows[0].needs_approval) {
+    const election = electionCheck.rows[0];
+    
+    // Only check needs_approval if not created by superadmin
+    if (!election.is_superadmin_created && election.needs_approval) {
       return res.status(403).json({
         message: "This election is not yet available"
+      });
+    }
+
+    // Check if election is ongoing
+    if (election.status !== 'ongoing') {
+      return res.status(403).json({
+        message: "This election is not currently active"
       });
     }
 
@@ -550,6 +567,7 @@ exports.getBallotForStudent = async (req, res) => {
       election: await getElectionById(electionId)
     });
   } catch (error) {
+    console.error("Error in getBallotForStudent:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -635,7 +653,14 @@ exports.submitVote = async (req, res) => {
     const { votes } = req.body;
 
     const electionCheck = await client.query(
-      `SELECT needs_approval FROM elections WHERE id = $1`,
+      `SELECT e.needs_approval, e.status, 
+              EXISTS (
+                SELECT 1 FROM users u 
+                WHERE u.id = e.created_by 
+                AND u.role_id = 1
+              ) as is_superadmin_created
+       FROM elections e 
+       WHERE e.id = $1`,
       [electionId]
     );
 
@@ -647,20 +672,32 @@ exports.submitVote = async (req, res) => {
       });
     }
 
-    if (electionCheck.rows[0].needs_approval) {
+    const election = electionCheck.rows[0];
+    
+    // Only check needs_approval if not created by superadmin
+    if (!election.is_superadmin_created && election.needs_approval) {
       await client.query('ROLLBACK');
       return res.status(403).json({
         success: false,
         message: "This election is not yet available for voting"
       });
     }
+
+    // Check if election is ongoing
+    if (election.status !== 'ongoing') {
+      await client.query('ROLLBACK');
+      return res.status(403).json({
+        success: false,
+        message: "This election is not currently active"
+      });
+    }
+
     const existingVoteCheck = await client.query(
       'SELECT 1 FROM eligible_voters WHERE election_id = $1 AND student_id = $2 AND has_voted = TRUE',
       [electionId, studentId]
     );
 
     if (existingVoteCheck.rows.length > 0) {
-
       const tokenResult = await client.query(
         'SELECT DISTINCT vote_token FROM votes WHERE election_id = $1 AND student_id = $2 LIMIT 1',
         [electionId, studentId]

@@ -1,4 +1,4 @@
-const { addCandidate, getCandidatesByPartylist, removeCandidate, updateCandidate } = require('../models/partylistCandidateModel');
+const { addCandidate, getCandidatesByPartylist, removeCandidate, updateCandidate, getStudentPartylist } = require('../models/partylistCandidateModel');
 const { validationResult } = require("express-validator");
 
 exports.addPartylistCandidate = async (req, res) => {
@@ -144,6 +144,47 @@ exports.updatePartylistCandidate = async (req, res) => {
     console.error("Error updating candidate:", error);
     res.status(500).json({
       message: "Failed to update candidate",
+      error: error.message
+    });
+  }
+};
+
+exports.getStudentPartylist = async (req, res) => {
+  try {
+    const { studentNumber } = req.params;
+
+    if (!studentNumber) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Student number is required" 
+      });
+    }
+
+    const studentPartylist = await getStudentPartylist(studentNumber);
+
+    if (!studentPartylist) {
+      return res.status(200).json({
+        success: true,
+        message: "Student is not registered to any partylist",
+        data: null
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        id: studentPartylist.partylist_id,
+        name: studentPartylist.partylist_name,
+        slogan: studentPartylist.slogan,
+        advocacy: studentPartylist.advocacy,
+        logo_url: studentPartylist.logo_url
+      }
+    });
+  } catch (error) {
+    console.error("Error getting student partylist:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get student partylist",
       error: error.message
     });
   }

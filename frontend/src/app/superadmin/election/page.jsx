@@ -132,12 +132,20 @@ export default function ElectionPage() {
   };
 
   const getStatusBadge = (election) => {
-    const status = election.needs_approval ? 'to_approve' : election.status;
+    // Determine if the creator is a superadmin
+    const isSuperAdminCreator =
+      election.created_by === 1 ||
+      (election.created_by && election.created_by.id === 1) ||
+      election.created_by_role === 'SuperAdmin';
+
+    // Only show 'NEEDS APPROVAL' if not created by super admin
+    const status = (election.needs_approval && !isSuperAdminCreator) ? 'to_approve' : election.status;
+    
     return (
       <div className={`flex items-center px-3 py-1 rounded-full ${statusColors[status]}`}>
         {statusIcons[status]}
         <span className="ml-2 text-xs font-medium">
-          {election.needs_approval ? 'NEEDS APPROVAL' : election.status.toUpperCase()}
+          {(election.needs_approval && !isSuperAdminCreator) ? 'NEEDS APPROVAL' : election.status.toUpperCase()}
         </span>
       </div>
     );

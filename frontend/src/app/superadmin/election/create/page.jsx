@@ -76,7 +76,7 @@ const PreviewModal = ({
             )
           ))}
           <p className="mt-4 font-medium text-lg text-black">
-            Total Eligible Voters: <span className="text-blue-600">{eligibleCount}</span>
+            Total Eligible Voters: <span className="text-black">{Number(eligibleCount).toLocaleString()}</span>
           </p>
         </div>
         
@@ -107,7 +107,7 @@ export default function CreateElectionPage() {
     description: "",
     dateFrom: "",
     dateTo: "",
-    startTime: "08:00",
+    startTime: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
     endTime: "17:00",
     eligibleVoters: {
       programs: [],
@@ -135,6 +135,7 @@ export default function CreateElectionPage() {
   const [eligibleCount, setEligibleCount] = useState(0);
   const [apiError, setApiError] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [totalRegisteredVoters, setTotalRegisteredVoters] = useState(0);
 
   useEffect(() => {
     const fetchMaintenanceData = async () => {
@@ -202,6 +203,38 @@ export default function CreateElectionPage() {
     fetchMaintenanceData();
   }, []);
 
+  useEffect(() => {
+    const fetchTotalRegisteredVoters = async () => {
+      try {
+        const token = Cookies.get("token");
+        const response = await axios.post(
+          "http://localhost:5000/api/elections/preview-voters",
+          { 
+            eligible_voters: {
+              programs: [],
+              yearLevels: [],
+              gender: [],
+              semester: [],
+              precinct: []
+            }
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        );
+        setTotalRegisteredVoters(response.data.count || 0);
+      } catch (error) {
+        console.error("Error fetching total registered voters:", error);
+        toast.error("Failed to fetch total registered voters");
+      }
+    };
+
+    fetchTotalRegisteredVoters();
+  }, []);
+
   const areAllSelected = (selectedItems, allItems) => {
     return selectedItems.length === allItems.length;
   };
@@ -211,6 +244,17 @@ export default function CreateElectionPage() {
       try {
         setLoading(prev => ({ ...prev, form: true }));
         const token = Cookies.get("token");
+        
+        // Check if required fields are selected
+        const hasRequiredSelections = 
+          eventData.eligibleVoters.programs.length > 0 &&
+          eventData.eligibleVoters.yearLevels.length > 0 &&
+          eventData.eligibleVoters.gender.length > 0;
+
+        if (!hasRequiredSelections) {
+          setEligibleCount(0);
+          return;
+        }
         
         const allProgramsSelected = areAllSelected(eventData.eligibleVoters.programs, maintenanceData.programs);
         const allYearLevelsSelected = areAllSelected(eventData.eligibleVoters.yearLevels, maintenanceData.yearLevels);
@@ -244,12 +288,7 @@ export default function CreateElectionPage() {
       }
     };
 
-    const hasFilters = Object.values(eventData.eligibleVoters).some(arr => arr.length > 0);
-    if (hasFilters) {
-      fetchEligibleCount();
-    } else {
-      setEligibleCount(0);
-    }
+    fetchEligibleCount();
   }, [eventData.eligibleVoters, maintenanceData]);
 
   const validateForm = () => {
@@ -403,6 +442,99 @@ export default function CreateElectionPage() {
     }
   };
 
+  const sortYearLevels = (a, b) => {
+    const knownOrder = {
+      '1st year': 1,
+      '2nd year': 2,
+      '3rd year': 3,
+      '4th year': 4,
+      'Grade 11': 5,
+      'Grade 12': 6
+    };
+    const aOrder = knownOrder[a] || 999;
+    const bOrder = knownOrder[b] || 999;
+    if (aOrder !== 999 && bOrder !== 999) {
+      return aOrder - bOrder;
+    }
+    return a.localeCompare(b);
+  };
+
+  const sortPrograms = (a, b) => {
+    // Define known college programs in order
+    const collegePrograms = [
+      'BSA',
+      'BSBAOM',
+      'BSCPE',
+      'BSCS',
+      'BSHM',
+      'BSIT',
+      'BMMA',
+      'BSTM'
+    ];
+
+    // Define known senior high programs in orde
+    const seniorHighPrograms = [
+      'ABM',
+      'CUART',
+      'DIGAR',
+      'HUMMS',
+      'MAWD',
+      'STEM',
+      'TOPER'
+    ];
+
+    const getProgramType = (program) => {
+      if (collegePrograms.includes(program)) return 'college';
+      if (seniorHighPrograms.includes(program)) return 'seniorHigh';
+      
+      if (program.startsWith('BS')) return 'college';
+      return 'seniorHigh';
+    };
+
+    const aType = getProgramType(a);
+    const bType = getProgramType(b);
+
+    if (aType !== bType) {
+      return aType === 'college' ? -1 : 1;
+    }
+
+    if (aType === 'college') {
+      if (collegePrograms.includes(a) && collegePrograms.includes(b)) {
+        return collegePrograms.indexOf(a) - collegePrograms.indexOf(b);
+      }
+      if (collegePrograms.includes(a)) return -1;
+      if (collegePrograms.includes(b)) return 1;
+      return a.localeCompare(b);
+    }
+
+    if (aType === 'seniorHigh') {
+      if (seniorHighPrograms.includes(a) && seniorHighPrograms.includes(b)) {
+        return seniorHighPrograms.indexOf(a) - seniorHighPrograms.indexOf(b);
+      }
+      if (seniorHighPrograms.includes(a)) return -1;
+      if (seniorHighPrograms.includes(b)) return 1;
+      return a.localeCompare(b);
+    }
+
+    return a.localeCompare(b);
+  };
+
+  const sortGender = (a, b) => {
+    if (a.toLowerCase() === 'male') return -1;
+    if (b.toLowerCase() === 'male') return 1;
+    return a.localeCompare(b);
+  };
+
+  const sortPrecincts = (a, b) => {
+    const extractNumber = (str) => parseInt(str.match(/\d+/)?.[0] || '0');
+    const aNum = extractNumber(a);
+    const bNum = extractNumber(b);
+    if (aNum !== 0 && bNum !== 0) {
+      return aNum - bNum;
+    }
+    return a.localeCompare(b);
+  };
+
   if (loading.options) {
     return (
       <div className="p-6 max-w-6xl mx-auto">
@@ -509,6 +641,7 @@ export default function CreateElectionPage() {
                 name="startTime"
                 value={eventData.startTime}
                 onChange={handleChange}
+                min={eventData.dateFrom === new Date().toISOString().split('T')[0] ? new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }) : "00:00"}
                 className="border w-full p-2 rounded border-gray-300 text-black"
               />
             </div>
@@ -519,6 +652,7 @@ export default function CreateElectionPage() {
                 name="endTime"
                 value={eventData.endTime}
                 onChange={handleChange}
+                min={eventData.startTime}
                 className="border w-full p-2 rounded border-gray-300 text-black"
               />
             </div>
@@ -528,26 +662,70 @@ export default function CreateElectionPage() {
         {/* Eligible Voters */}
         <div className="space-y-6">
           <div>
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Eligible Voters</h2>
-            <div className="bg-blue-50 p-3 rounded-lg mb-4">
-              <p className="font-medium text-blue-800">
-                {eligibleCount} eligible voters count
-              </p>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-gray-800">Registered Student Voters</h2>
+              <div className="bg-gray-100 px-4 py-2 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-600">Total Registered Voters:</span>
+                  <span className="text-lg font-bold text-blue-800">
+                    {Number(totalRegisteredVoters).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-m text-black mb-1">Eligible Voters Count</p>
+                  <p className="font-medium text-blue-800 text-lg">      
+                      {Number(eligibleCount).toLocaleString()} registered voters count
+                  </p>
+                </div>
+                {/* 
+                {eligibleCount > 0 && (
+                  <div className="text-right">
+                    <p className="text-sm text-gray-600">Percentage of Total</p>
+                    <p className="font-medium text-blue-800">
+                      {((eligibleCount / totalRegisteredVoters) * 100).toFixed(1)}%
+                    </p>
+                  </div>
+                )}
+                */}
+              </div>
             </div>
 
             {[
-              { category: 'programs', label: 'Programs', items: maintenanceData.programs },
-              { category: 'yearLevels', label: 'Year Levels', items: maintenanceData.yearLevels },
+              { 
+                category: 'programs', 
+                label: 'Programs', 
+                items: maintenanceData.programs.sort(sortPrograms),
+                sortFn: sortPrograms
+              },
+              { 
+                category: 'yearLevels', 
+                label: 'Year Levels', 
+                items: maintenanceData.yearLevels.sort(sortYearLevels),
+                sortFn: sortYearLevels
+              },
               { 
                 category: 'semester', 
                 label: 'Semester', 
                 items: maintenanceData.semesters,
-               
                 readonly: true
               },
-              { category: 'gender', label: 'Gender', items: maintenanceData.genders },
-              { category: 'precinct', label: 'Precinct', items: maintenanceData.precincts },
-            ].map(({ category, label, items, note, readonly }) => (
+              { 
+                category: 'gender', 
+                label: 'Gender', 
+                items: maintenanceData.genders.sort(sortGender),
+                sortFn: sortGender
+              },
+              { 
+                category: 'precinct', 
+                label: 'Precinct', 
+                items: maintenanceData.precincts.sort(sortPrecincts),
+                sortFn: sortPrecincts
+              },
+            ].map(({ category, label, items, note, readonly, sortFn }) => (
               <div key={category} className="border-b pb-4 last:border-b-0">
                 <div className="flex justify-between items-center mb-2">
                   <h3 className="font-medium text-black">{label}</h3>
@@ -626,7 +804,11 @@ export default function CreateElectionPage() {
                 
                 {category !== 'semester' && eventData.eligibleVoters[category].length > 0 && (
                   <p className="text-sm text-gray-500 mt-2">
-                    Selected: {eventData.eligibleVoters[category].join(", ")}
+                    Selected: {eventData.eligibleVoters[category].sort(sortFn || ((a, b) => {
+                      if (a.toLowerCase() === 'male') return -1;
+                      if (b.toLowerCase() === 'male') return 1;
+                      return 0;
+                    })).join(", ")}
                   </p>
                 )}
               </div>

@@ -16,8 +16,10 @@ export default function EditElectionPage() {
     saving: false,
     eligibility: false
   });
+  const [showBackConfirm, setShowBackConfirm] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(null);
+  const [originalElectionData, setOriginalElectionData] = useState(null);
   const [currentSemester, setCurrentSemester] = useState(null);
   const [electionData, setElectionData] = useState({
     title: "",
@@ -162,13 +164,7 @@ export default function EditElectionPage() {
         const formattedStartTime = formatTimeForInput(election.start_time);
         const formattedEndTime = formatTimeForInput(election.end_time);
 
-        // Log the formatted values for debugging
-        console.log("Date from:", election.date_from, "->", formattedDateFrom);
-        console.log("Date to:", election.date_to, "->", formattedDateTo);
-        console.log("Start time:", election.start_time, "->", formattedStartTime);
-        console.log("End time:", election.end_time, "->", formattedEndTime);
-
-        setElectionData({
+        const formattedElectionData = {
           title: election.title,
           description: election.description || "",
           election_type: election.election_type,
@@ -178,7 +174,10 @@ export default function EditElectionPage() {
           end_time: formattedEndTime,
           status: election.status,
           eligibleVoters
-        });
+        };
+
+        setElectionData(formattedElectionData);
+        setOriginalElectionData(formattedElectionData);
 
         // Fetch current semester from maintenance
         try {
@@ -535,6 +534,15 @@ export default function EditElectionPage() {
     }
   };
 
+  const handleDiscardChanges = () => {
+    if (originalElectionData) {
+      setElectionData(originalElectionData);
+      setFormErrors({});
+      setCriteriaErrors({});
+      toast.success('Changes discarded successfully');
+    }
+  };
+
   if (loading.initial) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -546,12 +554,35 @@ export default function EditElectionPage() {
   return (
     <div className="p-6 bg-white shadow-lg rounded-lg max-w-6xl mx-auto">
       <button 
-        onClick={() => router.back()} 
+        onClick={() => setShowBackConfirm(true)} 
         className="flex items-center text-blue-900 hover:text-blue-700 mb-4"
       >
         <ArrowLeft className="w-6 h-6 mr-2" />
         <span className="font-semibold">Back</span>
       </button>
+
+      {showBackConfirm && (
+        <div className="fixed inset-0  flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4 ">
+         
+            <p className="text-black  mb-6">Are you sure you want to go back? Any unsaved changes will be lost.</p>
+            <div className="flex justify-end space-x-4 ">
+              <button
+                onClick={() => setShowBackConfirm(false)}
+                className="px-4 py-2 text-black hover:text-gray-800 bg-gray-200 font-medium cursor-pointer"
+              >
+                No
+              </button>
+              <button
+                onClick={() => router.back()}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium cursor-pointer"
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <h1 className="text-2xl font-bold mb-6 text-black">Edit Election</h1>
       
@@ -688,7 +719,7 @@ export default function EditElectionPage() {
                 <h2 className="text-xl font-semibold text-black mb-4">Eligible Voters</h2>
                 <div className="bg-blue-50 p-3 rounded-lg mb-4">
                   <p className="font-medium text-blue-800">
-                    {loading.eligibility ? 'Calculating...' : `${eligibleCount} eligible voters count`}
+                    {loading.eligibility ? 'Calculating...' : `${Number(eligibleCount).toLocaleString()} eligible voters count`}
                   </p>
                 </div>
 
@@ -900,7 +931,15 @@ export default function EditElectionPage() {
             </div>
           </div>
 
-          <div className="flex justify-end mt-8">
+          <div className="flex justify-end space-x-4 mt-8">
+            <button
+              type="button"
+              onClick={handleDiscardChanges}
+              className="flex items-center px-6 py-2 rounded-lg bg-gray-200 text-black hover:bg-gray-300 transition-colors"
+            >
+              
+              Discard Changes
+            </button>
             
             <button
               type="submit"

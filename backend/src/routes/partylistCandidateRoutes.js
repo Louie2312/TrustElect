@@ -1,18 +1,27 @@
 const express = require("express");
-const { addPartylistCandidate, getPartylistCandidates, removePartylistCandidate, updatePartylistCandidate } = require("../controllers/partylistCandidateController");
+const { 
+  addPartylistCandidate, 
+  getPartylistCandidates, 
+  removePartylistCandidate, 
+  updatePartylistCandidate,
+  getStudentPartylist 
+} = require("../controllers/partylistCandidateController");
 const { verifyToken, isSuperAdmin } = require("../middlewares/authMiddleware");
 const router = express.Router();
 
-// Get all candidates for a partylist - no auth for development
-router.get("/partylists/:partylistId/candidates", getPartylistCandidates);
+// Get all candidates for a partylist
+router.get("/:partylistId/candidates", getPartylistCandidates);
 
-// Add a candidate to a partylist - no auth for development
-router.post("/partylists/:partylistId/candidates", addPartylistCandidate);
+// Add a candidate to a partylist
+router.post("/:partylistId/candidates", addPartylistCandidate);
 
-// Remove a candidate from a partylist - no auth for development
+// Remove a candidate from a partylist
 router.delete("/candidates/:candidateId", removePartylistCandidate);
 
-// Update a candidate - no auth for development
+// Update a candidate
 router.put("/candidates/:candidateId", updatePartylistCandidate);
+
+// Get student's partylist
+router.get("/student/:studentNumber", getStudentPartylist);
 
 module.exports = router; 

@@ -16,7 +16,9 @@ export default function AddAdminModal({ onClose }) {
   const [permissions, setPermissions] = useState({
     users: { canView: false, canCreate: false, canEdit: false, canDelete: false },
     elections: { canView: false, canCreate: false, canEdit: false, canDelete: false },
-    departments: { canView: false, canCreate: false, canEdit: false, canDelete: false }
+    departments: { canView: false, canCreate: false, canEdit: false, canDelete: false },
+    cms: { canView: false, canCreate: false, canEdit: false, canDelete: false },
+    auditLog: { canView: false, canCreate: false, canEdit: false, canDelete: false }
   });
 
   const [departments, setDepartments] = useState([]);
@@ -42,7 +44,6 @@ export default function AddAdminModal({ onClose }) {
             setFormData(prev => ({ ...prev, department: res.data[0] }));
           }
         } else {
-  
           setDepartments([
             "Information and Communication Technology (ICT)",
             "Tourism and Hospitality Management (THM)",
@@ -51,7 +52,6 @@ export default function AddAdminModal({ onClose }) {
         }
       } catch (error) {
         console.error("Error fetching departments:", error);
-  
         setDepartments([
           "Information and Communication Technology (ICT)",
           "Tourism and Hospitality Management (THM)",
@@ -62,7 +62,6 @@ export default function AddAdminModal({ onClose }) {
       }
     };
 
-    // Fetch departments that already have admins
     const fetchDepartmentsWithAdmins = async () => {
       try {
         const token = Cookies.get("token");
@@ -71,12 +70,10 @@ export default function AddAdminModal({ onClose }) {
         });
         
         if (res.data && res.data.admins) {
-          // Extract departments that already have admins
           const departmentMap = res.data.admins
             .filter(admin => admin.department && admin.is_active)
             .map(admin => admin.department);
-          
-          console.log("Departments with admins:", departmentMap);
+
           setDepartmentsWithAdmins(departmentMap);
         }
       } catch (error) {
@@ -105,33 +102,22 @@ export default function AddAdminModal({ onClose }) {
     if (!formData.email.trim() || !formData.email.endsWith("@novaliches.sti.edu.ph")) newErrors.email = "Invalid STI email.";
     if (!formData.employeeNumber.match(/^\d{4,}$/)) newErrors.employeeNumber = "Employee Number must be at least 4 digits.";
     if (!formData.department) newErrors.department = "Select a department.";
-    
-    // Check if department already has an admin
-    if (formData.department && departmentsWithAdmins.includes(formData.department)) {
-      newErrors.department = "This department already has an assigned admin.";
-    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const generatePassword = (lastName, employeeNumber) => {
-    // Ensure we get the last 3 digits, even if the employee number is less than 3 digits
     const lastThreeDigits = employeeNumber.slice(-3).padStart(3, '0');
     
-    // Clean up lastName - remove any non-alphanumeric characters
     let cleanLastName = lastName.replace(/[^a-zA-Z0-9]/g, '');
     
-    // If cleaning resulted in empty string, use a safe default
     if (!cleanLastName) {
       cleanLastName = "Admin";
     }
     
-    // Ensure first letter is capitalized, preserve rest of case
     const formattedLastName = cleanLastName.charAt(0).toUpperCase() + cleanLastName.slice(1);
-    
-    // !! IMPORTANT: The backend is using a RANDOM special character from "!@#$%^&*"
-    // We'll use "!" for frontend display, but we need to warn the user about this
+
     return `${formattedLastName}${lastThreeDigits}!`;
   };
 
@@ -179,15 +165,9 @@ export default function AddAdminModal({ onClose }) {
   };
 
   const handleRegister = () => {
-    // Ensure valid data before generating password
     if (!validateInputs()) return;
-    
-    // Always generate fresh password when registration is confirmed
-    // We're logging the unmodified lastName and the final password for debugging
-    console.log(`Original lastName: ${formData.lastName}`);
     const autoPassword = generatePassword(formData.lastName, formData.employeeNumber);
     setGeneratedPassword(autoPassword);
-    console.log("Generated password:", autoPassword); // For debugging
     setShowPasswordModal(true);
   };
 
@@ -204,7 +184,6 @@ export default function AddAdminModal({ onClose }) {
             if (tokenData && tokenData.id) {
               console.log("Using user ID from token:", tokenData.id);
               const id = tokenData.id;
-              // Save it for future use
               Cookies.set("userId", id, { path: "/", secure: false, sameSite: "strict" });
               
               submitRegistration(id, token);
@@ -226,26 +205,23 @@ export default function AddAdminModal({ onClose }) {
   };
 
   const submitRegistration = async (adminId, token) => {
-    // Validate again before final submission
     if (!validateInputs()) {
       setShowPasswordModal(false);
       return;
     }
     
     try {
-      // Ensure password is correctly generated with the most up-to-date form data
-      // Keep the original lastName casing exactly as entered
+
       const finalPassword = generatePassword(formData.lastName, formData.employeeNumber);
-      console.log("Final password for submission:", finalPassword);
-      
-      // Display warning if the lastName has uppercase letters
+
+
       if (/[A-Z]/.test(formData.lastName)) {
-        console.warn("⚠️ WARNING: lastName contains uppercase letters which will be preserved in the password");
+        console.warn("lastName contains uppercase letters which will be preserved in the password");
       }
       
       const adminData = { 
         ...formData, 
-        password: finalPassword, // Use the latest generated password
+        password: finalPassword, 
         createdBy: adminId,
         permissions: permissions
       };
@@ -273,6 +249,14 @@ export default function AddAdminModal({ onClose }) {
           {currentStep === 1 && (
             <>
               <form className="space-y-3">
+
+                <label name="studentNumber" className="text-black font-bold">Employee Number:</label>
+                <input type="text" name="employeeNumber" placeholder="Employee Number" onChange={handleChange} required className="border w-full p-2 rounded text-black" />
+                {errors.employeeNumber && <p className="text-red-500 text-sm">{errors.employeeNumber}</p>}
+
+
+                <label name="Contact Number" className="text-black font-bold">Contact Number</label>
+
                 <label name="firstName" className="text-black font-bold">First Name:</label>
                 <input type="text" name="firstName" placeholder="First Name" onChange={handleChange} required className="border w-full p-2 rounded text-black" />
                 {errors.firstName && <p className="text-red-500 text-sm">{errors.firstName}</p>}
@@ -284,10 +268,6 @@ export default function AddAdminModal({ onClose }) {
                 <label name="email" className="text-black font-bold">Email:</label>
                 <input type="email" name="email" placeholder="Email" onChange={handleChange} required className="border w-full p-2 rounded text-black" />
                 {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
-
-                <label name="studentNumber" className="text-black font-bold">Employee Number:</label>
-                <input type="text" name="employeeNumber" placeholder="Employee Number" onChange={handleChange} required className="border w-full p-2 rounded text-black" />
-                {errors.employeeNumber && <p className="text-red-500 text-sm">{errors.employeeNumber}</p>}
 
                 {/* Department Dropdown */}
                 <label name="department" className="text-black font-bold">Select Department:</label>
@@ -307,9 +287,8 @@ export default function AddAdminModal({ onClose }) {
                         <option 
                           key={dept} 
                           value={dept}
-                          disabled={departmentsWithAdmins.includes(dept)}
                         >
-                          {dept} {departmentsWithAdmins.includes(dept) ? "(Has Admin)" : ""}
+                          {dept}
                         </option>
                       ))}
                     </>
@@ -518,6 +497,128 @@ export default function AddAdminModal({ onClose }) {
                         className="form-checkbox h-5 w-5 text-blue-600"
                       />
                       <span className="text-black">Delete Departments</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* CMS Permission Section */}
+                <div className="mb-6 p-3 border rounded">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-lg font-semibold text-black">CMS</h3>
+                    <div className="space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSelectAll('cms')}
+                        className="px-2 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600"
+                      >
+                        Select All
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeselectAll('cms')}
+                        className="px-2 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
+                      >
+                        Deselect All
+                      </button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={permissions.cms.canView}
+                        onChange={() => handlePermissionChange('cms', 'canView')}
+                        className="form-checkbox h-5 w-5 text-blue-600"
+                      />
+                      <span className="text-black">View Content</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={permissions.cms.canCreate}
+                        onChange={() => handlePermissionChange('cms', 'canCreate')}
+                        className="form-checkbox h-5 w-5 text-blue-600"
+                      />
+                      <span className="text-black">Create Content</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={permissions.cms.canEdit}
+                        onChange={() => handlePermissionChange('cms', 'canEdit')}
+                        className="form-checkbox h-5 w-5 text-blue-600"
+                      />
+                      <span className="text-black">Edit Content</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={permissions.cms.canDelete}
+                        onChange={() => handlePermissionChange('cms', 'canDelete')}
+                        className="form-checkbox h-5 w-5 text-blue-600"
+                      />
+                      <span className="text-black">Delete Content</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Audit Log Permission Section */}
+                <div className="mb-6 p-3 border rounded">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-lg font-semibold text-black">Audit Log</h3>
+                    <div className="space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSelectAll('auditLog')}
+                        className="px-2 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600"
+                      >
+                        Select All
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeselectAll('auditLog')}
+                        className="px-2 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
+                      >
+                        Deselect All
+                      </button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={permissions.auditLog.canView}
+                        onChange={() => handlePermissionChange('auditLog', 'canView')}
+                        className="form-checkbox h-5 w-5 text-blue-600"
+                      />
+                      <span className="text-black">View Records</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={permissions.auditLog.canCreate}
+                        onChange={() => handlePermissionChange('auditLog', 'canCreate')}
+                        className="form-checkbox h-5 w-5 text-blue-600"
+                      />
+                      <span className="text-black">Create Records</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={permissions.auditLog.canEdit}
+                        onChange={() => handlePermissionChange('auditLog', 'canEdit')}
+                        className="form-checkbox h-5 w-5 text-blue-600"
+                      />
+                      <span className="text-black">Edit Records</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={permissions.auditLog.canDelete}
+                        onChange={() => handlePermissionChange('auditLog', 'canDelete')}
+                        className="form-checkbox h-5 w-5 text-blue-600"
+                      />
+                      <span className="text-black">Delete Records</span>
                     </label>
                   </div>
                 </div>

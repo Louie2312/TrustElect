@@ -37,10 +37,13 @@ export default function AdminsPage() {
       const tokenData = JSON.parse(atob(token.split('.')[1]));
       setCurrentUserId(tokenData.id);
 
-      console.log("All admins data:", res.data.admins);
+      const updatedAdmins = res.data.admins.map(admin => ({
+        ...admin,
+        department: admin.department === "Administration" ? "Administrator" : admin.department
+      }));
 
-      setAdmins(res.data.admins.filter((admin) => admin.is_active));
-      setFilteredAdmins(res.data.admins.filter((admin) => admin.is_active));
+      setAdmins(updatedAdmins.filter((admin) => admin.is_active));
+      setFilteredAdmins(updatedAdmins.filter((admin) => admin.is_active));
       setLoading(false);
     } catch (error) {
       console.error("Error fetching admins:", error);
@@ -49,10 +52,8 @@ export default function AdminsPage() {
     }
   };
 
-  // Listen for admin updates
   useEffect(() => {
     const handleAdminUpdated = () => {
-      console.log("Admin updated event detected, refreshing admin data");
       fetchAdmins();
     };
 
@@ -63,7 +64,6 @@ export default function AdminsPage() {
     };
   }, []);
 
-  // Effect for initial data loading and refreshing when triggered
   useEffect(() => {
     fetchAdmins();
   }, [refreshTrigger]);
@@ -118,6 +118,7 @@ export default function AdminsPage() {
   };
 
   const handleDepartmentFilter = (e) => {
+
     const department = e.target.value;
     setDepartmentFilter(department);
 
@@ -159,7 +160,6 @@ export default function AdminsPage() {
           className="border p-2 rounded w-100 "
         />
   
-       
         <select
           value={departmentFilter}
           onChange={handleDepartmentFilter}
@@ -169,7 +169,7 @@ export default function AdminsPage() {
           <option value="Information and Communication Technology (ICT)">Information and Communication Technology (ICT)</option>
           <option value="Tourism and Hospitality Management (THM)">Tourism and Hospitality Management (THM)</option>
           <option value="Business Administration and Accountancy">Business Administration and Accountancy</option>
-          <option value="Administration">Administrator</option>
+          <option value="Administrator">Administrator</option>
         </select>
       </div>
 
@@ -184,7 +184,6 @@ export default function AdminsPage() {
       </button>
 
       {showAddModal && <AddAdminModal onClose={() => setShowAddModal(false)} />}
-
 
       <table className="w-full bg-white shadow-md rounded-lg overflow-hidden text-black">
         <thead>

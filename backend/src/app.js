@@ -218,6 +218,7 @@ app.use("/api/audit-logs", auditLogRoutes);
 app.use('/api/admin-permissions', adminPermissionRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/partylists', partylistRoutes);
+app.use('/api/partylist-candidates', partylistCandidateRoutes);
 
 app.get("/api/healthcheck", (req, res) => {
   res.status(200).json({

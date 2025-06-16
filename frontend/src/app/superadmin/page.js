@@ -70,7 +70,18 @@ const DeleteConfirmationModal = ({ isOpen, election, onCancel, onConfirm, isDele
   );
 };
 
-const ElectionCard = ({ election, onClick, onDeleteClick }) => {
+const ElectionCard = ({ election, onClick, onDeleteClick, activeTab }) => {
+  // Determine if the creator is a superadmin
+  const isSuperAdminCreator =
+    election.created_by === 1 ||
+    (election.created_by && election.created_by.id === 1) ||
+    election.created_by_role === 'SuperAdmin';
+
+  // Only show 'NEEDS APPROVAL' if in the to_approve tab
+  const displayStatus = activeTab === 'to_approve' && election.needs_approval && !isSuperAdminCreator
+    ? 'to_approve'
+    : election.status;
+  
   const statusColors = {
     ongoing: 'bg-blue-100 text-blue-800 border-blue-300',
     upcoming: 'bg-yellow-100 text-yellow-800 border-yellow-300',
@@ -115,10 +126,6 @@ const ElectionCard = ({ election, onClick, onDeleteClick }) => {
     }
   };
 
-  
-
-  const displayStatus = election.needs_approval ? 'to_approve' : election.status;
-  
   return (
     <div 
       className="border rounded-lg overflow-hidden hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1 cursor-pointer bg-white"
@@ -128,7 +135,7 @@ const ElectionCard = ({ election, onClick, onDeleteClick }) => {
         <div className="flex items-center">
           {statusIcons[displayStatus]}
           <span className="ml-2 font-semibold">
-            {election.needs_approval ? 'NEEDS APPROVAL' : election.status.toUpperCase()}
+            {displayStatus === 'to_approve' ? 'NEEDS APPROVAL' : displayStatus.toUpperCase()}
           </span>
         </div>
         
@@ -155,7 +162,7 @@ const ElectionCard = ({ election, onClick, onDeleteClick }) => {
             <Users className="w-5 h-5 mr-2 text-gray-600" />
             <div>
               <div className="text-sm text-gray-500">Voters</div>
-              <div className="font-bold text-black">{election.voter_count || 0}</div>
+              <div className="font-bold text-black">{Number(election.voter_count || 0).toLocaleString()}</div>
             </div>
           </div>
           
@@ -163,7 +170,7 @@ const ElectionCard = ({ election, onClick, onDeleteClick }) => {
             <CheckCircle className="w-5 h-5 mr-2 text-gray-600" />
             <div>
               <div className="text-sm text-gray-500">Votes</div>
-              <div className="font-bold text-black">{election.vote_count || 0}</div>
+              <div className="font-bold text-black">{Number(election.vote_count || 0).toLocaleString()}</div>
             </div>
           </div>
         </div>
@@ -206,49 +213,18 @@ export default function SuperAdminDashboard() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [actionMessage, setActionMessage] = useState(null);
 
-  // Fetch pending approvals separately to ensure accurate count
-  const loadPendingApprovals = async () => {
-    try {
-    
-      const response = await fetch(`${API_BASE}/elections/pending-approval`, {
-        headers: {
-          'Authorization': `Bearer ${Cookies.get('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-  
-        return;
-      }
-      
-      const data = await response.json();
-      setPendingApprovals(data);
-      setPendingCount(data.length);
-      
-      // If we're on the to_approve tab, update the elections data too
-      if (activeTab === 'to_approve') {
-        setElections(data);
-      }
-    } catch (err) {
-      console.error('[SuperAdmin] Error loading pending approvals:', err);
-    }
-  };
-
   const loadElections = async (status) => {
     try {
       setIsLoading(true);
-      setError(null); // Clear previous errors
+      setError(null);
       
       let endpoint;
       if (status === 'to_approve') {
         endpoint = '/elections/pending-approval';
-      
       } else {
         endpoint = `/elections/status/${status}`;
       }
       
-     
       const response = await fetch(`${API_BASE}${endpoint}`, {
         headers: {
           'Authorization': `Bearer ${Cookies.get('token')}`,
@@ -263,7 +239,6 @@ export default function SuperAdminDashboard() {
       }
       
       const data = await response.json();
-  
       setElections(data || []);
 
       if (status === 'to_approve') {
@@ -276,6 +251,31 @@ export default function SuperAdminDashboard() {
       setElections([]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadPendingApprovals = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/elections/pending-approval`, {
+        headers: {
+          'Authorization': `Bearer ${Cookies.get('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        return;
+      }
+      
+      const data = await response.json();
+      setPendingApprovals(data);
+      setPendingCount(data.length);
+
+      if (activeTab === 'to_approve') {
+        setElections(data);
+      }
+    } catch (err) {
+      console.error('[SuperAdmin] Error loading pending approvals:', err);
     }
   };
 
@@ -299,8 +299,7 @@ export default function SuperAdminDashboard() {
       try {
      
         await loadPendingApprovals();
-        
-        // Then load stats and current tab elections
+
         await Promise.all([
           loadStats(),
           loadElections(activeTab)
@@ -314,7 +313,6 @@ export default function SuperAdminDashboard() {
     
     initialLoad();
 
-    // Set up polling intervals
     const pendingInterval = setInterval(() => {
       loadPendingApprovals();
     }, 15000);
@@ -329,7 +327,6 @@ export default function SuperAdminDashboard() {
     };
   }, []);
 
-  // This effect runs when the tab changes
   useEffect(() => {
     loadElections(activeTab);
   }, [activeTab]);
@@ -369,8 +366,7 @@ export default function SuperAdminDashboard() {
       
    
       setElections(elections.filter(e => e.id !== electionToDelete.id));
-      
-      // Update stats
+
       loadStats();
       
       setActionMessage({
@@ -395,16 +391,15 @@ export default function SuperAdminDashboard() {
   };
 
   const getStatValue = (status, field) => {
-    // For pending approvals, prioritize our directly fetched count
+
     if (status === 'to_approve' && field === 'count') {
       return pendingCount;
     }
     
-    // Find the stat with matching status
+
     const stat = stats.find(s => s.status === status);
     
     if (stat) {
-      // Convert to number and default to 0 if undefined
       return Number(stat[field] || 0);
     }
     
@@ -422,44 +417,23 @@ export default function SuperAdminDashboard() {
       )}
       
      
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="font-medium text-black mb-2 text-black">Total Elections</h3>
           <p className="text-3xl font-bold text-black">
-            {stats.reduce((sum, stat) => sum + parseInt(stat.count || 0), 0)}
+            {Number(stats.reduce((sum, stat) => sum + parseInt(stat.count || 0), 0)).toLocaleString()}
           </p>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="font-medium text-black mb-2 text-black">Total Voters</h3>
           <p className="text-3xl font-bold text-black">
-            {stats.reduce((sum, stat) => sum + parseInt(stat.total_voters || 0), 0)}
+            {Number(stats.reduce((sum, stat) => sum + parseInt(stat.total_voters || 0), 0)).toLocaleString()}
           </p>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="font-medium text-black mb-2 text-black">Total Votes Cast</h3>
           <p className="text-3xl font-bold text-black">
-            {stats.reduce((sum, stat) => sum + parseInt(stat.total_votes || 0), 0)}
-          </p>
-        </div>
-        <div className={`rounded-lg shadow p-6 ${getStatValue('to_approve', 'count') > 0 ? 'bg-purple border-2 border-purple-300' : 'bg-white'}`}>
-          <div className="flex justify-between items-center">
-            <h3 className="font-medium text-black mb-2">Pending Approval</h3>
-            {getStatValue('to_approve', 'count') > 0 && (
-              <button 
-                onClick={() => setActiveTab('to_approve')}
-                className="text-purple-800 hover:text-purple-800 text-sm font-medium"
-              >
-                View all
-              </button>
-            )}
-          </div>
-          <p className={`text-3xl font-bold ${getStatValue('to_approve', 'count') > 0 ? 'text-purple-800' : 'text-black'}`}>
-            {getStatValue('to_approve', 'count')}
-            {getStatValue('to_approve', 'count') > 0 && (
-              <span className="text-sm font-normal ml-2 text-purple-700">
-                election{getStatValue('to_approve', 'count') !== 1 ? 's' : ''} need{getStatValue('to_approve', 'count') === 1 ? 's' : ''} approval
-              </span>
-            )}
+            {Number(stats.reduce((sum, stat) => sum + parseInt(stat.total_votes || 0), 0)).toLocaleString()}
           </p>
         </div>
       </div>
@@ -489,7 +463,7 @@ export default function SuperAdminDashboard() {
                     <span className="ml-2">{tab.name}</span>
                     {hasPending && (
                       <span className="absolute -top-2 -right-3 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
-                        {count}
+                        {Number(count).toLocaleString()}
                       </span>
                     )}
                   </div>
@@ -498,7 +472,7 @@ export default function SuperAdminDashboard() {
                       ? 'bg-red-100 text-red-800' 
                       : 'bg-gray-100'
                   }`}>
-                    {count}
+                    {Number(count).toLocaleString()}
                   </span>
                 </div>
               </button>
@@ -549,6 +523,7 @@ export default function SuperAdminDashboard() {
                 election={election} 
                 onClick={handleElectionClick}
                 onDeleteClick={handleDeleteClick}
+                activeTab={activeTab}
               />
             ))
           ) : (
@@ -587,3 +562,4 @@ export default function SuperAdminDashboard() {
     </div>
   );
 }
+

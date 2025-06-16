@@ -32,9 +32,9 @@ async function fetchWithAuth(url, options = {}) {
     const data = await response.json();
     
     if (!response.ok) {
-      const errorMsg = data.message || data.error || 'Request failed';
-      console.error("Request failed:", { status: response.status, statusText: response.statusText, data });
-      throw new Error(errorMsg);
+      if (response.status !== 404 && response.status !== 403) {
+        throw new Error(data.message || 'An error occurred');
+      }
     }
     
     return data;
@@ -128,7 +128,7 @@ const ElectionCard = ({ election, onClick }) => {
       <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
         <div className="flex items-center">
           <Users className="w-4 h-4 mr-1 text-black" />
-          <span className="text-black">{election.voter_count || 0} voters</span>
+          <span className="text-black">{Number(election.voter_count || 0).toLocaleString()} voters</span>
         </div>
         <div className="flex items-center">
           <CheckCircle className="w-4 h-4 mr-1 text-black" />
@@ -137,7 +137,7 @@ const ElectionCard = ({ election, onClick }) => {
         
         {election.ballot_exists === false && (
           <div className="col-span-2">
-            <span className="text-red-600">Voting not yet available</span>
+            <span className="text-amber-600">Ballot not yet available</span>
           </div>
         )}
         
@@ -246,36 +246,43 @@ export default function StudentDashboard() {
     try {
       const election = allElections.find(e => e.id === electionId);
       
+      if (!election) {
+        throw new Error('Election not found');
+      }
+      
       // If election is completed, redirect to results page
-      if (election && election.status === 'completed') {
+      if (election.status === 'completed') {
         router.push(`/student/elections/${electionId}/results`);
         return;
       }
       
-      // Check if the student is eligible to vote in this election
-      const eligibility = await fetchWithAuth(`/elections/${electionId}/student-eligible`);
-      
-      if (!eligibility.eligible) {
-        alert(eligibility.message);
+      // If student has already voted, show receipt
+      if (election.has_voted) {
+        router.push(`/student/elections/${electionId}/receipt`);
         return;
       }
   
-      // If student has already voted, show receipt
-      if (eligibility.hasVoted) {
-        router.push(`/student/elections/${electionId}/receipt`);
-      } else {
-        // If election is ongoing and student is eligible, go to voting page
-        if (election && election.status === 'ongoing' && election.ballot_exists) {
+      // For ongoing elections
+      if (election.status === 'ongoing') {
+        // If ballot exists, proceed to voting
+        if (election.ballot_exists) {
           router.push(`/student/elections/${electionId}/vote`);
-        } else if (election && election.status !== 'ongoing') {
-          alert('Voting is only available for ongoing elections.');
-        } else if (election && !election.ballot_exists) {
-          alert('Ballot is not yet available for this election.');
+          return;
         }
+        // If ballot doesn't exist yet
+          alert('Ballot is not yet available for this election.');
+        return;
       }
+
+      // For upcoming elections
+      if (election.status === 'upcoming') {
+        alert('This election has not started yet. Please wait for the start date.');
+        return;
+      }
+
     } catch (error) {
       console.error("View election error:", error);
-      setError(error.message);
+      alert(error.message || 'An error occurred while processing your request');
     }
   };
 

@@ -15,7 +15,8 @@ const API_ENDPOINTS = {
   yearLevels: "year-levels",
   genders: "genders",
   semesters: "semesters",
-  precincts: "precincts"
+  precincts: "precincts",
+  departments: "departments"
 };
 
 const MaintenancePage = () => {
@@ -35,6 +36,7 @@ const MaintenancePage = () => {
   const [showArchived, setShowArchived] = useState(false);
   const [selectedPartylist, setSelectedPartylist] = useState(null);
   const [electionTypesList, setElectionTypesList] = useState([]);
+  const [departmentType, setDepartmentType] = useState("Academic");
 
   const tabs = [
     { id: "programs", label: "Programs" },
@@ -43,6 +45,7 @@ const MaintenancePage = () => {
     { id: "genders", label: "Genders" },
     { id: "semesters", label: "Semesters" },
     { id: "precincts", label: "Precincts" },
+    { id: "departments", label: "Departments" },
     { id: "partylists", label: "Partylist" },
     { id: "positions", label: "Positions" },
   ];
@@ -58,28 +61,41 @@ const MaintenancePage = () => {
       const endpoint = API_ENDPOINTS[activeTab];
       
       if (activeTab !== "partylists") {
-      const response = await axios.get(
-        `http://localhost:5000/api/maintenance/${endpoint}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      
-      setItems(response.data.data);
-      
-      if (activeTab === "semesters") {
-        try {
-          const currentSemesterResponse = await axios.get(
-            "http://localhost:5000/api/maintenance/current-semester",
+        let response;
+        if (activeTab === "departments") {
+          response = await axios.get(
+            "http://localhost:5000/api/superadmin/departments",
             { headers: { Authorization: `Bearer ${token}` } }
           );
-          
-          if (currentSemesterResponse.data.success && currentSemesterResponse.data.data) {
-            setCurrentSemester(currentSemesterResponse.data.data.id);
-          } else {
+          // Transform the data to match the expected format
+          const departments = response.data.departments || response.data || [];
+          setItems(departments.map(dept => ({
+            id: dept.id,
+            name: dept.department_name,
+            department_type: dept.department_type
+          })));
+        } else {
+          response = await axios.get(
+            `http://localhost:5000/api/maintenance/${endpoint}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          setItems(response.data.data);
+        }
+        
+        if (activeTab === "semesters") {
+          try {
+            const currentSemesterResponse = await axios.get(
+              "http://localhost:5000/api/maintenance/current-semester",
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+            
+            if (currentSemesterResponse.data.success && currentSemesterResponse.data.data) {
+              setCurrentSemester(currentSemesterResponse.data.data.id);
+            } else {
+              setCurrentSemester(null);
+            }
+          } catch (error) {
             setCurrentSemester(null);
-          }
-        } catch (error) {
-         
-          setCurrentSemester(null);
           }
         }
       }
@@ -104,13 +120,24 @@ const MaintenancePage = () => {
     setIsLoading(true);
     try {
       const token = Cookies.get("token");
-      const endpoint = API_ENDPOINTS[activeTab];
       
-      await axios.post(
-        `http://localhost:5000/api/maintenance/${endpoint}`,
-        { name: newItemName },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      if (activeTab === "departments") {
+        await axios.post(
+          "http://localhost:5000/api/superadmin/departments",
+          {
+            department_name: newItemName,
+            department_type: departmentType
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      } else {
+        const endpoint = API_ENDPOINTS[activeTab];
+        await axios.post(
+          `http://localhost:5000/api/maintenance/${endpoint}`,
+          { name: newItemName },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      }
       
       toast.success("Item added successfully");
       setNewItemName("");
@@ -141,13 +168,24 @@ const MaintenancePage = () => {
     setIsLoading(true);
     try {
       const token = Cookies.get("token");
-      const endpoint = API_ENDPOINTS[activeTab];
       
-      await axios.put(
-        `http://localhost:5000/api/maintenance/${endpoint}/${editingItem.id}`,
-        { name: editName },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      if (activeTab === "departments") {
+        await axios.put(
+          `http://localhost:5000/api/superadmin/departments/${editingItem.id}`,
+          {
+            department_name: editName,
+            department_type: departmentType
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      } else {
+        const endpoint = API_ENDPOINTS[activeTab];
+        await axios.put(
+          `http://localhost:5000/api/maintenance/${endpoint}/${editingItem.id}`,
+          { name: editName },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      }
       
       toast.success("Item updated successfully");
       setEditingItem(null);
@@ -167,12 +205,19 @@ const MaintenancePage = () => {
     setIsLoading(true);
     try {
       const token = Cookies.get("token");
-      const endpoint = API_ENDPOINTS[activeTab];
       
-      await axios.delete(
-        `http://localhost:5000/api/maintenance/${endpoint}/${item.id}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      if (activeTab === "departments") {
+        await axios.delete(
+          `http://localhost:5000/api/superadmin/departments/${item.id}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      } else {
+        const endpoint = API_ENDPOINTS[activeTab];
+        await axios.delete(
+          `http://localhost:5000/api/maintenance/${endpoint}/${item.id}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      }
       
       toast.success("Item deleted successfully");
       fetchItems();
@@ -458,116 +503,158 @@ const MaintenancePage = () => {
             <PositionManager electionTypes={electionTypesList} />
           ) : (
             <>
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-semibold text-black">
-            {tabs.find(t => t.id === activeTab).label}
-          </h2>
-          
-          {!isAdding && !editingItem && (
-            <button
-              onClick={() => setIsAdding(true)}
-              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-            >
-              Add New
-            </button>
-          )}
-        </div>
-        
-        {(isAdding || editingItem) && (
-          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-            <div className="flex items-end gap-2">
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-black mb-1">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  value={editingItem ? editName : newItemName}
-                  onChange={(e) => editingItem ? setEditName(e.target.value) : setNewItemName(e.target.value)}
-                  className="w-full p-2 border rounded text-black"
-                  placeholder={`Enter ${tabs.find(t => t.id === activeTab).label.slice(0, -1)} name`}
-                />
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-semibold text-black">
+                  {tabs.find(t => t.id === activeTab).label}
+                </h2>
+                
+                {!isAdding && !editingItem && (
+                  <button
+                    onClick={() => setIsAdding(true)}
+                    className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                  >
+                    Add New
+                  </button>
+                )}
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={editingItem ? handleUpdateItem : handleAddItem}
-                  disabled={isLoading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {isLoading ? "Saving..." : editingItem ? "Update" : "Add"}
-                </button>
-                <button
-                  onClick={editingItem ? cancelEditing : () => {
-                    setIsAdding(false);
-                    setNewItemName("");
-                  }}
-                  className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 text-black"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {isLoading ? (
-          <div className="text-center py-8">Loading...</div>
-        ) : items.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">No items found</div>
-        ) : (
-          <div className="border rounded-lg overflow-hidden">
-                  <table className="min-w-full divide-y divide-gray-200 table-fixed">
-              <thead className="bg-gray-50">
-                <tr>
-                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider w-3/4">
-                    Name
-                  </th>
-                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider w-1/4">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {items.map((item) => (
-                  <tr key={item.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-base font-medium text-black">
-                      {item.name}
-                      {activeTab === "semesters" && currentSemester === item.id && (
-                        <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">
-                          Current
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-base font-medium flex gap-2">
-                      <button
-                        onClick={() => startEditing(item)}
-                        className="text-blue-600 hover:text-blue-900"
-                        disabled={isLoading}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteItem(item)}
-                        className="text-red-600 hover:text-red-900"
-                        disabled={isLoading}
-                      >
-                        Delete
-                      </button>
-                      {activeTab === "semesters" && currentSemester !== item.id && (
-                        <button
-                          onClick={() => setAsCurrentSemester(item.id)}
-                          className="text-green-600 hover:text-green-900"
-                          disabled={isLoading}
+              
+              {(isAdding || editingItem) && (
+                <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-end gap-2">
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-black mb-1">
+                        Name
+                      </label>
+                      <input
+                        type="text"
+                        value={editingItem ? editName : newItemName}
+                        onChange={(e) => editingItem ? setEditName(e.target.value) : setNewItemName(e.target.value)}
+                        className="w-full p-2 border rounded text-black"
+                        placeholder={`Enter ${tabs.find(t => t.id === activeTab).label.slice(0, -1)} name`}
+                      />
+                    </div>
+                    {activeTab === "departments" && (
+                      <div className="flex-1">
+                        <label className="block text-sm font-medium text-black mb-1">
+                          Department Type
+                        </label>
+                        <select
+                          value={departmentType}
+                          onChange={(e) => setDepartmentType(e.target.value)}
+                          className="w-full p-2 border rounded text-black"
                         >
-                          Set as Current
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                          <option value="Academic">Academic</option>
+                          <option value="Administrative">Administrative</option>
+                          <option value="Organization">Organization</option>
+                          <option value="System">System</option>
+                        </select>
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={editingItem ? handleUpdateItem : handleAddItem}
+                        disabled={isLoading}
+                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        {isLoading ? "Saving..." : editingItem ? "Update" : "Add"}
+                      </button>
+                      <button
+                        onClick={editingItem ? cancelEditing : () => {
+                          setIsAdding(false);
+                          setNewItemName("");
+                        }}
+                        className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 text-black"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {isLoading ? (
+                <div className="text-center py-8">Loading...</div>
+              ) : items.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">No items found</div>
+              ) : (
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="min-w-full divide-y divide-gray-200 table-fixed">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider w-3/4">
+                          Name
+                        </th>
+                        {activeTab === "departments" && (
+                          <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
+                            Type
+                          </th>
+                        )}
+                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider w-1/4">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {items.map((item) => (
+                        <tr key={item.id}>
+                          <td className="px-6 py-4 whitespace-nowrap text-base font-medium text-black">
+                            {item.name}
+                            {activeTab === "semesters" && currentSemester === item.id && (
+                              <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">
+                                Current
+                              </span>
+                            )}
+                          </td>
+                          {activeTab === "departments" && (
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`px-2 py-1 text-xs rounded-full ${
+                                item.department_type === 'Academic' 
+                                  ? 'bg-blue-100 text-blue-800' 
+                                  : item.department_type === 'Administrative'
+                                  ? 'bg-green-100 text-green-800'
+                                  : item.department_type === 'Organization'
+                                  ? 'bg-purple-100 text-purple-800'
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {item.department_type}
+                              </span>
+                            </td>
+                          )}
+                          <td className="px-6 py-4 whitespace-nowrap text-base font-medium flex gap-2">
+                            <button
+                              onClick={() => {
+                                startEditing(item);
+                                if (activeTab === "departments") {
+                                  setDepartmentType(item.department_type);
+                                }
+                              }}
+                              className="text-blue-600 hover:text-blue-900"
+                              disabled={isLoading}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteItem(item)}
+                              className="text-red-600 hover:text-red-900"
+                              disabled={isLoading}
+                            >
+                              Delete
+                            </button>
+                            {activeTab === "semesters" && currentSemester !== item.id && (
+                              <button
+                                onClick={() => setAsCurrentSemester(item.id)}
+                                className="text-green-600 hover:text-green-900"
+                                disabled={isLoading}
+                              >
+                                Set as Current
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </>
           )

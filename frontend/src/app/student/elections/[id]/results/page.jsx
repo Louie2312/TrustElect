@@ -240,7 +240,8 @@ export default function ElectionResultsPage({ params }) {
             </div>
             <div className="bg-gray-50 p-3 rounded">
               <p className="text-sm text-black">Participation</p>
-              <p className="text-black">{election.vote_count} out of {election.voter_count} eligible voters ({election.voter_count ? Math.round((election.vote_count / election.voter_count) * 100) : 0}%)</p>
+              <p className="text-black">{Number(election.vote_count || 0).toLocaleString()} out of <span className="font-semibold">{Number(election.voter_count || 0).toLocaleString()}</span> eligible voters
+                      ({election.voter_count ? ((election.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}% participation)</p>
             </div>
           </div>
         </div>

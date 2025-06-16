@@ -15,8 +15,7 @@ export default function ProfilePage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  
-  // Password change states
+
   const [showPasswordSection, setShowPasswordSection] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -65,11 +64,9 @@ export default function ProfilePage() {
     }
   };
 
-  // ✅ Handle Input Change
   const handleFirstNameChange = (e) => setFirstName(e.target.value);
   const handleLastNameChange = (e) => setLastName(e.target.value);
 
-  // ✅ Handle Profile Picture Upload
   const handleFileChange = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -132,13 +129,16 @@ export default function ProfilePage() {
     }
   };
 
-  // ✅ Handle Password Change
+  const validatePassword = (password) => {
+    // At least 8 characters, one uppercase, one number, one special character
+    const regex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
+    return regex.test(password);
+  };
+
   const handlePasswordChange = async () => {
-    // Reset error and success messages
     setPasswordError("");
     setPasswordSuccess("");
-    
-    // Validate passwords
+
     if (!currentPassword) {
       setPasswordError("Current password is required");
       return;
@@ -149,8 +149,8 @@ export default function ProfilePage() {
       return;
     }
     
-    if (newPassword.length < 8) {
-      setPasswordError("New password must be at least 8 characters long");
+    if (!validatePassword(newPassword)) {
+      setPasswordError("New password must be at least 8 characters, include one uppercase letter, one number, and one special character");
       return;
     }
     
@@ -251,6 +251,7 @@ export default function ProfilePage() {
                 {passwordSuccess && <p className="text-green-500 text-sm">{passwordSuccess}</p>}
                 
                 <div>
+
                   <label className="block text-gray-700 font-semibold">Current Password</label>
                   <div className="relative">
                     <input 
@@ -286,7 +287,7 @@ export default function ProfilePage() {
                       {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">Password must be at least 8 characters</p>
+                  <p className="text-xs text-black mt-1">Password must be at least 8 characters, include one uppercase letter, one number, and one special character.</p>
                 </div>
                 
                 <div>

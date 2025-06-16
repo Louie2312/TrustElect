@@ -10,7 +10,9 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
   const defaultPermissions = {
     users: { canView: false, canCreate: false, canEdit: false, canDelete: false },
     elections: { canView: false, canCreate: false, canEdit: false, canDelete: false },
-    departments: { canView: false, canCreate: false, canEdit: false, canDelete: false }
+    departments: { canView: false, canCreate: false, canEdit: false, canDelete: false },
+    cms: { canView: false, canCreate: false, canEdit: false, canDelete: false },
+    auditLog: { canView: false, canCreate: false, canEdit: false, canDelete: false }
   };
   
   const { refreshPermissions, triggerGlobalPermissionsRefresh } = usePermissions();
@@ -62,7 +64,7 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
 
   const handlePermissionChange = (module, action) => {
     setPermissions(prev => {
-      // Ensure the module exists in the state
+      
       const updatedPermissions = { ...prev };
       if (!updatedPermissions[module]) {
         updatedPermissions[module] = { canView: false, canCreate: false, canEdit: false, canDelete: false };
@@ -138,7 +140,17 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
       setSaving(true);
       const token = Cookies.get("token");
       
-      console.log('Saving permissions:', JSON.stringify(permissions));
+      // Format permissions to match the expected API structure
+      const formattedPermissions = {
+        users: permissions.users || { canView: false, canCreate: false, canEdit: false, canDelete: false },
+        elections: permissions.elections || { canView: false, canCreate: false, canEdit: false, canDelete: false },
+        departments: permissions.departments || { canView: false, canCreate: false, canEdit: false, canDelete: false }
+      };
+
+      // Remove cms and auditLog from the permissions object before sending to API
+      const { cms, auditLog, ...apiPermissions } = permissions;
+      
+      console.log('Saving permissions:', JSON.stringify(apiPermissions));
 
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
       const apiUrl = `${baseUrl}/api/admin-permissions/${admin.id}`;
@@ -148,7 +160,7 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
       try {
         const response = await axios.put(
           apiUrl,
-          { permissions },
+          { permissions: apiPermissions },
           { 
             headers: { 
               'Authorization': `Bearer ${token}`,
@@ -171,7 +183,7 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ permissions })
+          body: JSON.stringify({ permissions: apiPermissions })
         });
         
         if (!fetchResponse.ok) {
@@ -185,7 +197,6 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
       await validatePermissions(admin.id);
 
       try {
-
         const updateTimestamp = Date.now().toString();
         localStorage.setItem(`admin_permissions_updated_${admin.id}`, updateTimestamp);
 
@@ -202,12 +213,11 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
           detail: { 
             adminId: admin.id, 
             timestamp: updateTimestamp,
-            permissions: permissions 
+            permissions: apiPermissions 
           }
         });
         window.dispatchEvent(event);
       } catch (storageError) {
-  
         console.warn('Could not store permission update timestamp:', storageError);
       }
       
@@ -216,7 +226,7 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
       toast?.success?.("Admin permissions updated successfully");
  
       setTimeout(() => {
-        onSave && onSave(permissions);
+        onSave && onSave(apiPermissions);
         onClose();
       }, 50);
     } catch (error) {
@@ -451,6 +461,128 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
                     className="form-checkbox h-5 w-5 text-blue-600"
                   />
                   <span className="text-black">Delete Departments</span>
+                </label>
+              </div>
+            </div>
+
+            {/* CMS Permission Section */}
+            <div className="mb-6 p-3 border rounded">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="text-lg font-semibold text-black">CMS</h3>
+                <div className="space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectAll('cms')}
+                    className="px-2 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600"
+                  >
+                    Select All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeselectAll('cms')}
+                    className="px-2 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
+                  >
+                    Deselect All
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={getPermissionValue('cms', 'canView')}
+                    onChange={() => handlePermissionChange('cms', 'canView')}
+                    className="form-checkbox h-5 w-5 text-blue-600"
+                  />
+                  <span className="text-black">View Content</span>
+                </label>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={getPermissionValue('cms', 'canCreate')}
+                    onChange={() => handlePermissionChange('cms', 'canCreate')}
+                    className="form-checkbox h-5 w-5 text-blue-600"
+                  />
+                  <span className="text-black">Create Content</span>
+                </label>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={getPermissionValue('cms', 'canEdit')}
+                    onChange={() => handlePermissionChange('cms', 'canEdit')}
+                    className="form-checkbox h-5 w-5 text-blue-600"
+                  />
+                  <span className="text-black">Edit Content</span>
+                </label>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={getPermissionValue('cms', 'canDelete')}
+                    onChange={() => handlePermissionChange('cms', 'canDelete')}
+                    className="form-checkbox h-5 w-5 text-blue-600"
+                  />
+                  <span className="text-black">Delete Content</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Audit Log Permission Section */}
+            <div className="mb-6 p-3 border rounded">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="text-lg font-semibold text-black">Audit Log</h3>
+                <div className="space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectAll('auditLog')}
+                    className="px-2 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600"
+                  >
+                    Select All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeselectAll('auditLog')}
+                    className="px-2 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
+                  >
+                    Deselect All
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={getPermissionValue('auditLog', 'canView')}
+                    onChange={() => handlePermissionChange('auditLog', 'canView')}
+                    className="form-checkbox h-5 w-5 text-blue-600"
+                  />
+                  <span className="text-black">View Records</span>
+                </label>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={getPermissionValue('auditLog', 'canCreate')}
+                    onChange={() => handlePermissionChange('auditLog', 'canCreate')}
+                    className="form-checkbox h-5 w-5 text-blue-600"
+                  />
+                  <span className="text-black">Create Records</span>
+                </label>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={getPermissionValue('auditLog', 'canEdit')}
+                    onChange={() => handlePermissionChange('auditLog', 'canEdit')}
+                    className="form-checkbox h-5 w-5 text-blue-600"
+                  />
+                  <span className="text-black">Edit Records</span>
+                </label>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={getPermissionValue('auditLog', 'canDelete')}
+                    onChange={() => handlePermissionChange('auditLog', 'canDelete')}
+                    className="form-checkbox h-5 w-5 text-blue-600"
+                  />
+                  <span className="text-black">Delete Records</span>
                 </label>
               </div>
             </div>

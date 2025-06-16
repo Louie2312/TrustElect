@@ -239,68 +239,6 @@ export default function VoteReceiptPage({ params }) {
       
       container.appendChild(infoSection);
       
-      // Selections header
-      const selectionsHeader = document.createElement('h2');
-      selectionsHeader.textContent = 'Your Selections';
-      selectionsHeader.style.fontSize = '20px';
-      selectionsHeader.style.marginBottom = '15px';
-      selectionsHeader.style.color = '#000';
-      container.appendChild(selectionsHeader);
-      
-      // Selections
-      if (receipt.selections && receipt.selections.length > 0) {
-        const selectionsContainer = document.createElement('div');
-        
-        receipt.selections.forEach(selection => {
-          const selectionDiv = document.createElement('div');
-          selectionDiv.style.border = '1px solid #ddd';
-          selectionDiv.style.borderRadius = '4px';
-          selectionDiv.style.padding = '15px';
-          selectionDiv.style.marginBottom = '15px';
-          
-          const positionName = document.createElement('h3');
-          positionName.textContent = selection.position;
-          positionName.style.fontSize = '16px';
-          positionName.style.marginBottom = '10px';
-          positionName.style.color = '#000';
-          selectionDiv.appendChild(positionName);
-          
-          const candidatesContainer = document.createElement('div');
-          candidatesContainer.style.display = 'flex';
-          candidatesContainer.style.flexWrap = 'wrap';
-          candidatesContainer.style.gap = '10px';
-          
-          selection.candidates.forEach(candidate => {
-            const candidateDiv = document.createElement('div');
-            candidateDiv.style.border = '1px solid #ddd';
-            candidateDiv.style.borderRadius = '4px';
-            candidateDiv.style.padding = '10px';
-            candidateDiv.style.background = '#f9f9f9';
-            candidateDiv.style.width = 'calc(33% - 10px)';
-            
-            candidateDiv.innerHTML = `
-              <p style="margin: 5px 0; font-size: 14px; color: #000;"><strong>${formatNameSimple(candidate.lastName, candidate.firstName, candidate.name)}</strong></p>
-              ${candidate.party ? `<p style="margin: 5px 0; font-size: 14px; color: #666;">${candidate.party}</p>` : ''}
-            `;
-            
-            candidatesContainer.appendChild(candidateDiv);
-          });
-          
-          selectionDiv.appendChild(candidatesContainer);
-          selectionsContainer.appendChild(selectionDiv);
-        });
-        
-        container.appendChild(selectionsContainer);
-      } else {
-        const noSelections = document.createElement('div');
-        noSelections.style.border = '1px solid #ddd';
-        noSelections.style.borderRadius = '4px';
-        noSelections.style.padding = '15px';
-        noSelections.style.color = '#666';
-        noSelections.textContent = 'No selections found in your receipt.';
-        container.appendChild(noSelections);
-      }
-      
       // Footer
       const footer = document.createElement('div');
       footer.style.background = '#fff9e6';
@@ -446,55 +384,6 @@ export default function VoteReceiptPage({ params }) {
                 <p className="text-sm text-gray-500 text-black">Receipt ID</p>
                 <p className="font-medium text-xs break-all text-black">{receipt.voteToken}</p>
               </div>
-            </div>
-            
-            <h2 className="text-xl font-semibold text-gray-800 mb-4 text-black">Your Selections</h2>
-            
-            <div className="space-y-6">
-              {receipt.selections && receipt.selections.length > 0 ? (
-                receipt.selections.map((selection, index) => (
-                  <div key={index} className="border border-gray-200 rounded-lg p-4">
-                    <h3 className="font-medium text-gray-700 mb-3">{selection.position}</h3>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {selection.candidates.map((candidate, candidateIndex) => (
-                        <div key={candidateIndex} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
-                          <div className="flex items-center">
-                            <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-200 flex-shrink-0">
-                              {candidate.imageUrl ? (
-                                <img 
-                                  src={getImageUrl(candidate.imageUrl)}
-                                  alt={`${candidate.firstName} ${candidate.lastName}`}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    e.target.onerror = null; 
-                                    e.target.src = '/default-candidate.png';
-                                  }}
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center">
-                                  <User className="w-8 h-8 text-gray-400" />
-                                </div>
-                              )}
-                            </div>
-                            
-                            <div className="ml-3">
-                              <p className="font-medium text-gray-800">{formatNameSimple(candidate.lastName, candidate.firstName, candidate.name)}</p>
-                              {candidate.party && (
-                                <p className="text-sm text-gray-600">{candidate.party}</p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="border border-gray-200 rounded-lg p-4">
-                  <p className="text-gray-600">No selections found in your receipt.</p>
-                </div>
-              )}
             </div>
             
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-6">

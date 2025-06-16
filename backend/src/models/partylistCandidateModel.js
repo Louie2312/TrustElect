@@ -76,9 +76,29 @@ const updateCandidate = async (candidateId, candidateData) => {
   return result.rows[0];
 };
 
+const getStudentPartylist = async (studentNumber) => {
+  const query = `
+    SELECT 
+      pc.*,
+      p.id as partylist_id,
+      p.name as partylist_name,
+      p.slogan,
+      p.advocacy,
+      p.logo_url
+    FROM partylist_candidates pc
+    JOIN partylists p ON pc.partylist_id = p.id
+    WHERE pc.student_number = $1 AND p.is_active = true
+    LIMIT 1
+  `;
+  
+  const result = await pool.query(query, [studentNumber]);
+  return result.rows[0];
+};
+
 module.exports = {
   addCandidate,
   getCandidatesByPartylist,
   removeCandidate,
-  updateCandidate
+  updateCandidate,
+  getStudentPartylist
 }; 

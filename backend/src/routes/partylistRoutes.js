@@ -39,25 +39,21 @@ router.delete('/:id',
   partylistController.archivePartylist
 );
 
-// Restore an archived partylist
 router.post('/:id/restore',
   verifyToken, isSuperAdmin,
   partylistController.restorePartylist
 );
 
-// Permanently delete a partylist
 router.delete('/:id/permanent',
   verifyToken, isSuperAdmin,
   partylistController.permanentDeletePartylist
 );
 
-// Add a candidate to a partylist
 router.post('/:partylistId/candidates',
   verifyToken, isSuperAdmin,
   partylistController.addPartylistCandidate
 );
 
-// Remove a candidate from a partylist
 router.delete('/:partylistId/candidates/:studentId',
   verifyToken, isSuperAdmin,
   partylistController.removePartylistCandidate
