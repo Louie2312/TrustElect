@@ -94,12 +94,12 @@ const getImageUrl = (imageUrl) => {
 export default function ElectionDetailsPage() {
   const router = useRouter();
   const params = useParams();
+  const [tab, setTab] = useState('details');
   const [election, setElection] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [candidateImages, setCandidateImages] = useState({});
   const [imageErrors, setImageErrors] = useState({});
-  const [activeTab, setActiveTab] = useState('details');
   const [isCancelling, setIsCancelling] = useState(false);
   const [isCurrentUserCreator, setIsCurrentUserCreator] = useState(false);
 
@@ -408,7 +408,13 @@ export default function ElectionDetailsPage() {
   const hasBallot = !!(election.ballot?.id || (election.positions && election.positions.length > 0));
 
   // Check if election has results to display
-  const hasResults = election?.positions && election.positions.length > 0 && !election.needs_approval;
+  const hasResults = election.positions && election.positions.length > 0 && (election.status === 'ongoing' || election.status === 'completed');
+
+  // Determine if the creator is a superadmin
+  const isSuperAdminCreator =
+    election.created_by === 1 ||
+    (election.created_by && election.created_by.id === 1) ||
+    election.created_by_role === 'SuperAdmin';
 
   return (
     <div className="max-w-6xl mx-auto p-4">
@@ -423,16 +429,16 @@ export default function ElectionDetailsPage() {
         </button>
         <div className="flex items-center space-x-4">
           <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-            election.needs_approval ? 'bg-purple-100 text-purple-800' :
+            (election.needs_approval && !isSuperAdminCreator) ? 'bg-purple-100 text-purple-800' :
             election.status === 'ongoing' ? 'bg-blue-100 text-blue-800' :
             election.status === 'upcoming' ? 'bg-yellow-100 text-yellow-800' :
             'bg-green-100 text-green-800'
           }`}>
-            {election.needs_approval ? 'PENDING APPROVAL' : election.status.toUpperCase()}
+            {(election.needs_approval && !isSuperAdminCreator) ? 'PENDING APPROVAL' : election.status.toUpperCase()}
           </span>
           
           {/* Edit buttons for upcoming or pending approval elections - only shown if user is creator */}
-          {(election.needs_approval || election.status === 'upcoming') && isCurrentUserCreator && (
+          {((election.needs_approval && !isSuperAdminCreator) || election.status === 'upcoming') && isCurrentUserCreator && (
             <>
               <Link
                 href={`/admin/election/${election.id}/edit`}
@@ -460,8 +466,8 @@ export default function ElectionDetailsPage() {
                 </Link>
               )}
               
-              {/* Cancel button for pending approval elections */}
-              {election.needs_approval && (
+              {/* Cancel button for pending approval elections, only if not superadmin creator */}
+              {(election.needs_approval && !isSuperAdminCreator) && (
                 <button
                   onClick={handleCancelElection}
                   disabled={isCancelling}
@@ -490,7 +496,7 @@ export default function ElectionDetailsPage() {
       <p className="text-gray-600 mb-6 text-black">Description: {election.description}</p>
 
       {/* Approval Section */}
-      {election.needs_approval && (
+      {(election.needs_approval && !isSuperAdminCreator) && (
         <div className="mb-6 p-4 rounded-lg border-2 border-yellow-400 bg-yellow-50">
           <div className="flex items-center gap-2 mb-2 text-yellow-800">
             <AlertCircle size={20} />
@@ -519,9 +525,9 @@ export default function ElectionDetailsPage() {
       <div className="mb-6 border-b border-gray-200">
         <div className="flex space-x-8">
           <button
-            onClick={() => setActiveTab('details')}
+            onClick={() => setTab('details')}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'details'
+              tab === 'details'
                 ? 'border-blue-500 text-blue-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
@@ -529,21 +535,33 @@ export default function ElectionDetailsPage() {
             Election & Ballot Details
           </button>
           {hasResults && (
-            <button
-              onClick={() => setActiveTab('results')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'results'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              {election.status === 'completed' ? 'Final Results' : 'Partial Results'}
-            </button>
+            <>
+              <button
+                onClick={() => setTab('results')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  tab === 'results'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                {election.status === 'completed' ? 'Final Results' : 'Partial Results'}
+              </button>
+              <button
+                onClick={() => setTab('partial')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  tab === 'partial'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Live Counting
+              </button>
+            </>
           )}
         </div>
       </div>
 
-      {activeTab === 'details' ? (
+      {tab === 'details' ? (
         <>
           {/* Election Details */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -557,9 +575,12 @@ export default function ElectionDetailsPage() {
               </p>
             </div>
             <div className="bg-white rounded-lg shadow p-4">
-              <h3 className="font-medium text-gray-500 mb-2">Participation</h3>
+              <h3 className="font-medium mb-2 text-black">Voter Information</h3>
               <p className="text-gray-800">
-                {election.vote_count || 0} / {election.voter_count || 0} votes
+                Eligible Voters: {Number(election.voter_count || 0).toLocaleString()}
+              </p>
+              <p className="text-gray-800">
+                Votes Cast: {Number(election.vote_count || 0).toLocaleString()} {election.voter_count ? `(${((election.vote_count / election.voter_count) * 100).toFixed(2)}%)` : '(0.00%)'}
               </p>
             </div>
             <div className="bg-white rounded-lg shadow p-4">
@@ -730,115 +751,122 @@ export default function ElectionDetailsPage() {
             )}
           </div>
         </>
-      ) : (
+      ) : tab === 'results' ? (
         <>
+          {/* Vote Summary Section */}
+          <div className="bg-white rounded-lg shadow p-4 mb-6">
+            <div className="flex items-center space-x-8">
+              <div className="flex items-center">
+                <Users className="w-5 h-5 mr-2 text-gray-600" />
+                <div>
+                  <div className="text-sm text-gray-500">Total Voters</div>
+                  <div className="font-bold text-black">{Number(election.voter_count || 0).toLocaleString()}</div>
+                </div>
+              </div>
+              <div className="flex items-center">
+                <CheckCircle className="w-5 h-5 mr-2 text-gray-600" />
+                <div>
+                  <div className="text-sm text-gray-500">Votes Cast</div>
+                  <div className="font-bold text-black">{Number(election.vote_count || 0).toLocaleString()}</div>
+                </div>
+              </div>
+              <div className="flex items-center">
+                <PieChart className="w-5 h-5 mr-2 text-gray-600" />
+                <div>
+                  <div className="text-sm text-gray-500">Votes Percentage</div>
+                  <div className="font-bold text-black">
+                    {election.voter_count ? ((election.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Vote Results Section */}
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold text-black">
                 {election.status === 'completed' ? 'Final Results' : 'Partial Results'}
               </h2>
-              
-              {election.status !== 'completed' && (
+              {election.status === 'ongoing' && (
                 <div className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">
                   Preliminary Results - Voting Still In Progress
                 </div>
               )}
             </div>
-            
-            {formatResultsData(election.positions).map(position => (
-              <div key={position.id} className="mb-8 border-b pb-6">
-                <h3 className="text-lg font-medium text-black mb-4">{position.name}</h3>
-                
-                {/* Results chart */}
-                <div className="h-72 mb-6">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={position.chartData}
-                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip 
-                        formatter={(value, name) => [`${value} votes`, 'Votes']}
-                        labelFormatter={(name) => `${name}`}
-                      />
-                      <Legend />
-                      <Bar 
-                        dataKey="votes" 
-                        name="Vote Count" 
-                        isAnimationActive={true}
-                      >
-                        {position.chartData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-                
-                {/* Candidates sorted by votes */}
-                <div className="space-y-3">
-                  {position.sortedCandidates.map((candidate, index) => (
-                    <div key={candidate.id} className={`flex items-center p-3 rounded-lg ${index === 0 && election.status === 'completed' ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'}`}>
-                      <div className="relative w-16 h-16 mr-4">
-                        {candidate.image_url && !imageErrors[candidate.id] ? (
-                          <Image
-                            src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
-                            alt={`${candidate.first_name} ${candidate.last_name}`}
-                            fill
-                            sizes="64px"
-                            className="object-cover rounded-full"
-                            onError={() => handleImageError(candidate.id)}
-                          />
-                        ) : (
-                          <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
-                            <User className="w-8 h-8 text-gray-400" />
-                          </div>
-                        )}
-                        {index === 0 && election.status === 'completed' && (
-                          <div className="absolute -top-2 -right-2 bg-blue-500 rounded-full p-1">
-                            <Award className="w-4 h-4 text-white" />
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="flex-1">
-                        <div className="flex items-center">
-                          <h4 className="font-medium text-black">
-                            {candidate.first_name} {candidate.last_name}
-                          </h4>
-                          {candidate.party && (
-                            <span className="ml-2 px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
-                              {candidate.party}
-                            </span>
-                          )}
+            {election.positions && election.positions.length > 0 ? (
+              election.positions.map(position => (
+                <div key={position.id} className="mb-8 border-b pb-6">
+                  <h3 className="text-lg font-medium text-black mb-4">{position.name}</h3>
+                  {/* Winner banner (for completed elections) */}
+                  {election.status === 'completed' && position.candidates && position.candidates.length > 0 && (
+                    <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4 shadow-sm">
+                      <h4 className="text-sm font-medium text-blue-800 mb-2 flex items-center">
+                        <Award className="w-4 h-4 mr-1 text-blue-600" />
+                        Winner for {position.name}
+                      </h4>
+                      <div className="flex items-center">
+                        <div className="relative w-16 h-16 mr-4">
+                          {/* Winner image logic here if available */}
                         </div>
-                        <div className="flex items-center mt-1">
-                          <div className="w-48 h-2 bg-gray-200 rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-blue-500 rounded-full"
-                              style={{ width: `${candidate.percentage || 0}%` }}
-                            />
-                          </div>
-                          <span className="ml-3 text-black">
-                            {candidate.vote_count || 0} votes ({candidate.percentage || 0}%)
-                          </span>
+                        <div>
+                          <h4 className="font-bold text-black text-lg">
+                            {/* Winner name here */}
+                          </h4>
+                          {/* Winner party and votes here */}
                         </div>
                       </div>
                     </div>
-                  ))}
+                  )}
+                  {/* Candidates sorted by votes */}
+                  <div className="space-y-3">
+                    {position.candidates && position.candidates.length > 0 ? (
+                      position.candidates.map((candidate, index) => (
+                        <div key={candidate.id} className={`flex items-center p-3 rounded-lg ${index === 0 && election.status === 'completed' ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'}`}>
+                          <div className="flex-1">
+                            <div className="flex items-center">
+                              <h4 className="font-medium text-black">
+                                {candidate.first_name} {candidate.last_name}
+                              </h4>
+                              {candidate.party && (
+                                <span className="ml-2 px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
+                                  {candidate.party}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center mt-1">
+                              <div className="w-48 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-blue-500 rounded-full"
+                                  style={{ width: `${candidate.percentage || 0}%` }}
+                                />
+                              </div>
+                              <span className="ml-3 text-black">
+                                {Number(candidate.vote_count || 0).toLocaleString()} votes ({candidate.percentage || 0}%)
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-4 text-gray-500">
+                        No candidates for this position
+                      </div>
+                    )}
+                  </div>
                 </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                No results available yet
               </div>
-            ))}
-            
+            )}
             {election.status === 'completed' && (
               <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <h3 className="font-medium text-black mb-2">Election Summary</h3>
                 <p className="text-black">
-                  Total Votes Cast: <span className="font-semibold">{election.vote_count || 0}</span> out of <span className="font-semibold">{election.voter_count || 0}</span> eligible voters
-                  ({election.voter_count ? Math.round((election.vote_count / election.voter_count) * 100) : 0}% participation)
+                  Total Votes Cast: <span className="font-semibold">{Number(election.vote_count || 0).toLocaleString()}</span> out of <span className="font-semibold">{Number(election.voter_count || 0).toLocaleString()}</span> eligible voters
+                  ({election.voter_count ? ((election.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}% participation)
                 </p>
                 <p className="text-black mt-1">
                   Election Completed: {new Date(election.date_to).toLocaleDateString()} at {election.end_time}
@@ -847,7 +875,96 @@ export default function ElectionDetailsPage() {
             )}
           </div>
         </>
-      )}
+      ) : tab === 'partial' ? (
+        <>
+          {/* Vote Summary Section */}
+          <div className="bg-white rounded-lg shadow p-4 mb-6">
+            <div className="flex items-center space-x-8">
+              <div className="flex items-center">
+                <Users className="w-5 h-5 mr-2 text-gray-600" />
+                <div>
+                  <div className="text-sm text-gray-500">Total Voters</div>
+                  <div className="font-bold text-black">{Number(election.voter_count || 0).toLocaleString()}</div>
+                </div>
+              </div>
+              <div className="flex items-center">
+                <CheckCircle className="w-5 h-5 mr-2 text-gray-600" />
+                <div>
+                  <div className="text-sm text-gray-500">Votes Cast</div>
+                  <div className="font-bold text-black">{Number(election.vote_count || 0).toLocaleString()}</div>
+                </div>
+              </div>
+              <div className="flex items-center">
+                <PieChart className="w-5 h-5 mr-2 text-gray-600" />
+                <div>
+                  <div className="text-sm text-gray-500">Votes Percentage</div>
+                  <div className="font-bold text-black">
+                    {election.voter_count ? ((election.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {/* Partial Counting Results */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-black">Live Vote Counting</h2>
+              <div className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">
+                Live Updates
+              </div>
+            </div>
+            {election.positions && election.positions.length > 0 ? (
+              <div className="space-y-6">
+                {election.positions.map(position => (
+                  <div key={position.id} className="border rounded-lg p-4">
+                    <h3 className="text-lg font-medium text-black mb-4">
+                      {position.name}
+                    </h3>
+                    <div className="space-y-3">
+                      {position.candidates && position.candidates.length > 0 ? (
+                        position.candidates.map(candidate => (
+                          <div key={candidate.id} className="flex items-center p-3 bg-gray-50 rounded-lg">
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <h4 className="font-medium text-black">
+                                    {candidate.first_name} {candidate.last_name}
+                                  </h4>
+                                  {candidate.party && (
+                                    <span className="text-sm text-gray-600">
+                                      {candidate.party}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-right">
+                                  <div className="font-bold text-black text-lg">
+                                    {Number(candidate.vote_count || 0).toLocaleString()}
+                                  </div>
+                                  <div className="text-sm text-gray-600">
+                                    {election.vote_count ? ((candidate.vote_count / election.vote_count) * 100).toFixed(2) : '0.00'}%
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-4 text-gray-500">
+                          No candidates for this position
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                No positions available
+              </div>
+            )}
+          </div>
+        </>
+      ) : null}
     </div>
   );
 } 

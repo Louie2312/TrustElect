@@ -90,20 +90,8 @@ export default function ElectionPage() {
     try {
       setLoading(true);
       const data = await fetchWithAuth('/elections');
-      
-      // Filter out elections created by system admin that need approval
-      // Regular admins should only see their own created elections that need approval
-      const filteredData = data.filter(election => {
-        // If the election needs approval, check who created it
-        if (election.needs_approval) {
-          // Keep only elections NOT created by system admin
-          return !isCreatedBySystemAdmin(election);
-        }
-        // Keep all other elections (not needing approval)
-        return true;
-      });
-      
-      setElections(filteredData || []);
+      // Do not filter out super admin elections globally; show all elections
+      setElections(data || []);
     } catch (err) {
       console.error("Failed to load elections:", err);
       setError("Failed to load elections. Please try again later.");
@@ -159,16 +147,26 @@ export default function ElectionPage() {
 
   useEffect(() => {
     if (activeTab === 'all') {
-      setFilteredElections(elections);
+      setFilteredElections(elections.map(election => {
+        // If created by super admin, treat as not needing approval
+        if (isCreatedBySystemAdmin(election) && election.needs_approval) {
+          return { ...election, needs_approval: false };
+        }
+        return election;
+      }));
     } else if (activeTab === 'pending') {
       // Use the dedicated pendingApprovals state
       setFilteredElections(pendingApprovals);
     } else {
       // For other tabs, filter by status but exclude those needing approval
       setFilteredElections(
-        elections.filter(election => 
-          election.status === activeTab && !election.needs_approval
-        )
+        elections.filter(election => {
+          // If created by super admin, treat as not needing approval
+          if (isCreatedBySystemAdmin(election) && election.needs_approval) {
+            return election.status === activeTab;
+          }
+          return election.status === activeTab && !election.needs_approval;
+        })
       );
     }
   }, [activeTab, elections, pendingApprovals]);
@@ -212,6 +210,19 @@ export default function ElectionPage() {
   };
 
   const getStatusBadge = (election) => {
+    // If created by super admin, never show as pending approval
+    if (isCreatedBySystemAdmin(election)) {
+      return (
+        <div className={`flex items-center px-3 py-1 rounded-full ${statusColors[election.status]}`}>
+          {statusIcons[election.status]}
+          <span className="ml-2 text-xs font-medium">
+            {election.status === 'pending' ? 'PENDING APPROVAL' : 
+             election.status === 'draft' ? 'DRAFT' : 
+             election.status.toUpperCase()}
+          </span>
+        </div>
+      );
+    }
     // If the election needs approval, show it as to_approve regardless of other status
     if (election.needs_approval) {
       return (
@@ -221,7 +232,6 @@ export default function ElectionPage() {
         </div>
       );
     }
-    
     return (
       <div className={`flex items-center px-3 py-1 rounded-full ${statusColors[election.status]}`}>
         {statusIcons[election.status]}

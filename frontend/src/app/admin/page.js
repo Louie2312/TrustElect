@@ -73,7 +73,18 @@ const DeleteConfirmationModal = ({ isOpen, election, onCancel, onConfirm, isDele
   );
 };
 
-const ElectionCard = ({ election, onClick, onDeleteClick, canDelete }) => {
+const ElectionCard = ({ election, onClick, onDeleteClick, canDelete, activeTab }) => {
+  // Determine if the creator is a superadmin
+  const isSuperAdminCreator =
+    election.created_by === 1 ||
+    (election.created_by && election.created_by.id === 1) ||
+    election.created_by_role === 'SuperAdmin';
+
+  // Only show 'NEEDS APPROVAL' if in the to_approve tab and not created by superadmin
+  const displayStatus = activeTab === 'to_approve' && election.needs_approval && !isSuperAdminCreator
+    ? 'to_approve'
+    : election.status;
+
   const statusColors = {
     ongoing: 'bg-blue-100 text-blue-800 border-blue-300',
     upcoming: 'bg-yellow-100 text-yellow-800 border-yellow-300',
@@ -116,9 +127,6 @@ const ElectionCard = ({ election, onClick, onDeleteClick, canDelete }) => {
     }
   };
   
-  // Add property to track display status including needs_approval
-  const displayStatus = election.needs_approval ? 'to_approve' : election.status;
-  
   return (
     <div className="border rounded-lg overflow-hidden hover:shadow-lg transition-all duration-200 bg-white">
       {/* Status Banner */}
@@ -126,7 +134,7 @@ const ElectionCard = ({ election, onClick, onDeleteClick, canDelete }) => {
         <div className="flex items-center">
           {statusIcons[displayStatus]}
           <span className="ml-2 font-semibold">
-            {election.needs_approval ? 'NEEDS APPROVAL' : election.status.toUpperCase()}
+            {displayStatus === 'to_approve' ? 'NEEDS APPROVAL' : displayStatus.toUpperCase()}
           </span>
         </div>
         
@@ -154,7 +162,7 @@ const ElectionCard = ({ election, onClick, onDeleteClick, canDelete }) => {
             <Users className="w-5 h-5 mr-2 text-gray-600" />
             <div>
               <div className="text-sm text-gray-500">Voters</div>
-              <div className="font-bold text-black">{election.voter_count || 0}</div>
+              <div className="font-bold text-black">{Number(election.voter_count || 0).toLocaleString()}</div>
             </div>
           </div>
           
@@ -162,7 +170,7 @@ const ElectionCard = ({ election, onClick, onDeleteClick, canDelete }) => {
             <CheckCircle className="w-5 h-5 mr-2 text-gray-600" />
             <div>
               <div className="text-sm text-gray-500">Votes</div>
-              <div className="font-bold text-black">{election.vote_count || 0}</div>
+              <div className="font-bold text-black">{Number(election.vote_count || 0).toLocaleString()}</div>
             </div>
           </div>
         </div>
@@ -584,8 +592,8 @@ export default function AdminDashboard() {
               <h3 className="font-medium text-gray-500 mb-2 text-black">Total Voters</h3>
               <p className="text-3xl font-bold text-black">
                 {Array.isArray(stats) 
-                  ? stats.reduce((sum, stat) => sum + parseInt(stat.total_voters || 0), 0)
-                  : stats?.voters_count || 0}
+                  ? stats.reduce((sum, stat) => sum + parseInt(stat.total_voters || 0), 0).toLocaleString()
+                  : Number(stats?.voters_count || 0).toLocaleString()}
               </p>
             </div>
             <div className="bg-white rounded-lg shadow p-6">
@@ -664,6 +672,7 @@ export default function AdminDashboard() {
                     onClick={handleElectionClick}
                     onDeleteClick={handleDeleteClick}
                     canDelete={hasPermission('elections', 'delete')}
+                    activeTab={activeTab}
                   />
                 ))
               ) : (

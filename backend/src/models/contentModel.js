@@ -22,10 +22,21 @@ async function getAllContent() {
         contentObj[row.section_key] = row.content_data;
       });
       
+      // Ensure logo section exists
+      if (!contentObj.logo) {
+        contentObj.logo = {
+          imageUrl: null
+        };
+      }
+      
       return contentObj;
     }
     
-    return {};
+    return {
+      logo: {
+        imageUrl: null
+      }
+    };
   } catch (error) {
     console.error('Error in getAllContent:', error);
     throw error;

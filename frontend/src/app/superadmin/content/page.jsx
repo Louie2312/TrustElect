@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { HeroSection, FeaturesSection, CTASection, ThemesSection, CandidatesSection } from './components';
+import { HeroSection, FeaturesSection, CTASection, ThemesSection, CandidatesSection, LogoSection } from './components';
 import * as utils from './utils';
 import { updateAllBackgrounds, updateCTASettings } from './utils/themeUtils';
 
@@ -67,6 +67,9 @@ export default function ContentManagement() {
   });
 
   const [landingContent, setLandingContent] = useState({
+    logo: {
+      imageUrl: null
+    },
     hero: {
       title: "TrustElect Voting Platform",
       subtitle: "STI TrustElect Voting System",
@@ -331,7 +334,20 @@ export default function ContentManagement() {
       const formData = new FormData();
       let contentData;
 
-      if (section === 'hero') {
+      if (section === 'logo') {
+        contentData = {
+          imageUrl: landingContent.logo.imageUrl
+        };
+
+        const logoInput = document.querySelector('#logo-input');
+        if (logoInput && logoInput.files.length > 0) {
+          formData.append('logo', logoInput.files[0]);
+        }
+        
+        if (landingContent.logo.imageUrl === null) {
+          formData.append('removeLogo', 'true');
+        }
+      } else if (section === 'hero') {
         contentData = {
           title: landingContent.hero.title,
           subtitle: landingContent.hero.subtitle,
@@ -470,10 +486,13 @@ export default function ContentManagement() {
       );
       
       if (response.data && response.data.content) {
- 
         const newContent = { ...landingContent };
 
-        if (section === 'features' && response.data.content.columns) {
+        if (section === 'logo') {
+          newContent.logo = {
+            imageUrl: response.data.content.imageUrl || null
+          };
+        } else if (section === 'features' && response.data.content.columns) {
   
           newContent.features = {
             columns: response.data.content.columns.map((column, index) => {
@@ -508,29 +527,32 @@ export default function ContentManagement() {
         setShowPreview(false);
 
         localStorage.setItem('landingContent', JSON.stringify(newContent));
-      }
+        
+        // Clear file inputs after successful save
+        const fileInputs = document.querySelectorAll('input[type="file"]');
+        fileInputs.forEach(input => {
+          input.value = '';
+        });
       
-      const fileInputs = document.querySelectorAll('input[type="file"]');
-      fileInputs.forEach(input => {
-        input.value = '';
-      });
-    
-      let successMessage = '';
-      if (section === 'hero') {
-        successMessage = 'Banner updated successfully!';
-      } else if (section === 'features') {
-        successMessage = 'Feature cards updated successfully!';
-      } else if (section === 'callToAction') {
-        successMessage = 'Updated successfully!';
-      } else {
-        successMessage = `${section} saved!`;
+        let successMessage = '';
+        if (section === 'logo') {
+          successMessage = 'Logo updated successfully!';
+        } else if (section === 'hero') {
+          successMessage = 'Banner updated successfully!';
+        } else if (section === 'features') {
+          successMessage = 'Feature cards updated successfully!';
+        } else if (section === 'callToAction') {
+          successMessage = 'Call to action updated successfully!';
+        } else {
+          successMessage = `${section} saved!`;
+        }
+        
+        setSaveStatus(successMessage);
+        setTimeout(() => setSaveStatus(""), 2000);
       }
-      
-      setSaveStatus(successMessage);
-      setTimeout(() => setSaveStatus(""), 2000);
     } catch (error) {
       console.error(`Error saving ${section}:`, error);
-      setSaveStatus(`Error: ${error.message || 'Failed to save'}`);
+      setSaveStatus(`Error: ${error.response?.data?.message || error.message || 'Failed to save'}`);
       setTimeout(() => setSaveStatus(""), 5000);
     } finally {
       setIsLoading(false);
@@ -638,29 +660,14 @@ export default function ContentManagement() {
     return utils.hasContentChanged(content, initialContent);
   };
 
-  const saveContentChanges = async () => {
-    setSaveStatus('saving');
-    try {
-      const response = await fetch('/api/content', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(content),
-      });
-
-      if (response.ok) {
-        setInitialContent(JSON.parse(JSON.stringify(content)));
-        setSaveStatus('saved');
-        setTimeout(() => setSaveStatus(''), 3000);
-      } else {
-        setSaveStatus('error');
-        console.error('Failed to save content');
+  const updateLogo = (field, value) => {
+    setLandingContent(prev => ({
+      ...prev,
+      logo: {
+        ...prev.logo,
+        [field]: value
       }
-    } catch (error) {
-      setSaveStatus('error');
-      console.error('Error saving content:', error);
-    }
+    }));
   };
 
   useEffect(() => {
@@ -712,6 +719,12 @@ export default function ContentManagement() {
         <div className="bg-white rounded shadow mb-4">
           <div className="flex border-b">
             <button 
+              className={`px-3 py-2 text-sm ${activeTab === 'logo' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-black'}`}
+              onClick={() => setActiveTab('logo')}
+            >
+              Logo
+            </button>
+            <button 
               className={`px-3 py-2 text-sm ${activeTab === 'hero' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-black'}`}
               onClick={() => setActiveTab('hero')}
             >
@@ -747,6 +760,19 @@ export default function ContentManagement() {
           </div>
           
           <div className="p-4">
+            {/* Logo Section */}
+            {activeTab === 'logo' && (
+              <LogoSection 
+                landingContent={landingContent}
+                updateLogo={updateLogo}
+                saveSectionContent={saveSectionContent}
+                formatImageUrl={formatImageUrl}
+                handleFileUpload={handleFileUpload}
+                removeImage={removeImage}
+                showPreview={showPreview}
+              />
+            )}
+            
             {/* Hero Section */}
             {activeTab === 'hero' && (
               <HeroSection 
@@ -820,29 +846,6 @@ export default function ContentManagement() {
               />
             )}
           </div>
-        </div>
-        
-        {/* Save Button */}
-        <div className="flex items-center mt-6">
-          <button
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors disabled:bg-gray-400"
-            onClick={saveContentChanges}
-            disabled={!hasContentChanged() || saveStatus === 'saving'}
-          >
-            Save Changes
-          </button>
-          
-          {saveStatus === 'saving' && (
-            <span className="ml-3 text-yellow-600">Saving...</span>
-          )}
-          
-          {saveStatus === 'saved' && (
-            <span className="ml-3 text-green-600">Changes saved!</span>
-          )}
-          
-          {saveStatus === 'error' && (
-            <span className="ml-3 text-red-600">Error saving changes</span>
-          )}
         </div>
       </div>
     </div>

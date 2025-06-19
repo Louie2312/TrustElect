@@ -4,8 +4,6 @@ const contentModel = require('../models/contentModel');
 const multer = require('multer');
 
 
-
-// Ensure upload directories exist
 const uploadDir = {
   images: path.join(__dirname, '../../uploads/images'),
   videos: path.join(__dirname, '../../uploads/videos')
@@ -21,50 +19,64 @@ Object.values(uploadDir).forEach(dir => {
 // Configure multer storage
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    // Determine directory based on file type
-    const isVideo = file.mimetype.startsWith('video/');
-    const dir = isVideo ? uploadDir.videos : uploadDir.images;
-    console.log(`Storing file in ${dir}`);
-    cb(null, dir);
+    let uploadDir;
+    if (file.mimetype.startsWith('video/')) {
+      uploadDir = path.join(__dirname, '../../uploads/videos');
+    } else {
+      uploadDir = path.join(__dirname, '../../uploads/images');
+    }
+    
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    
+    cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
-    // Create a sanitized filename
-    const originalName = file.originalname;
-    const sanitizedName = originalName.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const timestamp = Date.now();
-    const random = Math.floor(Math.random() * 1000);
-    const newFilename = `${timestamp}-${random}-${sanitizedName}`;
-    cb(null, newFilename);
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
   }
 });
 
-// File filter for accepted file types
-const fileFilter = (req, file, cb) => {
-  const acceptedImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-  const acceptedVideoTypes = ['video/mp4', 'video/webm', 'video/ogg'];
-  
-  if (acceptedImageTypes.includes(file.mimetype) || acceptedVideoTypes.includes(file.mimetype)) {
-    console.log(`Accepting file of type: ${file.mimetype}`);
-    cb(null, true);
-  } else {
-    console.log(`Rejecting file of type: ${file.mimetype}`);
-    cb(new Error('Invalid file type. Only images and videos are allowed.'), false);
-  }
-};
-
-// Initialize multer upload
+// Configure multer upload
 const upload = multer({
   storage: storage,
-  limits: {
-    fileSize: 20 * 1024 * 1024, // 20MB
-    files: 5 // Max 5 files per request
+  fileFilter: function (req, file, cb) {
+    // Accept images and videos
+    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only images and videos are allowed!'), false);
+    }
   },
-  fileFilter: fileFilter
+  limits: {
+    fileSize: 50 * 1024 * 1024 // 50MB limit
+  }
 });
 
 const normalizeFilePath = (filePath) => {
+  if (!filePath) return null;
+  return filePath.replace(/\\/g, '/');
+};
 
-  return filePath.replace(/\\/g, '/').replace(/^(?!\/)/, '/');
+// Helper function to validate color format
+const isValidColorFormat = (color) => {
+  if (!color) return false;
+  
+  // Check if it's a valid hex color
+  const hexRegex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
+  if (hexRegex.test(color)) return true;
+  
+  // Check if it's a valid RGB color
+  const rgbRegex = /^rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)$/;
+  if (rgbRegex.test(color)) return true;
+  
+  // Check if it's a valid RGBA color
+  const rgbaRegex = /^rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*[01]?\d*\.?\d+\s*\)$/;
+  if (rgbaRegex.test(color)) return true;
+  
+  return false;
 };
 
 /**
@@ -114,8 +126,8 @@ const getSectionContent = async (req, res) => {
  * @param {Object} res 
  */
 const updateSectionContent = async (req, res) => {
- 
   const uploadFields = [
+    { name: 'logo', maxCount: 1 },
     { name: 'heroVideo', maxCount: 1 },
     { name: 'heroPoster', maxCount: 1 }
   ];
@@ -148,19 +160,25 @@ const updateSectionContent = async (req, res) => {
         return res.status(400).json({ error: 'Invalid content JSON' });
       }
       
-      // Helper function to validate color format
-      function isValidColorFormat(color) {
-        return /^#([0-9A-F]{3}){1,2}$/i.test(color);
-      }
-      
-      // Handle explicit removal flags
-      const shouldRemoveHeroVideo = req.body.removeHeroVideo === 'true';
-      const shouldRemoveHeroPoster = req.body.removeHeroPoster === 'true';
-      
       // Handle file uploads based on section
-      if (section === 'hero') {
+      if (section === 'logo') {
+        const logoFile = req.files?.logo?.[0];
+        if (logoFile) {
+          const fileUrl = `/uploads/images/${logoFile.filename}`;
+          contentData.imageUrl = fileUrl;
+        } else if (req.body.removeLogo === 'true') {
+          // If removing logo, delete the old file if it exists
+          if (contentData.imageUrl) {
+            const oldFilePath = path.join(__dirname, '../../', contentData.imageUrl);
+            if (fs.existsSync(oldFilePath)) {
+              fs.unlinkSync(oldFilePath);
+            }
+          }
+          contentData.imageUrl = null;
+        }
+      } else if (section === 'hero') {
         // Process hero video if uploaded or handle removal
-        const videoFile = req.files.heroVideo?.[0];
+        const videoFile = req.files?.heroVideo?.[0];
         if (videoFile) {
           const videoUrl = normalizeFilePath(`/uploads/videos/${videoFile.filename}`);
           console.log('Saving video media:', videoFile.filename);
@@ -178,12 +196,12 @@ const updateSectionContent = async (req, res) => {
           });
 
           contentData.videoUrl = videoUrl;
-        } else if (shouldRemoveHeroVideo) {
+        } else if (req.body.removeHeroVideo === 'true') {
           console.log('Removing hero video');
           contentData.videoUrl = null;
         }
 
-        const imageFile = req.files.heroPoster?.[0];
+        const imageFile = req.files?.heroPoster?.[0];
         if (imageFile) {
           const imageUrl = normalizeFilePath(`/uploads/images/${imageFile.filename}`);
           console.log('Saving image media:', imageFile.filename);
@@ -200,7 +218,7 @@ const updateSectionContent = async (req, res) => {
           });
 
           contentData.posterImage = imageUrl;
-        } else if (shouldRemoveHeroPoster) {
+        } else if (req.body.removeHeroPoster === 'true') {
           console.log('Removing hero poster image');
           contentData.posterImage = null;
         }
@@ -211,11 +229,8 @@ const updateSectionContent = async (req, res) => {
         if (contentData.textColor && !isValidColorFormat(contentData.textColor)) {
           contentData.textColor = "#ffffff"; 
         }
-        
       } else if (section === 'features') {
-
         if (contentData.columns && Array.isArray(contentData.columns)) {
-       
           for (let i = 0; i < contentData.columns.length; i++) {
             const imageFile = req.files[`featureImage${i}`]?.[0];
             const shouldRemoveFeatureImage = req.body[`removeFeatureImage${i}`] === 'true';
@@ -240,7 +255,6 @@ const updateSectionContent = async (req, res) => {
                 console.error(`Error saving feature image ${i}:`, error);
               }
             } else if (shouldRemoveFeatureImage) {
-           
               contentData.columns[i].imageUrl = null;
             }
 
@@ -253,7 +267,6 @@ const updateSectionContent = async (req, res) => {
           }
         }
       } else if (section === 'callToAction') {
-
         if (contentData.bgColor && !isValidColorFormat(contentData.bgColor)) {
           contentData.bgColor = "#1e3a8a"; 
         }
@@ -262,15 +275,19 @@ const updateSectionContent = async (req, res) => {
         }
       }
 
+      // Update the content in the database
       const updatedContent = await contentModel.updateSectionContent(section, contentData);
       
-      res.status(200).json({
-        message: `${section} content updated successfully`,
+      res.json({
+        success: true,
         content: updatedContent
       });
     } catch (error) {
-      console.error(`Error in updateSectionContent controller for section ${req.params.section}:`, error);
-      res.status(500).json({ error: 'Failed to update section content' });
+      console.error(`Error updating ${req.params.section} content:`, error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
     }
   });
 };

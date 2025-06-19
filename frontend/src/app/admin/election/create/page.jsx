@@ -6,10 +6,20 @@ import { toast } from "react-toastify";
 import Cookies from "js-cookie";
 import axios from "axios";
 
+// Helper for 12-hour time format
+const formatTime = (time24h) => {
+  if (!time24h) return "";
+  const [hours, minutes] = time24h.split(":");
+  const hour = parseInt(hours, 10);
+  const period = hour >= 12 ? "PM" : "AM";
+  const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+  return `${hour12}:${minutes} ${period}`;
+};
 
 const PreviewModal = ({ 
   electionData, 
   eligibleCount, 
+  formatTime,
   onConfirm, 
   onCancel 
 }) => {
@@ -32,13 +42,13 @@ const PreviewModal = ({
             <div>
               <p className="text-black">Start Date:</p>
               <p className="font-medium text-black">
-                {new Date(electionData.dateFrom).toLocaleDateString()} at {electionData.startTime}
+                {new Date(electionData.dateFrom).toLocaleDateString()} at {formatTime ? formatTime(electionData.startTime) : electionData.startTime}
               </p>
             </div>
             <div>
               <p className="text-black">End Date:</p>
               <p className="font-medium text-black">
-                {new Date(electionData.dateTo).toLocaleDateString()} at {electionData.endTime}
+                {new Date(electionData.dateTo).toLocaleDateString()} at {formatTime ? formatTime(electionData.endTime) : electionData.endTime}
               </p>
             </div>
             {electionData.description && (
@@ -64,7 +74,7 @@ const PreviewModal = ({
             )
           ))}
           <p className="mt-4 font-medium text-lg text-black">
-            Total Eligible Voters: <span className="text-blue-600">{eligibleCount}</span>
+            Total Eligible Voters: <span className="text-blue-600">{Number(eligibleCount).toLocaleString()}</span>
           </p>
         </div>
         
@@ -125,6 +135,8 @@ export default function CreateElectionPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [currentSemester, setCurrentSemester] = useState(null);
+  const [totalRegisteredVoters, setTotalRegisteredVoters] = useState(0);
 
   // Add the areAllSelected helper function before the useEffect
   const areAllSelected = (selectedItems, allItems) => {
@@ -169,6 +181,13 @@ export default function CreateElectionPage() {
           }
         });
         
+        // Fetch current semester
+        const currentSemesterRequest = axios.get(
+          "http://localhost:5000/api/maintenance/current-semester",
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        requests.push(currentSemesterRequest);
+        
         await Promise.all(requests);
         
         setMaintenanceData(maintenanceResults);
@@ -177,6 +196,20 @@ export default function CreateElectionPage() {
           setEventData(prev => ({
             ...prev,
             electionType: maintenanceResults.electionTypes[0]
+          }));
+        }
+        
+        // Set current semester if available
+        const currentSemesterResponse = await currentSemesterRequest;
+        if (currentSemesterResponse.data.success && currentSemesterResponse.data.data) {
+          const currentSemesterName = currentSemesterResponse.data.data.name;
+          setCurrentSemester(currentSemesterName);
+          setEventData(prev => ({
+            ...prev,
+            eligibleVoters: {
+              ...prev.eligibleVoters,
+              semester: [currentSemesterName]
+            }
           }));
         }
         
@@ -239,6 +272,25 @@ export default function CreateElectionPage() {
       setEligibleCount(0);
     }
   }, [eventData.eligibleVoters, maintenanceData]);
+
+  useEffect(() => {
+    // Fetch total registered voters (all filters empty)
+    const fetchTotalRegisteredVoters = async () => {
+      try {
+        const token = Cookies.get("token");
+        const response = await axios.post(
+          "http://localhost:5000/api/elections/preview-voters",
+          { eligible_voters: { programs: [], yearLevels: [], gender: [], semester: [], precinct: [] } },
+          { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` } }
+        );
+        setTotalRegisteredVoters(response.data.count || 0);
+      } catch (error) {
+        console.error("Error fetching total registered voters:", error);
+        toast.error("Failed to fetch total registered voters");
+      }
+    };
+    fetchTotalRegisteredVoters();
+  }, []);
 
   const validateForm = () => {
     const newErrors = {};
@@ -444,6 +496,7 @@ export default function CreateElectionPage() {
         <PreviewModal
           electionData={eventData}
           eligibleCount={eligibleCount}
+          formatTime={formatTime}
           onConfirm={handleConfirmCreate}
           onCancel={() => setShowPreview(false)}
         />
@@ -556,32 +609,79 @@ export default function CreateElectionPage() {
    
         <div className="space-y-6">
           <div>
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Eligible Voters</h2>
-            <div className="bg-blue-50 p-3 rounded-lg mb-4">
-              {/* 
-              <p className="font-medium text-blue-800">
-                {eligibleCount} eligible voters count
-              </p>
-              */}
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-gray-800">Registered Student Voters</h2>
+              <div className="bg-gray-100 px-4 py-2 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-600">Total Registered Voters:</span>
+                  <span className="text-lg font-bold text-blue-800">
+                    {Number(totalRegisteredVoters).toLocaleString()}
+                  </span>
+                </div>
+              </div>
             </div>
-
-            {[
-              { category: 'programs', label: 'Programs', items: maintenanceData.programs },
-              { category: 'yearLevels', label: 'Year Levels', items: maintenanceData.yearLevels },
-            ].map(({ category, label, items }) => (
-              <div key={category} className="border-b pb-4 last:border-b-0">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="font-medium text-gray-700">{label}</h3>
+            <div className="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-m text-black mb-1">Eligible Voters Count</p>
+                  <p className="font-medium text-blue-800 text-lg">      
+                      {Number(eligibleCount).toLocaleString()} registered voters count
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+          {[
+            { category: 'programs', label: 'Programs', items: maintenanceData.programs },
+            { category: 'yearLevels', label: 'Year Levels', items: maintenanceData.yearLevels },
+            { category: 'semester', label: 'Semester', items: maintenanceData.semesters, readonly: true },
+            { category: 'gender', label: 'Gender', items: maintenanceData.genders },
+            { category: 'precinct', label: 'Precinct', items: maintenanceData.precincts },
+          ].map(({ category, label, items, readonly }) => (
+            <div key={category} className="border-b pb-4 last:border-b-0">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="font-medium text-gray-700">{label}</h3>
+                {category !== 'semester' && (
                   <button
                     onClick={() => toggleAll(category, items)}
                     className="text-sm text-blue-600 hover:text-blue-800"
                   >
                     {eventData.eligibleVoters[category].length === items.length ? 'Deselect all' : 'Select all'}
                   </button>
-                </div>
-                {criteriaErrors[category] && (
-                  <p className="text-red-500 text-sm mb-2">{criteriaErrors[category]}</p>
                 )}
+              </div>
+              {criteriaErrors[category] && (
+                <p className="text-red-500 text-sm mb-2">{criteriaErrors[category]}</p>
+              )}
+              {category === 'semester' ? (
+                <div className="flex flex-wrap gap-3">
+                  {items.map(item => (
+                    <label 
+                      key={item} 
+                      className={`inline-flex items-center px-3 py-1 rounded-full ${
+                        eventData.eligibleVoters.semester.includes(item) 
+                          ? 'bg-blue-100 border border-blue-300' 
+                          : 'border border-gray-200'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="semester"
+                        checked={eventData.eligibleVoters.semester.includes(item)}
+                        disabled={currentSemester && item !== currentSemester}
+                        onChange={() => handleCheckboxChange('semester', item)}
+                        className={`rounded-full border-gray-300 text-blue-600 focus:ring-blue-500 mr-2 ${currentSemester && item !== currentSemester ? 'opacity-60' : ''}`}
+                      />
+                      <span className="text-gray-700">{item}</span>
+                    </label>
+                  ))}
+                  {!currentSemester && (
+                    <p className="text-amber-600 mt-2 w-full">
+                      No current semester has been set.
+                    </p>
+                  )}
+                </div>
+              ) : (
                 <div className="flex flex-wrap gap-3">
                   {items.map(item => (
                     <label 
@@ -597,99 +697,20 @@ export default function CreateElectionPage() {
                         checked={eventData.eligibleVoters[category].includes(item)}
                         onChange={() => handleCheckboxChange(category, item)}
                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"
+                        disabled={readonly}
                       />
                       <span className="text-gray-700">{item}</span>
                     </label>
                   ))}
                 </div>
-                {eventData.eligibleVoters[category].length > 0 && (
-                  <p className="text-sm text-gray-500 mt-2">
-                    Selected: {eventData.eligibleVoters[category].join(", ")}
-                  </p>
-                )}
-              </div>
-            ))}
-            
-            <div className="border-b pb-4">
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="font-medium text-gray-700">Semester</h3>
-              </div>
-              {criteriaErrors['semester'] && (
-                <p className="text-red-500 text-sm mb-2">{criteriaErrors['semester']}</p>
               )}
-              <div className="flex flex-wrap gap-3">
-                {maintenanceData.semesters.map(item => (
-                  <label 
-                    key={item} 
-                    className={`inline-flex items-center px-3 py-1 rounded-full ${
-                      eventData.eligibleVoters.semester.includes(item) 
-                        ? 'bg-blue-100 border border-blue-300' 
-                        : 'border border-gray-200'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="semester"
-                      checked={eventData.eligibleVoters.semester.includes(item)}
-                      onChange={() => handleCheckboxChange('semester', item)}
-                      className="rounded-full border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"
-                    />
-                    <span className="text-gray-700">{item}</span>
-                  </label>
-                ))}
-              </div>
-              {eventData.eligibleVoters.semester.length > 0 && (
+              {eventData.eligibleVoters[category].length > 0 && (
                 <p className="text-sm text-gray-500 mt-2">
-                  Selected: {eventData.eligibleVoters.semester.join(", ")}
+                  Selected: {eventData.eligibleVoters[category].join(", ")}
                 </p>
               )}
             </div>
-            
-            {[
-              { category: 'gender', label: 'Gender', items: maintenanceData.genders },
-              { category: 'precinct', label: 'Precinct', items: maintenanceData.precincts },
-            ].map(({ category, label, items }) => (
-              <div key={category} className="border-b pb-4 last:border-b-0">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="font-medium text-gray-700">{label}</h3>
-                  <button
-                    onClick={() => toggleAll(category, items)}
-                    className="text-sm text-blue-600 hover:text-blue-800"
-                  >
-                    {eventData.eligibleVoters[category].length === items.length ? 'Deselect all' : 'Select all'}
-                  </button>
-                </div>
-                {criteriaErrors[category] && (
-                  <p className="text-red-500 text-sm mb-2">{criteriaErrors[category]}</p>
-                )}
-                <div className="flex flex-wrap gap-3">
-                  {items.map(item => (
-                    <label 
-                      key={item} 
-                      className={`inline-flex items-center px-3 py-1 rounded-full ${
-                        eventData.eligibleVoters[category].includes(item) 
-                          ? 'bg-blue-100 border border-blue-300' 
-                          : 'border border-gray-200'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={eventData.eligibleVoters[category].includes(item)}
-                        onChange={() => handleCheckboxChange(category, item)}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"
-                      />
-                      <span className="text-gray-700">{item}</span>
-                    </label>
-                  ))}
-                </div>
-                {eventData.eligibleVoters[category].length > 0 && (
-                  <p className="text-sm text-gray-500 mt-2">
-                    Selected: {eventData.eligibleVoters[category].join(", ")}
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
+          ))}
         </div>
       </div>
 

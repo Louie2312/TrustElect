@@ -17,6 +17,9 @@ export default function Home() {
   
 
   const [landingContent, setLandingContent] = useState({
+    logo: {
+      imageUrl: null
+    },
     hero: {
       title: "TrustElect Voting Platform",
       subtitle: "STI TrustElect Voting System",
@@ -91,7 +94,6 @@ export default function Home() {
       const cacheAge = now - timestamp;
 
       if (cacheAge < 30 * 60 * 1000) {
-        console.log('Using cached content');
         return content;
       }
       
@@ -108,21 +110,21 @@ export default function Home() {
     try {
     
       const timestamp = new Date().getTime();
-      
-      console.log("Fetching latest content from API...");
+
       const response = await axios.get(`${API_URL}/api/content?t=${timestamp}`, {
 
         timeout: 5000
       });
       
       if (response.data) {
-        console.log("Content fetched from API:", response.data);
-
         const newHero = response.data.hero || landingContent.hero;
         const newFeatures = response.data.features || landingContent.features;
         const newCTA = response.data.callToAction || landingContent.callToAction;
 
         const newContent = {
+          logo: {
+            imageUrl: response.data.logo?.imageUrl || landingContent.logo.imageUrl
+          },
           hero: {
             title: newHero.title || landingContent.hero.title,
             subtitle: newHero.subtitle || landingContent.hero.subtitle,
@@ -154,8 +156,7 @@ export default function Home() {
             textColor: newCTA.textColor || landingContent.callToAction.textColor || "#ffffff"
           }
         };
-        
-        console.log("Setting updated landing content:", newContent);
+
         setLandingContent(newContent);
 
         cacheLandingContent(newContent);
@@ -165,7 +166,7 @@ export default function Home() {
 
       const cachedContent = getCachedLandingContent();
       if (cachedContent) {
-        console.log("Using cached content due to fetch error");
+
         setLandingContent(cachedContent);
       } else {
         console.log("No cached content available, using defaults");
@@ -221,15 +222,31 @@ export default function Home() {
       {/* Header Section */}
       <header className="w-full flex justify-between items-center p-6 bg-[#01579B] shadow-md fixed top-0 left-0 right-0 z-10">
         <h1 className="text-2xl font-bold flex items-center">
-          <Image 
-            src={stiLogo} 
-            alt="STI Logo" 
-            width={60}
-            height={20} 
-            className="mr-2"
-            priority
-            style={{ maxHeight: 'calc(51px - (0px * 2))' }}
-          />
+          {landingContent.logo?.imageUrl ? (
+            <Image 
+              src={formatImageUrl(landingContent.logo.imageUrl)}
+              alt="Site Logo" 
+              width={60}
+              height={20} 
+              className="mr-2"
+              priority
+              style={{ maxHeight: 'calc(51px - (0px * 2))' }}
+              onError={(e) => {
+                console.error("Error loading logo");
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+          ) : (
+            <Image 
+              src={stiLogo} 
+              alt="STI Logo" 
+              width={60}
+              height={20} 
+              className="mr-2"
+              priority
+              style={{ maxHeight: 'calc(51px - (0px * 2))' }}
+            />
+          )}
           <span className="text-white">TrustElect</span>
         </h1>
         <Button
@@ -249,7 +266,7 @@ export default function Home() {
         }}
       >
         <div className="container mx-auto max-w-6xl flex flex-col md:flex-row items-center">
-          <div className="md:w-1/2 space-y-6">
+          <div className="md:w-1/3 space-y-6">
             <h1 
               className="text-4xl md:text-5xl font-bold leading-tight"
               style={{ color: landingContent.hero?.textColor || '#ffffff' }}
@@ -264,7 +281,7 @@ export default function Home() {
             </p>
             
           </div>
-          <div className="md:w-1/2 mt-10 md:mt-0 flex justify-center">
+          <div className="md:w-2/3 mt-10 md:mt-0 flex justify-center">
             {(() => {
               
               const heroVideoUrl = landingContent.hero && landingContent.hero.videoUrl ? 
@@ -275,7 +292,7 @@ export default function Home() {
 
           if (heroVideoUrl) {
                 return (
-            <div className="w-full max-w-md aspect-video bg-black/20 rounded-lg overflow-hidden relative">
+            <div className="w-full max-w-6xl aspect-video bg-black/20 rounded-lg overflow-hidden relative">
               <video
                 src={heroVideoUrl}
                 poster={heroPosterUrl}
@@ -300,12 +317,12 @@ export default function Home() {
 
               } else if (heroPosterUrl) {
                 return (
-              <div className="w-full max-w-md aspect-video bg-black/20 rounded-lg overflow-hidden">
+              <div className="w-full max-w-6xl aspect-video bg-black/20 rounded-lg overflow-hidden">
                 <Image
                   src={heroPosterUrl}
                   alt="TrustElect Platform"
-                  width={640}
-                  height={360}
+                  width={1920}
+                  height={1080}
                   className="w-full h-full object-cover"
                   unoptimized={true}
                   onError={(e) => {
@@ -325,8 +342,8 @@ export default function Home() {
 
               } else {
                 return (
-                  <div className="w-full max-w-md aspect-video bg-blue-700 rounded-lg flex items-center justify-center">
-                   
+                  <div className="w-full max-w-6xl aspect-video bg-blue-700 rounded-lg flex items-center justify-center">
+
                   </div>
                 );
               }
@@ -443,10 +460,10 @@ export default function Home() {
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-4 md:mb-0">
               <h2 className="text-xl font-bold text-white">TrustElect</h2>
-              <p className="text-white">Secure Digital Voting Platform</p>
+              <p className="text-white">STI TrustElect Voting System</p>
             </div>
             <div className="text-white text-sm">
-              © {new Date().getFullYear()} TrustElect. All rights reserved.
+              © {new Date().getFullYear()} TrustElect
             </div>
           </div>
         </div>

@@ -20,6 +20,8 @@ export default function EditStudentModal({ student, onClose }) {
   const [yearLevels, setYearLevels] = useState([]);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   useEffect(() => {
     fetchCoursesAndYearLevels();
@@ -90,7 +92,19 @@ export default function EditStudentModal({ student, onClose }) {
   
   const handleUpdate = async () => {
     if (!validateInputs()) return;
+    setShowConfirmDialog(true);
+  };
 
+  const handleCancel = () => {
+    setShowCancelDialog(true);
+  };
+
+  const handleConfirmCancel = () => {
+    setShowCancelDialog(false);
+    onClose();
+  };
+
+  const handleConfirmUpdate = async () => {
     try {
       const token = Cookies.get("token");
       const res = await axios.put(
@@ -164,7 +178,53 @@ export default function EditStudentModal({ student, onClose }) {
         )}
 
         <button onClick={handleUpdate} className="bg-blue-600 text-white px-4 py-2 rounded w-full mt-4">Update Student</button>
-        <button onClick={onClose} className="text-red-500 w-full text-center mt-3">Cancel</button>
+        <button onClick={handleCancel} className="text-red-500 w-full text-center mt-3">Cancel</button>
+
+        {showConfirmDialog && (
+          <div className="fixed inset-0 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-lg w-90">
+              <h3 className="text-lg font-bold mb-4 text-center">Confirm Update</h3>
+              <p className="text-center mb-6">Are you sure you want to update this student's information?</p>
+              <div className="flex justify-center gap-2">
+                <button
+                  onClick={() => setShowConfirmDialog(false)}
+                  className="w-20 bg-gray-200 text-gray-800 px-2 py-2 rounded hover:bg-gray-300"
+                >
+                  No
+                </button>
+                <button
+                  onClick={handleConfirmUpdate}
+                  className="w-20 bg-blue-600 text-white px-2 py-2 rounded hover:bg-blue-700"
+                >
+                  Yes
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showCancelDialog && (
+          <div className="fixed inset-0 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-lg w-90">
+              <h3 className="text-lg font-bold mb-4 text-center">Confirm Cancel</h3>
+              <p className="text-center mb-6">Are you sure you want to cancel?</p>
+              <div className="flex justify-center gap-2">
+                <button
+                  onClick={() => setShowCancelDialog(false)}
+                  className="w-20 bg-gray-200 text-gray-800 px-2 py-2 rounded hover:bg-gray-300"
+                >
+                  No
+                </button>
+                <button
+                  onClick={handleConfirmCancel}
+                  className="w-20 bg-red-600 text-white px-2 py-2 rounded hover:bg-red-700"
+                >
+                  Yes
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

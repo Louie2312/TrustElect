@@ -14,6 +14,7 @@ export default function ManageStudents() {
   const router = useRouter();
   const [students, setStudents] = useState([]);
   const [filteredStudents, setFilteredStudents] = useState([]);
+  const [filteredCount, setFilteredCount] = useState(undefined);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [studentsPerPage, setStudentsPerPage] = useState(25); 
@@ -204,6 +205,7 @@ export default function ManageStudents() {
     const currentStudents = filtered.slice(indexOfFirstStudent, indexOfLastStudent);
     
     setFilteredStudents(currentStudents);
+    return filtered.length;
   };
 
   useEffect(() => {
@@ -213,7 +215,8 @@ export default function ManageStudents() {
 
   useEffect(() => {
     if (students.length > 0) {
-      applyFilters(students);
+      const filteredCount = applyFilters(students);
+      setFilteredCount(filteredCount);
     }
   }, [searchQuery, selectedCourse, selectedYearLevel, currentPage, students]);
 
@@ -420,7 +423,19 @@ export default function ManageStudents() {
         
         <div className="bg-gray-100 px-4 py-2 rounded-lg shadow-sm">
           <span className="text-black font-medium">Total Students: </span>
-          <span className="text-blue-600 font-bold">{students.length}</span>
+          <span className="text-blue-600 font-bold">
+            {filteredCount !== undefined ? filteredCount : students.length}
+          </span>
+          {selectedCourse && (
+            <span className="text-gray-600 ml-2">
+              {selectedCourse} 
+            </span>
+          )}
+          {selectedYearLevel && (
+            <span className="text-gray-600 ml-2">
+              {selectedYearLevel}
+            </span>
+          )}
           
           <button 
             onClick={() => setShowStatsPanel(!showStatsPanel)}

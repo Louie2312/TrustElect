@@ -432,4 +432,74 @@ const processBatchStudents = async (students, createdBy) => {
   }
 };
 
-module.exports = { checkStudentNumberExists, registerStudent, getStudentByEmail, getAllStudents, getStudentById, updateStudent, softDeleteStudent, restoreStudent, resetStudentPassword, deleteStudentPermanently, unlockStudentAccount, processBatchStudents};
+const changePassword = async (userId, currentPassword, newPassword) => {
+  const client = await pool.connect();
+  try {
+    console.log("Starting password change process for user:", userId);
+    await client.query("BEGIN");
+
+    // Get user's current password
+    console.log("Fetching user's current password");
+    const userQuery = "SELECT password_hash FROM users WHERE id = $1 AND role_id = 3";
+    const userResult = await client.query(userQuery, [userId]);
+    console.log("User query result:", userResult.rows.length > 0 ? "User found" : "User not found");
+
+    if (userResult.rows.length === 0) {
+      throw new Error("User not found");
+    }
+
+    // Verify current password
+    console.log("Verifying current password");
+    const isPasswordValid = await bcrypt.compare(currentPassword, userResult.rows[0].password_hash);
+    console.log("Password verification result:", isPasswordValid ? "Valid" : "Invalid");
+    
+    if (!isPasswordValid) {
+      throw new Error("Current password is incorrect");
+    }
+
+    // Hash new password
+    console.log("Hashing new password");
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password
+    console.log("Updating password in database");
+    const updateQuery = `
+      UPDATE users 
+      SET password_hash = $1, updated_at = NOW() 
+      WHERE id = $2 AND role_id = 3
+      RETURNING id, email
+    `;
+    const updateResult = await client.query(updateQuery, [hashedPassword, userId]);
+    console.log("Update result:", updateResult.rows.length > 0 ? "Success" : "Failed");
+
+    if (updateResult.rows.length === 0) {
+      throw new Error("Failed to update password");
+    }
+
+    await client.query("COMMIT");
+    console.log("Password change completed successfully");
+    return updateResult.rows[0];
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Database error in changePassword:", error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+module.exports = {
+  checkStudentNumberExists,
+  registerStudent,
+  getStudentByEmail,
+  getAllStudents,
+  getStudentById,
+  updateStudent,
+  softDeleteStudent,
+  restoreStudent,
+  resetStudentPassword,
+  deleteStudentPermanently,
+  unlockStudentAccount,
+  processBatchStudents,
+  changePassword
+};

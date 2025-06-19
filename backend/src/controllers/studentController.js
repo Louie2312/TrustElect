@@ -1,6 +1,6 @@
 const bcrypt = require("bcrypt");
 const { validationResult } = require("express-validator");
-const { checkStudentNumberExists, registerStudent, getAllStudents, getStudentById, updateStudent, softDeleteStudent, restoreStudent, resetStudentPassword, deleteStudentPermanently, unlockStudentAccount, processBatchStudents } = require("../models/studentModel");
+const { checkStudentNumberExists, registerStudent, getAllStudents, getStudentById, updateStudent, softDeleteStudent, restoreStudent, resetStudentPassword, deleteStudentPermanently, unlockStudentAccount, processBatchStudents, changePassword } = require("../models/studentModel");
 const XLSX = require('xlsx');
 const fs = require('fs');
 const path = require('path');
@@ -917,6 +917,47 @@ exports.searchStudents = async (req, res) => {
       success: false,
       message: "Failed to search students",
       error: error.message
+    });
+  }
+};
+
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user.id;
+
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: "Current password and new password are required" });
+    }
+
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      console.log("Password validation failed");
+      return res.status(400).json({ 
+        message: "Password must be at least 8 characters long, include an uppercase letter, a number, and a special character." 
+      });
+    }
+
+    try {
+ 
+      const result = await changePassword(userId, currentPassword, newPassword);
+      res.json({ message: "Password changed successfully" });
+    } catch (error) {
+      console.error("Error in changePassword model:", error);
+      if (error.message === "Current password is incorrect") {
+        return res.status(401).json({ message: error.message });
+      }
+      if (error.message === "User not found") {
+        return res.status(404).json({ message: error.message });
+      }
+      throw error; 
+    }
+  } catch (error) {
+    console.error("Error in changePassword controller:", error);
+    res.status(500).json({ 
+      message: "Error changing password",
+      error: error.message 
     });
   }
 };
