@@ -74,12 +74,15 @@ const usePermissions = () => {
       
       if (userRole === 'Super Admin') {
         console.log('User is a Super Admin, granting all permissions without API call');
-        setPermissions({
+        const allPermissions = {
           users: { canView: true, canCreate: true, canEdit: true, canDelete: true },
           elections: { canView: true, canCreate: true, canEdit: true, canDelete: true },
           departments: { canView: true, canCreate: true, canEdit: true, canDelete: true },
           admins: { canView: true, canCreate: true, canEdit: true, canDelete: true },
-        });
+          cms: { canView: true, canCreate: true, canEdit: true, canDelete: true },
+          auditLog: { canView: true, canCreate: true, canEdit: true, canDelete: true }
+        };
+        setPermissions(allPermissions);
         setPermissionsLastUpdated(Date.now());
         setPermissionsLoading(false);
         return true;
@@ -127,15 +130,18 @@ const usePermissions = () => {
           elections: { canView: true, canCreate: true, canEdit: true, canDelete: true },
           departments: { canView: true, canCreate: true, canEdit: true, canDelete: true },
           admins: { canView: true, canCreate: true, canEdit: true, canDelete: true },
+          cms: { canView: true, canCreate: true, canEdit: true, canDelete: true },
+          auditLog: { canView: true, canCreate: true, canEdit: true, canDelete: true }
         });
       } else {
-
-
         console.log('Setting default permissions due to fetch error');
         setPermissions({
           users: { canView: true, canCreate: false, canEdit: false, canDelete: false },
           elections: { canView: true, canCreate: false, canEdit: false, canDelete: false },
-          departments: { canView: true, canCreate: false, canEdit: false, canDelete: false }
+          departments: { canView: true, canCreate: false, canEdit: false, canDelete: false },
+          admins: { canView: false, canCreate: false, canEdit: false, canDelete: false },
+          cms: { canView: false, canCreate: false, canEdit: false, canDelete: false },
+          auditLog: { canView: false, canCreate: false, canEdit: false, canDelete: false }
         });
       }
       
@@ -224,4 +230,4 @@ const usePermissions = () => {
   };
 };
 
-export default usePermissions; 
+export default usePermissions;

@@ -1,30 +1,31 @@
 const express = require('express');
 const auditLogController = require('../controllers/auditLogController');
-const { verifyToken, isSuperAdmin} = require('../middlewares/authMiddleware');
+const { verifyToken } = require('../middlewares/authMiddleware');
+const { checkPermission } = require('../middlewares/permissionMiddleware');
 
 const router = express.Router();
 
 // Protect all routes
 router.use(verifyToken);
 
-// Only super admins can access audit logs
+// Get audit logs
 router.get(
   '/',
-  isSuperAdmin,
+  checkPermission('auditLog', 'canView'),
   auditLogController.getAuditLogs
 );
 
-// Only super admins can create audit logs directly
+// Create audit logs
 router.post(
   '/',
-  isSuperAdmin,
+  checkPermission('auditLog', 'canCreate'),
   auditLogController.createAuditLog
 );
 
-// Only super admins can delete old audit logs
+// Delete old audit logs
 router.delete(
   '/old',
-  isSuperAdmin,
+  checkPermission('auditLog', 'canDelete'),
   auditLogController.deleteOldAuditLogs
 );
 

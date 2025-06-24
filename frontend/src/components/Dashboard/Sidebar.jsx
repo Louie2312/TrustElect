@@ -104,6 +104,10 @@ export default function Sidebar() {
           <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/superadmin/maintenance")}>
             Maintenance
           </button>
+
+           <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/superadmin/reports")}>
+            Reports
+          </button>
         </nav>
       </aside>
     </>

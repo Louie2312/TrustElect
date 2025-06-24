@@ -1,7 +1,6 @@
 const { hasPermission } = require("../models/adminPermissionModel");
 
 /**
-
  * @param {string} module 
  * @param {string} action 
  * @returns {Function} 
@@ -19,11 +18,13 @@ const checkPermission = (module, action) => {
         return res.status(401).json({ message: "Authentication required" });
       }
 
-      const permitted = await hasPermission(adminId, module, action);
+      // Remove any existing 'can_' prefix and ensure proper format
+      const cleanAction = action.replace(/^can_?/, '').toLowerCase();
+      const permitted = await hasPermission(adminId, module, cleanAction);
       
       if (!permitted) {
         return res.status(403).json({ 
-          message: `Access denied. You don't have permission to ${action} ${module}.` 
+          message: `Access denied. You don't have permission to ${cleanAction} ${module}.` 
         });
       }
 

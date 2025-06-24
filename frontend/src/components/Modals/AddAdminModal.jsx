@@ -209,29 +209,22 @@ export default function AddAdminModal({ onClose }) {
       setShowPasswordModal(false);
       return;
     }
-    
     try {
-
       const finalPassword = generatePassword(formData.lastName, formData.employeeNumber);
-
-
       if (/[A-Z]/.test(formData.lastName)) {
         console.warn("lastName contains uppercase letters which will be preserved in the password");
       }
-      
-      const adminData = { 
-        ...formData, 
-        password: finalPassword, 
+      // Always include all permissions (users, elections, departments, cms, auditLog)
+      const adminData = {
+        ...formData,
+        password: finalPassword,
         createdBy: adminId,
-        permissions: permissions
+        permissions: { ...permissions }
       };
-
       console.log("Submitting admin:", adminData);
-
       const res = await axios.post("http://localhost:5000/api/superadmin/admins", adminData, {
         headers: { Authorization: `Bearer ${token}` },
       });
-
       alert(res.data.message || "Admin added successfully!");
       onClose();
       window.location.reload();

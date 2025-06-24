@@ -114,6 +114,15 @@ export default function Sidebar() {
               Departments
             </button>
           )}
+          
+          {/* Only show Content Management if user has permission */}
+          {!permissionsLoading && hasPermission('cms', 'view') && (
+            <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/admin/content")}>Content Management</button>
+          )}
+          {/* Only show Audit Logs if user has permission */}
+          {!permissionsLoading && hasPermission('auditLog', 'view') && (
+            <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/admin/audit-logs")}>Audit Logs</button>
+          )}
         </nav>
       </aside>   
     </>

@@ -133,9 +133,10 @@ export default function PermissionDisplay() {
     const displayNames = {
       users: 'Student Management',
       elections: 'Election Management',
-      departments: 'Department Management'
+      departments: 'Department Management',
+      cms: 'Content Management',
+      auditLog: 'Audit Logs'
     };
-    
     return displayNames[module] || module.charAt(0).toUpperCase() + module.slice(1);
   };
 

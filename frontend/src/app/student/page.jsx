@@ -29,12 +29,19 @@ async function fetchWithAuth(url, options = {}) {
       credentials: 'include'
     });
     
+    // Check if the response is JSON
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      // If not JSON, try to get the text content for error details
+      const textContent = await response.text();
+      console.error("Non-JSON response:", textContent);
+      throw new Error('Invalid response format from server');
+    }
+    
     const data = await response.json();
     
     if (!response.ok) {
-      if (response.status !== 404 && response.status !== 403) {
-        throw new Error(data.message || 'An error occurred');
-      }
+      throw new Error(data.message || 'An error occurred');
     }
     
     return data;
@@ -168,7 +175,7 @@ const ElectionCard = ({ election, onClick }) => {
               <BarChart className="w-4 h-4 mr-2" />
               View Results
             </button>
-      </div>
+        </div>
         )}
         
         {election.status === 'ongoing' && !election.has_voted && election.ballot_exists && (
@@ -191,11 +198,85 @@ const ElectionCard = ({ election, onClick }) => {
 
 export default function StudentDashboard() {
   const [allElections, setAllElections] = useState([]);
-  const [filteredElections, setFilteredElections] = useState([]);
+  const [filteredElections, setFilteredElements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('ongoing');
+  const [uiConfig, setUiConfig] = useState(null);
+  const [landingContent, setLandingContent] = useState(null);
   const router = useRouter();
+
+  // Fetch UI configuration and landing content if needed
+  useEffect(() => {
+    const fetchUIConfig = async () => {
+      try {
+        console.log('Fetching UI config...');
+        const response = await fetchWithAuth('/studentUI');
+        console.log('Raw UI Config response:', response);
+        
+        if (response && response.content) {
+          console.log('Setting UI config:', response.content);
+          console.log('UI config type:', response.content.type);
+          console.log('UI config use_landing_design:', response.content.use_landing_design);
+          
+          // Always fix inconsistencies client-side
+          const updatedConfig = {
+            ...response.content,
+            // If type is landing, force use_landing_design to true
+            use_landing_design: response.content.type === 'landing' ? true : response.content.use_landing_design
+          };
+          
+          console.log('Final UI config with fixes:', updatedConfig);
+          setUiConfig(updatedConfig);
+          
+          // Check if we should use landing design
+          const shouldUseLandingDesign = updatedConfig.type === 'landing' || updatedConfig.use_landing_design === true;
+          
+          if (shouldUseLandingDesign) {
+            console.log('Landing design is enabled, fetching landing content...');
+            try {
+              console.log('Fetching landing content...');
+              const landingResponse = await fetch(`${API_BASE}/content`);
+              if (!landingResponse.ok) {
+                throw new Error('Failed to fetch landing content');
+              }
+              const landingData = await landingResponse.json();
+              console.log('Raw landing content response:', landingData);
+              
+              if (landingData && landingData.content) {
+                console.log('Setting landing content:', landingData.content);
+                setLandingContent(landingData.content);
+              } else {
+                // If content is directly in the response
+                console.log('Setting direct landing content:', landingData);
+                setLandingContent(landingData);
+              }
+            } catch (err) {
+              console.error('Error fetching landing content:', err);
+            }
+          } else {
+            console.log('Landing design is disabled, not fetching landing content');
+            // Clear landing content if landing design is disabled
+            if (landingContent) {
+              console.log('Clearing existing landing content');
+              setLandingContent(null);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching UI config:', err);
+      }
+    };
+
+    // Initial fetch
+    fetchUIConfig();
+    
+    // Set up polling every 5 seconds to check for changes
+    const interval = setInterval(fetchUIConfig, 5000);
+    
+    // Cleanup interval on component unmount
+    return () => clearInterval(interval);
+  }, []);
 
   // Fetch all elections
   useEffect(() => {
@@ -212,7 +293,7 @@ export default function StudentDashboard() {
           console.error("Data is not an array:", data);
           setError("Invalid response format from server");
           setAllElections([]);
-          setFilteredElections([]);
+          setFilteredElements([]);
           return;
         }
         
@@ -222,12 +303,12 @@ export default function StudentDashboard() {
         const filtered = data.filter(election => election.status === activeTab);
         console.log("Filtered elections:", filtered);
         
-        setFilteredElections(filtered);
+        setFilteredElements(filtered);
       } catch (err) {
         console.error("Failed to fetch elections:", err);
         setError(err.message || "Failed to load elections. Please try again later.");
         setAllElections([]);
-        setFilteredElections([]);
+        setFilteredElements([]);
       } finally {
         setLoading(false);
       }
@@ -239,7 +320,7 @@ export default function StudentDashboard() {
   // Update filtered elections when active tab changes
   useEffect(() => {
     const filtered = allElections.filter(election => election.status === activeTab);
-    setFilteredElections(filtered);
+    setFilteredElements(filtered);
   }, [activeTab, allElections]);
 
   const handleViewElection = async (electionId) => {
@@ -269,12 +350,11 @@ export default function StudentDashboard() {
           router.push(`/student/elections/${electionId}/vote`);
           return;
         }
-        // If ballot doesn't exist yet
+
           alert('Ballot is not yet available for this election.');
         return;
       }
 
-      // For upcoming elections
       if (election.status === 'upcoming') {
         alert('This election has not started yet. Please wait for the start date.');
         return;
@@ -290,69 +370,248 @@ export default function StudentDashboard() {
     return allElections.filter(election => election.status === status).length;
   };
 
-  return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-black mb-2">Dashboard</h1>
-      </div>
-      
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
-      
-      {/* Status Tabs */}
-      <div className="flex border-b mb-6">
-        {statusTabs.map(tab => (
-          <button
-            key={tab.id}
-            className={`flex items-center px-4 py-2 font-medium text-sm ${activeTab === tab.id ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            {tab.icon}
-            <span className="ml-2">{tab.name}</span>
-            <span className="ml-2 bg-gray-100 rounded-full px-2 py-1 text-xs">
-              {getStatusCount(tab.id)}
-            </span>
-          </button>
-        ))}
-      </div>
+  const formatImageUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith('blob:')) return url;
+    if (url.startsWith('http')) return url;
 
-      {/* Elections Grid */}
-      {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredElections.length > 0 ? (
-            filteredElections.map(election => (
-              <ElectionCard 
-                key={election.id} 
-                election={election} 
-                onClick={handleViewElection}
-              />
-            ))
-          ) : (
-            <div className="col-span-full text-center py-8">
-              <div className="text-gray-400 mb-2">
-                {activeTab === 'ongoing' && <Clock className="w-12 h-12 mx-auto" />}
-                {activeTab === 'upcoming' && <Calendar className="w-12 h-12 mx-auto" />}
-                {activeTab === 'completed' && <CheckCircle className="w-12 h-12 mx-auto" />}
+    if (url.startsWith('/api/')) {
+      return `${API_BASE.replace('/api', '')}${url}`;
+    }
+
+    if (url.startsWith('/uploads/')) {
+      return `${API_BASE.replace('/api', '')}${url}`;
+    }
+    
+    return `${API_BASE}${url.startsWith('/') ? url : '/' + url}`;
+  };
+
+  const getBackgroundStyle = () => {
+    if (!uiConfig) {
+      return {};
+    }
+
+    console.log('Getting background style with UI config:', uiConfig);
+    console.log('Landing content available:', !!landingContent);
+
+    // For safety, always check both type and use_landing_design flag
+    // We prioritize type='landing' even if use_landing_design is false
+    const useLandingDesign = uiConfig.type === 'landing' || uiConfig.use_landing_design === true;
+    
+    console.log(`Using landing design: ${useLandingDesign}, Type: ${uiConfig.type}, Flag: ${uiConfig.use_landing_design}`);
+    
+    // Using a single style approach for both designs
+    if (uiConfig.background_image && !useLandingDesign) {
+      console.log('Using background image:', uiConfig.background_image);
+      const imageUrl = formatImageUrl(uiConfig.background_image);
+      
+      if (!imageUrl) {
+        console.error('Failed to format background image URL:', uiConfig.background_image);
+        return {
+          backgroundColor: '#f0f2f5'
+        };
+      }
+      
+      return {
+        backgroundImage: `url(${imageUrl})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        minHeight: '100vh'
+      };
+    }
+
+    console.log('Using default background style');
+    return {
+      backgroundColor: '#f0f2f5'
+    };
+  };
+
+  // Landing page layout component for when landing design is selected
+  const LandingPageLayout = () => {
+    if (!landingContent) return null;
+    
+    return (
+      <div className="landing-page-container">
+        {/* Hero Section */}
+        <section 
+          className="text-white py-12 px-6"
+          style={{
+            backgroundColor: landingContent.hero?.bgColor || '#01579B',
+            color: landingContent.hero?.textColor || '#ffffff',
+            backgroundImage: landingContent.hero?.posterImage ? `url(${formatImageUrl(landingContent.hero.posterImage)})` : 'none',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat'
+          }}
+        >
+          <div className="container mx-auto max-w-6xl">
+            <h1 
+              className="text-3xl md:text-4xl font-bold leading-tight mb-4"
+              style={{ color: landingContent.hero?.textColor || '#ffffff' }}
+            >
+              {landingContent.hero?.title || 'Welcome to TrustElect'}
+            </h1>
+            <p 
+              className="text-xl"
+              style={{ color: landingContent.hero?.textColor || '#ffffff' }}
+            >
+              {landingContent.hero?.subtitle || 'Your trusted voting platform'}
+            </p>
+          </div>
+        </section>
+
+        {/* Features Section */}
+        {landingContent.features?.columns && landingContent.features.columns.length > 0 && (
+          <section className="py-12 px-6 bg-gray-50">
+            <div className="container mx-auto max-w-6xl">
+              <h2 className="text-2xl font-bold text-center mb-8 text-gray-800">
+                Key Features
+              </h2>
+              <div className="grid md:grid-cols-3 gap-6">
+                {landingContent.features.columns.map((feature, index) => (
+                  <div 
+                    key={index} 
+                    className="p-4 rounded-lg shadow-md"
+                    style={{
+                      backgroundColor: feature.bgColor || '#ffffff',
+                      color: feature.textColor || '#000000'
+                    }}
+                  >
+                    {feature.imageUrl && (
+                      <div className="mb-4 h-32 overflow-hidden rounded-lg">
+                        <img
+                          src={formatImageUrl(feature.imageUrl)}
+                          alt={feature.title || `Feature ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    <h3 
+                      className="text-lg font-semibold mb-2"
+                      style={{ color: feature.textColor || '#000000' }}
+                    >
+                      {feature.title}
+                    </h3>
+                    <p style={{ color: feature.textColor || '#000000' }}>
+                      {feature.description}
+                    </p>
+                  </div>
+                ))}
               </div>
-              <h3 className="text-lg font-medium text-gray-900">
-                No {activeTab} elections found
-              </h3>
-              <p className="text-gray-500 mt-1">
-                {activeTab === 'ongoing' && 'There are currently no ongoing elections available to you'}
-                {activeTab === 'upcoming' && 'No upcoming elections scheduled for you'}
-                {activeTab === 'completed' && 'You have not participated in any completed elections yet'}
+            </div>
+          </section>
+        )}
+
+        {/* Call to Action Section if enabled */}
+        {landingContent.callToAction?.enabled && (
+          <section 
+            className="py-12 px-6"
+            style={{
+              backgroundColor: landingContent.callToAction?.bgColor || '#1e3a8a',
+              color: landingContent.callToAction?.textColor || '#ffffff'
+            }}
+          >
+            <div className="container mx-auto max-w-6xl text-center">
+              <h2 
+                className="text-3xl font-bold mb-4"
+                style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
+              >
+                {landingContent.callToAction.title || 'Ready to Vote?'}
+              </h2>
+              <p 
+                className="text-xl mb-8"
+                style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
+              >
+                {landingContent.callToAction.subtitle || 'Start your experience with TrustElect'}
               </p>
             </div>
-          )}
+          </section>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div 
+      className="min-h-screen relative"
+      style={getBackgroundStyle()}
+    >
+      {/* Apply landing page design as background first if enabled */}
+      {(uiConfig?.type === 'landing' || uiConfig?.use_landing_design === true) && landingContent && (
+        <div className="absolute inset-0 z-0 overflow-auto">
+          <LandingPageLayout />
         </div>
       )}
+      
+      {/* Main content container - always on top */}
+      <div className="container mx-auto px-4 py-8 relative z-10">
+        <div className="mb-8 bg-white/90 p-6 rounded-lg shadow-lg">
+          <h1 className="text-2xl font-bold text-black mb-2">Elections Dashboard</h1>
+        </div>
+        
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            {error}
+          </div>
+        )}
+        
+        {/* Status Tabs */}
+        <div className="flex border-b mb-6 bg-white/90 rounded-t-lg">
+          {statusTabs.map(tab => (
+            <button
+              key={tab.id}
+              className={`flex items-center px-4 py-2 font-medium text-sm ${
+                activeTab === tab.id 
+                  ? 'border-b-2 border-blue-500 text-blue-600' 
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.icon}
+              <span className="ml-2">{tab.name}</span>
+              <span className="ml-2 bg-gray-100 rounded-full px-2 py-1 text-xs">
+                {getStatusCount(tab.id)}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Elections Grid */}
+        {loading ? (
+          <div className="flex justify-center items-center h-64 bg-white/90 rounded-lg">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredElections.length > 0 ? (
+              filteredElections.map(election => (
+                <ElectionCard 
+                  key={election.id} 
+                  election={election} 
+                  onClick={handleViewElection}
+                />
+              ))
+            ) : (
+              <div className="col-span-full text-center py-8 bg-white/90 rounded-lg">
+                <div className="text-gray-400 mb-2">
+                  {activeTab === 'ongoing' && <Clock className="w-12 h-12 mx-auto" />}
+                  {activeTab === 'upcoming' && <Calendar className="w-12 h-12 mx-auto" />}
+                  {activeTab === 'completed' && <CheckCircle className="w-12 h-12 mx-auto" />}
+                </div>
+                <h3 className="text-lg font-medium text-gray-900">
+                  No {activeTab} elections found
+                </h3>
+                <p className="text-gray-500 mt-1">
+                  {activeTab === 'ongoing' && 'There are currently no ongoing elections available to you'}
+                  {activeTab === 'upcoming' && 'No upcoming elections scheduled for you'}
+                  {activeTab === 'completed' && 'You have not participated in any completed elections yet'}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

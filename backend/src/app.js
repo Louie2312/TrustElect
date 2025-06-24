@@ -24,6 +24,7 @@ const multer = require('multer');
 const adminPermissionRoutes = require('./routes/adminPermissionRoutes');
 const partylistRoutes = require('./routes/partylistRoutes');
 const partylistCandidateRoutes = require('./routes/partylistCandidateRoutes');
+const studentUIRoutes = require('./routes/studentUIRoutes');
 require('./cron/cron');
 app.use(cookieParser());
 app.use(helmet());
@@ -219,6 +220,8 @@ app.use('/api/admin-permissions', adminPermissionRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/partylists', partylistRoutes);
 app.use('/api/partylist-candidates', partylistCandidateRoutes);
+app.use('/api/students', studentRoutes);
+app.use('/api/studentUI', studentUIRoutes);
 
 app.get("/api/healthcheck", (req, res) => {
   res.status(200).json({
@@ -276,8 +279,3 @@ app.get("/", (req, res) => {
 });
 
 module.exports = app;
-
-
-
-
-

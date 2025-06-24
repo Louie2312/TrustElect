@@ -9,10 +9,8 @@ const path = require('path');
 const fs = require('fs');
 const { checkPermission } = require('../middlewares/permissionMiddleware');
 
-// Student validation for candidate registration - no auth for development
 router.get("/students/validate", validateStudentByNumber);
 
-// Student search for autocomplete - no auth for development
 router.get("/students/search", searchStudents);
 
 router.get("/students/elections", verifyToken, isStudent, getStudentElections);

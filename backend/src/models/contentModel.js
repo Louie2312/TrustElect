@@ -60,10 +60,72 @@ async function getSectionContent(sectionKey) {
     );
     
     if (result.rows.length > 0) {
-      return result.rows[0].content_data;
+      return {
+        content: result.rows[0].content_data
+      };
     }
     
-    return null;
+    // Return default content based on section
+    const defaultContent = {
+      logo: {
+        imageUrl: null
+      },
+      hero: {
+        title: "TrustElect Voting Platform",
+        subtitle: "STI TrustElect Voting System",
+        videoUrl: null,
+        posterImage: null,
+        bgColor: "#1e40af",
+        textColor: "#ffffff"
+      },
+      features: {
+        columns: [
+          {
+            title: "Easy Setup",
+            description: "Simple election process",
+            imageUrl: null,
+            bgColor: "#ffffff",
+            textColor: "#000000"
+          },
+          {
+            title: "Secure Voting",
+            description: "End-to-end encryption votes",
+            imageUrl: null,
+            bgColor: "#ffffff",
+            textColor: "#000000"
+          },
+          {
+            title: "Real-time Results",
+            description: "Instant counting and results",
+            imageUrl: null,
+            bgColor: "#ffffff",
+            textColor: "#000000"
+          }
+        ]
+      },
+      callToAction: {
+        title: "Ready to Vote?",
+        subtitle: "Start your experience with TrustElect.",
+        buttonText: "Contact Us",
+        enabled: true,
+        bgColor: "#1e3a8a",
+        textColor: "#ffffff",
+        mediaType: null,
+        mediaPosition: null,
+        purpose: null
+      },
+      candidates: {
+        title: "Election Candidates",
+        subtitle: "Meet the candidates running in this election",
+        sectionBgColor: "#f9fafb",
+        textColor: "#000000",
+        items: []
+      }
+    };
+
+    return {
+      content: defaultContent[sectionKey] || null
+    };
   } catch (error) {
     console.error(`Error in getSectionContent for section ${sectionKey}:`, error);
     throw error;

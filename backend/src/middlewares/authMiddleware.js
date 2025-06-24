@@ -149,4 +149,11 @@ const isSuperAdmin = allowRoles("Super Admin");
 const isAdmin = allowRoles("Admin");
 const isStudent = allowRoles("Student");
 
-module.exports = { verifyToken, isSuperAdmin, isAdmin, isStudent, verifyStudentRecord };
+module.exports = { 
+  verifyToken, 
+  isSuperAdmin, 
+  isAdmin, 
+  isStudent, 
+  verifyStudentRecord,
+  allowRoles
+};

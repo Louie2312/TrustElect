@@ -144,13 +144,12 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
       const formattedPermissions = {
         users: permissions.users || { canView: false, canCreate: false, canEdit: false, canDelete: false },
         elections: permissions.elections || { canView: false, canCreate: false, canEdit: false, canDelete: false },
-        departments: permissions.departments || { canView: false, canCreate: false, canEdit: false, canDelete: false }
+        departments: permissions.departments || { canView: false, canCreate: false, canEdit: false, canDelete: false },
+        cms: permissions.cms || { canView: false, canCreate: false, canEdit: false, canDelete: false },
+        auditLog: permissions.auditLog || { canView: false, canCreate: false, canEdit: false, canDelete: false }
       };
-
-      // Remove cms and auditLog from the permissions object before sending to API
-      const { cms, auditLog, ...apiPermissions } = permissions;
       
-      console.log('Saving permissions:', JSON.stringify(apiPermissions));
+      console.log('Saving permissions:', JSON.stringify(formattedPermissions));
 
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
       const apiUrl = `${baseUrl}/api/admin-permissions/${admin.id}`;
@@ -160,7 +159,7 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
       try {
         const response = await axios.put(
           apiUrl,
-          { permissions: apiPermissions },
+          { permissions: formattedPermissions },
           { 
             headers: { 
               'Authorization': `Bearer ${token}`,
@@ -183,7 +182,7 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ permissions: apiPermissions })
+          body: JSON.stringify({ permissions: formattedPermissions })
         });
         
         if (!fetchResponse.ok) {
@@ -213,7 +212,7 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
           detail: { 
             adminId: admin.id, 
             timestamp: updateTimestamp,
-            permissions: apiPermissions 
+            permissions: formattedPermissions 
           }
         });
         window.dispatchEvent(event);
@@ -226,7 +225,7 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
       toast?.success?.("Admin permissions updated successfully");
  
       setTimeout(() => {
-        onSave && onSave(apiPermissions);
+        onSave && onSave(formattedPermissions);
         onClose();
       }, 50);
     } catch (error) {

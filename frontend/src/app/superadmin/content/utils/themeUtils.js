@@ -131,65 +131,34 @@ export const updateCTASettings = (colorValue, purpose, mediaType, theme, landing
  * @param {Function} setSaveStatus - Function to update the save status
  */
 export const applyThemeColors = (theme, landingContent, setLandingContent, saveContent, setIsLoading, setSaveStatus) => {
-  console.log("Applying theme colors with direct function:", theme.name);
-  // Use a temporary variable to create a completely new object
-  const updatedContent = JSON.parse(JSON.stringify(landingContent));
-  
-  // Update hero colors
-  updatedContent.hero.bgColor = theme.colors.heroBg;
-  updatedContent.hero.textColor = theme.colors.heroText;
-  
-  // Add the feature section background color
-  updatedContent.features.sectionBgColor = theme.colors.featureSectionBg;
-  
-  // Update all feature columns to have consistent colors
-  updatedContent.features.columns = updatedContent.features.columns.map(column => ({
-    ...column,
-    bgColor: theme.colors.featureBg,
-    textColor: theme.colors.featureText
-  }));
-  
-  // Update CTA colors
-  updatedContent.callToAction.bgColor = theme.colors.ctaBg;
-  updatedContent.callToAction.textColor = theme.colors.ctaText;
-  
-  // Apply CTA configuration if available
-  if (theme.ctaConfig) {
-    if (theme.ctaConfig.purpose && theme.ctaConfig.purpose !== "default") {
-      // Use updateCTASettings to apply the correct CTA content based on purpose
-      return updateCTASettings(
-        theme.colors.ctaBg,
-        theme.ctaConfig.purpose,
-        theme.ctaConfig.mediaType,
-        theme,
-        updatedContent,
-        setLandingContent
-      );
+  if (!theme) return;
+
+  const newContent = {
+    ...landingContent,
+    hero: {
+      ...landingContent.hero,
+      bgColor: theme.colors.heroBg,
+      textColor: theme.colors.heroText
+    },
+    features: {
+      ...landingContent.features,
+      columns: landingContent.features.columns.map(column => ({
+        ...column,
+        bgColor: theme.colors.featureBg,
+        textColor: theme.colors.featureText
+      }))
+    },
+    callToAction: {
+      ...landingContent.callToAction,
+      bgColor: theme.colors.ctaBg,
+      textColor: theme.colors.ctaText
     }
+  };
+
+  setLandingContent(newContent);
+  
+  // Only save if saveContent function is provided
+  if (saveContent && typeof saveContent === 'function') {
+    saveContent();
   }
-  
-  console.log("Updated content with applied theme:", updatedContent);
-  
-  // Set the new content state
-  setLandingContent(updatedContent);
-  
-  // Force a refresh of the UI
-  setIsLoading(true);
-  
-  // Add a small delay and then save all sections
-  setTimeout(() => {
-    setIsLoading(false);
-    console.log("Auto-saving theme changes...");
-    setSaveStatus("Saving theme changes...");
-    
-    // Use saveContent to save all sections at once
-    saveContent().then(() => {
-      console.log("Theme changes saved successfully");
-      setSaveStatus("Theme applied and saved!");
-      setTimeout(() => setSaveStatus(""), 3000);
-    }).catch(error => {
-      console.error("Error saving theme changes:", error);
-      setSaveStatus("Theme applied but not saved - click Save All Changes");
-    });
-  }, 300);
 }; 

@@ -69,7 +69,9 @@ const setAdminPermissions = async (adminId, permissions) => {
  */
 const hasPermission = async (adminId, module, action) => {
   try {
-    const permissionColumn = action.startsWith('can_') ? action : `can_${action}`;
+    // Remove any existing 'can_' prefix to avoid duplication
+    const cleanAction = action.replace(/^can_/, '');
+    const permissionColumn = `can_${cleanAction}`;
     
     const query = `
       SELECT ${permissionColumn}
