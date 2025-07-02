@@ -51,14 +51,10 @@ export default function ReportFilterModal({ filters, onApply, onClose }) {
                 className="w-full p-2 border border-gray-300 rounded-md text-black"
               >
                 <option value="All">All Departments</option>
-                <option value="BSIT">BSIT</option>
-                <option value="BSCS">BSCS</option>
-                <option value="BSCPE">BSCPE</option>
-                <option value="BMMA">BMMA</option>
-                <option value="BSHM">BSHM</option>
-                <option value="BSTM">BSTM</option>
-                <option value="BSA">BSA</option>
-                <option value="BSBAOM">BSBAOM</option>
+                <option value="BSIT">Business Administration and Accountancy (BAA)</option>
+                <option value="BSCS">Information Communication Technology (ICT)</option>
+                <option value="BSCPE">Tourism and Hospitality Management (THM)</option>
+
               </select>
             </div>
 
@@ -71,9 +67,10 @@ export default function ReportFilterModal({ filters, onApply, onClose }) {
                 className="w-full p-2 border border-gray-300 rounded-md text-black"
               >
                 <option value="All">All Types</option>
-                <option value="Departmental">Departmental</option>
-                <option value="University">University-wide</option>
-                <option value="Organization">Organization</option>
+                <option value="Stident Council">Student Council</option>
+                <option value="Organization">Club Organization</option>
+                 <option value="Mr and Ms STI">Mr and Ms STI</option>
+                  <option value="Organization">Symposium</option>
               </select>
             </div>
 

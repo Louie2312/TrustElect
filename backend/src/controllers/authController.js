@@ -148,7 +148,7 @@ exports.loginUser = async (req, res) => {
     const token = jwt.sign(
       tokenPayload,
       process.env.JWT_SECRET,
-      { expiresIn: "6h" }
+      { expiresIn: "7d" }
     );
     
     const response = {
@@ -276,7 +276,7 @@ exports.studentLogin = async (req, res) => {
         email: student.email
       },
       process.env.JWT_SECRET,
-      { expiresIn: "1d" }
+      { expiresIn: "7d" }
     );
 
     // Log successful student login

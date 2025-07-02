@@ -106,7 +106,7 @@ export default function CreateElectionPage() {
     description: "",
     dateFrom: "",
     dateTo: "",
-    startTime: "08:00",
+    startTime: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
     endTime: "17:00",
     eligibleVoters: {
       programs: [],
@@ -145,6 +145,21 @@ export default function CreateElectionPage() {
     return selectedItems.length === allItems.length && 
            selectedItems.every(item => allItems.includes(item));
   };
+
+  // Function to get current time in HH:MM format
+  const getCurrentTime = () => {
+    return new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
+  };
+
+  // Update start time when date changes
+  useEffect(() => {
+    if (eventData.dateFrom === new Date().toISOString().split('T')[0]) {
+      setEventData(prev => ({
+        ...prev,
+        startTime: getCurrentTime()
+      }));
+    }
+  }, [eventData.dateFrom]);
 
   useEffect(() => {
     const fetchMaintenanceData = async () => {
@@ -230,6 +245,17 @@ export default function CreateElectionPage() {
         setIsLoading(true);
         const token = Cookies.get("token");
         
+        // Check if required fields are selected
+        const hasRequiredSelections = 
+          eventData.eligibleVoters.programs.length > 0 &&
+          eventData.eligibleVoters.yearLevels.length > 0 &&
+          eventData.eligibleVoters.gender.length > 0;
+
+        if (!hasRequiredSelections) {
+          setEligibleCount(0);
+          return;
+        }
+        
         // Determine if all options for each category are selected using the helper function
         const allProgramsSelected = areAllSelected(eventData.eligibleVoters.programs, maintenanceData.programs);
         const allYearLevelsSelected = areAllSelected(eventData.eligibleVoters.yearLevels, maintenanceData.yearLevels);
@@ -265,8 +291,12 @@ export default function CreateElectionPage() {
       }
     };
 
-    const hasFilters = Object.values(eventData.eligibleVoters).some(arr => arr.length > 0);
-    if (hasFilters) {
+    const hasRequiredFilters = 
+      eventData.eligibleVoters.programs.length > 0 &&
+      eventData.eligibleVoters.yearLevels.length > 0 &&
+      eventData.eligibleVoters.gender.length > 0;
+    
+    if (hasRequiredFilters) {
       fetchEligibleCount();
     } else {
       setEligibleCount(0);
@@ -433,15 +463,8 @@ export default function CreateElectionPage() {
         }
       );
       
-      const electionId = response.data.id || (response.data.election && response.data.election.id);
-      
-      if (!electionId) {
-        console.error("Election created but no ID was returned", response.data);
-        throw new Error("Election created but no ID was returned");
-      }
-      
       toast.success('Election created successfully! It will be published after approval by a Super Admin.');
-      router.push(`/admin/election/create/${electionId}/ballot`);
+      router.push(`/admin/election/create/${response.data.election.id}/ballot`);
       
     } catch (error) {
       const errorMessage = error.response?.data?.message || error.message;
@@ -450,6 +473,97 @@ export default function CreateElectionPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const sortYearLevels = (a, b) => {
+    const knownOrder = {
+      '1st year': 1,
+      '2nd year': 2,
+      '3rd year': 3,
+      '4th year': 4,
+      'Grade 11': 5,
+      'Grade 12': 6
+    };
+    const aOrder = knownOrder[a] || 999;
+    const bOrder = knownOrder[b] || 999;
+    if (aOrder !== 999 && bOrder !== 999) {
+      return aOrder - bOrder;
+    }
+    return a.localeCompare(b);
+  };
+
+  const sortPrograms = (a, b) => {
+    const collegePrograms = [
+      'BSA',
+      'BSBAOM',
+      'BSCPE',
+      'BSCS',
+      'BSHM',
+      'BSIT',
+      'BMMA',
+      'BSTM'
+    ];
+
+    const seniorHighPrograms = [
+      'ABM',
+      'CUART',
+      'DIGAR',
+      'HUMMS',
+      'MAWD',
+      'STEM',
+      'TOPER'
+    ];
+
+    const getProgramType = (program) => {
+      if (collegePrograms.includes(program)) return 'college';
+      if (seniorHighPrograms.includes(program)) return 'seniorHigh';
+      
+      if (program.startsWith('BS')) return 'college';
+      return 'seniorHigh';
+    };
+
+    const aType = getProgramType(a);
+    const bType = getProgramType(b);
+
+    if (aType !== bType) {
+      return aType === 'college' ? -1 : 1;
+    }
+
+    if (aType === 'college') {
+      if (collegePrograms.includes(a) && collegePrograms.includes(b)) {
+        return collegePrograms.indexOf(a) - collegePrograms.indexOf(b);
+      }
+      if (collegePrograms.includes(a)) return -1;
+      if (collegePrograms.includes(b)) return 1;
+      return a.localeCompare(b);
+    }
+
+    if (aType === 'seniorHigh') {
+      if (seniorHighPrograms.includes(a) && seniorHighPrograms.includes(b)) {
+        return seniorHighPrograms.indexOf(a) - seniorHighPrograms.indexOf(b);
+      }
+      if (seniorHighPrograms.includes(a)) return -1;
+      if (seniorHighPrograms.includes(b)) return 1;
+      return a.localeCompare(b);
+    }
+
+    return a.localeCompare(b);
+  };
+
+  const sortGender = (a, b) => {
+    if (a.toLowerCase() === 'male') return -1;
+    if (b.toLowerCase() === 'male') return 1;
+    return a.localeCompare(b);
+  };
+
+  const sortPrecincts = (a, b) => {
+    const extractNumber = (str) => parseInt(str.match(/\d+/)?.[0] || '0');
+    const aNum = extractNumber(a);
+    const bNum = extractNumber(b);
+    if (aNum !== 0 && bNum !== 0) {
+      return aNum - bNum;
+    }
+    return a.localeCompare(b);
   };
 
   if (maintenanceLoading) {
@@ -590,6 +704,7 @@ export default function CreateElectionPage() {
                 name="startTime"
                 value={eventData.startTime}
                 onChange={handleChange}
+                min={eventData.dateFrom === new Date().toISOString().split('T')[0] ? getCurrentTime() : "00:00"}
                 className="border w-full p-2 rounded border-gray-300 text-black"
               />
             </div>
@@ -632,15 +747,40 @@ export default function CreateElectionPage() {
             </div>
           </div>
           {[
-            { category: 'programs', label: 'Programs', items: maintenanceData.programs },
-            { category: 'yearLevels', label: 'Year Levels', items: maintenanceData.yearLevels },
-            { category: 'semester', label: 'Semester', items: maintenanceData.semesters, readonly: true },
-            { category: 'gender', label: 'Gender', items: maintenanceData.genders },
-            { category: 'precinct', label: 'Precinct', items: maintenanceData.precincts },
-          ].map(({ category, label, items, readonly }) => (
+            { 
+              category: 'programs', 
+              label: 'Programs', 
+              items: maintenanceData.programs.sort(sortPrograms),
+              sortFn: sortPrograms
+            },
+            { 
+              category: 'yearLevels', 
+              label: 'Year Levels', 
+              items: maintenanceData.yearLevels.sort(sortYearLevels),
+              sortFn: sortYearLevels
+            },
+            { 
+              category: 'semester', 
+              label: 'Semester', 
+              items: maintenanceData.semesters,
+              readonly: true
+            },
+            { 
+              category: 'gender', 
+              label: 'Gender', 
+              items: maintenanceData.genders.sort(sortGender),
+              sortFn: sortGender
+            },
+            { 
+              category: 'precinct', 
+              label: 'Precinct', 
+              items: maintenanceData.precincts.sort(sortPrecincts),
+              sortFn: sortPrecincts
+            },
+          ].map(({ category, label, items, note, readonly, sortFn }) => (
             <div key={category} className="border-b pb-4 last:border-b-0">
               <div className="flex justify-between items-center mb-2">
-                <h3 className="font-medium text-gray-700">{label}</h3>
+                <h3 className="font-medium text-black">{label}</h3>
                 {category !== 'semester' && (
                   <button
                     onClick={() => toggleAll(category, items)}
@@ -653,13 +793,19 @@ export default function CreateElectionPage() {
               {criteriaErrors[category] && (
                 <p className="text-red-500 text-sm mb-2">{criteriaErrors[category]}</p>
               )}
+              {note && (
+                <p className={`text-sm ${category === 'semester' ? 'text-green-600 font-medium' : 'text-blue-600'} mb-2`}>
+                  {note}
+                </p>
+              )}
+              
               {category === 'semester' ? (
                 <div className="flex flex-wrap gap-3">
-                  {items.map(item => (
+                  {maintenanceData.semesters.map((semester) => (
                     <label 
-                      key={item} 
+                      key={semester} 
                       className={`inline-flex items-center px-3 py-1 rounded-full ${
-                        eventData.eligibleVoters.semester.includes(item) 
+                        eventData.eligibleVoters.semester.includes(semester) 
                           ? 'bg-blue-100 border border-blue-300' 
                           : 'border border-gray-200'
                       }`}
@@ -667,12 +813,14 @@ export default function CreateElectionPage() {
                       <input
                         type="radio"
                         name="semester"
-                        checked={eventData.eligibleVoters.semester.includes(item)}
-                        disabled={currentSemester && item !== currentSemester}
-                        onChange={() => handleCheckboxChange('semester', item)}
-                        className={`rounded-full border-gray-300 text-blue-600 focus:ring-blue-500 mr-2 ${currentSemester && item !== currentSemester ? 'opacity-60' : ''}`}
+                        checked={eventData.eligibleVoters.semester.includes(semester)}
+                        disabled={semester !== currentSemester}
+                        onChange={() => handleCheckboxChange('semester', semester)}
+                        className={`rounded-md border-gray-300 text-black focus:ring-blue-500 mr-2 ${semester !== currentSemester ? 'opacity-60' : ''}`}
                       />
-                      <span className="text-gray-700">{item}</span>
+                      <span className="text-black">
+                        {semester}
+                      </span>
                     </label>
                   ))}
                   {!currentSemester && (
@@ -693,7 +841,8 @@ export default function CreateElectionPage() {
                       }`}
                     >
                       <input
-                        type="checkbox"
+                        type={category === 'semester' ? "radio" : "checkbox"}
+                        name={category === 'semester' ? "semester" : undefined}
                         checked={eventData.eligibleVoters[category].includes(item)}
                         onChange={() => handleCheckboxChange(category, item)}
                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"
@@ -704,9 +853,14 @@ export default function CreateElectionPage() {
                   ))}
                 </div>
               )}
-              {eventData.eligibleVoters[category].length > 0 && (
+              
+              {category !== 'semester' && eventData.eligibleVoters[category].length > 0 && (
                 <p className="text-sm text-gray-500 mt-2">
-                  Selected: {eventData.eligibleVoters[category].join(", ")}
+                  Selected: {eventData.eligibleVoters[category].sort(sortFn || ((a, b) => {
+                    if (a.toLowerCase() === 'male') return -1;
+                    if (b.toLowerCase() === 'male') return 1;
+                    return 0;
+                  })).join(", ")}
                 </p>
               )}
             </div>

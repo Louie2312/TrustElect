@@ -386,25 +386,67 @@ function AddDepartmentModal({ onClose, onSuccess }) {
   );
 }
 
-function AssignAdminModal({ department, admins, onClose, onSuccess }) {
+function AssignAdminModal({ department, admins: initialAdmins, onClose, onSuccess }) {
   const [selectedAdmins, setSelectedAdmins] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [fetchingAdmins, setFetchingAdmins] = useState(true);
   const [error, setError] = useState("");
   const [availableAdmins, setAvailableAdmins] = useState([]);
+  const [processingAdminIds, setProcessingAdminIds] = useState([]);
 
+  // Fetch the latest admin data when the modal opens
   useEffect(() => {
-    if (admins && admins.length > 0) {
-      // Filter out super admins and get available admins
-      const available = admins.filter(admin => 
-        !(admin.role_id === 1 || (admin.department === "Administration" && !admin.employee_number))
-      );
-      setAvailableAdmins(available);
-      
-      // Set currently assigned admins
-      const currentAdmins = available.filter(admin => admin.department === department.department_name);
-      setSelectedAdmins(currentAdmins.map(admin => admin.id));
-    }
-  }, [admins, department]);
+    const fetchAdmins = async () => {
+      setFetchingAdmins(true);
+      try {
+        const token = Cookies.get("token");
+        if (!token) {
+          throw new Error("No authentication token found");
+        }
+    
+        const res = await axios.get("http://localhost:5000/api/superadmin/admins", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          withCredentials: true
+        });
+        
+        console.log("Fetched fresh admin data:", res.data);
+        
+        const adminsArray = res.data.admins || res.data || [];
+        
+        const filteredAdmins = adminsArray.filter(admin => 
+          admin.is_active && 
+          !(admin.role_id === 1 || (admin.department === "Administration" && !admin.employee_number))
+        );
+
+        setAvailableAdmins(filteredAdmins);
+        
+        // Set selected admins based on current department assignment
+        const currentAdmins = filteredAdmins.filter(admin => 
+          admin.department === department.department_name
+        );
+        setSelectedAdmins(currentAdmins.map(admin => admin.id));
+        
+      } catch (error) {
+        console.error("Error fetching fresh admin data:", error);
+        // Fall back to using the initial admin data
+        const available = initialAdmins.filter(admin => 
+          admin.is_active && 
+          !(admin.role_id === 1 || (admin.department === "Administration" && !admin.employee_number))
+        );
+        setAvailableAdmins(available);
+        
+        const currentAdmins = available.filter(admin => admin.department === department.department_name);
+        setSelectedAdmins(currentAdmins.map(admin => admin.id));
+      } finally {
+        setFetchingAdmins(false);
+      }
+    };
+
+    fetchAdmins();
+  }, [department.department_name, initialAdmins]);
 
   const handleAdminSelection = (adminId) => {
     setSelectedAdmins(prev => {
@@ -420,44 +462,66 @@ function AssignAdminModal({ department, admins, onClose, onSuccess }) {
     e.preventDefault();
     setError("");
     setLoading(true);
+    setProcessingAdminIds([]);
 
     try {
       const token = Cookies.get("token");
       
-      // Update each selected admin's department
-      const updatePromises = selectedAdmins.map(adminId => 
-        axios.put(
+      // Process admins being assigned to this department
+      const adminsToAssign = selectedAdmins.map(adminId => {
+        setProcessingAdminIds(prev => [...prev, adminId]);
+        return axios.put(
           `http://localhost:5000/api/superadmin/admins/${adminId}`,
           { department: department.department_name },
           {
             headers: { Authorization: `Bearer ${token}` },
           }
-        )
-      );
+        ).then(res => {
+          setProcessingAdminIds(prev => prev.filter(id => id !== adminId));
+          return res;
+        });
+      });
 
-      // Remove department from unselected admins
-      const unselectedAdmins = availableAdmins
-        .filter(admin => admin.department === department.department_name && !selectedAdmins.includes(admin.id))
-        .map(admin => 
-          axios.put(
-            `http://localhost:5000/api/superadmin/admins/${admin.id}`,
-            { department: "" },
-            {
-              headers: { Authorization: `Bearer ${token}` },
-            }
-          )
-        );
+      // Process admins being removed from this department
+      const adminsToRemove = availableAdmins
+        .filter(admin => admin.department === department.department_name && !selectedAdmins.includes(admin.id));
+      
+      const removePromises = adminsToRemove.map(admin => {
+        setProcessingAdminIds(prev => [...prev, admin.id]);
+        return axios.put(
+          `http://localhost:5000/api/superadmin/admins/${admin.id}`,
+          { 
+            department: "",
+            first_name: admin.first_name,
+            last_name: admin.last_name,
+            email: admin.email
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        ).then(res => {
+          setProcessingAdminIds(prev => prev.filter(id => id !== admin.id));
+          console.log(`Successfully removed admin ${admin.id} from department`, res.data);
+          return res;
+        }).catch(err => {
+          console.error(`Error updating admin ${admin.id}:`, err);
+          throw new Error(`Failed to update ${admin.first_name} ${admin.last_name}: ${err.response?.data?.message || err.message}`);
+        });
+      });
 
-      await Promise.all([...updatePromises, ...unselectedAdmins]);
+      await Promise.all([...adminsToAssign, ...removePromises]);
 
       toast.success("Admins updated successfully");
       onClose();
       if (onSuccess) onSuccess();
     } catch (error) {
-      setError(error.response?.data?.message || "Failed to update admins");
-      toast.error(error.response?.data?.message || "Failed to update admins");
+      console.error("Update admins error:", error);
+      const errorMessage = error.response?.data?.message || error.message || "Failed to update admins";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
+      setProcessingAdminIds([]);
     }
   };
 
@@ -471,7 +535,12 @@ function AssignAdminModal({ department, admins, onClose, onSuccess }) {
         <form onSubmit={handleSubmit}>
           <div className="mb-4 max-h-[300px] overflow-y-auto">
             <label className="block text-sm font-medium mb-2">Select Admins</label>
-            {availableAdmins.length > 0 ? (
+            {fetchingAdmins ? (
+              <div className="py-4 text-center">
+                <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500 mb-2"></div>
+                <p className="text-sm text-gray-500">Loading admins...</p>
+              </div>
+            ) : availableAdmins.length > 0 ? (
               <div className="space-y-2">
                 {availableAdmins.map(admin => (
                   <label key={admin.id} className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded">
@@ -480,6 +549,7 @@ function AssignAdminModal({ department, admins, onClose, onSuccess }) {
                       checked={selectedAdmins.includes(admin.id)}
                       onChange={() => handleAdminSelection(admin.id)}
                       className="form-checkbox h-5 w-5 text-blue-600"
+                      disabled={loading || processingAdminIds.includes(admin.id)}
                     />
                     <div>
                       <span className="font-medium">{admin.first_name} {admin.last_name}</span>
@@ -487,6 +557,12 @@ function AssignAdminModal({ department, admins, onClose, onSuccess }) {
                       {admin.department && admin.department !== department.department_name && (
                         <span className="text-amber-600 text-xs">
                           Currently assigned to: {admin.department}
+                        </span>
+                      )}
+                      {processingAdminIds.includes(admin.id) && (
+                        <span className="text-blue-600 text-xs flex items-center mt-1">
+                          <div className="animate-spin h-3 w-3 border-t-2 border-b-2 border-blue-500 rounded-full mr-1"></div>
+                          Updating...
                         </span>
                       )}
                     </div>
@@ -504,16 +580,22 @@ function AssignAdminModal({ department, admins, onClose, onSuccess }) {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border rounded hover:bg-gray-100"
+              className="px-4 py-2 border rounded hover:bg-gray-100 disabled:opacity-50"
+              disabled={loading || fetchingAdmins}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              disabled={loading || availableAdmins.length === 0}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+              disabled={loading || fetchingAdmins || availableAdmins.length === 0}
             >
-              {loading ? "Updating..." : "Update Admins"}
+              {loading ? (
+                <span className="flex items-center">
+                  <div className="animate-spin h-4 w-4 border-t-2 border-b-2 border-white rounded-full mr-2"></div>
+                  Updating{processingAdminIds.length > 0 ? ` (${processingAdminIds.length} remaining)` : '...'}
+                </span>
+              ) : "Update Admins"}
             </button>
           </div>
         </form>
@@ -572,7 +654,6 @@ function EditDepartmentModal({ department, onClose, onSuccess }) {
     try {
       const token = Cookies.get("token");
       
-      // First update the department details
       const res = await axios.put(
         `http://localhost:5000/api/superadmin/departments/${department.id}`,
         formData,
@@ -581,16 +662,25 @@ function EditDepartmentModal({ department, onClose, onSuccess }) {
         }
       );
 
-      // If department name changed, update all associated admins
-      if (formData.department_name !== department.department_name) {
+      // If department name has changed, update all assigned admins with the new department name
+      if (formData.department_name !== department.department_name && admins.length > 0) {
         const updatePromises = admins.map(admin => 
           axios.put(
             `http://localhost:5000/api/superadmin/admins/${admin.id}`,
-            { department: formData.department_name },
+            { 
+              department: formData.department_name,
+              // Include other fields to avoid the "At least one field is required" error
+              first_name: admin.first_name,
+              last_name: admin.last_name,
+              email: admin.email
+            },
             {
               headers: { Authorization: `Bearer ${token}` },
             }
-          )
+          ).catch(err => {
+            console.error(`Error updating admin ${admin.id}:`, err);
+            toast.error(`Failed to update admin ${admin.first_name} ${admin.last_name}`);
+          })
         );
 
         await Promise.all(updatePromises);
@@ -600,8 +690,9 @@ function EditDepartmentModal({ department, onClose, onSuccess }) {
       onClose();
       if (onSuccess) onSuccess();
     } catch (error) {
-      setError(error.response?.data?.message || "Failed to update department");
-      toast.error(error.response?.data?.message || "Failed to update department");
+      const errorMessage = error.response?.data?.message || error.message || "Failed to update department";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

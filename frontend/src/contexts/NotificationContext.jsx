@@ -113,6 +113,21 @@ export const NotificationProvider = ({ children }) => {
       return fetchedNotifications;
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to fetch notifications');
+      
+      // Handle token expiration
+      if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+        console.log('Token expired or invalid, redirecting to login page');
+        
+        // Clear cookies
+        Cookies.remove('token');
+        Cookies.remove('role');
+        
+        // Redirect to login page after a small delay
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 500);
+      }
+      
       return [];
     } finally {
       setLoading(false);
@@ -179,6 +194,21 @@ export const NotificationProvider = ({ children }) => {
       }
     } catch (err) {
       console.error('Error marking notification as read:', err);
+      
+      // Handle token expiration
+      if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+        console.log('Token expired or invalid, redirecting to login page');
+        
+        // Clear cookies
+        Cookies.remove('token');
+        Cookies.remove('role');
+        
+        // Redirect to login page after a small delay
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 500);
+      }
+      
       return false;
     }
   }, [API_URL]);
@@ -218,6 +248,21 @@ export const NotificationProvider = ({ children }) => {
       }
     } catch (err) {
       console.error('Error marking all notifications as read:', err);
+      
+      // Handle token expiration
+      if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+        console.log('Token expired or invalid, redirecting to login page');
+        
+        // Clear cookies
+        Cookies.remove('token');
+        Cookies.remove('role');
+        
+        // Redirect to login page after a small delay
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 500);
+      }
+      
       return false;
     }
   }, [API_URL]);
@@ -255,7 +300,6 @@ export const NotificationProvider = ({ children }) => {
           setUnreadCount(prev => Math.max(0, prev - 1));
         }
         
-      
         return true;
       } else {
         console.error('API reported error:', response.data.message);
@@ -263,9 +307,24 @@ export const NotificationProvider = ({ children }) => {
       }
     } catch (err) {
       console.error('Error deleting notification:', err);
+      
+      // Handle token expiration
+      if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+        console.log('Token expired or invalid, redirecting to login page');
+        
+        // Clear cookies
+        Cookies.remove('token');
+        Cookies.remove('role');
+        
+        // Redirect to login page after a small delay
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 500);
+      }
+      
       return false;
     }
-  }, [notifications, API_URL]);
+  }, [API_URL, notifications]);
 
   // Load initial data
   useEffect(() => {

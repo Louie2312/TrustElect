@@ -22,17 +22,13 @@ export default function StudentsSection({
     setSaving(true);
     
     try {
-      // Get the auth token
       const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
       if (!token) {
         throw new Error('Authentication token not found');
       }
       
       if (type === 'landing') {
-        // For landing design, make a direct database update
-        console.log('Applying landing design with direct database update');
-        
-        // Make a direct database update for landing design
+
         const directUpdateResponse = await fetch(`${API_URL}/api/studentUI/force-landing`, {
           method: 'POST',
           headers: {
@@ -47,37 +43,29 @@ export default function StudentsSection({
         }
         
         const directUpdateData = await directUpdateResponse.json();
-        console.log('Direct update response:', directUpdateData);
-        
-        // Update local state to match server state
+
         updateStudentUI('type', 'landing');
         updateStudentUI('use_landing_design', true);
         updateStudentUI('backgroundImage', null);
         
       } else {
-        // For poster design
-        console.log('Applying poster design');
-        
-        // Check if we have a background image to apply
+
         const backgroundImage = landingContent.studentUI?.backgroundImage;
         
         if (!backgroundImage) {
           throw new Error('No background image available. Please upload an image first.');
         }
-        
-        // Update local state
+
         updateStudentUI('type', 'poster');
         updateStudentUI('use_landing_design', false);
-        
-        // Create form data for the request
+
         const formData = new FormData();
         formData.append('content', JSON.stringify({
           type: 'poster',
           use_landing_design: false,
           existing_background_image: backgroundImage
         }));
-        
-        // Make the request
+
         const response = await fetch(`${API_URL}/api/studentUI`, {
           method: 'POST',
           headers: {
@@ -94,11 +82,9 @@ export default function StudentsSection({
         const data = await response.json();
         console.log('Server response:', data);
       }
-      
-      // Show success message
-      alert(`${type === 'landing' ? 'Landing page' : 'Background poster'} design has been applied successfully. The page will now reload.`);
-      
-      // Force a complete page reload
+
+      alert(`${type === 'landing' ? 'Landing page' : 'Background poster'} design has been applied.`);
+
       window.location.reload(true);
       
     } catch (error) {
@@ -113,21 +99,17 @@ export default function StudentsSection({
     setSaving(true);
     
     try {
-      // Get the auth token
       const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
       if (!token) {
         throw new Error('Authentication token not found');
       }
       
-      // Check what design is currently active to show appropriate message
       const currentDesign = landingContent.studentUI?.type === 'landing' ? 'landing page' : 'background';
       
-      // Update local state
       updateStudentUI('type', 'poster');
       updateStudentUI('use_landing_design', false);
       updateStudentUI('backgroundImage', null);
       
-      // Create form data for the request
       const formData = new FormData();
       formData.append('content', JSON.stringify({
         type: 'poster',
@@ -136,7 +118,6 @@ export default function StudentsSection({
       }));
       formData.append('removeBackground', 'true');
       
-      // Make the request
       const response = await fetch(`${API_URL}/api/studentUI`, {
         method: 'POST',
         headers: {
@@ -153,10 +134,8 @@ export default function StudentsSection({
       const data = await response.json();
       console.log('Remove design response:', data);
       
-      // Show success message
       alert(`The ${currentDesign} design has been removed successfully. The page will now reload.`);
       
-      // Force a complete page reload
       window.location.reload(true);
     } catch (error) {
       console.error('Error removing design:', error);
@@ -307,8 +286,7 @@ export default function StudentsSection({
               onClick={() => {
                 if (confirm('Are you sure you want to remove this background image?')) {
                   removeImage('studentBackground');
-                  // If we're in poster design, this will leave us with no background
-                  // Update local state to reflect this
+
                   if (landingContent.studentUI?.type === 'poster') {
                     updateStudentUI('backgroundImage', null);
                   }
@@ -337,7 +315,6 @@ export default function StudentsSection({
           </div>
         )}
         <p className="mt-2 text-sm text-black">
-          Recommended size: 1920x1080px. Max file size: 5MB. Supported formats: JPG, PNG
         </p>
       </div>
       <div className="mt-4 flex gap-2">
@@ -373,7 +350,7 @@ export default function StudentsSection({
     <div className="bg-white p-6 rounded-lg shadow-sm">
       <h3 className="text-md font-medium mb-4 text-black">Landing Page Design</h3>
       <p className="text-sm text-black mb-4">
-        Apply the landing page design to the student dashboard. This will use the same design as your main landing page.
+        Apply the landing page design to the student dashboard.
       </p>
       <div className="flex gap-2">
         <button
@@ -399,13 +376,13 @@ export default function StudentsSection({
       {landingContent.studentUI?.type === 'landing' && (
         <div className="mt-3 p-2 bg-green-100 text-green-800 rounded-md text-sm flex items-center">
           <Check className="w-4 h-4 mr-1" />
-          Landing page design is currently active
+          Landing page design is currently active.
         </div>
       )}
       
       {landingContent.studentUI?.type === 'poster' && landingContent.studentUI?.backgroundImage && (
         <div className="mt-3 p-2 bg-yellow-100 text-yellow-800 rounded-md text-sm">
-          Background design is currently active. Applying landing design will disable background design.
+          Background design is currently active.
         </div>
       )}
     </div>

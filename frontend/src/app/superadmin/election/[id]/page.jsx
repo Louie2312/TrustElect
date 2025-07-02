@@ -232,7 +232,6 @@ export default function ElectionDetailsPage() {
         
         try {
           const eligibilityCriteriaResponse = await fetchWithAuth(`/elections/${params.id}/criteria`);
-          console.log('Eligibility criteria response:', eligibilityCriteriaResponse);
           
           electionData.eligibility_criteria = eligibilityCriteriaResponse.criteria || {};
         } catch (criteriaErr) {
@@ -370,7 +369,7 @@ export default function ElectionDetailsPage() {
         name: formatNameSimple(candidate.last_name, candidate.first_name, candidate.name),
         votes: candidate.vote_count || 0, 
         party: candidate.party || 'Independent',
-
+        percentage: election.voter_count ? ((candidate.vote_count || 0) / election.voter_count * 100).toFixed(2) : '0.00',
         color: CHART_COLORS[index % CHART_COLORS.length]
       }));
       
@@ -617,7 +616,7 @@ export default function ElectionDetailsPage() {
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                Live Counting
+                Partial Counting
               </button>
             </>
           )}
@@ -932,7 +931,7 @@ export default function ElectionDetailsPage() {
                               {Number(position.sortedCandidates[0].vote_count || 0).toLocaleString()} 
                             </span>
                             <span className="ml-1 text-blue-600">
-                              ({position.sortedCandidates[0].percentage || 0}%)
+                              ({election.voter_count ? (position.sortedCandidates[0].vote_count / election.voter_count * 100).toFixed(2) : 0}% of eligible voters)
                             </span>
                           </div>
                         </div>
@@ -951,7 +950,7 @@ export default function ElectionDetailsPage() {
                         <XAxis dataKey="name" />
                         <YAxis />
                         <Tooltip 
-                          formatter={(value, name) => [`${value} votes`, 'Votes']}
+                          formatter={(value, name) => [`${value} votes (${election.voter_count ? ((value / election.voter_count) * 100).toFixed(2) : '0.00'}% `, 'Votes']}
                           labelFormatter={(name) => `${name}`}
                         />
                         <Legend />
@@ -1001,7 +1000,7 @@ export default function ElectionDetailsPage() {
                               {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
                             </h4>
                             {candidate.party && (
-                              <span className="ml-2 px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
+                              <span className="ml-2 px-2 py-1 bg-gray-100 text-black text-xs rounded">
                                 {candidate.party}
                               </span>
                             )}
@@ -1010,11 +1009,11 @@ export default function ElectionDetailsPage() {
                             <div className="w-48 h-2 bg-gray-200 rounded-full overflow-hidden">
                               <div 
                                 className="h-full bg-blue-500 rounded-full"
-                                style={{ width: `${candidate.percentage || 0}%` }}
+                                style={{ width: `${election.voter_count ? (candidate.vote_count / election.voter_count * 100).toFixed(2) : 0}%` }}
                               />
                             </div>
                             <span className="ml-3 text-black">
-                              {Number(candidate.vote_count || 0).toLocaleString()} votes ({candidate.percentage || 0}%)
+                              {Number(candidate.vote_count || 0).toLocaleString()} votes ({election.voter_count ? (candidate.vote_count / election.voter_count * 100).toFixed(2) : 0}%)
                             </span>
                           </div>
                         </div>
@@ -1077,9 +1076,9 @@ export default function ElectionDetailsPage() {
           {/* Partial Counting Results */}
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold text-black">Live Vote Counting</h2>
+              <h2 className="text-xl font-semibold text-black">Partial Vote Counting</h2>
               <div className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">
-                Live Updates
+                Partial Updates
               </div>
             </div>
 
@@ -1119,7 +1118,7 @@ export default function ElectionDetailsPage() {
                                     {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
                                   </h4>
                                   {candidate.party && (
-                                    <span className="text-sm text-gray-600">
+                                    <span className="text-sm text-black">
                                       {candidate.party}
                                     </span>
                                   )}
@@ -1129,7 +1128,7 @@ export default function ElectionDetailsPage() {
                                     {Number(candidate.vote_count || 0).toLocaleString()}
                                   </div>
                                   <div className="text-sm text-gray-600">
-                                    {election.vote_count ? ((candidate.vote_count / election.vote_count) * 100).toFixed(2) : '0.00'}%
+                                    {election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}% 
                                   </div>
                                 </div>
                               </div>

@@ -27,7 +27,7 @@ export default function ReportsPage() {
       id: 1,
       title: "Election Summary Report",
       type: "Election",
-      description: "Overview of all elections across the system",
+      description: "Overview of all elections.",
       icon: "election",
     },
     {
@@ -55,14 +55,14 @@ export default function ReportsPage() {
       id: 5,
       title: "Voter Participation Report",
       type: "Election",
-      description: "Summary of voter turnout by department",
+      description: "Summary of voter count by department",
       icon: "participation",
     },
     {
       id: 6,
       title: "Live Vote Count Report",
       type: "Election",
-      description: "Current voting status updated every 10 minutes",
+      description: "Current voting status",
       icon: "votes",
     },
   ];
@@ -98,7 +98,7 @@ export default function ReportsPage() {
     try {
       const token = Cookies.get("token");
       console.log(`Downloading report ${reportId}`);
-      alert(`Report ${reportId} download started`);
+      alert(`Report ${reportId} downloading`);
     } catch (error) {
       console.error("Error downloading report:", error);
       setError("Failed to download report.");

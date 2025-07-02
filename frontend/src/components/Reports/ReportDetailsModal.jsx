@@ -13,16 +13,15 @@ export default function ReportDetailsModal({ report, onClose, onDownload }) {
 
   const reportData = {
     summary: {
-      totalElections: 12,
-      activeElections: 3,
-      completedElections: 7,
-      upcomingElections: 2,
-      totalUsers: 1456,
-      totalAdmins: 23,
+      totalElections: 4,
+      activeElections: 2,
+      completedElections: 2,
+      upcomingElections: 1,
+      totalUsers: 3835,
+      totalAdmins: 2,
     },
     details: [
-      { id: 1, name: "2025 Student Council Election", type: "School", status: "Completed", startDate: "2025-05-01", endDate: "2025-05-07", voters: 856, turnout: "78%" },
-      { id: 2, name: "2025 School Election", type: "School", status: "Completed", startDate: "2025-06-10", endDate: "2025-06-15", voters: 1203, turnout: "82%" },
+      { id: 1, name: "2025 Student Council Election", type: "Student Council", status: "Completed", startDate: "2025-06-23", endDate: "2025-06-24", voters: 228, turnout: "54%" },
     ],
     charts: [
       { name: "Voter Turnout", type: "bar", data: [78, 82, 65] },
@@ -98,27 +97,27 @@ export default function ReportDetailsModal({ report, onClose, onDownload }) {
             {activeTab === "summary" && (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="border rounded-lg p-4">
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">Total Elections</h3>
+                  <h3 className="text-sm font-medium text-black mb-1">Total Elections</h3>
                   <p className="text-2xl font-bold text-black">{reportData.summary.totalElections}</p>
                 </div>
                 <div className="border rounded-lg p-4">
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">Active Elections</h3>
+                  <h3 className="text-sm font-medium text-black mb-1">Active Elections</h3>
                   <p className="text-2xl font-bold text-green-600">{reportData.summary.activeElections}</p>
                 </div>
                 <div className="border rounded-lg p-4">
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">Completed Elections</h3>
+                  <h3 className="text-sm font-medium text-black mb-1">Completed Elections</h3>
                   <p className="text-2xl font-bold text-blue-600">{reportData.summary.completedElections}</p>
                 </div>
                 <div className="border rounded-lg p-4">
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">Upcoming Elections</h3>
+                  <h3 className="text-sm font-medium text-black mb-1">Upcoming Elections</h3>
                   <p className="text-2xl font-bold text-orange-600">{reportData.summary.upcomingElections}</p>
                 </div>
                 <div className="border rounded-lg p-4">
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">Total Users</h3>
+                  <h3 className="text-sm font-medium text-black mb-1">Total Users</h3>
                   <p className="text-2xl font-bold text-black">{reportData.summary.totalUsers}</p>
                 </div>
                 <div className="border rounded-lg p-4">
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">Total Admins</h3>
+                  <h3 className="text-sm font-medium text-black mb-1">Total Admins</h3>
                   <p className="text-2xl font-bold text-black">{reportData.summary.totalAdmins}</p>
                 </div>
               </div>
@@ -129,19 +128,19 @@ export default function ReportDetailsModal({ report, onClose, onDownload }) {
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="bg-gray-100">
-                      <th className="p-3 text-left text-sm font-medium text-gray-700">Election Name</th>
-                      <th className="p-3 text-left text-sm font-medium text-gray-700">Type</th>
-                      <th className="p-3 text-left text-sm font-medium text-gray-700">Status</th>
-                      <th className="p-3 text-left text-sm font-medium text-gray-700">Dates</th>
-                      <th className="p-3 text-left text-sm font-medium text-gray-700">Voters</th>
-                      <th className="p-3 text-left text-sm font-medium text-gray-700">Turnout</th>
+                      <th className="p-3 text-left text-sm font-medium text-black">Election Name</th>
+                      <th className="p-3 text-left text-sm font-medium text-black">Type</th>
+                      <th className="p-3 text-left text-sm font-medium text-black">Status</th>
+                      <th className="p-3 text-left text-sm font-medium text-black">Dates</th>
+                      <th className="p-3 text-left text-sm font-medium text-black">Voters</th>
+                      <th className="p-3 text-left text-sm font-medium text-black">Votes Percentage</th>
                     </tr>
                   </thead>
                   <tbody>
                     {reportData.details.map((item) => (
                       <tr key={item.id} className="border-b hover:bg-gray-50">
                         <td className="p-3 text-sm text-black">{item.name}</td>
-                        <td className="p-3 text-sm text-gray-600">{item.type}</td>
+                        <td className="p-3 text-sm text-black">{item.type}</td>
                         <td className="p-3 text-sm">
                           <span className={`px-2 py-1 rounded-full text-xs ${
                             item.status === "Active" ? "bg-green-100 text-green-800" :
