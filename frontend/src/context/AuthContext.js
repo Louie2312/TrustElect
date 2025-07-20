@@ -1,31 +1,7 @@
 "use client";
-import { createContext, useState, useEffect } from "react";
+import { createContext, useState, useEffect, useContext } from "react";
 import { useRouter } from "next/navigation";
-
-// Sample test accounts for different roles
-const mockUsers = {
-  superadmin: {
-    id: 1,
-    name: "Super Admin",
-    email: "superadmin.0001@novaliches.sti.edu.ph",
-    password: "Superadmin123!",
-    role: "superadmin",
-  },
-  admin: {
-    id: 2,
-    name: "Admin User",
-    email: "admin.12345@novaliches.sti.edu.ph",
-    password: "Admin123!",
-    role: "admin",
-  },
-  student: {
-    id: 3,
-    name: "Student User",
-    email: "student.987654@novaliches.sti.edu.ph",
-    password: "Student123!",
-    role: "student",
-  },
-};
+import Cookies from "js-cookie";
 
 export const AuthContext = createContext();
 
@@ -37,36 +13,65 @@ export const useAuth = () => {
   return context;
 };
 
-
 export default function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
   const router = useRouter();
 
-  // Simulate login function
-  const login = (role) => {
-    const selectedUser = mockUsers[role] || null;
-    setUser(selectedUser);
-    localStorage.setItem("user", JSON.stringify(selectedUser));
-    router.push("/dashboard");
-  };
-
-  // Simulate logout function
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("user");
-    router.push("/");
-  };
-
-  // Keep user logged in on refresh
   useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
+    // Check for token in cookies
+    const storedToken = Cookies.get("token");
+    const storedRole = Cookies.get("role");
+    const storedUserId = Cookies.get("userId");
+
+    if (storedToken && storedRole && storedUserId) {
+      setToken(storedToken);
+      setUser({
+        id: storedUserId,
+        role: storedRole
+      });
     }
   }, []);
 
+  const login = (userData, authToken) => {
+    setUser(userData);
+    setToken(authToken);
+    
+    // Store in cookies
+    Cookies.set("token", authToken, { path: "/", secure: false, sameSite: "strict" });
+    Cookies.set("role", userData.role, { path: "/", secure: false, sameSite: "strict" });
+    Cookies.set("userId", userData.id, { path: "/", secure: false, sameSite: "strict" });
+
+    // Redirect based on role
+    switch (userData.role) {
+      case "Super Admin":
+        router.push("/superadmin");
+        break;
+      case "Admin":
+        router.push("/admin");
+        break;
+      case "Student":
+        router.push("/student");
+        break;
+      default:
+        router.push("/");
+    }
+  };
+
+  const logout = () => {
+    setUser(null);
+    setToken(null);
+    
+    // Remove from cookies
+    Cookies.remove("token", { path: "/" });
+    Cookies.remove("role", { path: "/" });
+    Cookies.remove("userId", { path: "/" });
+    
+    router.push("/");
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, token, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

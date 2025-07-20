@@ -13,11 +13,16 @@ const maintenanceRoutes = require("./routes/maintenanceRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const contentRoutes = require("./routes/contentRoutes");
 const auditLogRoutes = require("./routes/auditLogRoutes");
+const roleBasedUserReportRoutes = require('./routes/roleBasedUserReportRoutes');
+const failedLoginRoutes = require('./routes/failedLoginRoutes');
+const systemLoadRoutes = require('./routes/systemLoadRoutes');
+const votingTimeRoutes = require('./routes/votingTimeRoutes'); // Added voting time routes
 const { createAuditLog } = require("./middlewares/auditLogMiddleware");
 const path = require("path");
 const app = express();
 const bodyParser = require("body-parser");
-const departmentRoutes = require("./routes/departmentRoutes");  
+const departmentRoutes = require("./routes/departmentRoutes");
+const departmentVoterReportRoutes = require("./routes/departmentVoterReportRoutes");
 const courseRoutes = require("./routes/courseRoutes");
 const fs = require('fs');
 const multer = require('multer');
@@ -25,6 +30,10 @@ const adminPermissionRoutes = require('./routes/adminPermissionRoutes');
 const partylistRoutes = require('./routes/partylistRoutes');
 const partylistCandidateRoutes = require('./routes/partylistCandidateRoutes');
 const studentUIRoutes = require('./routes/studentUIRoutes');
+const electionReportRoutes = require('./routes/electionReportRoutes');
+const voterParticipationRoutes = require('./routes/voterParticipationRoutes');
+const candidateListReportRoutes = require('./routes/candidateListReportRoutes');
+const adminActivityRoutes = require('./routes/adminActivityRoutes');
 require('./cron/cron');
 app.use(cookieParser());
 app.use(helmet());
@@ -209,6 +218,17 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/superadmin", studentRoutes);
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/elections", electionRoutes);
+app.use("/api/reports", electionReportRoutes);
+app.use("/api/reports/role-based", roleBasedUserReportRoutes);
+app.use("/api/reports", failedLoginRoutes);  // Changed from /api/reports/failed-logins
+app.use("/api/reports/summary", electionReportRoutes);
+app.use("/api/reports/upcoming-elections", electionReportRoutes);
+app.use("/api/reports/live-vote-count", electionReportRoutes);
+app.use("/api/reports", systemLoadRoutes);  // Changed from /api/reports/system-load
+app.use("/api/reports", voterParticipationRoutes);  // Changed from /api/reports/voter-participation
+app.use("/api/reports", votingTimeRoutes);  // Added voting time routes
+app.use("/api/reports/candidate-list", candidateListReportRoutes);
+app.use("/api/reports/admin-activity", adminActivityRoutes);  // Updated path for admin activity routes
 app.use("/api", studentRoutes);
 app.use("/api/ballots", ballotRoutes);
 app.use("/api/maintenance", maintenanceRoutes);
@@ -222,6 +242,8 @@ app.use('/api/partylists', partylistRoutes);
 app.use('/api/partylist-candidates', partylistCandidateRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/studentUI', studentUIRoutes);
+app.use('/api/department-voter-reports', departmentVoterReportRoutes);
+
 
 app.get("/api/healthcheck", (req, res) => {
   res.status(200).json({

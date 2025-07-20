@@ -38,9 +38,9 @@ exports.createElection = async (req, res) => {
       needsApproval
     );
 
-    if (needsApproval) {
+    // Only send notifications if the election was created successfully
+    if (result.election && needsApproval) {
       try {
-
         const electionWithCreator = {
           ...result.election,
           created_by: req.user.id, 
@@ -48,43 +48,28 @@ exports.createElection = async (req, res) => {
           description: description || result.election.description
         };
 
-        const notificationResult = await notificationService.notifyElectionNeedsApproval(electionWithCreator);
+        // Send a single notification to all superadmins
+        const { rows: superadminDetails } = await pool.query(
+          `SELECT id, email, active FROM users WHERE role_id = 1`
+        );
         
-        if (!notificationResult || notificationResult.length === 0) {
-       
-          try {
- 
-            const { rows: superadminCheck } = await pool.query(
-              `SELECT COUNT(*) as count FROM users WHERE role_id = 1`
-            );
-            
-            if (superadminCheck[0]?.count > 0) {
-              const { rows: superadminDetails } = await pool.query(
-                `SELECT id, email, active FROM users WHERE role_id = 1`
-              );
-              
-
-              const { createNotificationForUsers } = require('../models/notificationModel');
-              const superadminIds = superadminDetails.map(sa => sa.id);
-              
-              await createNotificationForUsers(
-                superadminIds,
-                'Super Admin',
-                'Election Needs Approval', 
-                `Election "${electionWithCreator.title}" needs your approval.`,
-                'info',
-                'election',
-                electionWithCreator.id
-              );
-            }
-          } catch (dbError) {
-            console.error('Error checking superadmins:', dbError);
-          }
+        if (superadminDetails.length > 0) {
+          const { createNotificationForUsers } = require('../models/notificationModel');
+          const superadminIds = superadminDetails.map(sa => sa.id);
+          
+          await createNotificationForUsers(
+            superadminIds,
+            'Super Admin',
+            'Election Needs Approval', 
+            `Election "${electionWithCreator.title}" needs your approval.`,
+            'info',
+            'election',
+            electionWithCreator.id
+          );
         }
       } catch (notifError) {
         console.error('Failed to send approval notifications:', notifError);
-        console.error(notifError.stack);
-        
+        // Don't rethrow - we still want to return success response
       }
     }
     
@@ -1484,12 +1469,8 @@ exports.updateElectionCriteria = async (req, res) => {
       });
     }
     
-    if (election.status !== 'upcoming') {
-      return res.status(400).json({
-        success: false,
-        message: "Only upcoming elections can have their eligibility criteria updated"
-      });
-    }
+    // Allow updating eligibility criteria for all election statuses
+    // Previously this was restricted to only upcoming elections
 
     const eligibleStudents = await electionModel.getEligibleStudentsForCriteria(eligibility);
     
@@ -1513,6 +1494,127 @@ exports.updateElectionCriteria = async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message || "Failed to update eligibility criteria"
+    });
+  }
+};
+
+exports.getCompletedElectionResults = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Get election details with actual total votes
+    const election = await pool.query(`
+      SELECT 
+        e.*,
+        COUNT(DISTINCT ev.id) as total_eligible_voters,
+        COUNT(DISTINCT CASE WHEN ev.has_voted THEN ev.student_id END) as total_votes,
+        CASE 
+          WHEN COUNT(DISTINCT ev.id) = 0 THEN 0 
+          ELSE ROUND(COUNT(DISTINCT CASE WHEN ev.has_voted THEN ev.student_id END)::NUMERIC * 100 / COUNT(DISTINCT ev.id), 2)
+        END as voter_turnout_percentage
+      FROM elections e
+      LEFT JOIN eligible_voters ev ON e.id = ev.election_id
+      WHERE e.id = $1 AND e.status = 'completed'
+      GROUP BY e.id
+    `, [id]);
+
+    if (!election.rows[0]) {
+      return res.status(404).json({
+        success: false,
+        message: "Election not found or not completed"
+      });
+    }
+
+    // Get positions with candidates and vote counts
+    const results = await pool.query(`
+      WITH vote_counts AS (
+        SELECT 
+          v.position_id,
+          v.candidate_id,
+          COUNT(DISTINCT v.student_id) as vote_count
+        FROM votes v
+        WHERE v.election_id = $1
+        GROUP BY v.position_id, v.candidate_id
+      ),
+      position_totals AS (
+        SELECT 
+          position_id,
+          SUM(vote_count) as total_position_votes,
+          MAX(vote_count) as max_votes
+        FROM vote_counts
+        GROUP BY position_id
+      )
+      SELECT 
+        p.id as position_id,
+        p.name as position_name,
+        p.max_choices,
+        c.id as candidate_id,
+        c.first_name,
+        c.last_name,
+        c.image_url,
+        c.party as partylist_name,
+        COALESCE(vc.vote_count, 0) as vote_count,
+        CASE 
+          WHEN pt.total_position_votes = 0 THEN 0
+          ELSE ROUND(COALESCE(vc.vote_count, 0)::NUMERIC * 100 / NULLIF(pt.total_position_votes, 0), 2)
+        END as vote_percentage,
+        CASE 
+          WHEN COALESCE(vc.vote_count, 0) = pt.max_votes AND pt.max_votes > 0 THEN true
+          ELSE false
+        END as is_winner,
+        COALESCE(pt.total_position_votes, 0) as total_position_votes
+      FROM positions p
+      JOIN candidates c ON c.position_id = p.id
+      LEFT JOIN vote_counts vc ON vc.candidate_id = c.id
+      LEFT JOIN position_totals pt ON pt.position_id = p.id
+      WHERE p.ballot_id = (
+        SELECT id FROM ballots WHERE election_id = $1 LIMIT 1
+      )
+      ORDER BY p.name, vote_count DESC NULLS LAST, c.last_name, c.first_name
+    `, [id]);
+
+    // Format the results by position
+    const formattedResults = {};
+    results.rows.forEach(row => {
+      if (!formattedResults[row.position_id]) {
+        formattedResults[row.position_id] = {
+          position_id: row.position_id,
+          position_name: row.position_name,
+          max_choices: row.max_choices,
+          total_votes: parseInt(row.total_position_votes) || 0,
+          candidates: []
+        };
+      }
+      formattedResults[row.position_id].candidates.push({
+        id: row.candidate_id,
+        first_name: row.first_name,
+        last_name: row.last_name,
+        image_url: row.image_url,
+        partylist_name: row.partylist_name,
+        vote_count: parseInt(row.vote_count),
+        vote_percentage: parseFloat(row.vote_percentage) || 0,
+        is_winner: row.is_winner
+      });
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        election: {
+          ...election.rows[0],
+          total_eligible_voters: parseInt(election.rows[0].total_eligible_voters) || 0,
+          total_votes: parseInt(election.rows[0].total_votes) || 0,
+          voter_turnout_percentage: parseFloat(election.rows[0].voter_turnout_percentage) || 0
+        },
+        positions: Object.values(formattedResults)
+      }
+    });
+
+  } catch (error) {
+    console.error('Error getting election results:', error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get election results"
     });
   }
 };

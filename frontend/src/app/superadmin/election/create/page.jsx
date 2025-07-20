@@ -8,6 +8,44 @@ import axios from "axios";
 
 const CURRENT_SEMESTER_KEY = "trustElect_currentSemester";
 
+const sortPrecincts = (a, b) => {
+  const extractNumber = (str) => parseInt(str.match(/\d+/)?.[0] || '0');
+  const aNum = extractNumber(a);
+  const bNum = extractNumber(b);
+  if (aNum !== 0 && bNum !== 0) {
+    return aNum - bNum;
+  }
+  return a.localeCompare(b);
+};
+
+const sortPrograms = (a, b) => {
+  const collegePrograms = [
+    'BSA', 'BSBAOM', 'BSCPE', 'BSCS', 'BSHM', 'BSIT', 'BMMA', 'BSTM'
+  ];
+  const seniorHighPrograms = [
+    'ABM', 'CUART', 'DIGAR', 'HUMMS', 'MAWD', 'STEM', 'TOPER'
+  ];
+
+  const aType = seniorHighPrograms.includes(a) ? 'seniorHigh' : 'college';
+  const bType = seniorHighPrograms.includes(b) ? 'seniorHigh' : 'college';
+
+  if (aType !== bType) {
+    return aType === 'college' ? -1 : 1;
+  }
+
+  if (aType === 'college') {
+    if (collegePrograms.includes(a) && collegePrograms.includes(b)) {
+      return collegePrograms.indexOf(a) - collegePrograms.indexOf(b);
+    }
+    return a.localeCompare(b);
+  }
+
+  if (seniorHighPrograms.includes(a) && seniorHighPrograms.includes(b)) {
+    return seniorHighPrograms.indexOf(a) - seniorHighPrograms.indexOf(b);
+  }
+  return a.localeCompare(b);
+};
+
 const PreviewModal = ({ 
   electionData, 
   eligibleCount, 
@@ -65,20 +103,38 @@ const PreviewModal = ({
         
         <div className="mb-6">
           <h3 className="font-semibold mb-2 text-black">Voter Eligibility Criteria</h3>
-          {Object.entries(electionData.eligibleVoters).map(([category, values]) => (
-            values.length > 0 && (
+          {Object.entries(electionData.eligibleVoters)
+            .filter(([key]) => key !== 'precinctPrograms' && key !== 'precinct' && electionData.eligibleVoters[key].length > 0)
+            .map(([category, values]) => (
               <div key={category} className="mb-2">
                 <p className="capitalize font-medium text-black">
                   {category.replace(/([A-Z])/g, ' $1').trim()}:
                 </p>
                 <p className="text-black">{values.join(", ")}</p>
               </div>
-            )
-          ))}
-          <p className="mt-4 font-medium text-lg text-black">
-            Total Eligible Voters: <span className="text-black">{Number(eligibleCount).toLocaleString()}</span>
-          </p>
+            ))}
+
+          {/* Simplified Precinct Display */}
+          {electionData.eligibleVoters.precinct.length > 0 && (
+            <div className="mt-4">
+              <p className="font-medium text-black mb-2">Precincts and Assigned Programs:</p>
+              <div className="space-y-2 pl-4">
+                {electionData.eligibleVoters.precinct.sort(sortPrecincts).map(precinct => (
+                  <div key={precinct} className="flex">
+                    <span className="font-medium text-black w-24">{precinct}:</span>
+                    <span className="text-black">
+                      {electionData.eligibleVoters.precinctPrograms[precinct]?.sort(sortPrograms).join(", ") || "No programs assigned"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
+
+        <p className="mt-4 font-medium text-lg text-black">
+          Total Eligible Voters: <span className="text-black">{Number(eligibleCount).toLocaleString()}</span>
+        </p>
         
         <div className="flex justify-end gap-4 mt-6">
           <button 
@@ -99,6 +155,63 @@ const PreviewModal = ({
   );
 };
 
+const YearLevelSelector = ({ yearLevels, selectedYearLevels, onChange, selectedPrograms }) => {
+  const collegeYearLevels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
+  const seniorHighYearLevels = ['Grade 11', 'Grade 12'];
+  
+  const collegePrograms = ['BSA', 'BSBAOM', 'BSCPE', 'BSCS', 'BSHM', 'BSIT', 'BMMA', 'BSTM'];
+  const seniorHighPrograms = ['ABM', 'CUART', 'DIGAR', 'HUMMS', 'MAWD', 'STEM', 'TOPER'];
+  
+  const hasOnlyCollegePrograms = selectedPrograms.length > 0 && 
+    selectedPrograms.every(p => collegePrograms.includes(p));
+  
+  const hasOnlySeniorHighPrograms = selectedPrograms.length > 0 && 
+    selectedPrograms.every(p => seniorHighPrograms.includes(p));
+  
+  return (
+    <div className="flex flex-wrap gap-3">
+      {yearLevels.map(yearLevel => {
+        let isEnabled = true;
+        
+        const isCollegeYearLevel = collegeYearLevels.includes(yearLevel);
+        const isSeniorHighYearLevel = seniorHighYearLevels.includes(yearLevel);
+        
+        if (hasOnlyCollegePrograms) {
+          isEnabled = isCollegeYearLevel;
+        } else if (hasOnlySeniorHighPrograms) {
+          isEnabled = isSeniorHighYearLevel;
+        }
+        
+        const isChecked = selectedYearLevels.includes(yearLevel);
+        
+        return (
+          <label 
+            key={yearLevel}
+            className={`inline-flex items-center px-3 py-1 rounded-full ${
+              isChecked 
+                ? 'bg-blue-100 border border-blue-300' 
+                : 'border border-gray-200'
+            } ${!isEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            <input
+              type="checkbox"
+              checked={isChecked}
+              onChange={() => isEnabled && onChange(yearLevel)}
+              className={`rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2 ${
+                !isEnabled ? 'cursor-not-allowed' : ''
+              }`}
+              disabled={!isEnabled}
+            />
+            <span className={`${!isEnabled ? 'text-gray-400' : 'text-gray-700'}`}>
+              {yearLevel}
+            </span>
+          </label>
+        );
+      })}
+    </div>
+  );
+};
+
 export default function CreateElectionPage() {
   const router = useRouter();
   const [eventData, setEventData] = useState({
@@ -115,6 +228,7 @@ export default function CreateElectionPage() {
       semester: [],
       gender: [],
       precinct: [],
+      precinctPrograms: {}
     },
   });
   const [maintenanceData, setMaintenanceData] = useState({
@@ -136,6 +250,25 @@ export default function CreateElectionPage() {
   const [apiError, setApiError] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
   const [totalRegisteredVoters, setTotalRegisteredVoters] = useState(0);
+
+  // Add state for managing visibility of program selections
+  const [visibleProgramSelections, setVisibleProgramSelections] = useState({});
+
+  // Add function to toggle visibility
+  const toggleProgramSelection = (precinct) => {
+    setVisibleProgramSelections(prev => ({
+      ...prev,
+      [precinct]: !prev[precinct]
+    }));
+  };
+
+  // Add function to check if a program is already assigned to another precinct
+  const isProgramAssignedToOtherPrecinct = (program, currentPrecinct) => {
+    return Object.entries(eventData.eligibleVoters.precinctPrograms)
+      .some(([precinct, programs]) => 
+        precinct !== currentPrecinct && programs.includes(program)
+      );
+  };
 
   useEffect(() => {
     const fetchMaintenanceData = async () => {
@@ -266,6 +399,7 @@ export default function CreateElectionPage() {
           gender: allGendersSelected ? [] : eventData.eligibleVoters.gender,
           semester: eventData.eligibleVoters.semester,
           precinct: eventData.eligibleVoters.precinct,
+          precinctPrograms: eventData.eligibleVoters.precinctPrograms
         };
         
         const response = await axios.post(
@@ -313,6 +447,14 @@ export default function CreateElectionPage() {
     if (eligibleVoters.yearLevels.length === 0) newCriteriaErrors.yearLevels = "Select at least one year level";
     if (eligibleVoters.gender.length === 0) newCriteriaErrors.gender = "Select at least one gender";
     if (eligibleVoters.semester.length === 0) newCriteriaErrors.semester = "Select a semester";
+    if (eligibleVoters.precinct.length === 0) newCriteriaErrors.precinct = "Select at least one precinct";
+    
+    // Validate that each selected precinct has at least one program assigned
+    eligibleVoters.precinct.forEach(precinct => {
+      if (!eligibleVoters.precinctPrograms[precinct]?.length) {
+        newCriteriaErrors.precinct = `Assign at least one program to ${precinct}`;
+      }
+    });
     
     setCriteriaErrors(newCriteriaErrors);
     return Object.keys(newCriteriaErrors).length === 0;
@@ -323,40 +465,125 @@ export default function CreateElectionPage() {
     setEventData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleCheckboxChange = (category, value) => {
-    setEventData(prev => {
+  const getProgramType = (program) => {
+    const seniorHighPrograms = ['ABM', 'CUART', 'DIGAR', 'HUMMS', 'MAWD', 'STEM', 'TOPER'];
+    const collegePrograms = ['BSA', 'BSBAOM', 'BSCPE', 'BSCS', 'BSHM', 'BSIT', 'BMMA', 'BSTM'];
     
-      if (category === 'semester') {
-        return {
-          ...prev,
-          eligibleVoters: {
-            ...prev.eligibleVoters,
-            [category]: [value] 
-          }
-        };
+    if (seniorHighPrograms.includes(program)) return 'seniorHigh';
+    if (collegePrograms.includes(program)) return 'college';
+    return program.startsWith('BS') ? 'college' : 'seniorHigh';
+  };
+
+  const shouldDisableYearLevel = (yearLevel) => {
+    const selectedPrograms = eventData.eligibleVoters.programs;
+    if (selectedPrograms.length === 0) return false;
+    
+    const collegeYearLevels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
+    const seniorHighYearLevels = ['Grade 11', 'Grade 12'];
+    
+    const collegePrograms = ['BSA', 'BSBAOM', 'BSCPE', 'BSCS', 'BSHM', 'BSIT', 'BMMA', 'BSTM'];
+    const seniorHighPrograms = ['ABM', 'CUART', 'DIGAR', 'HUMMS', 'MAWD', 'STEM', 'TOPER'];
+    
+    const hasOnlyCollegePrograms = selectedPrograms.length > 0 && 
+      selectedPrograms.every(p => collegePrograms.includes(p));
+    
+    const hasOnlySeniorHighPrograms = selectedPrograms.length > 0 && 
+      selectedPrograms.every(p => seniorHighPrograms.includes(p));
+    
+    const isCollegeYearLevel = collegeYearLevels.includes(yearLevel);
+    const isSeniorHighYearLevel = seniorHighYearLevels.includes(yearLevel);
+    
+    if (hasOnlyCollegePrograms) {
+      return !isCollegeYearLevel;
+    }
+    
+    if (hasOnlySeniorHighPrograms) {
+      return !isSeniorHighYearLevel;
+    }
+    
+    return false;
+  };
+
+  const handlePrecinctProgramChange = (precinct, program) => {
+    // Check if program is already assigned to another precinct
+    if (!eventData.eligibleVoters.precinctPrograms[precinct]?.includes(program) &&
+        isProgramAssignedToOtherPrecinct(program, precinct)) {
+      toast.error(`${program} is already assigned to another precinct`);
+      return;
+    }
+
+    setEventData(prev => {
+      const precinctPrograms = { ...prev.eligibleVoters.precinctPrograms };
+      
+      if (!precinctPrograms[precinct]) {
+        precinctPrograms[precinct] = [];
       }
       
+      if (precinctPrograms[precinct].includes(program)) {
+        precinctPrograms[precinct] = precinctPrograms[precinct].filter(p => p !== program);
+      } else {
+        precinctPrograms[precinct] = [...precinctPrograms[precinct], program];
+      }
       
-      const currentValues = prev.eligibleVoters[category];
-      const newValues = currentValues.includes(value)
-        ? currentValues.filter(item => item !== value)
-        : [...currentValues, value];
+      // Remove empty precinct entries
+      if (precinctPrograms[precinct].length === 0) {
+        delete precinctPrograms[precinct];
+      }
       
       return {
         ...prev,
         eligibleVoters: {
           ...prev.eligibleVoters,
-          [category]: newValues
+          precinctPrograms
         }
       };
     });
+  };
+
+  const handleCheckboxChange = (category, value) => {
+    setEventData(prev => {
+        if (category === 'semester') {
+            return {
+                ...prev,
+                eligibleVoters: {
+                    ...prev.eligibleVoters,
+                    [category]: [value]
+                }
+            };
+        }
+
+        const currentValues = prev.eligibleVoters[category];
+        const newValues = currentValues.includes(value)
+            ? currentValues.filter(item => item !== value)
+            : [...currentValues, value];
+
+        if (category === 'programs') {
+            // Reset year levels when changing programs
+            return {
+                ...prev,
+                eligibleVoters: {
+                    ...prev.eligibleVoters,
+                    [category]: newValues,
+                    yearLevels: [] // Reset year levels when changing programs
+                }
+            };
+        }
+
+        return {
+            ...prev,
+            eligibleVoters: {
+                ...prev.eligibleVoters,
+                [category]: newValues
+            }
+        };
+    });
 
     if (criteriaErrors[category]) {
-      setCriteriaErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[category];
-        return newErrors;
-      });
+        setCriteriaErrors(prev => {
+            const newErrors = { ...prev };
+            delete newErrors[category];
+            return newErrors;
+        });
     }
   };
 
@@ -364,24 +591,37 @@ export default function CreateElectionPage() {
     if (category === 'semester') return;
     
     setEventData(prev => {
-      const currentValues = prev.eligibleVoters[category];
-      const allSelected = currentValues.length === items.length;
-      
-      return {
-        ...prev,
-        eligibleVoters: {
-          ...prev.eligibleVoters,
-          [category]: allSelected ? [] : [...items]
+        const currentValues = prev.eligibleVoters[category];
+        const allSelected = currentValues.length === items.length;
+        const newValues = allSelected ? [] : [...items];
+        
+        if (category === 'programs') {
+            // Reset year levels when toggling all programs
+            return {
+                ...prev,
+                eligibleVoters: {
+                    ...prev.eligibleVoters,
+                    [category]: newValues,
+                    yearLevels: [] // Reset year levels when changing programs
+                }
+            };
         }
-      };
+        
+        return {
+            ...prev,
+            eligibleVoters: {
+                ...prev.eligibleVoters,
+                [category]: newValues
+            }
+        };
     });
     
     if (criteriaErrors[category]) {
-      setCriteriaErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[category];
-        return newErrors;
-      });
+        setCriteriaErrors(prev => {
+            const newErrors = { ...prev };
+            delete newErrors[category];
+            return newErrors;
+        });
     }
   };
 
@@ -407,6 +647,7 @@ export default function CreateElectionPage() {
         gender: allGendersSelected ? [] : eventData.eligibleVoters.gender,
         semester: eventData.eligibleVoters.semester,
         precinct: eventData.eligibleVoters.precinct,
+        precinctPrograms: eventData.eligibleVoters.precinctPrograms
       };
       
       const response = await axios.post(
@@ -459,81 +700,18 @@ export default function CreateElectionPage() {
     return a.localeCompare(b);
   };
 
-  const sortPrograms = (a, b) => {
-    // Define known college programs in order
-    const collegePrograms = [
-      'BSA',
-      'BSBAOM',
-      'BSCPE',
-      'BSCS',
-      'BSHM',
-      'BSIT',
-      'BMMA',
-      'BSTM'
-    ];
-
-    // Define known senior high programs in orde
-    const seniorHighPrograms = [
-      'ABM',
-      'CUART',
-      'DIGAR',
-      'HUMMS',
-      'MAWD',
-      'STEM',
-      'TOPER'
-    ];
-
-    const getProgramType = (program) => {
-      if (collegePrograms.includes(program)) return 'college';
-      if (seniorHighPrograms.includes(program)) return 'seniorHigh';
-      
-      if (program.startsWith('BS')) return 'college';
-      return 'seniorHigh';
-    };
-
-    const aType = getProgramType(a);
-    const bType = getProgramType(b);
-
-    if (aType !== bType) {
-      return aType === 'college' ? -1 : 1;
-    }
-
-    if (aType === 'college') {
-      if (collegePrograms.includes(a) && collegePrograms.includes(b)) {
-        return collegePrograms.indexOf(a) - collegePrograms.indexOf(b);
-      }
-      if (collegePrograms.includes(a)) return -1;
-      if (collegePrograms.includes(b)) return 1;
-      return a.localeCompare(b);
-    }
-
-    if (aType === 'seniorHigh') {
-      if (seniorHighPrograms.includes(a) && seniorHighPrograms.includes(b)) {
-        return seniorHighPrograms.indexOf(a) - seniorHighPrograms.indexOf(b);
-      }
-      if (seniorHighPrograms.includes(a)) return -1;
-      if (seniorHighPrograms.includes(b)) return 1;
-      return a.localeCompare(b);
-    }
-
-    return a.localeCompare(b);
-  };
-
   const sortGender = (a, b) => {
     if (a.toLowerCase() === 'male') return -1;
     if (b.toLowerCase() === 'male') return 1;
     return a.localeCompare(b);
   };
 
-  const sortPrecincts = (a, b) => {
-    const extractNumber = (str) => parseInt(str.match(/\d+/)?.[0] || '0');
-    const aNum = extractNumber(a);
-    const bNum = extractNumber(b);
-    if (aNum !== 0 && bNum !== 0) {
-      return aNum - bNum;
-    }
-    return a.localeCompare(b);
-  };
+  // Add a useEffect to trigger UI refresh when programs change
+  useEffect(() => {
+    // Force re-render when programs change
+    const forceUpdate = {};
+    setEventData(prev => ({...prev, ...forceUpdate}));
+  }, [eventData.eligibleVoters.programs]);
 
   if (loading.options) {
     return (
@@ -723,9 +901,100 @@ export default function CreateElectionPage() {
                 category: 'precinct', 
                 label: 'Precinct', 
                 items: maintenanceData.precincts.sort(sortPrecincts),
-                sortFn: sortPrecincts
+                sortFn: sortPrecincts,
+                customRender: true,
+                render: () => (
+                  <div className="space-y-4">
+                    {maintenanceData.precincts.sort(sortPrecincts).map(precinct => (
+                      <div key={precinct} className="flex items-start space-x-4">
+                        <div className="flex-shrink-0">
+                          <label 
+                            className={`inline-flex items-center px-3 py-2 rounded-lg ${
+                              eventData.eligibleVoters.precinct.includes(precinct)
+                                ? 'bg-blue-100 border border-blue-300' 
+                                : 'border border-gray-200'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={eventData.eligibleVoters.precinct.includes(precinct)}
+                              onChange={() => handleCheckboxChange('precinct', precinct)}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"
+                            />
+                            <span className="text-gray-700 font-medium">{precinct}</span>
+                          </label>
+                        </div>
+
+                        {eventData.eligibleVoters.precinct.includes(precinct) && (
+                          <div className="flex-grow">
+                            <div className="flex justify-between items-center mb-2">
+                              <button
+                                onClick={() => toggleProgramSelection(precinct)}
+                                className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
+                              >
+                                {visibleProgramSelections[precinct] ? (
+                                  <>
+                                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                    Hide Programs
+                                  </>
+                                ) : (
+                                  <>
+                                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                                    </svg>
+                                    Show Programs
+                                  </>
+                                )}
+                              </button>
+                              {eventData.eligibleVoters.precinctPrograms[precinct]?.length > 0 && (
+                                <span className="text-sm text-gray-500">
+                                  {eventData.eligibleVoters.precinctPrograms[precinct]?.length} program(s) selected
+                                </span>
+                              )}
+                            </div>
+
+                            {visibleProgramSelections[precinct] && eventData.eligibleVoters.programs.length > 0 && (
+                              <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                <p className="text-sm font-medium text-gray-600 mb-2">Select programs for {precinct}:</p>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                  {eventData.eligibleVoters.programs.sort(sortPrograms).map(program => {
+                                    const isAssignedToOther = isProgramAssignedToOtherPrecinct(program, precinct);
+                                    const isChecked = eventData.eligibleVoters.precinctPrograms[precinct]?.includes(program) || false;
+                                    
+                                    return (
+                                      <label 
+                                        key={program} 
+                                        className={`inline-flex items-center bg-white px-2 py-1 rounded ${
+                                          isAssignedToOther && !isChecked ? 'opacity-50 cursor-not-allowed' : ''
+                                        }`}
+                                        title={isAssignedToOther && !isChecked ? 'This program is already assigned to another precinct' : ''}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={isChecked}
+                                          onChange={() => handlePrecinctProgramChange(precinct, program)}
+                                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"
+                                          disabled={isAssignedToOther && !isChecked}
+                                        />
+                                        <span className={`text-sm ${isAssignedToOther && !isChecked ? 'text-gray-400' : 'text-gray-600'}`}>
+                                          {program}
+                                        </span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )
               },
-            ].map(({ category, label, items, note, readonly, sortFn }) => (
+            ].map(({ category, label, items, note, readonly, sortFn, render, customRender }) => (
               <div key={category} className="border-b pb-4 last:border-b-0">
                 <div className="flex justify-between items-center mb-2">
                   <h3 className="font-medium text-black">{label}</h3>
@@ -747,68 +1016,85 @@ export default function CreateElectionPage() {
                   </p>
                 )}
                 
-                {category === 'semester' ? (
-                  <div className="flex flex-wrap gap-3">
-                    {maintenanceData.semesters.map((semester) => (
-                      <label 
-                        key={semester} 
-                        className={`inline-flex items-center px-3 py-1 rounded-full ${
-                          eventData.eligibleVoters.semester.includes(semester) 
-                            ? 'bg-blue-100 border border-blue-300' 
-                            : 'border border-gray-200'
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="semester"
-                          checked={eventData.eligibleVoters.semester.includes(semester)}
-                          disabled={semester !== currentSemester}
-                          onChange={() => handleCheckboxChange('semester', semester)}
-                          className={`rounded-md border-gray-300 text-black focus:ring-blue-500 mr-2 ${semester !== currentSemester ? 'opacity-60' : ''}`}
-                        />
-                        <span className="text-black">
-                          {semester}
-                        </span>
-                      </label>
-                    ))}
-                    {!currentSemester && (
-                      <p className="text-amber-600 mt-2 w-full">
-                        No current semester has been set.
-                      </p>
-                    )}
-                  </div>
+                {customRender ? (
+                  render()
                 ) : (
-                  <div className="flex flex-wrap gap-3">
-                    {items.map(item => (
-                      <label 
-                        key={item} 
-                        className={`inline-flex items-center px-3 py-1 rounded-full ${
-                          eventData.eligibleVoters[category].includes(item) 
-                            ? 'bg-blue-100 border border-blue-300' 
-                            : 'border border-gray-200'
-                        }`}
-                      >
-                        <input
-                          type={category === 'semester' ? "radio" : "checkbox"}
-                          name={category === 'semester' ? "semester" : undefined}
-                          checked={eventData.eligibleVoters[category].includes(item)}
-                          onChange={() => handleCheckboxChange(category, item)}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"
-                          disabled={readonly}
-                        />
-                        <span className="text-gray-700">{item}</span>
-                      </label>
-                    ))}
-                  </div>
+                  category === 'yearLevels' ? (
+                    <YearLevelSelector 
+                      yearLevels={items}
+                      selectedYearLevels={eventData.eligibleVoters.yearLevels}
+                      onChange={(yearLevel) => handleCheckboxChange('yearLevels', yearLevel)}
+                      selectedPrograms={eventData.eligibleVoters.programs}
+                    />
+                  ) : (
+                    category === 'semester' ? (
+                      <div className="flex flex-wrap gap-3">
+                        {maintenanceData.semesters.map((semester) => (
+                          <label 
+                            key={semester} 
+                            className={`inline-flex items-center px-3 py-1 rounded-full ${
+                              eventData.eligibleVoters.semester.includes(semester) 
+                                ? 'bg-blue-100 border border-blue-300' 
+                                : 'border border-gray-200'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="semester"
+                              checked={eventData.eligibleVoters.semester.includes(semester)}
+                              disabled={semester !== currentSemester}
+                              onChange={() => handleCheckboxChange('semester', semester)}
+                              className={`rounded-md border-gray-300 text-black focus:ring-blue-500 mr-2 ${semester !== currentSemester ? 'opacity-60' : ''}`}
+                            />
+                            <span className="text-black">
+                              {semester}
+                            </span>
+                          </label>
+                        ))}
+                        {!currentSemester && (
+                          <p className="text-amber-600 mt-2 w-full">
+                            No current semester has been set.
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-3">
+                        {items.map(item => {
+                          const isDisabled = category === 'yearLevels' && shouldDisableYearLevel(item);
+                          const isChecked = eventData.eligibleVoters[category].includes(item);
+                          
+                          return (
+                            <label 
+                              key={`${item}-${eventData.eligibleVoters.programs.join('-')}`}
+                              className={`inline-flex items-center px-3 py-1 rounded-full ${
+                                isChecked 
+                                  ? 'bg-blue-100 border border-blue-300' 
+                                  : 'border border-gray-200'
+                              } ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => handleCheckboxChange(category, item)}
+                                className={`rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2 ${
+                                  isDisabled ? 'cursor-not-allowed' : ''
+                                }`}
+                                disabled={isDisabled}
+                              />
+                              <span className={`${isDisabled ? 'text-gray-400' : 'text-gray-700'}`}>
+                                {item}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )
+                  )
                 )}
                 
-                {category !== 'semester' && eventData.eligibleVoters[category].length > 0 && (
+                {!customRender && category !== 'semester' && eventData.eligibleVoters[category].length > 0 && (
                   <p className="text-sm text-gray-500 mt-2">
-                    Selected: {eventData.eligibleVoters[category].sort(sortFn || ((a, b) => {
-                      if (a.toLowerCase() === 'male') return -1;
-                      if (b.toLowerCase() === 'male') return 1;
-                      return 0;
-                    })).join(", ")}
+                    Selected: {eventData.eligibleVoters[category].sort(sortFn || ((a, b) => a.localeCompare(b))).join(", ")}
                   </p>
                 )}
               </div>

@@ -15,6 +15,9 @@ export default function AdminDepartmentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedDepartment, setSelectedDepartment] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("All");
   const { hasPermission, loading: permissionsLoading, refreshPermissions } = usePermissions();
@@ -61,7 +64,6 @@ export default function AdminDepartmentsPage() {
     fetchAdmins();
   }, [refreshPermissions]);
 
-  // Function to fetch admins - enhanced with multiple endpoints
   const fetchAdmins = async () => {
     try {
       const token = Cookies.get("token");
@@ -69,105 +71,76 @@ export default function AdminDepartmentsPage() {
         throw new Error("No authentication token found");
       }
 
-      // Create a set of admin IDs from departments
-      const adminIds = new Set();
-      departments.forEach(dept => {
-        if (dept.admin_id) {
-          adminIds.add(Number(dept.admin_id));
-        }
+      // Get the current admin's profile first
+      const profileRes = await axios.get("http://localhost:5000/api/admin/profile", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        withCredentials: true
       });
-
-      if (adminIds.size === 0) {
-        console.log("No admin IDs found in departments");
-        return;
+      
+      console.log("Admin profile response:", profileRes.data);
+      
+      // Start with the current admin's data
+      let adminsArray = [];
+      if (profileRes.data && profileRes.data.id) {
+        adminsArray = [{
+          id: profileRes.data.id,
+          first_name: profileRes.data.first_name || '',
+          last_name: profileRes.data.last_name || '',
+          email: profileRes.data.email || '',
+          department: profileRes.data.department || '',
+          is_active: true,
+          role_id: 2 // Regular admin
+        }];
       }
 
-      console.log("Admin IDs to fetch:", Array.from(adminIds));
-      
-      // Create a map to store admin details
-      const adminDetailsMap = {};
-      
-      // For each admin ID, try to fetch the details
-      for (const adminId of adminIds) {
-        try {
-          // Try to get admin details by ID
-          const adminRes = await axios.get(`http://localhost:5000/api/admin/${adminId}`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-            withCredentials: true
-          });
-          
-          if (adminRes.data) {
-            console.log(`Successfully fetched admin details for ID ${adminId}:`, adminRes.data);
-            adminDetailsMap[adminId] = adminRes.data;
+      // Try to get department admins from the departments data
+      const departmentAdmins = departments.reduce((acc, dept) => {
+        if (dept.admin_id && dept.admin_name) {
+          // Only add if not already in the array
+          if (!acc.some(admin => admin.id === dept.admin_id)) {
+            acc.push({
+              id: dept.admin_id,
+              first_name: dept.admin_name.split(' ')[0] || '',
+              last_name: dept.admin_name.split(' ')[1] || '',
+              email: dept.admin_email || '',
+              department: dept.department_name || '',
+              is_active: true,
+              role_id: 2
+            });
           }
-        } catch (adminError) {
-          console.warn(`Could not fetch admin details for ID ${adminId}:`, adminError.message);
         }
-      }
+        return acc;
+      }, []);
+
+      // Merge the arrays, removing duplicates
+      adminsArray = [...adminsArray, ...departmentAdmins].filter((admin, index, self) =>
+        index === self.findIndex((a) => a.id === admin.id)
+      );
       
-      // Also fetch the current admin's profile
-      try {
-        const profileRes = await axios.get("http://localhost:5000/api/admin/profile", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          withCredentials: true
-        });
-        
-        if (profileRes.data && profileRes.data.id) {
-          console.log("Current admin profile:", profileRes.data);
-          adminDetailsMap[profileRes.data.id] = profileRes.data;
-        }
-      } catch (profileError) {
-        console.warn("Could not fetch admin profile:", profileError.message);
-      }
+      // Enhance admin data with department information
+      const enhancedAdmins = adminsArray.map(admin => ({
+        ...admin,
+        department: admin.department || '',
+        departments: admin.department ? admin.department.split(',').map(d => d.trim()) : []
+      }));
       
-      // Create an array of admin objects from the map
-      const adminsArray = Object.values(adminDetailsMap);
-      console.log("Final admins array:", adminsArray);
-      
-      // Set the admins state
-      setAdmins(adminsArray);
-      
-      // Update the departments with admin details
-      updateDepartmentsWithAdminDetails(adminDetailsMap);
+      console.log("Enhanced admins:", enhancedAdmins);
+      setAdmins(enhancedAdmins);
     } catch (error) {
-      console.error("Error in admin fetching process:", error);
+      console.error("Error fetching admins:", error);
+      toast.error("Failed to load admin data");
     }
   };
-  
-  // Function to update departments with admin details
-  const updateDepartmentsWithAdminDetails = (adminDetailsMap) => {
-    if (Object.keys(adminDetailsMap).length === 0 || departments.length === 0) {
-      return;
+
+  // Fetch admins when departments change
+  useEffect(() => {
+    if (departments.length > 0) {
+      fetchAdmins();
     }
-    
-    console.log("Updating departments with admin details");
-    
-    const updatedDepartments = departments.map(dept => {
-      if (dept.admin_id && adminDetailsMap[dept.admin_id]) {
-        const adminDetails = adminDetailsMap[dept.admin_id];
-        console.log(`Updating department ${dept.department_name} with admin details:`, adminDetails);
-        
-        return {
-          ...dept,
-          admin_name: dept.admin_name || `${adminDetails.first_name || ''} ${adminDetails.last_name || ''}`.trim(),
-          admin_email: dept.admin_email || adminDetails.email || ''
-        };
-      }
-      return dept;
-    });
-    
-    // Only update if changes were made
-    if (JSON.stringify(updatedDepartments) !== JSON.stringify(departments)) {
-      console.log("Departments updated with admin details");
-      setDepartments(updatedDepartments);
-    }
-  };
+  }, [departments]);
 
   // Use both data sources to get admin details
   const getAdminDetails = (adminId) => {
@@ -188,15 +161,13 @@ export default function AdminDepartmentsPage() {
         throw new Error("No authentication token found");
       }
   
-      console.log("Attempting to fetch departments with token:", token ? "Token present" : "No token");
-      
-      // Try both possible API endpoints
+      // Try multiple endpoints to get department data
       let departmentsArray = [];
       let success = false;
-      
+
       try {
-        // First try with the correct admin endpoint
-        const res = await axios.get("http://localhost:5000/api/admin/departments", {
+        // First try the admin endpoint
+        const res = await axios.get("http://localhost:5000/api/departments", {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -208,10 +179,10 @@ export default function AdminDepartmentsPage() {
         departmentsArray = res.data.departments || res.data || [];
         success = true;
       } catch (firstError) {
-        console.warn("Error on first endpoint, trying fallback:", firstError.message);
+        console.warn("Error on admin endpoint, trying fallback:", firstError.message);
         
         try {
-          // Try the correct superadmin endpoint second
+          // Try superadmin endpoint as fallback
           const res = await axios.get("http://localhost:5000/api/superadmin/departments", {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -226,7 +197,7 @@ export default function AdminDepartmentsPage() {
         } catch (secondError) {
           console.error("Error on superadmin endpoint:", secondError.message);
           
-          // Try the user's department only as a last resort
+          // Try getting admin profile as last resort
           try {
             const profileRes = await axios.get("http://localhost:5000/api/admin/profile", {
               headers: {
@@ -261,39 +232,9 @@ export default function AdminDepartmentsPage() {
       
       if (success) {
         console.log(`Successfully loaded ${departmentsArray.length} departments:`, departmentsArray);
-        
-        // Make sure we have all admin emails by fetching admin profile
-        try {
-          const profileRes = await axios.get("http://localhost:5000/api/admin/profile", {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-            withCredentials: true
-          });
-          
-          if (profileRes.data && profileRes.data.id) {
-            const adminProfile = profileRes.data;
-            
-            // Update departments where this admin is assigned
-            departmentsArray = departmentsArray.map(dept => {
-              if (dept.admin_id && Number(dept.admin_id) === adminProfile.id) {
-                return {
-                  ...dept,
-                  admin_name: dept.admin_name || `${adminProfile.first_name || ''} ${adminProfile.last_name || ''}`.trim(),
-                  admin_email: dept.admin_email || adminProfile.email || ''
-                };
-              }
-              return dept;
-            });
-          }
-        } catch (profileError) {
-          console.warn("Could not fetch admin profile to enhance departments:", profileError.message);
-        }
-        
         setDepartments(departmentsArray);
         
-        // Since department data is updated, refresh admin data
+        // Since we have fresh department data, update admin data
         setTimeout(() => fetchAdmins(), 100); // Small delay to ensure departments are set
       }
     } catch (error) {
@@ -317,13 +258,6 @@ export default function AdminDepartmentsPage() {
       }
     }
   }, [permissionsLoading, hasPermission, checkRoleBasedPermission]);
-
-  // Fetch admins when departments change
-  useEffect(() => {
-    if (departments.length > 0) {
-      fetchAdmins();
-    }
-  }, [departments]);
 
   // Add an effect to update departments when admins are loaded
   useEffect(() => {
@@ -375,7 +309,7 @@ export default function AdminDepartmentsPage() {
       
       try {
         // First try admin endpoint
-        response = await axios.delete(`http://localhost:5000/api/admin/departments/${id}`, {
+        response = await axios.delete(`http://localhost:5000/api/departments/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         success = true;
@@ -383,19 +317,14 @@ export default function AdminDepartmentsPage() {
         console.warn("Error on first delete endpoint, trying fallback:", firstError.message);
         
         try {
-          // Fallback to generic endpoint
-          response = await axios.delete(`http://localhost:5000/api/departments/${id}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          success = true;
-        } catch (secondError) {
-          console.error("Error on fallback delete endpoint:", secondError.message);
-          
           // Try superadmin endpoint as last resort
           response = await axios.delete(`http://localhost:5000/api/superadmin/departments/${id}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           success = true;
+        } catch (secondError) {
+          console.error("Error on superadmin endpoint:", secondError.message);
+          throw new Error("Failed to delete department after trying all endpoints");
         }
       }
       
@@ -405,6 +334,24 @@ export default function AdminDepartmentsPage() {
       console.error("Error deleting department:", error);
       toast.error(error.response?.data?.message || "Failed to delete department");
     }
+  };
+
+  const handleAssignAdmin = (department) => {
+    if (!hasPermission('departments', 'edit') && !checkRoleBasedPermission('edit')) {
+      toast.error("You don't have permission to manage department admins");
+      return;
+    }
+    setSelectedDepartment(department);
+    setShowAssignModal(true);
+  };
+
+  const handleEditDepartment = (department) => {
+    if (!hasPermission('departments', 'edit') && !checkRoleBasedPermission('edit')) {
+      toast.error("You don't have permission to edit departments");
+      return;
+    }
+    setSelectedDepartment(department);
+    setShowEditModal(true);
   };
 
   // Show permission denied message if no departments permission
@@ -505,10 +452,7 @@ export default function AdminDepartmentsPage() {
                   Type
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                  Admin Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                  Admin Email
+                  Assigned Admins
                 </th>
                 {(hasPermission('departments', 'delete') || checkRoleBasedPermission('delete')) && (
                   <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider">
@@ -519,17 +463,9 @@ export default function AdminDepartmentsPage() {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {filteredDepartments.map((department) => {
-                const adminDetails = department.admin_id ? getAdminDetails(department.admin_id) : null;
-                
-                console.log(`Rendering department ${department.department_name}:`, {
-                  adminId: department.admin_id,
-                  adminDetails: adminDetails ? {
-                    id: adminDetails.id,
-                    name: `${adminDetails.first_name} ${adminDetails.last_name}`,
-                    email: adminDetails.email
-                  } : 'None',
-                  directEmail: department.admin_email,
-                  displayEmail: adminDetails ? adminDetails.email : department.admin_email
+                const departmentAdmins = admins.filter(admin => {
+                  const adminDepartments = admin.departments || [];
+                  return adminDepartments.includes(department.department_name);
                 });
                 
                 return (
@@ -548,27 +484,58 @@ export default function AdminDepartmentsPage() {
                         {department.department_type}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4">
                       <div className="text-sm">
-                        {adminDetails ? (
-                          <span className="font-semibold text-gray-900">
-                            {adminDetails.first_name} {adminDetails.last_name}
-                          </span>
-                        ) : department.admin_name ? (
-                          <span className="font-semibold text-gray-900">{department.admin_name}</span>
+                        {departmentAdmins.length > 0 ? (
+                          <div className="space-y-1">
+                            {departmentAdmins.map(admin => (
+                              <div key={admin.id} className="flex items-center justify-between">
+                                <span className="font-semibold text-gray-900">
+                                  {admin.first_name} {admin.last_name}
+                                </span>
+                                <div className="flex flex-col items-end">
+                                  <span className="text-gray-500 text-xs">
+                                    {admin.email}
+                                  </span>
+                                  {admin.departments && admin.departments.length > 1 && (
+                                    <span className="text-xs text-blue-600">
+                                      Also in: {admin.departments
+                                        .filter(d => d !== department.department_name)
+                                        .join(', ')}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         ) : (
-                          <span className="text-gray-500 italic">Not assigned</span>
+                          <span className="text-gray-500 italic">No admins assigned</span>
                         )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">
-                        {adminDetails ? adminDetails.email : department.admin_email || "—"}
                       </div>
                     </td>
                     {(hasPermission('departments', 'delete') || checkRoleBasedPermission('delete')) && (
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-2">
+                          {(hasPermission('departments', 'edit') || checkRoleBasedPermission('edit')) && (
+                            <>
+                              <button
+                                onClick={() => handleEditDepartment(department)}
+                                className="bg-yellow-500 text-white px-3 py-1 rounded text-sm flex items-center"
+                                title="Edit Department"
+                              >
+                                <Edit className="w-4 h-4 mr-1" />
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleAssignAdmin(department)}
+                                className="bg-blue-600 text-white px-3 py-1 rounded text-sm flex items-center"
+                                title="Manage Admins"
+                              >
+                                <UserPlus className="w-4 h-4 mr-1" />
+                                Manage Admins
+                              </button>
+                            </>
+                          )}
                           <button
                             onClick={() => handleDelete(department.id)}
                             className="bg-red-500 text-white px-3 py-1 rounded text-sm flex items-center"
@@ -592,12 +559,22 @@ export default function AdminDepartmentsPage() {
         </div>
       )}
 
-      {showAddModal && (
-        <AddDepartmentModal 
-          onClose={() => setShowAddModal(false)} 
+      {showAddModal && <AddDepartmentModal onClose={() => setShowAddModal(false)} onSuccess={fetchDepartments} />}
+      {showAssignModal && 
+        <AssignAdminModal 
+          department={selectedDepartment}
+          admins={admins}
+          onClose={() => setShowAssignModal(false)} 
           onSuccess={fetchDepartments} 
         />
-      )}
+      }
+      {showEditModal && 
+        <EditDepartmentModal 
+          department={selectedDepartment}
+          onClose={() => setShowEditModal(false)} 
+          onSuccess={fetchDepartments} 
+        />
+      }
     </div>
   );
 }
@@ -729,6 +706,376 @@ function AddDepartmentModal({ onClose, onSuccess }) {
               disabled={loading}
             >
               {loading ? "Creating..." : "Create Department"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function AssignAdminModal({ department, admins: initialAdmins, onClose, onSuccess }) {
+  const [selectedAdmins, setSelectedAdmins] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [fetchingAdmins, setFetchingAdmins] = useState(true);
+  const [error, setError] = useState("");
+  const [availableAdmins, setAvailableAdmins] = useState([]);
+  const [processingAdminIds, setProcessingAdminIds] = useState([]);
+
+  // Fetch the latest admin data when the modal opens
+  useEffect(() => {
+    const fetchAdmins = async () => {
+      setFetchingAdmins(true);
+      try {
+        const token = Cookies.get("token");
+        if (!token) {
+          throw new Error("No authentication token found");
+        }
+    
+        // Try multiple endpoints to get admin data
+        let adminsArray = [];
+        let success = false;
+
+        try {
+          // First try the superadmin endpoint since it has all admins
+          const res = await axios.get("http://localhost:5000/api/superadmin/admins", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            withCredentials: true
+          });
+          
+          console.log("Fetched fresh admin data:", res.data);
+          adminsArray = res.data.admins || res.data || [];
+          success = true;
+        } catch (firstError) {
+          console.warn("Error on superadmin endpoint, trying fallback:", firstError.message);
+          
+          try {
+            // Try the regular admins endpoint as fallback
+            const res = await axios.get("http://localhost:5000/api/admins", {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+              withCredentials: true
+            });
+            
+            console.log("Admins Response:", res.data);
+            adminsArray = res.data.admins || res.data || [];
+            success = true;
+          } catch (secondError) {
+            console.error("Error on admins endpoint:", secondError.message);
+            throw new Error("Failed to fetch admins after trying all endpoints");
+          }
+        }
+
+        if (success) {
+          // Filter out inactive admins and super admins
+          const filteredAdmins = adminsArray.filter(admin => 
+            admin.is_active && 
+            !(admin.role_id === 1 || (admin.department === "Administration" && !admin.employee_number))
+          );
+
+          setAvailableAdmins(filteredAdmins);
+          
+          // Set selected admins based on current department assignments
+          const currentAdmins = filteredAdmins.filter(admin => {
+            // Check if admin's department includes the current department
+            const departments = admin.department ? admin.department.split(',').map(d => d.trim()) : [];
+            return departments.includes(department.department_name);
+          });
+          setSelectedAdmins(currentAdmins.map(admin => admin.id));
+        }
+      } catch (error) {
+        console.error("Error fetching fresh admin data:", error);
+        // Fall back to using the initial admin data
+        const available = initialAdmins.filter(admin => 
+          admin.is_active && 
+          !(admin.role_id === 1 || (admin.department === "Administration" && !admin.employee_number))
+        );
+        setAvailableAdmins(available);
+        
+        const currentAdmins = available.filter(admin => {
+          const departments = admin.department ? admin.department.split(',').map(d => d.trim()) : [];
+          return departments.includes(department.department_name);
+        });
+        setSelectedAdmins(currentAdmins.map(admin => admin.id));
+      } finally {
+        setFetchingAdmins(false);
+      }
+    };
+
+    fetchAdmins();
+  }, [department.department_name, initialAdmins]);
+
+  const handleAdminSelection = (adminId) => {
+    setSelectedAdmins(prev => {
+      if (prev.includes(adminId)) {
+        return prev.filter(id => id !== adminId);
+      } else {
+        return [...prev, adminId];
+      }
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    setProcessingAdminIds([]);
+
+    try {
+      const token = Cookies.get("token");
+      
+      // Process admins being assigned to this department
+      const adminsToAssign = selectedAdmins.map(adminId => {
+        const admin = availableAdmins.find(a => a.id === adminId);
+        if (!admin) return null;
+
+        setProcessingAdminIds(prev => [...prev, adminId]);
+        
+        // Get current departments and add the new one if not already present
+        const currentDepartments = admin.department ? admin.department.split(',').map(d => d.trim()) : [];
+        if (!currentDepartments.includes(department.department_name)) {
+          currentDepartments.push(department.department_name);
+        }
+        
+        return axios.put(
+          `http://localhost:5000/api/superadmin/admins/${adminId}`,
+          { 
+            department: currentDepartments.join(', '),
+            first_name: admin.first_name,
+            last_name: admin.last_name,
+            email: admin.email
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        ).then(res => {
+          setProcessingAdminIds(prev => prev.filter(id => id !== adminId));
+          return res;
+        });
+      }).filter(Boolean);
+
+      // Process admins being removed from this department
+      const adminsToRemove = availableAdmins.filter(admin => {
+        const departments = admin.department ? admin.department.split(',').map(d => d.trim()) : [];
+        return departments.includes(department.department_name) && !selectedAdmins.includes(admin.id);
+      });
+      
+      const removePromises = adminsToRemove.map(admin => {
+        setProcessingAdminIds(prev => [...prev, admin.id]);
+
+        const departments = admin.department ? admin.department.split(',').map(d => d.trim()) : [];
+        const updatedDepartments = departments.filter(d => d !== department.department_name);
+        
+        return axios.put(
+          `http://localhost:5000/api/superadmin/admins/${admin.id}`,
+          { 
+            department: updatedDepartments.join(', '),
+            first_name: admin.first_name,
+            last_name: admin.last_name,
+            email: admin.email
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        ).then(res => {
+          setProcessingAdminIds(prev => prev.filter(id => id !== admin.id));
+          console.log(`Successfully updated admin ${admin.id} departments`, res.data);
+          return res;
+        }).catch(err => {
+          console.error(`Error updating admin ${admin.id}:`, err);
+          throw new Error(`Failed to update ${admin.first_name} ${admin.last_name}: ${err.response?.data?.message || err.message}`);
+        });
+      });
+
+      await Promise.all([...adminsToAssign, ...removePromises]);
+
+      toast.success("Admins updated successfully");
+      onClose();
+      if (onSuccess) onSuccess();
+    } catch (error) {
+      console.error("Update admins error:", error);
+      const errorMessage = error.response?.data?.message || error.message || "Failed to update admins";
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+      setProcessingAdminIds([]);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-center z-50">
+      <div className="bg-white p-6 rounded-lg shadow-lg w-[600px] text-black max-w-md mx-auto">
+        <h2 className="text-xl font-bold mb-4">Manage Department Admins</h2>
+        <p className="mb-4 text-sm">Department: <strong>{department.department_name}</strong></p>
+        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4 max-h-[300px] overflow-y-auto">
+            <label className="block text-sm font-medium mb-2">Select Admins</label>
+            {fetchingAdmins ? (
+              <div className="py-4 text-center">
+                <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500 mb-2"></div>
+                <p className="text-sm text-gray-500">Loading admins...</p>
+              </div>
+            ) : availableAdmins.length > 0 ? (
+              <div className="space-y-2">
+                {availableAdmins.map(admin => (
+                  <label key={admin.id} className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded">
+                    <input
+                      type="checkbox"
+                      checked={selectedAdmins.includes(admin.id)}
+                      onChange={() => handleAdminSelection(admin.id)}
+                      className="form-checkbox h-5 w-5 text-blue-600"
+                      disabled={loading || processingAdminIds.includes(admin.id)}
+                    />
+                    <div>
+                      <span className="font-medium">{admin.first_name} {admin.last_name}</span>
+                      <span className="text-gray-500 text-sm block">{admin.email}</span>
+                      {admin.department && admin.department !== department.department_name && (
+                        <span className="text-amber-600 text-xs">
+                          Currently assigned to: {admin.department}
+                        </span>
+                      )}
+                      {processingAdminIds.includes(admin.id) && (
+                        <span className="text-blue-600 text-xs flex items-center mt-1">
+                          <div className="animate-spin h-3 w-3 border-t-2 border-b-2 border-blue-500 rounded-full mr-1"></div>
+                          Updating...
+                        </span>
+                      )}
+                    </div>
+                  </label>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-amber-600">
+                No available admins. Please create admins in Admin Management first.
+              </p>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-2 mt-6">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border rounded hover:bg-gray-100 disabled:opacity-50"
+              disabled={loading || fetchingAdmins}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+              disabled={loading || fetchingAdmins || availableAdmins.length === 0}
+            >
+              {loading ? (
+                <span className="flex items-center">
+                  <div className="animate-spin h-4 w-4 border-t-2 border-b-2 border-white rounded-full mr-2"></div>
+                  Updating{processingAdminIds.length > 0 ? ` (${processingAdminIds.length} remaining)` : '...'}
+                </span>
+              ) : "Update Admins"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function EditDepartmentModal({ department, onClose, onSuccess }) {
+  const [formData, setFormData] = useState({
+    department_name: department.department_name,
+    department_type: department.department_type
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    if (!formData.department_name.trim()) {
+      setError("Department name is required");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const token = Cookies.get("token");
+      const res = await axios.put(
+        `http://localhost:5000/api/admin/departments/${department.id}`,
+        formData,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      toast.success(res.data.message || "Department updated successfully");
+      onClose();
+      if (onSuccess) onSuccess();
+    } catch (error) {
+      setError(error.response?.data?.message || "Failed to update department");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-center z-50">
+      <div className="bg-white p-6 rounded-lg shadow-lg w-96 text-black">
+        <h2 className="text-xl font-bold mb-4">Edit Department</h2>
+        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1">Department Name</label>
+            <input
+              type="text"
+              name="department_name"
+              value={formData.department_name}
+              onChange={handleChange}
+              className="w-full p-2 border rounded"
+            />
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1">Department Type</label>
+            <select
+              name="department_type"
+              value={formData.department_type}
+              onChange={handleChange}
+              className="w-full p-2 border rounded"
+            >
+              <option value="Academic">Academic</option>
+              <option value="Organization">Organization</option>
+              <option value="Administrative">Administrative</option>
+            </select>
+          </div>
+
+          <div className="flex justify-end gap-2 mt-6">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border rounded hover:bg-gray-100"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              disabled={loading}
+            >
+              {loading ? "Updating..." : "Update Department"}
             </button>
           </div>
         </form>

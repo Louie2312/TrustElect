@@ -1,5 +1,9 @@
 const auditLogModel = require('../models/auditLogModel');
 
+// Cache to store recent audit logs to prevent duplicates
+const recentLogs = new Map();
+const DUPLICATE_PREVENTION_WINDOW = 5000; // 5 seconds
+
 /**
  * Create an audit log for the current request
  * @param {Object} req - Request object
@@ -24,7 +28,6 @@ const createAuditLog = (req, res, next) => {
     }
     
     try {
-
       const user_id = req.user.id;
       const user_email = req.user.email;
       const user_role = req.user.normalizedRole || req.user.role || 'Unknown';
@@ -45,13 +48,6 @@ const createAuditLog = (req, res, next) => {
           entity_id = parseInt(numericParams[0], 10);
         }
       }
-
-      const ip_address = 
-        req.headers['x-forwarded-for'] || 
-        req.socket.remoteAddress || 
-        'unknown';
-
-      const user_agent = req.headers['user-agent'] || 'unknown';
 
       if (req.originalUrl.includes('login')) {
         action = 'LOGIN';
@@ -79,6 +75,26 @@ const createAuditLog = (req, res, next) => {
         action = 'VOTE';
       }
 
+      // Check for duplicate logs
+      const logKey = `${user_id}-${action}-${entity_type}-${entity_id}`;
+      const now = Date.now();
+      const recentLog = recentLogs.get(logKey);
+      
+      if (recentLog && (now - recentLog) < DUPLICATE_PREVENTION_WINDOW) {
+        // Skip duplicate log
+        return;
+      }
+      
+      // Update recent logs cache
+      recentLogs.set(logKey, now);
+      
+      // Clean up old entries from cache
+      for (const [key, timestamp] of recentLogs.entries()) {
+        if (now - timestamp > DUPLICATE_PREVENTION_WINDOW) {
+          recentLogs.delete(key);
+        }
+      }
+
       const details = {
         status: res.statusCode,
         endpoint: req.originalUrl,
@@ -104,11 +120,10 @@ const createAuditLog = (req, res, next) => {
         entity_type,
         entity_id,
         details,
-        ip_address,
-        user_agent
+        ip_address: req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown',
+        user_agent: req.headers['user-agent'] || 'unknown'
       };
       
-   
       auditLogModel.createAuditLog(logData)
         .then(log => {
         })

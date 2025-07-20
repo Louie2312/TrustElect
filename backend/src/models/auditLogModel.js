@@ -323,84 +323,37 @@ const getAuditLogsCount = async (options = {}) => {
 };
 
 /**
- * Get audit logs summary grouped by categories
- * @param {Number} days - Number of days to include in summary
+ * Get audit logs summary statistics
+ * @param {Number} days - Number of days to look back
  * @returns {Promise<Object>} Summary statistics
  */
 const getAuditLogsSummary = async (days = 30) => {
   try {
+    const queries = [
+      // Total activities
+      `SELECT COUNT(*) as total_activities FROM audit_logs`,
+      
+      // Unique users
+      `SELECT COUNT(DISTINCT user_id) as unique_users FROM audit_logs`,
+      
+      // Total votes
+      `SELECT COUNT(*) as total_votes FROM audit_logs WHERE action = 'VOTE'`,
+      
+      // Activities today
+      `SELECT COUNT(*) as activities_today FROM audit_logs 
+       WHERE created_at >= CURRENT_DATE`
+    ];
 
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
-    const startDateStr = startDate.toISOString();
-
-    const queries = {
-      actionSummary: `
-        SELECT action, COUNT(*) as count 
-        FROM audit_logs 
-        WHERE created_at >= $1 
-        GROUP BY action 
-        ORDER BY count DESC
-      `,
-      userRoleSummary: `
-        SELECT user_role, COUNT(*) as count 
-        FROM audit_logs 
-        WHERE created_at >= $1 
-        GROUP BY user_role 
-        ORDER BY count DESC
-      `,
-      entityTypeSummary: `
-        SELECT entity_type, COUNT(*) as count 
-        FROM audit_logs 
-        WHERE created_at >= $1 
-        GROUP BY entity_type 
-        ORDER BY count DESC
-      `,
-      timelineSummary: `
-        SELECT 
-          DATE_TRUNC('day', created_at) as date,
-          COUNT(*) as count
-        FROM audit_logs 
-        WHERE created_at >= $1 
-        GROUP BY DATE_TRUNC('day', created_at)
-        ORDER BY date ASC
-      `,
-      topUsers: `
-        SELECT user_id, user_email, user_role, COUNT(*) as count 
-        FROM audit_logs 
-        WHERE created_at >= $1 
-        GROUP BY user_id, user_email, user_role
-        ORDER BY count DESC
-        LIMIT 10
-      `,
-      recentLogins: `
-        SELECT * FROM audit_logs 
-        WHERE created_at >= $1 AND action = 'LOGIN'
-        ORDER BY created_at DESC
-        LIMIT 20
-      `,
-      recentVotes: `
-        SELECT * FROM audit_logs 
-        WHERE created_at >= $1 AND action = 'VOTE'
-        ORDER BY created_at DESC
-        LIMIT 20
-      `
-    };
-
-    const results = await Promise.all(Object.entries(queries).map(async ([key, query]) => {
-      const result = await pool.query(query, [startDateStr]);
-      return { [key]: result.rows };
-    }));
-    const summary = Object.assign({}, ...results);
-    const totalCountResult = await pool.query(
-      'SELECT COUNT(*) as total FROM audit_logs WHERE created_at >= $1',
-      [startDateStr]
+    const results = await Promise.all(
+      queries.map(query => pool.query(query))
     );
-    
-    summary.totalCount = parseInt(totalCountResult.rows[0].total, 10);
-    summary.periodDays = days;
-    
-    return summary;
+
+    return {
+      total_activities: parseInt(results[0].rows[0].total_activities),
+      unique_users: parseInt(results[1].rows[0].unique_users),
+      total_votes: parseInt(results[2].rows[0].total_votes),
+      activities_today: parseInt(results[3].rows[0].activities_today)
+    };
   } catch (error) {
     console.error('Error getting audit logs summary:', error);
     throw error;
@@ -423,10 +376,26 @@ const deleteOldAuditLogs = async (olderThan) => {
   }
 };
 
+/**
+ * Execute a custom SQL query
+ * @param {string} query - SQL query to execute
+ * @param {Array} values - Values for parameterized query
+ * @returns {Promise<Object>} Query result
+ */
+const executeQuery = async (query, values = []) => {
+  try {
+    return await pool.query(query, values);
+  } catch (error) {
+    console.error('Error executing query:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   createAuditLog,
   getAuditLogs,
   getAuditLogsCount,
   getAuditLogsSummary,
-  deleteOldAuditLogs
+  deleteOldAuditLogs,
+  executeQuery
 }; 

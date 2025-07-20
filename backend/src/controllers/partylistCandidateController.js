@@ -1,6 +1,33 @@
 const { addCandidate, getCandidatesByPartylist, removeCandidate, updateCandidate, getStudentPartylist } = require('../models/partylistCandidateModel');
 const { validationResult } = require("express-validator");
 
+exports.uploadCandidateImage = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ 
+        success: false,
+        message: "No image file provided" 
+      });
+    }
+
+    // The file path will be relative to the public directory
+    const filePath = `/uploads/candidates/${req.file.filename}`;
+
+    res.status(200).json({
+      success: true,
+      message: "Image uploaded successfully",
+      filePath
+    });
+  } catch (error) {
+    console.error("Error uploading image:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to upload image",
+      error: error.message
+    });
+  }
+};
+
 exports.addPartylistCandidate = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -9,7 +36,7 @@ exports.addPartylistCandidate = async (req, res) => {
     }
 
     const { partylistId } = req.params;
-    const { studentId, firstName, lastName, studentNumber, course, position, isRepresentative } = req.body;
+    const { studentId, firstName, lastName, studentNumber, course, position, isRepresentative, imageUrl } = req.body;
 
     if (!partylistId) {
       return res.status(400).json({ message: "Partylist ID is required" });
@@ -27,7 +54,8 @@ exports.addPartylistCandidate = async (req, res) => {
       studentNumber,
       course,
       position: isRepresentative ? null : position,
-      isRepresentative: Boolean(isRepresentative)
+      isRepresentative: Boolean(isRepresentative),
+      imageUrl
     };
 
     const candidate = await addCandidate(partylistId, candidateData);
@@ -117,17 +145,31 @@ exports.removePartylistCandidate = async (req, res) => {
 exports.updatePartylistCandidate = async (req, res) => {
   try {
     const { candidateId } = req.params;
-    const { position, isRepresentative } = req.body;
+    const { position, isRepresentative, imageUrl } = req.body;
 
     if (!candidateId) {
       return res.status(400).json({ message: "Candidate ID is required" });
     }
 
-    // If isRepresentative is true, position should be null
-    const candidateData = {
-      position: isRepresentative ? null : position,
-      isRepresentative: Boolean(isRepresentative)
-    };
+    // Build candidate data object with only provided fields
+    const candidateData = {};
+    
+    if (position !== undefined) {
+      candidateData.position = position;
+    }
+    
+    if (isRepresentative !== undefined) {
+      candidateData.isRepresentative = Boolean(isRepresentative);
+    }
+    
+    if (imageUrl !== undefined) {
+      candidateData.imageUrl = imageUrl;
+    }
+
+    // If no fields to update, return error
+    if (Object.keys(candidateData).length === 0) {
+      return res.status(400).json({ message: "No fields to update" });
+    }
 
     const candidate = await updateCandidate(candidateId, candidateData);
 

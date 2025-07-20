@@ -1,11 +1,12 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { 
   Calendar, Clock, Users, CheckCircle, 
   ChevronLeft, List, User, PieChart,
   AlertTriangle as ExclamationTriangle,
-  Lock, Award, ArrowDown, ArrowUp, Edit, Plus, AlertCircle, X
+  Lock, Award, ArrowDown, ArrowUp, Edit, Plus, AlertCircle, X,
+  Maximize2, Minimize2
 } from 'lucide-react';
 import Link from 'next/link';
 import Cookies from 'js-cookie';
@@ -102,6 +103,33 @@ export default function ElectionDetailsPage() {
   const [imageErrors, setImageErrors] = useState({});
   const [isCancelling, setIsCancelling] = useState(false);
   const [isCurrentUserCreator, setIsCurrentUserCreator] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  const partialCountingRef = useRef(null);
+
+  const toggleFullScreen = async () => {
+    if (!document.fullscreenElement) {
+      try {
+        await partialCountingRef.current.requestFullscreen();
+        setIsFullScreen(true);
+      } catch (err) {
+        console.error('Error attempting to enable full-screen mode:', err);
+      }
+    } else {
+      if (document.exitFullscreen) {
+        await document.exitFullscreen();
+        setIsFullScreen(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleFullScreenChange = () => {
+      setIsFullScreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullScreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullScreenChange);
+  }, []);
 
   const handleImageError = (candidateId) => {
     if (!imageErrors[candidateId]) {
@@ -116,7 +144,6 @@ export default function ElectionDetailsPage() {
     const loadElectionDetails = async () => {
       try {
         setIsLoading(true);
-        // We need to use the general route since there's no admin-specific route
         const data = await fetchWithAuth(`/elections/${params.id}/details`);
         
         console.log('Election details response:', data);
@@ -146,7 +173,6 @@ export default function ElectionDetailsPage() {
               candidates: pos.candidates || []
             }));
           } else if (!electionData.positions && electionData.ballot?.id) {
-
             try {
               // Make an additional request to get the complete ballot with positions
               const ballotResponse = await fetchWithAuth(`/elections/${params.id}/ballot`);
@@ -184,11 +210,18 @@ export default function ElectionDetailsPage() {
         }
         
         try {
-          // Use the general route for criteria as well
-          const eligibilityCriteriaResponse = await fetchWithAuth(`/elections/${params.id}/criteria`);
-          console.log('Eligibility criteria response:', eligibilityCriteriaResponse);
+          // Get the complete election data which includes precinct programs
+          const completeElectionData = await fetchWithAuth(`/elections/${params.id}`);
           
-          electionData.eligibility_criteria = eligibilityCriteriaResponse.criteria || {};
+          // Get the eligibility criteria from the /criteria endpoint
+          const eligibilityCriteriaResponse = await fetchWithAuth(`/elections/${params.id}/criteria`);
+          
+          // Merge the data from both endpoints
+          electionData.eligibility_criteria = {
+            ...(eligibilityCriteriaResponse.criteria || {}),
+            precinctPrograms: completeElectionData.eligible_voters?.precinctPrograms || {},
+            precinct: completeElectionData.eligible_voters?.precinct || []
+          };
         } catch (criteriaErr) {
           console.error('Error fetching eligibility criteria:', criteriaErr);
           electionData.eligibility_criteria = {};
@@ -309,17 +342,14 @@ export default function ElectionDetailsPage() {
   // Helper function to get eligibility criteria with proper naming
   const getEligibilityCriteria = () => {
     const criteria = election.eligibility_criteria || {};
-    
-    // Helper function to remove duplicates from an array (case-insensitive)
+
     const removeDuplicates = (array) => {
       if (!Array.isArray(array)) return [];
-      
-      // Use a Map to track normalized values
+
       const seen = new Map();
       return array.filter(item => {
         if (!item) return false;
-        
-        // Use lowercase for case-insensitive comparison
+
         const normalizedItem = item.toString().toLowerCase();
         if (seen.has(normalizedItem)) return false;
         
@@ -327,21 +357,25 @@ export default function ElectionDetailsPage() {
         return true;
       });
     };
-    
-    // Combine and deduplicate year levels from both property names
+
     const yearLevels = removeDuplicates([
       ...(criteria.year_levels || []), 
       ...(criteria.yearLevels || [])
     ]);
     
-    // Map the API response fields to our expected structure
-    // Handle both naming conventions to ensure compatibility
+    // Get precincts from the merged data
+    const precincts = criteria.precinct || [];
+    
+    // Get precinctPrograms from the merged data
+    const precinctPrograms = criteria.precinctPrograms || {};
+    
     return {
       courses: criteria.courses || criteria.programs || [],
       year_levels: yearLevels,
       genders: criteria.genders || criteria.gender || [],
       semesters: criteria.semesters || criteria.semester || [],
-      precincts: criteria.precincts || criteria.precinct || []
+      precincts: precincts,
+      precinctPrograms: precinctPrograms
     };
   };
 
@@ -408,13 +442,36 @@ export default function ElectionDetailsPage() {
   const hasBallot = !!(election.ballot?.id || (election.positions && election.positions.length > 0));
 
   // Check if election has results to display
-  const hasResults = election.positions && election.positions.length > 0 && (election.status === 'ongoing' || election.status === 'completed');
+  const hasResults = election.positions && election.positions.length > 0 && 
+    (election.status === 'ongoing' || election.status === 'completed');
 
   // Determine if the creator is a superadmin
   const isSuperAdminCreator =
     election.created_by === 1 ||
     (election.created_by && election.created_by.id === 1) ||
     election.created_by_role === 'SuperAdmin';
+
+  const getTop3AndOtherCandidates = (candidates) => {
+    if (!candidates || candidates.length === 0) return { top3: [], others: [] };
+    
+    const sortedCandidates = [...candidates].sort((a, b) => 
+      (b.vote_count || 0) - (a.vote_count || 0)
+    );
+    
+    return {
+      top3: sortedCandidates.slice(0, 3),
+      others: sortedCandidates.slice(3)
+    };
+  };
+
+  const getRankLabel = (index) => {
+    switch(index) {
+      case 0: return '1st';
+      case 1: return '2nd';
+      case 2: return '3rd';
+      default: return '';
+    }
+  };
 
   return (
     <div className="max-w-6xl mx-auto p-4">
@@ -632,7 +689,7 @@ export default function ElectionDetailsPage() {
                 )}
               </div>
               <div>
-                <h3 className="font-medium text-black mb-1 text-black">Semesters</h3>
+                <h3 className="font-medium text-black mb-1">Semesters</h3>
                 {eligibilityCriteria.semesters && eligibilityCriteria.semesters.filter(Boolean).length > 0 ? (
                   <ul className="list-disc list-inside text-black">
                     {eligibilityCriteria.semesters.filter(Boolean).map(semester => (
@@ -644,11 +701,23 @@ export default function ElectionDetailsPage() {
                 )}
               </div>
               <div>
-                <h3 className="font-medium text-black mb-1 text-black">Precincts</h3>
+                <h3 className="font-medium text-black mb-1">Precincts</h3>
                 {eligibilityCriteria.precincts && eligibilityCriteria.precincts.filter(Boolean).length > 0 ? (
                   <ul className="list-disc list-inside text-black">
                     {eligibilityCriteria.precincts.filter(Boolean).map(precinct => (
-                      <li key={precinct}>{precinct}</li>
+                      <li key={precinct} className="mb-3">
+                        <span className="font-medium">{precinct}</span>
+                        {eligibilityCriteria.precinctPrograms && 
+                         eligibilityCriteria.precinctPrograms[precinct] && 
+                         Array.isArray(eligibilityCriteria.precinctPrograms[precinct]) && 
+                         eligibilityCriteria.precinctPrograms[precinct].length > 0 ? (
+                          <div className="ml-5 mt-1">
+                            <span className="text-black text-sm">
+                              <span className="font-medium">Assigned Programs:</span> {eligibilityCriteria.precinctPrograms[precinct].join(', ')}
+                            </span>
+                          </div>
+                        ) : null}
+                      </li>
                     ))}
                   </ul>
                 ) : (
@@ -876,37 +945,56 @@ export default function ElectionDetailsPage() {
           </div>
         </>
       ) : tab === 'partial' ? (
-        <>
+        <div ref={partialCountingRef} className={`${isFullScreen ? 'fixed inset-0 bg-white z-50 overflow-y-auto' : ''}`}>
           {/* Vote Summary Section */}
           <div className="bg-white rounded-lg shadow p-4 mb-6">
-            <div className="flex items-center space-x-8">
-              <div className="flex items-center">
-                <Users className="w-5 h-5 mr-2 text-gray-600" />
-                <div>
-                  <div className="text-sm text-gray-500">Total Voters</div>
-                  <div className="font-bold text-black">{Number(election.voter_count || 0).toLocaleString()}</div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-8">
+                <div className="flex items-center">
+                  <Users className="w-5 h-5 mr-2 text-gray-600" />
+                  <div>
+                    <div className="text-sm text-gray-500">Total Voters</div>
+                    <div className="font-bold text-black">{Number(election.voter_count || 0).toLocaleString()}</div>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center">
-                <CheckCircle className="w-5 h-5 mr-2 text-gray-600" />
-                <div>
-                  <div className="text-sm text-gray-500">Votes Cast</div>
-                  <div className="font-bold text-black">{Number(election.vote_count || 0).toLocaleString()}</div>
+                <div className="flex items-center">
+                  <CheckCircle className="w-5 h-5 mr-2 text-gray-600" />
+                  <div>
+                    <div className="text-sm text-gray-500">Votes Cast</div>
+                    <div className="font-bold text-black">{Number(election.vote_count || 0).toLocaleString()}</div>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center">
-                <PieChart className="w-5 h-5 mr-2 text-gray-600" />
-                <div>
-                  <div className="text-sm text-gray-500">Votes Percentage</div>
-                  <div className="font-bold text-black">
-                    {election.voter_count ? ((election.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
+                <div className="flex items-center">
+                  <PieChart className="w-5 h-5 mr-2 text-gray-600" />
+                  <div>
+                    <div className="text-sm text-gray-500">Votes Percentage</div>
+                    <div className="font-bold text-black">
+                      {election.voter_count ? ((election.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
+                    </div>
                   </div>
                 </div>
               </div>
+              <button
+                onClick={toggleFullScreen}
+                className="flex items-center px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                {isFullScreen ? (
+                  <>
+                    <Minimize2 className="w-4 h-4 mr-2" />
+                    Exit Full Screen
+                  </>
+                ) : (
+                  <>
+                    <Maximize2 className="w-4 h-4 mr-2" />
+                    Full Screen
+                  </>
+                )}
+              </button>
             </div>
           </div>
+
           {/* Partial Counting Results */}
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className={`bg-white rounded-lg shadow p-6 ${isFullScreen ? 'mx-4' : ''}`}>
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold text-black">Live Vote Counting</h2>
               <div className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">
@@ -915,15 +1003,45 @@ export default function ElectionDetailsPage() {
             </div>
             {election.positions && election.positions.length > 0 ? (
               <div className="space-y-6">
-                {election.positions.map(position => (
-                  <div key={position.id} className="border rounded-lg p-4">
-                    <h3 className="text-lg font-medium text-black mb-4">
-                      {position.name}
-                    </h3>
-                    <div className="space-y-3">
-                      {position.candidates && position.candidates.length > 0 ? (
-                        position.candidates.map(candidate => (
-                          <div key={candidate.id} className="flex items-center p-3 bg-gray-50 rounded-lg">
+                {election.positions.map(position => {
+                  const { top3, others } = getTop3AndOtherCandidates(position.candidates || []);
+                  
+                  return (
+                    <div key={position.id} className="border rounded-lg p-4">
+                      <h3 className="text-lg font-medium text-black mb-4">
+                        {position.name}
+                      </h3>
+
+                      <div className="space-y-3">
+                        {/* Top 3 Candidates */}
+                        {top3.map((candidate, index) => (
+                          <div key={candidate.id} className="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
+                            <div className="relative">
+                              <div className="relative w-16 h-16 mr-4">
+                                {candidate.image_url && !imageErrors[candidate.id] ? (
+                                  <Image
+                                    src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
+                                    alt={`${candidate.first_name} ${candidate.last_name}`}
+                                    fill
+                                    sizes="64px"
+                                    className="object-cover rounded-full"
+                                    onError={() => handleImageError(candidate.id)}
+                                  />
+                                ) : (
+                                  <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
+                                    <User className="w-8 h-8 text-gray-400" />
+                                  </div>
+                                )}
+                                <div className={`absolute -top-2 -right-2 rounded-full p-1 text-xs font-bold ${
+                                  index === 0 ? 'bg-blue-500 text-white' :
+                                  index === 1 ? 'bg-gray-500 text-white' :
+                                  'bg-gray-400 text-white'
+                                }`}>
+                                  {getRankLabel(index)}
+                                </div>
+                              </div>
+                            </div>
+                            
                             <div className="flex-1">
                               <div className="flex items-center justify-between">
                                 <div>
@@ -931,7 +1049,7 @@ export default function ElectionDetailsPage() {
                                     {candidate.first_name} {candidate.last_name}
                                   </h4>
                                   {candidate.party && (
-                                    <span className="text-sm text-gray-600">
+                                    <span className="text-sm text-black">
                                       {candidate.party}
                                     </span>
                                   )}
@@ -941,21 +1059,68 @@ export default function ElectionDetailsPage() {
                                     {Number(candidate.vote_count || 0).toLocaleString()}
                                   </div>
                                   <div className="text-sm text-gray-600">
-                                    {election.vote_count ? ((candidate.vote_count / election.vote_count) * 100).toFixed(2) : '0.00'}%
+                                    {election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
                                   </div>
                                 </div>
                               </div>
                             </div>
                           </div>
-                        ))
-                      ) : (
-                        <div className="text-center py-4 text-gray-500">
-                          No candidates for this position
-                        </div>
-                      )}
+                        ))}
+
+                        {/* Other Candidates */}
+                        {others.map(candidate => (
+                          <div key={candidate.id} className="flex items-center p-3 bg-gray-50 rounded-lg">
+                            <div className="relative w-16 h-16 mr-4">
+                              {candidate.image_url && !imageErrors[candidate.id] ? (
+                                <Image
+                                  src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
+                                  alt={`${candidate.first_name} ${candidate.last_name}`}
+                                  fill
+                                  sizes="64px"
+                                  className="object-cover rounded-full"
+                                  onError={() => handleImageError(candidate.id)}
+                                />
+                              ) : (
+                                <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
+                                  <User className="w-8 h-8 text-gray-400" />
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <h4 className="font-medium text-black">
+                                    {candidate.first_name} {candidate.last_name}
+                                  </h4>
+                                  {candidate.party && (
+                                    <span className="text-sm text-black">
+                                      {candidate.party}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-right">
+                                  <div className="font-bold text-black text-lg">
+                                    {Number(candidate.vote_count || 0).toLocaleString()}
+                                  </div>
+                                  <div className="text-sm text-gray-600">
+                                    {election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+
+                        {position.candidates && position.candidates.length === 0 && (
+                          <div className="text-center py-4 text-gray-500">
+                            No candidates for this position
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-8 text-gray-500">
@@ -963,7 +1128,7 @@ export default function ElectionDetailsPage() {
               </div>
             )}
           </div>
-        </>
+        </div>
       ) : null}
     </div>
   );

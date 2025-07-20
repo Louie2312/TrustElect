@@ -13,7 +13,7 @@ const iconMap = {
 
 export default function ReportCard({ report, onView, onGenerate, onDownload }) {
   return (
-    <div className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+    <div className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow bg-white">
       <div className="p-6">
         <div className="flex items-start justify-between mb-4">
           {iconMap[report.icon] || <FileText className="w-8 h-8 text-gray-500" />}

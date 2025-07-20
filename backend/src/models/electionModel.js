@@ -207,6 +207,24 @@ const createElection = async (electionData, userId, needsApproval = false) => {
       
       const election = electionResult.rows[0];
 
+      // Save precinct programs if provided
+      if (electionData.eligibleVoters.precinct && electionData.eligibleVoters.precinct.length > 0 && 
+          electionData.eligibleVoters.precinctPrograms) {
+          
+          for (const precinct of electionData.eligibleVoters.precinct) {
+              const programs = electionData.eligibleVoters.precinctPrograms[precinct] || [];
+              
+              if (programs.length > 0) {
+                  await client.query(
+                      `INSERT INTO election_precinct_programs 
+                       (election_id, precinct, programs) 
+                       VALUES ($1, $2, $3)`,
+                      [election.id, precinct, programs]
+                  );
+              }
+          }
+      }
+
       let studentQuery = `
           SELECT 
               id, 
@@ -310,46 +328,157 @@ const getAllElections = async () => {
 };
 
 const getElectionById = async (id) => {
-  const result = await pool.query(`
-    SELECT 
-      e.*,
-      (SELECT COUNT(*) FROM eligible_voters WHERE election_id = e.id) AS voter_count,
-      (SELECT COALESCE(COUNT(DISTINCT student_id), 0) FROM votes WHERE election_id = e.id) AS vote_count,
-      (SELECT JSON_BUILD_OBJECT(
-        'id', b.id,
-        'positions', (
-          SELECT JSON_AGG(
-            JSON_BUILD_OBJECT(
-              'id', p.id,
-              'name', p.name,
-              'max_choices', p.max_choices
-            )
+  try {
+    const electionQuery = `
+      SELECT 
+        e.*,
+        u.first_name || ' ' || u.last_name as creator_name,
+        CASE 
+          WHEN e.approved_by IS NOT NULL THEN (
+            SELECT first_name || ' ' || last_name 
+            FROM users 
+            WHERE id = e.approved_by
           )
-          FROM positions p
-          WHERE p.ballot_id = b.id
-        )
-      )
-      FROM ballots b
-      WHERE b.election_id = e.id
-      LIMIT 1) AS ballot
-    FROM elections e
-    WHERE e.id = $1
-  `, [id]);
-  
-  return result.rows[0];
+          ELSE NULL
+        END as approver_name
+      FROM elections e
+      LEFT JOIN users u ON e.created_by = u.id
+      WHERE e.id = $1
+    `;
+    
+    const electionResult = await pool.query(electionQuery, [id]);
+    
+    if (electionResult.rows.length === 0) {
+      return null;
+    }
+    
+    const election = electionResult.rows[0];
+    
+    // Get eligible voters criteria
+    const criteriaQuery = `
+      SELECT 
+        ARRAY_AGG(DISTINCT course_name) as programs,
+        ARRAY_AGG(DISTINCT year_level) as year_levels,
+        ARRAY_AGG(DISTINCT gender) as genders
+      FROM eligible_voters
+      WHERE election_id = $1
+    `;
+    
+    const criteriaResult = await pool.query(criteriaQuery, [id]);
+    const criteria = criteriaResult.rows[0];
+    
+    // Get precinct programs
+    const precinctProgramsQuery = `
+      SELECT precinct, programs
+      FROM election_precinct_programs
+      WHERE election_id = $1
+    `;
+    
+    const precinctProgramsResult = await pool.query(precinctProgramsQuery, [id]);
+    
+    // Convert precinct programs to the expected format
+    const precinctPrograms = {};
+    const precincts = [];
+    
+    precinctProgramsResult.rows.forEach(row => {
+      precincts.push(row.precinct);
+      precinctPrograms[row.precinct] = row.programs;
+    });
+    
+    // Combine all eligible voter criteria
+    const eligibleVoters = {
+      programs: criteria?.programs || [],
+      yearLevels: criteria?.year_levels || [],
+      gender: criteria?.genders || [],
+      precinct: precincts,
+      precinctPrograms: precinctPrograms
+    };
+    
+    return {
+      ...election,
+      eligible_voters: eligibleVoters
+    };
+  } catch (error) {
+    console.error("Error in getElectionById:", error);
+    throw error;
+  }
 };
 
 const updateElection = async (id, updates) => {
-  const fields = Object.keys(updates);
-  const values = Object.values(updates);
-
-  if (fields.length === 0) return null;
-
-  const setClause = fields.map((field, index) => `${field} = $${index + 1}`).join(", ");
-  const query = `UPDATE elections SET ${setClause} WHERE id = $${fields.length + 1} RETURNING *;`;
-
-  const result = await pool.query(query, [...values, id]);
-  return result.rows[0];
+  const client = await pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+    
+    // Update basic election details
+    let updateFields = [];
+    let values = [];
+    let paramCount = 1;
+    
+    const allowedFields = [
+      'title', 'description', 'date_from', 'date_to', 
+      'start_time', 'end_time', 'election_type', 'status'
+    ];
+    
+    allowedFields.forEach(field => {
+      if (updates[field] !== undefined) {
+        updateFields.push(`${field} = $${paramCount}`);
+        values.push(updates[field]);
+        paramCount++;
+      }
+    });
+    
+    if (updateFields.length > 0) {
+      values.push(id);
+      const query = `
+        UPDATE elections 
+        SET ${updateFields.join(', ')}
+        WHERE id = $${paramCount} 
+        RETURNING *
+      `;
+      
+      const result = await client.query(query, values);
+      
+      if (result.rows.length === 0) {
+        throw new Error("Election not found");
+      }
+    }
+    
+    // Handle precinct programs if provided
+    if (updates.eligible_voters && updates.eligible_voters.precinct && 
+        updates.eligible_voters.precinctPrograms) {
+      
+      // Delete existing precinct programs
+      await client.query(
+        'DELETE FROM election_precinct_programs WHERE election_id = $1',
+        [id]
+      );
+      
+      // Insert new precinct programs
+      for (const precinct of updates.eligible_voters.precinct) {
+        const programs = updates.eligible_voters.precinctPrograms[precinct] || [];
+        
+        if (programs.length > 0) {
+          await client.query(
+            `INSERT INTO election_precinct_programs 
+             (election_id, precinct, programs) 
+             VALUES ($1, $2, $3)`,
+            [id, precinct, programs]
+          );
+        }
+      }
+    }
+    
+    await client.query('COMMIT');
+    
+    // Return the updated election with all details
+    return await getElectionById(id);
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 
 const deleteElection = async (id) => {
@@ -731,5 +860,3 @@ module.exports = {
   getEligibleStudentsForCriteria,
   updateEligibleVoters
 };
-
-

@@ -218,6 +218,68 @@ export default function AdminDashboard() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [actionMessage, setActionMessage] = useState(null);
   const { hasPermission, permissionsLoading, permissions } = usePermissions();
+  const [uiDesign, setUiDesign] = useState(null);
+  const [landingContent, setLandingContent] = useState(null);
+
+  // Load UI design
+  useEffect(() => {
+    const loadUIDesign = async () => {
+      try {
+        const token = Cookies.get('token');
+        const response = await fetch(`${API_BASE}/studentUI`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Loaded UI design data:', data);
+          
+          // Ensure we have content data with proper structure
+          if (data && data.content) {
+            const config = {
+              type: data.content.type || 'poster',
+              background_image: data.content.background_image || null,
+              use_landing_design: data.content.use_landing_design || false
+            };
+            
+            setUiDesign(config);
+            
+            // If using landing design, fetch landing content
+            if (config.type === 'landing' || config.use_landing_design) {
+              try {
+                const landingResponse = await fetch(`${API_BASE}/content`);
+                if (landingResponse.ok) {
+                  const landingData = await landingResponse.json();
+                  console.log('Loaded landing content:', landingData);
+                  if (landingData && landingData.content) {
+                    setLandingContent(landingData.content);
+                  }
+                }
+              } catch (landingError) {
+                console.error('Error loading landing content:', landingError);
+              }
+            }
+          } else {
+            console.warn('UI design data has unexpected format:', data);
+            // Set default values if data structure is unexpected
+            setUiDesign({
+              type: 'poster',
+              background_image: null,
+              use_landing_design: false
+            });
+          }
+        } else {
+          console.error('Failed to load UI design, status:', response.status);
+        }
+      } catch (error) {
+        console.error('Error loading UI design:', error);
+      }
+    };
+    
+    loadUIDesign();
+  }, []);
 
   // Ensure user ID is available from token if needed
   useEffect(() => {
@@ -532,6 +594,60 @@ export default function AdminDashboard() {
     return 0;
   };
 
+  // Format image URL helper function
+  const formatImageUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith('blob:')) return url;
+    if (url.startsWith('http')) return url;
+
+    if (url.startsWith('/api/')) {
+      return `${API_BASE.replace('/api', '')}${url}`;
+    }
+
+    if (url.startsWith('/uploads/')) {
+      return `${API_BASE.replace('/api', '')}${url}`;
+    }
+    
+    return `${API_BASE}${url.startsWith('/') ? url : '/' + url}`;
+  };
+  
+  // Landing page layout component for when landing design is selected
+  const LandingPageLayout = () => {
+    if (!landingContent) return null;
+    
+    return (
+      <div className="landing-page-container">
+        {/* Hero Section */}
+        <section 
+          className="text-white py-12 px-6"
+          style={{
+            backgroundColor: landingContent.hero?.bgColor || '#01579B',
+            color: landingContent.hero?.textColor || '#ffffff',
+            backgroundImage: landingContent.hero?.posterImage ? `url(${formatImageUrl(landingContent.hero.posterImage)})` : 'none',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat'
+          }}
+        >
+          <div className="container mx-auto max-w-6xl">
+            <h1 
+              className="text-3xl md:text-4xl font-bold leading-tight mb-4"
+              style={{ color: landingContent.hero?.textColor || '#ffffff' }}
+            >
+              {landingContent.hero?.title || 'Welcome to TrustElect'}
+            </h1>
+            <p 
+              className="text-xl"
+              style={{ color: landingContent.hero?.textColor || '#ffffff' }}
+            >
+              {landingContent.hero?.subtitle || 'Your trusted voting platform'}
+            </p>
+          </div>
+        </section>
+      </div>
+    );
+  };
+
   if (isLoading || permissionsLoading) {
     return (
       <div className="flex h-full w-full items-center justify-center p-20">
@@ -543,24 +659,35 @@ export default function AdminDashboard() {
     );
   }
 
+  // Remove all UI design/background/landing logic from this file.
+  // Only keep dashboard content, stats, and election logic.
+  // Remove containerStyle, contentStyle, uiDesign, landingContent, and related code.
+
+  const contentStyle = {
+    minHeight: '100vh',
+    padding: '2rem 1rem'
+  };
+
   // If the user doesn't have permission to view elections, show an access denied message
   if (!hasPermission('elections', 'view')) {
     return (
-      <div className="container mx-auto px-4 py-8 bg-gray-50 min-h-screen">
-        <div className="bg-white p-8 rounded-lg shadow-md text-center">
-          <div className="flex items-center justify-center">
-            <div className="bg-red-100 p-3 rounded-full">
-              <Lock className="h-8 w-8 text-red-600" />
+      <div style={contentStyle}>
+        <div className="container mx-auto px-4 py-8 min-h-screen relative z-10">
+          <div className="bg-white/90 backdrop-blur-sm p-8 rounded-lg shadow-md text-center">
+            <div className="flex items-center justify-center">
+              <div className="bg-red-100 p-3 rounded-full">
+                <Lock className="h-8 w-8 text-red-600" />
+              </div>
             </div>
-          </div>
-          <h2 className="text-2xl font-bold mt-4 mb-2 text-black">Access Denied</h2>
-          <p className="text-gray-600 mb-4">
-            You don't have permission to view elections. Please contact your administrator for access.
-          </p>
-          <div className="mt-6">
-            <Link href="/admin" className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">
-              Back to Dashboard
-            </Link>
+            <h2 className="text-2xl font-bold mt-4 mb-2 text-black">Access Denied</h2>
+            <p className="text-gray-600 mb-4">
+              You don't have permission to view elections. Please contact your administrator for access.
+            </p>
+            <div className="mt-6">
+              <Link href="/admin" className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">
+                Back to Dashboard
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -568,152 +695,165 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 bg-gray-50 min-h-screen">
-      <div className="flex flex-col lg:flex-row gap-6 mb-8">
-        <div className="lg:w-3/4">
-          <h1 className="text-3xl font-bold mb-2 text-black">Dashboard</h1>
-          
-          {actionMessage && (
-            <div className={`mb-4 p-4 rounded-lg shadow ${actionMessage.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' : 'bg-red-100 text-red-800 border-l-4 border-red-500'}`}>
-              {actionMessage.text}
-            </div>
-          )}
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="font-medium text-gray-500 mb-2 text-black">Total Elections</h3>
-              <p className="text-3xl font-bold text-black">
-                {Array.isArray(stats) 
-                  ? stats.reduce((sum, stat) => sum + parseInt(stat.count || 0), 0)
-                  : stats?.elections_count || 0}
-              </p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="font-medium text-gray-500 mb-2 text-black">Total Voters</h3>
-              <p className="text-3xl font-bold text-black">
-                {Array.isArray(stats) 
-                  ? stats.reduce((sum, stat) => sum + parseInt(stat.total_voters || 0), 0).toLocaleString()
-                  : Number(stats?.voters_count || 0).toLocaleString()}
-              </p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="font-medium text-gray-500 mb-2 text-black">Total Votes Cast</h3>
-              <p className="text-3xl font-bold text-black">
-                {Array.isArray(stats) 
-                  ? stats.reduce((sum, stat) => sum + parseInt(stat.total_votes || 0), 0)
-                  : stats?.votes_count || 0}
-              </p>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow mb-6 p-1">
-            <div className="flex flex-wrap">
-              {statusTabs.map(tab => (
-                <button
-                  key={tab.id}
-                  className={`flex items-center justify-center px-4 py-3 font-medium text-sm transition-colors duration-200 flex-1 ${activeTab === tab.id ? 'bg-blue-50 text-blue-600 rounded-md' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
-                  onClick={() => setActiveTab(tab.id)}
-                >
-                  <div className="flex flex-col items-center">
-                    <div className="flex items-center mb-1">
-                      {tab.icon}
-                      <span className="ml-2">{tab.name}</span>
-                    </div>
-                    <span className="bg-gray-100 rounded-full px-3 py-1 text-xs font-bold">
-                      {getStatValue(tab.id, 'count')}
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="mb-6 flex flex-wrap justify-between items-center">
-            <h2 className="text-xl font-bold text-black">
-              {activeTab === 'ongoing' && 'Ongoing Elections'}
-              {activeTab === 'upcoming' && 'Upcoming Elections'}
-              {activeTab === 'completed' && 'Completed Elections'}
-              {activeTab === 'to_approve' && 'Elections Pending Approval'}
-            </h2>
-            {hasPermission('elections', 'create') && (
-              <Link 
-                href="/admin/election/create"
-                className="inline-flex items-center px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-md hover:shadow-lg transition-all mt-2 md:mt-0"
-              >
-                + Create New Election
-              </Link>
+    <div style={contentStyle}>
+      <div className="container mx-auto relative z-10">
+        <div className="flex flex-col lg:flex-row gap-6 mb-8">
+          <div className="lg:w-3/4">
+            <h1 className="text-3xl font-bold mb-2 text-black bg-white/80 backdrop-blur-sm p-4 rounded-lg shadow">Dashboard</h1>
+            
+            {actionMessage && (
+              <div className={`mb-4 p-4 rounded-lg shadow ${
+                actionMessage.type === 'success' 
+                  ? 'bg-green-100 text-green-800 border-l-4 border-green-500' 
+                  : 'bg-red-100 text-red-800 border-l-4 border-red-500'
+              }`}>
+                {actionMessage.text}
+              </div>
             )}
-          </div>
-
-          {error && (
-            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg shadow mb-6">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <XCircle className="h-5 w-5 text-red-500" />
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm">{error}</p>
-                </div>
+            
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow p-6">
+                <h3 className="font-medium text-gray-500 mb-2">Total Elections</h3>
+                <p className="text-3xl font-bold text-black">
+                  {Array.isArray(stats) 
+                    ? stats.reduce((sum, stat) => sum + parseInt(stat.count || 0), 0)
+                    : stats?.elections_count || 0}
+                </p>
+              </div>
+              <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow p-6">
+                <h3 className="font-medium text-gray-500 mb-2">Total Voters</h3>
+                <p className="text-3xl font-bold text-black">
+                  {Array.isArray(stats) 
+                    ? stats.reduce((sum, stat) => sum + parseInt(stat.total_voters || 0), 0).toLocaleString()
+                    : Number(stats?.voters_count || 0).toLocaleString()}
+                </p>
+              </div>
+              <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow p-6">
+                <h3 className="font-medium text-gray-500 mb-2">Total Votes Cast</h3>
+                <p className="text-3xl font-bold text-black">
+                  {Array.isArray(stats) 
+                    ? stats.reduce((sum, stat) => sum + parseInt(stat.total_votes || 0), 0)
+                    : stats?.votes_count || 0}
+                </p>
               </div>
             </div>
-          )}
 
-          {isLoading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            {/* Status Tabs */}
+            <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow mb-6 p-1">
+              <div className="flex flex-wrap">
+                {statusTabs.map(tab => (
+                  <button
+                    key={tab.id}
+                    className={`flex items-center justify-center px-4 py-3 font-medium text-sm transition-colors duration-200 flex-1 ${
+                      activeTab === tab.id 
+                        ? 'bg-blue-50 text-blue-600 rounded-md' 
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                    }`}
+                    onClick={() => setActiveTab(tab.id)}
+                  >
+                    <div className="flex flex-col items-center">
+                      <div className="flex items-center mb-1">
+                        {tab.icon}
+                        <span className="ml-2">{tab.name}</span>
+                      </div>
+                      <span className="bg-gray-100 rounded-full px-3 py-1 text-xs font-bold">
+                        {getStatValue(tab.id, 'count')}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {elections.length > 0 ? (
-                elections.map((election, index) => (
-                  <ElectionCard 
-                    key={`${election.id}-${index}`} 
-                    election={election} 
-                    onClick={handleElectionClick}
-                    onDeleteClick={handleDeleteClick}
-                    canDelete={hasPermission('elections', 'delete')}
-                    activeTab={activeTab}
-                  />
-                ))
-              ) : (
-                <div className="col-span-full text-center py-12 bg-white rounded-lg shadow">
-                  <div className="text-gray-400 mb-4">
-                    {activeTab === 'ongoing' && <Clock className="w-16 h-16 mx-auto" />}
-                    {activeTab === 'upcoming' && <Calendar className="w-16 h-16 mx-auto" />}
-                    {activeTab === 'completed' && <CheckCircle className="w-16 h-16 mx-auto" />}
-                    {activeTab === 'to_approve' && <AlertCircle className="w-16 h-16 mx-auto" />}
-                  </div>
-                  <h3 className="text-xl font-medium text-gray-900 mb-2">
-                    No {activeTab === 'to_approve' ? 'elections pending approval' : `${activeTab} elections`}
-                  </h3>
-                  <p className="text-gray-500 max-w-md mx-auto">
-                    {activeTab === 'ongoing' && 'There are currently no ongoing elections.'}
-                    {activeTab === 'upcoming' && 'No upcoming elections scheduled.'}
-                    {activeTab === 'completed' && 'No completed elections yet. Elections that have ended will be shown here.'}
-                    {activeTab === 'to_approve' && 'No elections are waiting for approval.'}
-                  </p>
-                </div>
+
+            <div className="mb-6 flex flex-wrap justify-between items-center">
+              <h2 className="text-xl font-bold text-black">
+                {activeTab === 'ongoing' && 'Ongoing Elections'}
+                {activeTab === 'upcoming' && 'Upcoming Elections'}
+                {activeTab === 'completed' && 'Completed Elections'}
+                {activeTab === 'to_approve' && 'Elections Pending Approval'}
+              </h2>
+              {hasPermission('elections', 'create') && (
+                <Link 
+                  href="/admin/election/create"
+                  className="inline-flex items-center px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-md hover:shadow-lg transition-all mt-2 md:mt-0"
+                >
+                  + Create New Election
+                </Link>
               )}
             </div>
-          )}
+
+            {error && (
+              <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg shadow mb-6">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <XCircle className="h-5 w-5 text-red-500" />
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm">{error}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {isLoading ? (
+              <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {elections.length > 0 ? (
+                  elections.map((election, index) => (
+                    <ElectionCard 
+                      key={`${election.id}-${index}`} 
+                      election={election} 
+                      onClick={handleElectionClick}
+                      onDeleteClick={handleDeleteClick}
+                      canDelete={hasPermission('elections', 'delete')}
+                      activeTab={activeTab}
+                    />
+                  ))
+                ) : (
+                  <div className="col-span-full text-center py-12 bg-white rounded-lg shadow">
+                    <div className="text-gray-400 mb-4">
+                      {activeTab === 'ongoing' && <Clock className="w-16 h-16 mx-auto" />}
+                      {activeTab === 'upcoming' && <Calendar className="w-16 h-16 mx-auto" />}
+                      {activeTab === 'completed' && <CheckCircle className="w-16 h-16 mx-auto" />}
+                      {activeTab === 'to_approve' && <AlertCircle className="w-16 h-16 mx-auto" />}
+                    </div>
+                    <h3 className="text-xl font-medium text-gray-900 mb-2">
+                      No {activeTab === 'to_approve' ? 'elections pending approval' : `${activeTab} elections`}
+                    </h3>
+                    <p className="text-gray-500 max-w-md mx-auto">
+                      {activeTab === 'ongoing' && 'There are currently no ongoing elections.'}
+                      {activeTab === 'upcoming' && 'No upcoming elections scheduled.'}
+                      {activeTab === 'completed' && 'No completed elections yet. Elections that have ended will be shown here.'}
+                      {activeTab === 'to_approve' && 'No elections are waiting for approval.'}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          
+          <div className="lg:w-1/4 space-y-6">
+            <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow p-6">
+              <PermissionDisplay />
+            </div>
+          </div>
         </div>
         
-        <div className="lg:w-1/4 space-y-6">
-          {/* Permissions Display */}
-          <PermissionDisplay />
-        </div>
+        <DeleteConfirmationModal 
+          isOpen={deleteModalOpen}
+          election={electionToDelete}
+          onCancel={() => {
+            setDeleteModalOpen(false);
+            setElectionToDelete(null);
+          }}
+          onConfirm={handleDeleteConfirm}
+          isDeleting={isDeleting}
+        />
       </div>
-      
-      <DeleteConfirmationModal 
-        isOpen={deleteModalOpen}
-        election={electionToDelete}
-        onCancel={() => {
-          setDeleteModalOpen(false);
-          setElectionToDelete(null);
-        }}
-        onConfirm={handleDeleteConfirm}
-        isDeleting={isDeleting}
-      />
     </div>
   );
 }

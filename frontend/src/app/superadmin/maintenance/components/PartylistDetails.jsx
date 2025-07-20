@@ -4,15 +4,10 @@ import { toast } from "react-toastify";
 import axios from 'axios';
 import Cookies from "js-cookie";
 import { useDropzone } from 'react-dropzone';
+import { X, Upload, Image as ImageIcon } from "lucide-react";
 
-
-const api = axios.create({
-  baseURL: 'http://localhost:5000',
-  withCredentials: true,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-});
+const API_BASE = 'http://localhost:5000/api';
+const BASE_URL = 'http://localhost:5000';
 
 function formatNameSimple(lastName, firstName, fallback) {
   const cap = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
@@ -41,7 +36,8 @@ const PartylistDetails = ({
     lastName: "",
     course: "",
     position: "",
-    isRepresentative: false
+    isRepresentative: false,
+    image: null
   });
   const [candidates, setCandidates] = useState([]);
   const [image, setImage] = useState(null);
@@ -66,6 +62,11 @@ const PartylistDetails = ({
   const [uploadStatus, setUploadStatus] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [batchResults, setBatchResults] = useState(null);
+  const [candidateFormPreview, setCandidateFormPreview] = useState(null);
+  const [imagePreviews, setImagePreviews] = useState({});
+  const [errors, setErrors] = useState({});
+  const [pendingImages, setPendingImages] = useState({});
+  const [savingImages, setSavingImages] = useState({});
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: {
@@ -565,6 +566,37 @@ const PartylistDetails = ({
     }
   };
 
+  const handleCandidateFormImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (!file.type.match('image.*')) {
+        setErrors(prev => ({
+          ...prev,
+          candidateFormImage: 'Please select a valid image file'
+        }));
+        return;
+      }
+
+      if (file.size > 2 * 1024 * 1024) {
+        setErrors(prev => ({
+          ...prev,
+          candidateFormImage: 'Image must be less than 2MB'
+        }));
+        return;
+      }
+
+      setCandidateForm(prev => ({ ...prev, image: file }));
+      setCandidateFormPreview(URL.createObjectURL(file));
+      
+      // Clear any previous errors
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.candidateFormImage;
+        return newErrors;
+      });
+    }
+  };
+
   const handleAddCandidate = async (e) => {
     e.preventDefault();
 
@@ -601,6 +633,28 @@ const PartylistDetails = ({
     setIsLoading(true);
     try {
       const token = Cookies.get("token");
+      let imageUrl = null;
+
+      // Upload image if provided
+      if (candidateForm.image) {
+        const formData = new FormData();
+        formData.append('image', candidateForm.image);
+
+        const imageResponse = await axios.post(
+          `${API_BASE}/partylist-candidates/upload-image`,
+          formData,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            }
+          }
+        );
+
+        if (imageResponse.data.success) {
+          imageUrl = imageResponse.data.filePath;
+        }
+      }
+
       const requestData = {
         studentId: studentData?.id,
         firstName: candidateForm.firstName,
@@ -608,7 +662,8 @@ const PartylistDetails = ({
         studentNumber: candidateForm.studentNumber,
         course: candidateForm.course,
         position: candidateForm.position,
-        isRepresentative: candidateForm.isRepresentative
+        isRepresentative: candidateForm.isRepresentative,
+        imageUrl
       };
       
       console.log('Adding candidate with data:', requestData);
@@ -635,8 +690,10 @@ const PartylistDetails = ({
           lastName: "",
           course: "",
           position: "",
-          isRepresentative: false
+          isRepresentative: false,
+          image: null
         });
+        setCandidateFormPreview(null);
         setIsAddingCandidate(false);
         setStudentFound(false);
         setStudentData(null);
@@ -748,6 +805,263 @@ const PartylistDetails = ({
     'Auditor',
     'PRO'
   ];
+
+  const handleImageUpload = async (candidateId, file) => {
+    try {
+      if (!file || !file.type.match('image.*')) {
+        setErrors(prev => ({
+          ...prev,
+          [`candidate_${candidateId}_image`]: 'Please select a valid image file'
+        }));
+        return;
+      }
+
+      if (file.size > 2 * 1024 * 1024) {
+        setErrors(prev => ({
+          ...prev,
+          [`candidate_${candidateId}_image`]: 'Image must be less than 2MB'
+        }));
+        return;
+      }
+
+      const previewUrl = URL.createObjectURL(file);
+      setImagePreviews(prev => ({
+        ...prev,
+        [candidateId]: previewUrl
+      }));
+
+      // Store the file for later saving
+      setPendingImages(prev => ({
+        ...prev,
+        [candidateId]: file
+      }));
+
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[`candidate_${candidateId}_image`];
+        return newErrors;
+      });
+
+    } catch (error) {
+      console.error('Error handling image upload:', error);
+      setErrors(prev => ({
+        ...prev,
+        [`candidate_${candidateId}_image`]: error.message || 'Failed to handle image'
+      }));
+
+      setImagePreviews(prev => {
+        const newPreviews = { ...prev };
+        delete newPreviews[candidateId];
+        return newPreviews;
+      });
+    }
+  };
+
+  const saveCandidateImage = async (candidateId) => {
+    const file = pendingImages[candidateId];
+    if (!file) return;
+
+    setSavingImages(prev => ({ ...prev, [candidateId]: true }));
+
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const token = Cookies.get('token');
+      const imageResponse = await axios.post(
+        `${API_BASE}/partylist-candidates/upload-image`,
+        formData,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          }
+        }
+      );
+
+      if (!imageResponse.data.success || !imageResponse.data.filePath) {
+        throw new Error('Failed to upload image');
+      }
+
+      // Update candidate with new image URL
+      await axios.put(
+        `${API_BASE}/partylist-candidates/candidates/${candidateId}`,
+        { imageUrl: imageResponse.data.filePath },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      // Update local state
+      setCandidates(prev => 
+        prev.map(cand => 
+          cand.id === candidateId 
+            ? { ...cand, image_url: imageResponse.data.filePath }
+            : cand
+        )
+      );
+
+      // Clear pending image and preview
+      setPendingImages(prev => {
+        const newPending = { ...prev };
+        delete newPending[candidateId];
+        return newPending;
+      });
+
+      setImagePreviews(prev => {
+        const newPreviews = { ...prev };
+        delete newPreviews[candidateId];
+        return newPreviews;
+      });
+
+      toast.success("Image saved successfully!");
+
+    } catch (error) {
+      console.error('Error saving image:', error);
+      setErrors(prev => ({
+        ...prev,
+        [`candidate_${candidateId}_image`]: error.message || 'Failed to save image'
+      }));
+      toast.error("Failed to save image. Please try again.");
+    } finally {
+      setSavingImages(prev => ({ ...prev, [candidateId]: false }));
+    }
+  };
+
+  const cancelImageUpload = (candidateId) => {
+    // Clear pending image and preview
+    setPendingImages(prev => {
+      const newPending = { ...prev };
+      delete newPending[candidateId];
+      return newPending;
+    });
+
+    setImagePreviews(prev => {
+      const newPreviews = { ...prev };
+      delete newPreviews[candidateId];
+      return newPreviews;
+    });
+
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[`candidate_${candidateId}_image`];
+      return newErrors;
+    });
+  };
+
+  const renderCandidateRow = (candidate) => (
+    <div key={candidate.id} className="px-4 py-3 border-b border-gray-100 hover:bg-gray-50">
+      <div className="grid grid-cols-12 gap-4 items-center">
+        {/* Photo */}
+        <div className="col-span-2">
+          <label className="block w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 overflow-hidden cursor-pointer hover:border-blue-500 transition-colors relative group">
+            {imagePreviews[candidate.id] ? (
+              <div className="w-full h-full relative">
+                <img 
+                  src={imagePreviews[candidate.id]} 
+                  alt="Candidate preview" 
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Upload className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </div>
+            ) : candidate.image_url ? (
+              <div className="w-full h-full relative">
+                <img 
+                  src={`${BASE_URL}${candidate.image_url}`}
+                  alt={`${candidate.first_name} ${candidate.last_name}`}
+                  className="absolute inset-0 w-full h-full object-cover"
+                  onError={(e) => {
+                    console.error(`Error loading image: ${candidate.image_url}`);
+                    e.target.src = '/default-candidate.png';
+                  }}
+                />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Upload className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </div>
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                <ImageIcon className="w-4 h-4 mb-1" />
+                <span className="text-xs">Upload</span>
+              </div>
+            )}
+            <input
+              type="file"
+              accept="image/jpeg, image/png, image/webp"
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files && e.target.files[0]) {
+                  handleImageUpload(candidate.id, e.target.files[0]);
+                }
+              }}
+            />
+          </label>
+          {errors[`candidate_${candidate.id}_image`] && (
+            <p className="text-red-500 text-xs mt-1">{errors[`candidate_${candidate.id}_image`]}</p>
+          )}
+        </div>
+
+        {/* Name */}
+        <div className="col-span-3">
+          <div className="text-sm font-medium text-gray-900">
+            {formatNameSimple(candidate.last_name, candidate.first_name)}
+          </div>
+        </div>
+
+        {/* Student Number */}
+        <div className="col-span-2">
+          <div className="text-sm text-gray-600">
+            {candidate.student_number}
+          </div>
+        </div>
+
+        {/* Course */}
+        <div className="col-span-3">
+          <div className="text-sm text-gray-600">
+            {candidate.course}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="col-span-2 text-center">
+          <div className="flex flex-col space-y-1">
+            {/* Save/Cancel buttons for pending images */}
+            {pendingImages[candidate.id] && (
+              <div className="flex space-x-1">
+                <button
+                  onClick={() => saveCandidateImage(candidate.id)}
+                  disabled={savingImages[candidate.id]}
+                  className="w-12 h-6 bg-green-500 text-white rounded hover:bg-green-600 font-medium text-xs inline-flex items-center justify-center disabled:bg-green-300"
+                >
+                  {savingImages[candidate.id] ? '...' : 'Save'}
+                </button>
+                <button
+                  onClick={() => cancelImageUpload(candidate.id)}
+                  disabled={savingImages[candidate.id]}
+                  className="w-12 h-6 bg-gray-500 text-white rounded hover:bg-gray-600 font-medium text-xs inline-flex items-center justify-center disabled:bg-gray-300"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+            
+            {/* Remove button */}
+            <button
+              onClick={() => handleRemoveCandidate(candidate.id, `${candidate.first_name} ${candidate.last_name}`)}
+              className="w-16 h-7 bg-red-500 text-white rounded hover:bg-red-600 font-medium text-xs inline-flex items-center justify-center"
+              disabled={isLoading || savingImages[candidate.id]}
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div>
@@ -968,11 +1282,62 @@ const PartylistDetails = ({
                         Representative Only
                       </label>
                     </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-black mb-1">Candidate Photo</label>
+                      <div className="flex items-center space-x-4">
+                        <label className="block w-32 h-32 rounded-lg border-2 border-dashed border-gray-300 overflow-hidden cursor-pointer hover:border-blue-500 transition-colors relative group">
+                          {candidateFormPreview ? (
+                            <div className="w-full h-full relative">
+                              <img 
+                                src={candidateFormPreview} 
+                                alt="Candidate preview" 
+                                className="absolute inset-0 w-full h-full object-cover"
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <Upload className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                              <ImageIcon className="w-6 h-6 mb-2" />
+                              <span className="text-xs">Upload Photo</span>
+                            </div>
+                          )}
+                          <input
+                            type="file"
+                            accept="image/jpeg, image/png, image/webp"
+                            className="hidden"
+                            onChange={handleCandidateFormImageChange}
+                          />
+                        </label>
+                        <div className="flex-1">
+                          <p className="text-sm text-gray-600 mb-2">
+                            Upload a photo for the candidate (optional)
+                          </p>
+                          {errors.candidateFormImage && (
+                            <p className="text-red-500 text-sm">{errors.candidateFormImage}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
+                  
                   <div className="flex justify-end space-x-2 mt-4">
                     <button
                       type="button"
-                      onClick={() => setIsAddingCandidate(false)}
+                      onClick={() => {
+                        setIsAddingCandidate(false);
+                        setCandidateForm({
+                          studentNumber: "",
+                          firstName: "",
+                          lastName: "",
+                          course: "",
+                          position: "",
+                          isRepresentative: false,
+                          image: null
+                        });
+                        setCandidateFormPreview(null);
+                      }}
                       className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 text-black"
                     >
                       Cancel
@@ -1006,42 +1371,31 @@ const PartylistDetails = ({
                     .map(([position, positionCandidates]) => (
                       <div key={position} className="mb-6">
                         <h4 className="px-4 py-2 bg-gray-100 font-bold text-black">{position}</h4>
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider w-1/3">Name</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider w-1/4">Student #</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider w-1/4">Course</th>
-                              <th className="px-4 py-3 text-center text-xs font-medium text-black uppercase tracking-wider w-1/6">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {positionCandidates.map(candidate => (
-                              <tr key={candidate.id}>
-                                <td className="px-4 py-3 whitespace-nowrap">
-                                  <div className="text-sm font-medium text-gray-900">
-                                    {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
-                                  </div>
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-sm text-black">
-                                  {candidate.student_number}
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-sm text-black">
-                                  {candidate.course}
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-center">
-                                  <button
-                                    onClick={() => handleRemoveCandidate(candidate.id, `${candidate.first_name} ${candidate.last_name}`)}
-                                    className="w-20 h-8 bg-red-500 text-white rounded hover:bg-red-600 font-medium text-xs inline-flex items-center justify-center"
-                                    disabled={isLoading}
-                                  >
-                                    Remove
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                        
+                        {/* Header labels */}
+                        <div className="px-4 py-3 bg-gray-50 border-b">
+                          <div className="grid grid-cols-12 gap-4 items-center">
+                            <div className="col-span-2 text-xs font-medium text-black uppercase tracking-wider">
+                              Photo
+                            </div>
+                            <div className="col-span-3 text-xs font-medium text-black uppercase tracking-wider">
+                              Name
+                            </div>
+                            <div className="col-span-2 text-xs font-medium text-black uppercase tracking-wider">
+                              Student Number
+                            </div>
+                            <div className="col-span-3 text-xs font-medium text-black uppercase tracking-wider">
+                              Course
+                            </div>
+                            <div className="col-span-2 text-xs font-medium text-black uppercase tracking-wider text-center">
+                              Actions
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          {positionCandidates.map(candidate => renderCandidateRow(candidate))}
+                        </div>
                       </div>
                     ))}
                   
@@ -1049,42 +1403,31 @@ const PartylistDetails = ({
                   {representatives.length > 0 && (
                     <div className="mb-6">
                       <h4 className="px-4 py-2 bg-gray-100 font-bold text-black">Representatives</h4>
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider w-1/3">Name</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider w-1/4">Student #</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase tracking-wider w-1/4">Course</th>
-                            <th className="px-4 py-3 text-center text-xs font-medium text-black uppercase tracking-wider w-1/6">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {representatives.map(candidate => (
-                            <tr key={candidate.id}>
-                              <td className="px-4 py-3 whitespace-nowrap">
-                                <div className="text-sm font-medium text-gray-900">
-                                  {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-black">
-                                {candidate.student_number}
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-black">
-                                {candidate.course}
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-center">
-                                <button
-                                  onClick={() => handleRemoveCandidate(candidate.id, `${candidate.first_name} ${candidate.last_name}`)}
-                                  className="w-20 h-8 bg-red-500 text-white rounded hover:bg-red-600 font-medium text-xs inline-flex items-center justify-center"
-                                  disabled={isLoading}
-                                >
-                                  Remove
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                      
+                      {/* Header labels for representatives */}
+                      <div className="px-4 py-3 bg-gray-50 border-b">
+                        <div className="grid grid-cols-12 gap-4 items-center">
+                          <div className="col-span-2 text-xs font-medium text-gray-600 uppercase tracking-wider">
+                            Photo
+                          </div>
+                          <div className="col-span-3 text-xs font-medium text-gray-600 uppercase tracking-wider">
+                            Name
+                          </div>
+                          <div className="col-span-2 text-xs font-medium text-gray-600 uppercase tracking-wider">
+                            Student #
+                          </div>
+                          <div className="col-span-3 text-xs font-medium text-gray-600 uppercase tracking-wider">
+                            Course
+                          </div>
+                          <div className="col-span-2 text-xs font-medium text-gray-600 uppercase tracking-wider text-center">
+                            Actions
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        {representatives.map(candidate => renderCandidateRow(candidate))}
+                      </div>
                     </div>
                   )}
                 </div>

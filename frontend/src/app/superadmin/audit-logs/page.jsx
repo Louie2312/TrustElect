@@ -102,7 +102,8 @@ export default function AuditLogsPage() {
         const seenLogs = new Set();
         
         res.data.data.forEach(log => {
-          const logKey = `${log.action}-${log.created_at}-${log.entity_id}-${log.user_id}`;
+          // Create a more unique key by including more fields
+          const logKey = `${log.action}-${log.created_at}-${log.entity_id}-${log.user_id}-${log.entity_type}`;
           if (!seenLogs.has(logKey)) {
             seenLogs.add(logKey);
             uniqueLogs.push(log);

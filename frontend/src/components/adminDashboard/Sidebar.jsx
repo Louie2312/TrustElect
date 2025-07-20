@@ -123,6 +123,15 @@ export default function Sidebar() {
           {!permissionsLoading && hasPermission('auditLog', 'view') && (
             <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/admin/audit-logs")}>Audit Logs</button>
           )}
+
+          {/* Only show Reports if user has permission */}
+          {/* Reports button - always visible for admins */}
+            <button 
+              className="block w-full text-left hover:bg-[#01579B] p-3 rounded" 
+              onClick={() => router.push("/admin/reports")}
+            >
+              Reports
+            </button>
         </nav>
       </aside>   
     </>

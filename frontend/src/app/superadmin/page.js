@@ -212,6 +212,7 @@ export default function SuperAdminDashboard() {
   const [electionToDelete, setElectionToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [actionMessage, setActionMessage] = useState(null);
+  const [totalUniqueVoters, setTotalUniqueVoters] = useState(0);
 
   const loadElections = async (status) => {
     try {
@@ -291,6 +292,26 @@ export default function SuperAdminDashboard() {
     }
   };
 
+  const loadTotalUniqueVoters = async () => {
+    try {
+      // Using the preview-voters endpoint that returns the total count of students
+      const response = await fetchWithAuth('/elections/preview-voters', {
+        method: 'POST',
+        body: JSON.stringify({
+          eligible_voters: {
+            programs: [],
+            yearLevels: [],
+            gender: []
+          }
+        })
+      });
+      setTotalUniqueVoters(response.count || 0);
+    } catch (err) {
+      console.error("[SuperAdmin] Failed to load total unique voters:", err);
+      setTotalUniqueVoters(0);
+    }
+  };
+
   useEffect(() => {
     // Initial load of everything
     const initialLoad = async () => {
@@ -302,7 +323,8 @@ export default function SuperAdminDashboard() {
 
         await Promise.all([
           loadStats(),
-          loadElections(activeTab)
+          loadElections(activeTab),
+          loadTotalUniqueVoters()
         ]);
       } catch (error) {
         console.error('[SuperAdmin] Error during initial load:', error);
@@ -427,7 +449,7 @@ export default function SuperAdminDashboard() {
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="font-medium text-black mb-2 text-black">Total Voters</h3>
           <p className="text-3xl font-bold text-black">
-            {Number(stats.reduce((sum, stat) => sum + parseInt(stat.total_voters || 0), 0)).toLocaleString()}
+            {Number(totalUniqueVoters).toLocaleString()}
           </p>
         </div>
         <div className="bg-white rounded-lg shadow p-6">

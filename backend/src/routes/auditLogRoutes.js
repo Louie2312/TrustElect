@@ -15,6 +15,13 @@ router.get(
   auditLogController.getAuditLogs
 );
 
+// Get audit logs summary
+router.get(
+  '/summary',
+  checkPermission('auditLog', 'canView'),
+  auditLogController.getAuditLogsSummary
+);
+
 // Create audit logs
 router.post(
   '/',
@@ -22,7 +29,21 @@ router.post(
   auditLogController.createAuditLog
 );
 
-// Delete old audit logs
+// Get user activity history
+router.get(
+  '/user/:userId',
+  checkPermission('auditLog', 'canView'),
+  auditLogController.getUserActivityHistory
+);
+
+// Get entity activity history
+router.get(
+  '/entity/:entityType/:entityId',
+  checkPermission('auditLog', 'canView'),
+  auditLogController.getEntityActivityHistory
+);
+
+// Delete old audit logs (admin only)
 router.delete(
   '/old',
   checkPermission('auditLog', 'canDelete'),

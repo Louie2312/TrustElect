@@ -23,7 +23,8 @@ const {
     getPendingApprovalElections,
     sendResultNotifications,
     getStudentElectionStatus,
-    updateElectionCriteria
+    updateElectionCriteria,
+    getCompletedElectionResults
 } = require("../controllers/electionController");
 const {
     getBallotByElection
@@ -50,6 +51,7 @@ router.get('/:id/details', verifyToken, getElectionDetails);
 router.get('/:id/criteria', verifyToken, getElectionEligibilityCriteria);
 router.put('/:id/criteria', verifyToken, updateElectionCriteria);
 router.get("/:id/ballot", verifyToken, getBallotByElection);
+router.get('/completed/:id/results', verifyToken, getCompletedElectionResults);
 router.get("/:id", verifyToken, getElectionById);
 router.put("/:id", verifyToken, updateElection);
 router.delete("/:id", verifyToken, deleteElection);
