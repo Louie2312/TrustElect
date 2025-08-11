@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { format } from 'date-fns';
 import { useAuth } from '@/context/AuthContext';
+import { Download } from 'lucide-react';
+import { generateReport } from '@/utils/reportGenerator';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -48,6 +50,38 @@ export default function ElectionSummaryReport() {
     }
   };
 
+  const handleDownload = async () => {
+    try {
+      const reportData = {
+        title: "Election Summary Report",
+        description: "Overview of all elections with detailed statistics and voter turnout",
+        summary: {
+          total_elections: summaryData.summary.total_elections,
+          ongoing_elections: summaryData.summary.ongoing_elections,
+          completed_elections: summaryData.summary.completed_elections,
+          upcoming_elections: summaryData.summary.upcoming_elections,
+          total_eligible_voters: summaryData.summary.total_eligible_voters,
+          total_votes_cast: summaryData.summary.total_votes_cast,
+          voter_turnout_percentage: summaryData.summary.voter_turnout_percentage
+        },
+        recent_elections: summaryData.recent_elections.map(election => ({
+          title: election.title,
+          election_type: election.election_type,
+          status: election.status,
+          start_date: format(new Date(election.start_date), 'MMM d, yyyy'),
+          end_date: format(new Date(election.end_date), 'MMM d, yyyy'),
+          voter_count: election.voter_count,
+          total_votes: election.total_votes,
+          turnout_percentage: ((election.total_votes / election.voter_count * 100) || 0).toFixed(2) + '%'
+        }))
+      };
+
+      await generateReport(1, reportData); // 1 is the report ID for Election Summary
+    } catch (error) {
+      console.error('Error downloading report:', error);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
@@ -68,18 +102,27 @@ export default function ElectionSummaryReport() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold text-[#01579B]">Election Summary Report</h2>
-        <div className="flex border rounded-md overflow-hidden">
+        <div className="flex items-center gap-4">
+          <div className="flex border rounded-md overflow-hidden">
+            <button
+              className={`px-4 py-2 ${activeTab === "summary" ? "bg-[#01579B] text-white" : "bg-white text-gray-600"}`}
+              onClick={() => setActiveTab("summary")}
+            >
+              Summary
+            </button>
+            <button
+              className={`px-4 py-2 ${activeTab === "details" ? "bg-[#01579B] text-white" : "bg-white text-gray-600"}`}
+              onClick={() => setActiveTab("details")}
+            >
+              Details
+            </button>
+          </div>
           <button
-            className={`px-4 py-2 ${activeTab === "summary" ? "bg-[#01579B] text-white" : "bg-white text-gray-600"}`}
-            onClick={() => setActiveTab("summary")}
+            onClick={handleDownload}
+            className="flex items-center gap-2 bg-[#01579B] text-white px-4 py-2 rounded hover:bg-[#01416E] transition-colors"
           >
-            Summary
-          </button>
-          <button
-            className={`px-4 py-2 ${activeTab === "details" ? "bg-[#01579B] text-white" : "bg-white text-gray-600"}`}
-            onClick={() => setActiveTab("details")}
-          >
-            Details
+            <Download className="w-4 h-4" />
+            Download Report
           </button>
         </div>
       </div>
@@ -204,3 +247,4 @@ export default function ElectionSummaryReport() {
     </div>
   );
 } 
+

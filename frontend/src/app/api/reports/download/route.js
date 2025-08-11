@@ -933,54 +933,41 @@ const generateCandidateListReport = (data) => {
   const sections = [];
   addHeader(sections, data.title || "Candidate List Report", data.description || "Comprehensive list of all candidates per election");
 
-  (data.elections || []).forEach(election => {
-    sections.push({
-      properties: {
-        type: SectionType.CONTINUOUS
-      },
-      children: [
-        new Paragraph({
-          text: election.title || 'Untitled Election',
-          heading: HeadingLevel.HEADING_3,
-          spacing: { before: 0, after: 200 }
-        }),
-        createTable(
-          ['Detail', 'Value'],
-          [
-            ['Election Type', election.type || 'N/A'],
-            ['Status', election.status || 'N/A'],
-            ['Start Date', election.date_from || 'N/A'],
-            ['End Date', election.date_to || 'N/A']
-          ]
-        ),
-        new Paragraph({ text: '', spacing: { before: 0, after: 200 } })
+  // Add election details section
+  addSection(
+    sections,
+    "Election Details",
+    createTable(
+      ['Detail', 'Value'],
+      [
+        ['Title', data.election_details?.title || 'N/A'],
+        ['Type', data.election_details?.type || 'N/A'],
+        ['Status', data.election_details?.status || 'N/A'],
+        ['Start Date', data.election_details?.start_date || 'N/A'],
+        ['End Date', data.election_details?.end_date || 'N/A']
       ]
-    });
+    ),
+    { before: 200, after: 300 }
+  );
 
-    (election.positions || []).forEach(position => {
-      sections.push({
-        properties: {
-          type: SectionType.CONTINUOUS
-        },
-        children: [
-          new Paragraph({
-            text: position.name || 'Untitled Position',
-            heading: HeadingLevel.HEADING_4,
-            spacing: { before: 0, after: 200 }
-          }),
-          createTable(
-            ['Name', 'Party', 'Course', 'Platform'],
-            (position.candidates || []).map(candidate => [
-              `${candidate.first_name} ${candidate.last_name}` || 'N/A',
-              candidate.party || 'Independent',
-              candidate.course || 'N/A',
-              candidate.platform || 'N/A'
-            ])
-          ),
-          new Paragraph({ text: '', spacing: { before: 0, after: 200 } })
-        ]
-      });
-    });
+  // Add sections for each position
+  (data.positions || []).forEach(position => {
+    addSection(
+      sections,
+      position.position_name || 'Untitled Position',
+      createTable(
+        ['Candidate Name', 'Course', 'Party', 'Slogan', 'Platform', 'Votes'],
+        (position.candidates || []).map(candidate => [
+          candidate.name || 'N/A',
+          candidate.course || 'N/A',
+          candidate.party || 'Independent',
+          candidate.slogan || 'N/A',
+          candidate.platform || 'N/A',
+          candidate.vote_count?.toString() || '0'
+        ])
+      ),
+      { before: 200, after: 300 }
+    );
   });
 
   return new Document({
@@ -997,7 +984,7 @@ const generateCandidateListReport = (data) => {
           next: "Normal",
           quickFormat: true,
           run: {
-            size: 32, // 16pt font
+            size: 32,
             bold: true,
             color: "000000"
           }
@@ -1009,7 +996,7 @@ const generateCandidateListReport = (data) => {
           next: "Normal",
           quickFormat: true,
           run: {
-            size: 28, // 14pt font
+            size: 28,
             bold: true,
             color: "000000"
           }
@@ -1021,7 +1008,268 @@ const generateCandidateListReport = (data) => {
           next: "Normal",
           quickFormat: true,
           run: {
-            size: 26, // 13pt font
+            size: 26,
+            bold: true,
+            color: "000000"
+          }
+        }
+      ]
+    }
+  });
+};
+
+const generateDepartmentVoterReport = (data) => {
+  if (!data) {
+    throw new Error('No data provided for department voter report');
+  }
+
+  const sections = [];
+  addHeader(sections, data.title || "Department Voter Report", data.description || "Detailed voter participation statistics by department");
+
+  addSection(
+    sections,
+    "Department Statistics",
+    createTable(
+      ['Department', 'Total Students', 'Voted', 'Participation'],
+      (data.summary || []).map(stat => [
+        stat.department || 'N/A',
+        stat.total_students?.toString() || '0',
+        stat.voted_count?.toString() || '0',
+        stat.participation_rate || '0%'
+      ])
+    ),
+    { before: 200, after: 300 }
+  );
+
+  addSection(
+    sections,
+    "Student Details",
+    createTable(
+      ['Student ID', 'Name', 'Department', 'Status', 'Vote Time'],
+      (data.students || []).map(student => [
+        student.student_number || 'N/A',
+        student.name || 'N/A',
+        student.department || 'N/A',
+        student.status || 'N/A',
+        student.vote_time || 'N/A'
+      ])
+    )
+  );
+
+  return new Document({
+    creator: "TrustElect System",
+    title: data.title || "Department Voter Report",
+    description: data.description || "Detailed voter participation statistics by department",
+    sections: sections,
+    styles: {
+      paragraphStyles: [
+        {
+          id: "Heading1",
+          name: "Heading 1",
+          basedOn: "Normal",
+          next: "Normal",
+          quickFormat: true,
+          run: {
+            size: 32,
+            bold: true,
+            color: "000000"
+          }
+        },
+        {
+          id: "Heading2",
+          name: "Heading 2",
+          basedOn: "Normal",
+          next: "Normal",
+          quickFormat: true,
+          run: {
+            size: 28,
+            bold: true,
+            color: "000000"
+          }
+        },
+        {
+          id: "Heading3",
+          name: "Heading 3",
+          basedOn: "Normal",
+          next: "Normal",
+          quickFormat: true,
+          run: {
+            size: 26,
+            bold: true,
+            color: "000000"
+          }
+        }
+      ]
+    }
+  });
+};
+
+const generateVotingTimeReport = (data) => {
+  if (!data) {
+    throw new Error('No data provided for voting time report');
+  }
+
+  const sections = [];
+  addHeader(sections, data.title || "Voting Time Report", data.description || "Track when voters cast their votes, including timestamps and voter IDs");
+
+  addSection(
+    sections,
+    "Summary Statistics",
+    createTable(
+      ['Metric', 'Value'],
+      [
+        ['Total Votes', data.summary?.total_votes?.toString() || '0'],
+        ['Unique Voters', data.summary?.unique_voters?.toString() || '0']
+      ]
+    ),
+    { before: 200, after: 300 }
+  );
+
+  addSection(
+    sections,
+    "Voting Time Details",
+    createTable(
+      ['Student ID', 'Election', 'First Vote', 'Last Vote', 'Total Votes'],
+      (data.voting_data || []).map(vote => [
+        vote.student_id || 'N/A',
+        vote.election_title || 'N/A',
+        vote.first_vote_time || 'N/A',
+        vote.last_vote_time || 'N/A',
+        vote.total_votes?.toString() || '0'
+      ])
+    )
+  );
+
+  return new Document({
+    creator: "TrustElect System",
+    title: data.title || "Voting Time Report",
+    description: data.description || "Track when voters cast their votes, including timestamps and voter IDs",
+    sections: sections,
+    styles: {
+      paragraphStyles: [
+        {
+          id: "Heading1",
+          name: "Heading 1",
+          basedOn: "Normal",
+          next: "Normal",
+          quickFormat: true,
+          run: {
+            size: 32,
+            bold: true,
+            color: "000000"
+          }
+        },
+        {
+          id: "Heading2",
+          name: "Heading 2",
+          basedOn: "Normal",
+          next: "Normal",
+          quickFormat: true,
+          run: {
+            size: 28,
+            bold: true,
+            color: "000000"
+          }
+        },
+        {
+          id: "Heading3",
+          name: "Heading 3",
+          basedOn: "Normal",
+          next: "Normal",
+          quickFormat: true,
+          run: {
+            size: 26,
+            bold: true,
+            color: "000000"
+          }
+        }
+      ]
+    }
+  });
+};
+
+const generateElectionResultReport = (data) => {
+  if (!data) {
+    throw new Error('No data provided for election result report');
+  }
+
+  const sections = [];
+  addHeader(sections, data.title || "Election Result Report", data.description || "Comprehensive election results including candidates, vote counts, and winners");
+
+  // Add election details section
+  addSection(
+    sections,
+    "Election Details",
+    createTable(
+      ['Detail', 'Value'],
+      [
+        ['Title', data.election_details?.title || 'N/A'],
+        ['Type', data.election_details?.type || 'N/A'],
+        ['Status', data.election_details?.status || 'N/A'],
+        ['Total Votes', data.election_details?.total_votes?.toString() || '0'],
+        ['Date', data.election_details?.date || 'N/A']
+      ]
+    ),
+    { before: 200, after: 300 }
+  );
+
+  // Add results section for each position
+  data.positions?.forEach(position => {
+    addSection(
+      sections,
+      position.position,
+      createTable(
+        ['Candidate', 'Party', 'Votes', 'Status'],
+        position.candidates.map(candidate => [
+          candidate.name || 'N/A',
+          candidate.party || 'Independent',
+          candidate.vote_count?.toString() || '0',
+          candidate.status || 'N/A'
+        ])
+      ),
+      { before: 200, after: 300 }
+    );
+  });
+
+  return new Document({
+    creator: "TrustElect System",
+    title: data.title || "Election Result Report",
+    description: data.description || "Comprehensive election results including candidates, vote counts, and winners",
+    sections: sections,
+    styles: {
+      paragraphStyles: [
+        {
+          id: "Heading1",
+          name: "Heading 1",
+          basedOn: "Normal",
+          next: "Normal",
+          quickFormat: true,
+          run: {
+            size: 32,
+            bold: true,
+            color: "000000"
+          }
+        },
+        {
+          id: "Heading2",
+          name: "Heading 2",
+          basedOn: "Normal",
+          next: "Normal",
+          quickFormat: true,
+          run: {
+            size: 28,
+            bold: true,
+            color: "000000"
+          }
+        },
+        {
+          id: "Heading3",
+          name: "Heading 3",
+          basedOn: "Normal",
+          next: "Normal",
+          quickFormat: true,
+          run: {
+            size: 26,
             bold: true,
             color: "000000"
           }
@@ -1074,6 +1322,15 @@ export async function POST(req) {
           break;
         case 10:
           doc = generateAdminActivityReport(data);
+          break;
+        case 11:
+          doc = generateDepartmentVoterReport(data);
+          break;
+        case 12:
+          doc = generateVotingTimeReport(data);
+          break;
+        case 13:
+          doc = generateElectionResultReport(data);
           break;
         default:
           throw new Error(`Report type ${reportId} not implemented`);

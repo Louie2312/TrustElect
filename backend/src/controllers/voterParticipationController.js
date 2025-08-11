@@ -2,7 +2,7 @@ const pool = require("../config/db");
 
 exports.getVoterParticipation = async (req, res) => {
   try {
-    // Get all active and completed elections with their voter statistics
+    // Get all elections with their overall stats
     const electionsQuery = `
       SELECT 
         e.id,
@@ -11,23 +11,20 @@ exports.getVoterParticipation = async (req, res) => {
         e.date_from,
         e.date_to,
         COUNT(DISTINCT ev.id) as total_eligible_voters,
-        COUNT(DISTINCT v.id) as total_votes_cast,
+        COUNT(DISTINCT CASE WHEN ev.has_voted THEN ev.id END) as total_votes_cast,
         CASE 
           WHEN COUNT(DISTINCT ev.id) > 0 
-          THEN ROUND(CAST((COUNT(DISTINCT v.id) * 100.0 / COUNT(DISTINCT ev.id)) AS numeric), 1)
+          THEN ROUND(CAST((COUNT(DISTINCT CASE WHEN ev.has_voted THEN ev.id END) * 100.0 / COUNT(DISTINCT ev.id)) AS numeric), 1)
           ELSE 0
         END as turnout_percentage
       FROM elections e
       LEFT JOIN eligible_voters ev ON e.id = ev.election_id
-      LEFT JOIN votes v ON e.id = v.election_id
       WHERE e.status IN ('active', 'completed')
       GROUP BY e.id, e.title, e.status, e.date_from, e.date_to
       ORDER BY e.date_from DESC
     `;
 
-    console.log('Executing elections query...');
     const { rows: elections } = await pool.query(electionsQuery);
-    console.log(`Found ${elections.length} elections`);
 
     if (!elections || elections.length === 0) {
       return res.status(404).json({
@@ -36,47 +33,50 @@ exports.getVoterParticipation = async (req, res) => {
       });
     }
 
+    // Get detailed data for each election
     const electionData = await Promise.all(elections.map(async (election) => {
       try {
-        // Get department statistics based on course_name
+        // Get department statistics
         const departmentStatsQuery = `
-          WITH department_stats AS (
+          WITH all_departments AS (
+            SELECT DISTINCT course_name as department
+            FROM students
+            WHERE is_active = TRUE
+          ),
+          department_stats AS (
             SELECT 
-              c.course_name as department,
+              s.course_name as department,
               COUNT(DISTINCT ev.id) as eligible_voters,
-              COUNT(DISTINCT v.id) as votes_cast
-            FROM courses c
-            JOIN students s ON s.course_name = c.course_name
-            JOIN eligible_voters ev ON ev.student_id = s.id
-            LEFT JOIN votes v ON v.student_id = s.id AND v.election_id = $1
+              COUNT(DISTINCT CASE WHEN ev.has_voted THEN ev.id END) as votes_cast
+            FROM eligible_voters ev
+            JOIN students s ON ev.student_id = s.id
             WHERE ev.election_id = $1
-            GROUP BY c.course_name
+            GROUP BY s.course_name
           )
           SELECT 
-            department,
-            eligible_voters,
-            votes_cast,
+            ad.department,
+            COALESCE(ds.eligible_voters, 0) as eligible_voters,
+            COALESCE(ds.votes_cast, 0) as votes_cast,
             CASE 
-              WHEN eligible_voters > 0 
-              THEN ROUND(CAST((votes_cast * 100.0 / eligible_voters) AS numeric), 1)
+              WHEN COALESCE(ds.eligible_voters, 0) > 0 
+              THEN ROUND(CAST((COALESCE(ds.votes_cast, 0) * 100.0 / COALESCE(ds.eligible_voters, 1)) AS numeric), 1)
               ELSE 0
             END as turnout
-          FROM department_stats
-          ORDER BY department
+          FROM all_departments ad
+          LEFT JOIN department_stats ds ON ds.department = ad.department
+          ORDER BY ad.department
         `;
 
-        console.log(`Fetching department stats for election ${election.id}...`);
         const { rows: departmentStats } = await pool.query(departmentStatsQuery, [election.id]);
-        console.log(`Found ${departmentStats.length} departments for election ${election.id}`);
 
-        // Get voters list with their voting status
+        // Get voter details
         const votersQuery = `
           SELECT 
             s.student_number as student_id,
             s.first_name,
             s.last_name,
             s.course_name as department,
-            CASE WHEN v.id IS NOT NULL THEN true ELSE false END as has_voted,
+            ev.has_voted,
             v.created_at as vote_date
           FROM eligible_voters ev
           JOIN students s ON ev.student_id = s.id
@@ -85,21 +85,26 @@ exports.getVoterParticipation = async (req, res) => {
           ORDER BY s.course_name, s.last_name, s.first_name
         `;
 
-        console.log(`Fetching voters for election ${election.id}...`);
         const { rows: voters } = await pool.query(votersQuery, [election.id]);
-        console.log(`Found ${voters.length} voters for election ${election.id}`);
 
         return {
           id: election.id,
           title: election.title,
+          status: election.status,
+          date_from: election.date_from,
+          date_to: election.date_to,
           total_eligible_voters: parseInt(election.total_eligible_voters),
           total_votes_cast: parseInt(election.total_votes_cast),
           turnout_percentage: parseFloat(election.turnout_percentage),
-          department_stats: departmentStats,
+          department_stats: departmentStats.map(stat => ({
+            department: stat.department,
+            eligible_voters: parseInt(stat.eligible_voters),
+            votes_cast: parseInt(stat.votes_cast),
+            turnout: parseFloat(stat.turnout)
+          })),
           voters: voters.map(voter => ({
             student_id: voter.student_id,
-            first_name: voter.first_name,
-            last_name: voter.last_name,
+            name: `${voter.first_name} ${voter.last_name}`,
             department: voter.department,
             has_voted: voter.has_voted,
             vote_date: voter.vote_date
@@ -123,9 +128,7 @@ exports.getVoterParticipation = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to fetch voter participation data',
-      details: error.message,
-      hint: error.hint,
-      code: error.code
+      details: error.message
     });
   }
 }; 

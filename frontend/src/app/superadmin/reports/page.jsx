@@ -35,70 +35,60 @@ export default function ReportsPage() {
       id: 1,
       title: "Election Summary Report",
       type: "Election",
-      description: "Overview of all elections with detailed statistics and voter turnout.",
       icon: "election",
     },
     {
       id: 2,
       title: "Role Based User Report",
       type: "Users",
-      description: "Comprehensive overview of user distribution across different roles and their activity status.",
       icon: "users",
     },
     {
       id: 3,
       title: "Failed Login Report",
       type: "Security",
-      description: "Analysis of failed login attempts and account lockouts across the system.",
       icon: "security",
     },
     {
       id: 4,
       title: "Activity Audit Log Report",
       type: "Audit",
-      description: "Detailed log of all user activities including voting, administrative actions, and system changes.",
       icon: "audit",
     },
     {
       id: 5,
       title: "Upcoming Elections Report",
       type: "Election",
-      description: "Detailed overview of all upcoming elections including ballot information and voter eligibility.",
       icon: "election",
     },
     {
       id: 6,
       title: "Live Vote Count Report",
       type: "Election",
-      description: "Real-time monitoring of ongoing elections with live vote counts and turnout statistics.",
       icon: "election",
     },
     {
       id: 7,
       title: "System Load Report",
       type: "System",
-      description: "Analysis of peak usage times, including login and voting activity patterns.",
       icon: "system",
     },
     {
       id: 8,
       title: "Voter Participation Report",
       type: "Election",
-      description: "Detailed analysis of voter turnout, eligible voters, and individual voting status.",
       icon: "election",
     },
     {
       id: 9,
       title: "Candidate List Report",
       type: "Election",
-      description: "Comprehensive list of all candidates per election with their course and party affiliations.",
       icon: "election",
     },
     {
       id: 10,
       title: "Admin Activity Report",
       type: "Admin",
-      description: "Detailed tracking of all administrative actions and changes in the system.",
       icon: "admin",
     }
   ];
@@ -110,14 +100,14 @@ export default function ReportsPage() {
   const fetchReportData = async (reportId) => {
     try {
       setLoading(true);
-      setError("");  // Clear any previous errors
+      setError(""); 
       const token = Cookies.get("token");
       
       let endpoint;
       let transformedData;
 
       switch(reportId) {
-        case 1: // Election Summary Report
+        case 1: 
           endpoint = '/reports/summary';
           const electionResponse = await axios.get(`${API_BASE}${endpoint}`, {
             headers: { Authorization: `Bearer ${token}` }
@@ -147,13 +137,12 @@ export default function ReportsPage() {
           };
           break;
 
-        case 2: // Role Based User Report
+        case 2: 
           endpoint = '/reports/role-based/summary';
           const userResponse = await axios.get(`${API_BASE}${endpoint}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
 
-          console.log('User response data:', userResponse.data); // Debug log
 
           const userData = userResponse.data.data;
           if (!userData) {

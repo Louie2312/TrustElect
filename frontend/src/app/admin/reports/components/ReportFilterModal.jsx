@@ -1,19 +1,31 @@
 import { X } from "lucide-react";
-import { useState } from "react";
 
 const ReportFilterModal = ({ filters, onApply, onClose }) => {
-  const [localFilters, setLocalFilters] = useState(filters);
+  const reportTypes = [
+    { value: "All", label: "All Reports" },
+    { value: "Voters", label: "Voter Reports" },
+    { value: "Results", label: "Election Results" },
+    { value: "Activity", label: "Activity Reports" },
+    { value: "Summary", label: "Summary Reports" },
+    { value: "Participation", label: "Participation Reports" },
+    { value: "Candidates", label: "Candidate Reports" }
+  ];
 
-  const handleApply = () => {
-    onApply(localFilters);
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    onApply({
+      ...filters,
+      reportType: formData.get('reportType')
+    });
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg w-full max-w-md">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg w-full max-w-md mx-4">
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-[#01579B]">Filter Report</h2>
+            <h2 className="text-xl font-bold text-black">Filter Reports</h2>
             <button
               onClick={onClose}
               className="text-gray-500 hover:text-gray-700"
@@ -22,95 +34,42 @@ const ReportFilterModal = ({ filters, onApply, onClose }) => {
             </button>
           </div>
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Date Range
-              </label>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Start Date</label>
-                  <input
-                    type="date"
-                    value={localFilters.dateRange.start || ""}
-                    onChange={(e) =>
-                      setLocalFilters({
-                        ...localFilters,
-                        dateRange: { ...localFilters.dateRange, start: e.target.value },
-                      })
-                    }
-                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#01579B]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">End Date</label>
-                  <input
-                    type="date"
-                    value={localFilters.dateRange.end || ""}
-                    onChange={(e) =>
-                      setLocalFilters({
-                        ...localFilters,
-                        dateRange: { ...localFilters.dateRange, end: e.target.value },
-                      })
-                    }
-                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#01579B]"
-                  />
-                </div>
+          <form onSubmit={handleSubmit}>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Report Type
+                </label>
+                <select
+                  name="reportType"
+                  defaultValue={filters.reportType}
+                  className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#01579B] text-black"
+                >
+                  {reportTypes.map(type => (
+                    <option key={type.value} value={type.value}>
+                      {type.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Department
-              </label>
-              <select
-                value={localFilters.department}
-                onChange={(e) =>
-                  setLocalFilters({ ...localFilters, department: e.target.value })
-                }
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#01579B]"
+            <div className="mt-6 flex justify-end gap-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
               >
-                <option value="All">All Departments</option>
-                <option value="IT">Information Technology</option>
-                <option value="CS">Computer Science</option>
-                <option value="Business">Business</option>
-                <option value="Engineering">Engineering</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Election Type
-              </label>
-              <select
-                value={localFilters.electionType}
-                onChange={(e) =>
-                  setLocalFilters({ ...localFilters, electionType: e.target.value })
-                }
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#01579B]"
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-[#01579B] text-white rounded hover:bg-[#01416E]"
               >
-                <option value="All">All Types</option>
-                <option value="Student Council">Student Council</option>
-                <option value="Department">Department</option>
-                <option value="Organization">Organization</option>
-              </select>
+                Apply Filters
+              </button>
             </div>
-          </div>
-
-          <div className="flex justify-end space-x-3 mt-6">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleApply}
-              className="px-4 py-2 bg-[#01579B] text-white rounded-md hover:bg-[#01416E] transition-colors duration-200"
-            >
-              Apply Filters
-            </button>
-          </div>
+          </form>
         </div>
       </div>
     </div>

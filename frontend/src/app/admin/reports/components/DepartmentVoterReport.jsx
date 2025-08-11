@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Cookies from 'js-cookie';
+import { Download } from 'lucide-react';
+import { generateReport } from '@/utils/reportGenerator';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
@@ -69,6 +71,34 @@ const DepartmentVoterReport = () => {
     setCurrentPage(newPage);
   };
 
+  const handleDownload = async () => {
+    try {
+      const reportData = {
+        title: "Department Voter Report",
+        description: "Detailed voter participation statistics by department",
+        summary: data.departmentStats.map(stat => ({
+          department: stat.department,
+          total_students: stat.total_students,
+          voted_count: stat.voted_count,
+          participation_rate: ((stat.voted_count / stat.total_students) * 100).toFixed(1) + '%'
+        })),
+        students: data.students.map(student => ({
+          student_number: student.student_number,
+          name: `${student.first_name} ${student.last_name}`,
+          email: student.email,
+          department: student.department,
+          year_level: student.year_level,
+          status: student.has_voted ? 'Voted' : 'Not Voted',
+          vote_time: student.vote_timestamp ? new Date(student.vote_timestamp).toLocaleString() : '-'
+        }))
+      };
+
+      await generateReport(11, reportData); // 11 is the report ID for Department Voter Report
+    } catch (error) {
+      console.error('Error downloading report:', error);
+    }
+  };
+
   if (loading) return (
     <div className="flex items-center justify-center p-8">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#01579B]"></div>
@@ -84,24 +114,33 @@ const DepartmentVoterReport = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <select
-          value={selectedDepartment}
-          onChange={handleDepartmentChange}
-          className="w-64 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#01579B] text-black"
-        >
-          <option value="">All Departments</option>
-          {data.departments.map(dept => (
-            <option key={dept} value={dept}>{dept}</option>
-          ))}
-        </select>
+        <div className="flex gap-4">
+          <select
+            value={selectedDepartment}
+            onChange={handleDepartmentChange}
+            className="w-64 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#01579B] text-black"
+          >
+            <option value="">All Departments</option>
+            {data.departments.map(dept => (
+              <option key={dept} value={dept}>{dept}</option>
+            ))}
+          </select>
 
-        <input
-          type="text"
-          placeholder="Search by name or student number..."
-          value={searchTerm}
-          onChange={handleSearch}
-          className="w-64 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#01579B] text-black"
-        />
+          <input
+            type="text"
+            placeholder="Search by name or student number..."
+            value={searchTerm}
+            onChange={handleSearch}
+            className="w-64 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#01579B] text-black"
+          />
+        </div>
+        <button
+          onClick={handleDownload}
+          className="flex items-center gap-2 bg-[#01579B] text-white px-4 py-2 rounded hover:bg-[#01416E] transition-colors"
+        >
+          <Download className="w-4 h-4" />
+          Download Report
+        </button>
       </div>
 
       {/* Department Statistics */}

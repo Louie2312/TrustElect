@@ -3,6 +3,8 @@ import axios from 'axios';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Cookies from 'js-cookie';
 import Image from 'next/image';
+import { Download } from 'lucide-react';
+import { generateReport } from '@/utils/reportGenerator';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
@@ -121,6 +123,37 @@ const ElectionResultReport = () => {
     setCurrentPage(newPage);
   };
 
+  const handleDownload = async () => {
+    if (!selectedElectionId) return;
+
+    try {
+      const reportData = {
+        title: "Election Result Report",
+        description: "Comprehensive election results including candidates, vote counts, and winners",
+        election_details: {
+          title: data.selectedElection.title,
+          type: data.selectedElection.election_type,
+          status: data.selectedElection.status,
+          total_votes: data.selectedElection.total_votes,
+          date: new Date(data.selectedElection.date_to).toLocaleDateString()
+        },
+        positions: data.positions.map(result => ({
+          position: result.position,
+          candidates: [{
+            name: result.candidate_name,
+            party: result.partylist || 'Independent',
+            vote_count: result.vote_count,
+            status: result.is_winner ? 'Winner' : 'Runner-up'
+          }]
+        }))
+      };
+
+      await generateReport(13, reportData); // 13 is the report ID for Election Result Report
+    } catch (error) {
+      console.error('Error downloading report:', error);
+    }
+  };
+
   // Calculate paginated results
   const getPaginatedResults = () => {
     const startIndex = (currentPage - 1) * data.pagination.limit;
@@ -155,6 +188,18 @@ const ElectionResultReport = () => {
             </option>
           ))}
         </select>
+        <button
+          onClick={handleDownload}
+          disabled={!selectedElectionId}
+          className={`flex items-center gap-2 px-4 py-2 rounded transition-colors ${
+            selectedElectionId 
+              ? 'bg-[#01579B] text-white hover:bg-[#01416E]' 
+              : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+          }`}
+        >
+          <Download className="w-4 h-4" />
+          Download Report
+        </button>
       </div>
 
       {data.selectedElection && (

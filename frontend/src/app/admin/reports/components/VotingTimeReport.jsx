@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { format } from 'date-fns';
 import { useAuth } from '@/context/AuthContext';
+import { Download } from 'lucide-react';
+import { generateReport } from '@/utils/reportGenerator';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -57,6 +59,30 @@ export default function VotingTimeReport() {
     }
   };
 
+  const handleDownload = async () => {
+    try {
+      const reportData = {
+        title: "Voting Time Report",
+        description: "Track when voters cast their votes, including timestamps and voter IDs",
+        summary: {
+          total_votes: votingData.length,
+          unique_voters: new Set(votingData.map(v => v.student_id)).size
+        },
+        voting_data: votingData.map(vote => ({
+          student_id: vote.student_id,
+          election_title: vote.election_title,
+          first_vote_time: format(new Date(vote.first_vote_time), 'MMM d, yyyy h:mm:ss a'),
+          last_vote_time: format(new Date(vote.last_vote_time), 'MMM d, yyyy h:mm:ss a'),
+          total_votes: vote.total_votes
+        }))
+      };
+
+      await generateReport(12, reportData); // 12 is the report ID for Voting Time Report
+    } catch (error) {
+      console.error('Error downloading report:', error);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
@@ -77,18 +103,27 @@ export default function VotingTimeReport() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold text-[#01579B]">Voting Time Report</h2>
-        <select
-          value={selectedElection}
-          onChange={(e) => setSelectedElection(e.target.value)}
-          className="border rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-[#01579B]"
-        >
-          <option value="all">All Elections</option>
-          {elections.map(election => (
-            <option key={election.id} value={election.id}>
-              {election.title}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-4">
+          <select
+            value={selectedElection}
+            onChange={(e) => setSelectedElection(e.target.value)}
+            className="border rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-[#01579B]"
+          >
+            <option value="all">All Elections</option>
+            {elections.map(election => (
+              <option key={election.id} value={election.id}>
+                {election.title}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={handleDownload}
+            className="flex items-center gap-2 bg-[#01579B] text-white px-4 py-2 rounded hover:bg-[#01416E] transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            Download Report
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">

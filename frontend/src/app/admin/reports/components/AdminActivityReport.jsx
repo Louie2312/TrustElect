@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Download, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import axios from 'axios';
 import Cookies from 'js-cookie';
+import { generateReport } from '@/utils/reportGenerator';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
@@ -106,10 +107,46 @@ const AdminActivityReport = () => {
     }
   };
 
+  const handleDownload = async () => {
+    try {
+      const reportData = {
+        title: "Admin Activity Report",
+        description: "Detailed tracking of all administrative actions and changes in the system",
+        summary: {
+          total_activities: data.summary.total_activities || 0,
+          active_admins: data.summary.active_admins || 0,
+          activities_today: data.summary.activities_today || 0,
+          most_common_action: data.summary.most_common_action || 'N/A'
+        },
+        activities: data.activities.map(activity => ({
+          admin_name: activity.admin_name,
+          user_email: activity.user_email,
+          role_name: activity.user_role,
+          action: activity.action,
+          entity_type: activity.entity_type,
+          created_at: activity.created_at
+        }))
+      };
+
+      await generateReport(10, reportData); // 10 is the report ID for Admin Activity
+    } catch (error) {
+      console.error('Error downloading report:', error);
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Admin Activity Report</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold text-gray-800">Admin Activity Report</h2>
+          <button
+            onClick={handleDownload}
+            className="flex items-center gap-2 bg-[#01579B] text-white px-4 py-2 rounded hover:bg-[#01416E] transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            Download Report
+          </button>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-blue-50 p-4 rounded-lg">
@@ -166,7 +203,7 @@ const AdminActivityReport = () => {
       {loading ? (
         <div className="text-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Loading activities...</p>
+          <p className="mt-2 text-black">Loading activities...</p>
         </div>
       ) : error ? (
         <div className="text-center py-8 text-red-600">
@@ -178,19 +215,16 @@ const AdminActivityReport = () => {
             <table className="min-w-full bg-white">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
                     Admin
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
                     Action
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
                     Entity Type
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Details
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
                     Timestamp
                   </th>
                 </tr>
@@ -202,10 +236,10 @@ const AdminActivityReport = () => {
                       <div className="text-sm font-medium text-gray-900">
                         {activity.admin_name}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-black">
                         {activity.user_email}
                       </div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs text-black">
                         {activity.user_role}
                       </div>
                     </td>
@@ -214,17 +248,10 @@ const AdminActivityReport = () => {
                         {activity.action}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                       {activity.entity_type}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      <div className="max-w-xs overflow-hidden text-ellipsis">
-                        {typeof activity.details === 'object' 
-                          ? JSON.stringify(activity.details, null, 2)
-                          : activity.details}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                       {formatDate(activity.created_at)}
                     </td>
                   </tr>
@@ -234,7 +261,7 @@ const AdminActivityReport = () => {
           </div>
 
           {activities.length === 0 && !loading && (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-black">
               No activities found for the selected filters
             </div>
           )}
@@ -244,18 +271,18 @@ const AdminActivityReport = () => {
               <button
                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                 disabled={currentPage === 1}
-                className="flex items-center px-3 py-1 border rounded text-gray-600 disabled:opacity-50"
+                className="flex items-center px-3 py-1 border rounded text-black disabled:opacity-50"
               >
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 Previous
               </button>
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-black">
                 Page {currentPage} of {pagination.totalPages}
               </span>
               <button
                 onClick={() => setCurrentPage(prev => Math.min(pagination.totalPages, prev + 1))}
                 disabled={currentPage === pagination.totalPages}
-                className="flex items-center px-3 py-1 border rounded text-gray-600 disabled:opacity-50"
+                className="flex items-center px-3 py-1 border rounded text-black disabled:opacity-50"
               >
                 Next
                 <ChevronRight className="w-4 h-4 ml-1" />

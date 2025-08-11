@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Download, Search, X } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '@/context/AuthContext';
+import { generateReport } from '@/utils/reportGenerator';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -47,9 +48,60 @@ export default function CandidateListReport() {
     setSelectedElection(Number(electionId));
   };
 
-  const handleDownload = () => {
-    // Implement download functionality
-    console.log('Downloading candidate list report...');
+  const handleDownload = async () => {
+    if (!selectedElection) return;
+
+    try {
+      const currentElection = reportData?.elections.find(e => e.id === parseInt(selectedElection));
+      if (!currentElection) {
+        console.error('Selected election not found');
+        return;
+      }
+
+      // Get filtered positions based on search term
+      const filteredPositions = currentElection.positions.map(position => {
+        const filteredCandidates = position.candidates.filter(candidate =>
+          !searchTerm ||
+          candidate.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          candidate.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          candidate.course?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          candidate.party?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+
+        return {
+          position: position.position,
+          candidates: filteredCandidates
+        };
+      }).filter(position => position.candidates.length > 0);
+
+      const downloadData = {
+        title: "Candidate List Report",
+        description: "Comprehensive list of all candidates per election with their course and party affiliations",
+        election_details: {
+          title: currentElection.title,
+          type: currentElection.type || 'Regular Election',
+          status: currentElection.status,
+          start_date: formatDateTime(currentElection.date_from, currentElection.start_time),
+          end_date: formatDateTime(currentElection.date_to, currentElection.end_time)
+        },
+        positions: filteredPositions.map(position => ({
+          position_name: position.position,
+          candidates: position.candidates.map(candidate => ({
+            name: `${candidate.first_name} ${candidate.last_name}`,
+            course: candidate.course || 'N/A',
+            party: candidate.party || 'Independent',
+            slogan: candidate.slogan || 'N/A',
+            platform: candidate.platform || 'N/A',
+            vote_count: candidate.vote_count || 0
+          }))
+        }))
+      };
+
+      console.log('Download data:', downloadData); // Debug log
+      await generateReport(9, downloadData); // 9 is the report ID for Candidate List
+    } catch (error) {
+      console.error('Error downloading report:', error);
+    }
   };
 
   const currentElection = reportData?.elections.find(e => e.id === selectedElection);

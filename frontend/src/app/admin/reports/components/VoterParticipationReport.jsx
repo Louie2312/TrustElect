@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { format } from 'date-fns';
 import { useAuth } from '@/context/AuthContext';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { generateReport } from '@/utils/reportGenerator';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 const VOTERS_PER_PAGE = 10;
@@ -75,6 +76,37 @@ export default function VoterParticipationReport() {
     }
   };
 
+  const handleDownload = async () => {
+    try {
+      const reportData = {
+        title: "Voter Participation Report",
+        description: "Detailed voter participation analysis including turnout trends and voting patterns",
+        summary: {
+          total_eligible_voters: selectedElection.total_eligible_voters,
+          total_votes_cast: selectedElection.total_votes_cast,
+          turnout_percentage: selectedElection.turnout_percentage
+        },
+        department_stats: selectedElection.department_stats.map(dept => ({
+          department: dept.department,
+          eligible_voters: dept.eligible_voters,
+          votes_cast: dept.votes_cast,
+          turnout: dept.turnout
+        })),
+        voters: selectedElection.voters.map(voter => ({
+          student_id: voter.student_id,
+          name: `${voter.first_name} ${voter.last_name}`,
+          department: voter.department,
+          status: voter.has_voted ? 'Voted' : 'Not Voted',
+          vote_date: voter.vote_date ? format(new Date(voter.vote_date), 'MMM d, yyyy h:mm a') : '-'
+        }))
+      };
+
+      await generateReport(8, reportData); // 8 is the report ID for Voter Participation Report
+    } catch (error) {
+      console.error('Error downloading report:', error);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
@@ -95,22 +127,31 @@ export default function VoterParticipationReport() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold text-[#01579B]">Voter Participation Report</h2>
-        {participationData?.elections && (
-          <select
-            className="border rounded-md px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#01579B]"
-            value={selectedElection?.id || ''}
-            onChange={(e) => {
-              const election = participationData.elections.find(el => el.id === parseInt(e.target.value));
-              setSelectedElection(election);
-            }}
+        <div className="flex items-center gap-4">
+          {participationData?.elections && (
+            <select
+              className="border rounded-md px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#01579B]"
+              value={selectedElection?.id || ''}
+              onChange={(e) => {
+                const election = participationData.elections.find(el => el.id === parseInt(e.target.value));
+                setSelectedElection(election);
+              }}
+            >
+              {participationData.elections.map(election => (
+                <option key={election.id} value={election.id}>
+                  {election.title}
+                </option>
+              ))}
+            </select>
+          )}
+          <button
+            onClick={handleDownload}
+            className="flex items-center gap-2 bg-[#01579B] text-white px-4 py-2 rounded hover:bg-[#01416E] transition-colors"
           >
-            {participationData.elections.map(election => (
-              <option key={election.id} value={election.id}>
-                {election.title}
-              </option>
-            ))}
-          </select>
-        )}
+            <Download className="w-4 h-4" />
+            Download Report
+          </button>
+        </div>
       </div>
 
       {selectedElection && (

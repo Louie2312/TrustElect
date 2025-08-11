@@ -14,6 +14,7 @@ export default function Home() {
   const [showLogin, setShowLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [apiConnected, setApiConnected] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
   
 
   const [landingContent, setLandingContent] = useState({
@@ -249,12 +250,24 @@ export default function Home() {
           )}
           <span className="text-white">TrustElect</span>
         </h1>
-        <Button
-          onClick={() => setShowLogin(true)}
-          className="cursor-pointer px-6 py-2 br-5 bg-[#0000FF] text-white font-semibold rounded-lg shadow-md hover:bg-blue-800"
-        >
-          Login
-        </Button>
+        
+        <nav className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            className="cursor-pointer px-4 py-2 text-white font-semibold rounded-lg hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            style={{ background: 'transparent', boxShadow: 'none' }}
+            onClick={() => setShowAbout(true)}
+          >
+            About
+          </Button>
+          <Button
+            onClick={() => setShowLogin(true)}
+            className="cursor-pointer px-6 py-2 br-5 bg-[#0000FF] text-white font-semibold rounded-lg shadow-md hover:bg-blue-800"
+          >
+            Login
+          </Button>
+        </nav>
+        
       </header>
 
       <main className="flex-grow pt-24">
@@ -473,6 +486,41 @@ export default function Home() {
       {showLogin && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
           <LoginForm onClose={() => setShowLogin(false)} />
+        </div>
+      )}
+
+      {/* About Modal */}
+      {showAbout && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
+          <div className="bg-white max-w-2xl w-full rounded-lg shadow-lg p-8 relative overflow-y-auto max-h-[90vh]">
+            <button
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl font-bold"
+              onClick={() => setShowAbout(false)}
+              aria-label="Close About"
+            >
+              &times;
+            </button>
+            <h2 className="text-3xl font-bold mb-4 text-blue-900">About Us</h2>
+            <p className="mb-4 text-gray-800">TrustElect is a comprehensive election management system dedicated to fostering secure, efficient, and transparent electoral processes. We provide a robust platform designed to empower both administrators and voters throughout every stage of an election, from initial setup to the declaration of results.</p>
+            <p className="mb-2 font-semibold text-blue-800">Our platform provides:</p>
+            <ul className="list-disc pl-6 mb-4 text-gray-800">
+              <li>Secure Administration with Role-Based Access Control (RBAC) and data encryption using Advance Encryption System 256 (AES – 256)</li>
+              <li>Efficient Database Management for fast and accurate processing</li>
+              <li>User-Friendly Interfaces that prioritize ease of use</li>
+              <li>Verifiable Ballot Receipts through encrypted ballots and receipt confirmation</li>
+              <li>Transparent Results with partial vote counting for clear visualization and easily understandable results promoting transparency and integrity</li>
+            </ul>
+            <p className="mb-4 text-gray-800">At TrustElect, our objective is to increase trust in the electoral process by providing a safe, transparent, and dependable platform. We are devoted to fair elections, accurate results, and the ongoing strengthening of democratic processes.</p>
+            <h3 className="text-2xl font-bold mb-2 text-blue-900">Meet the Team</h3>
+            <p className="mb-4 text-gray-800">Our team consists of enthusiastic individuals with growing experience in software development, cybersecurity, and election systems. We deliver a trusted and effective election management platform by combining technical skills with real-world understanding, guided by an experienced IT instructor.</p>
+            <ul className="list-disc pl-6 mb-4 text-gray-800">
+              <li><span className="font-semibold">Steven Baradero</span> – Project Manager<br/>Leads project planning, execution, and team coordination.</li>
+              <li><span className="font-semibold">Suiluj Louis Anunciado</span> – Lead Programmer<br/>Heads development, system architecture, and security implementation</li>
+              <li><span className="font-semibold">Elmie Sanico</span> – System Analyst<br/>Translate user needs into functional, effective system designs.</li>
+              <li><span className="font-semibold">Giann Emerson Ararao</span> – Quality Assurance<br/>Ensures the platform is secure, bug-free, and reliable through rigorous testing.</li>
+              <li><span className="font-semibold">Adviser: John Robert Soriano</span> – IT Instructor<br/>Provides expert technical guidance and oversight to uphold industry standards.</li>
+            </ul>
+          </div>
         </div>
       )}
     </div>
