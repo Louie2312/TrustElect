@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { X, Download, Filter, Search, ArrowUp, Activity, Clock, Calendar } from 'lucide-react';
-import { generateReport } from '@/utils/reportGenerator';
+import { generatePdfReport } from '@/utils/pdfGenerator';
 
 export default function AuditLogDetail({ report, onClose, onDownload }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -39,6 +39,66 @@ export default function AuditLogDetail({ report, onClose, onDownload }) {
     }
   };
 
+  // Function to generate descriptive action message
+  const getDescriptiveAction = (log) => {
+    try {
+      // Parse details if it's a string
+      const details = typeof log.details === 'string' ? JSON.parse(log.details) : log.details;
+      
+      switch (log.action?.toUpperCase()) {
+        case 'VOTE':
+          if (log.entity_type === 'ELECTION' && details?.election_title) {
+            return `Voted in ${details.election_title}`;
+          } else if (details?.election_id) {
+            return `Voted in Election #${details.election_id}`;
+          }
+          return 'Voted in an election';
+          
+        case 'CREATE':
+          if (log.entity_type === 'ELECTION' && details?.title) {
+            return `Created election "${details.title}"`;
+          } else if (log.entity_type === 'CANDIDATE' && details?.name) {
+            return `Added candidate ${details.name}`;
+          } else if (log.entity_type === 'POSITION' && details?.name) {
+            return `Created position ${details.name}`;
+          }
+          return `Created ${log.entity_type?.toLowerCase() || 'item'}`;
+          
+        case 'UPDATE':
+          if (log.entity_type === 'ELECTION' && details?.title) {
+            return `Updated election "${details.title}"`;
+          } else if (log.entity_type === 'CANDIDATE' && details?.name) {
+            return `Updated candidate ${details.name}`;
+          } else if (log.entity_type === 'POSITION' && details?.name) {
+            return `Updated position ${details.name}`;
+          } else if (log.entity_type === 'USER' && details?.email) {
+            return `Updated user ${details.email}`;
+          }
+          return `Updated ${log.entity_type?.toLowerCase() || 'item'}`;
+          
+        case 'DELETE':
+          if (log.entity_type === 'ELECTION' && details?.title) {
+            return `Deleted election "${details.title}"`;
+          } else if (log.entity_type === 'CANDIDATE' && details?.name) {
+            return `Removed candidate ${details.name}`;
+          }
+          return `Deleted ${log.entity_type?.toLowerCase() || 'item'}`;
+          
+        case 'LOGIN':
+          return 'Logged in to system';
+          
+        case 'LOGOUT':
+          return 'Logged out from system';
+          
+        default:
+          return log.action;
+      }
+    } catch (error) {
+      console.error('Error parsing action details:', error);
+      return log.action;
+    }
+  };
+
   const uniqueActions = useMemo(() => {
     const actions = new Set(report.data.logs.map(log => log.action?.toUpperCase()));
     return Array.from(actions).sort();
@@ -55,7 +115,8 @@ export default function AuditLogDetail({ report, onClose, onDownload }) {
         (log.user_email?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
         (log.action?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
         (log.entity_type?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-        (log.user_role?.toLowerCase() || '').includes(searchTerm.toLowerCase());
+        (log.user_role?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (getDescriptiveAction(log).toLowerCase()).includes(searchTerm.toLowerCase());
 
       const matchesType = filterType === 'all' || log.action?.toUpperCase() === filterType;
       const matchesRole = filterRole === 'all' || log.user_role?.toLowerCase() === filterRole;
@@ -123,14 +184,14 @@ export default function AuditLogDetail({ report, onClose, onDownload }) {
       logs: filteredLogs.map(log => ({
         user_email: log.user_email,
         user_role: log.user_role,
-        action: log.action,
+        action: getDescriptiveAction(log),
         entity_type: log.entity_type,
         created_at: log.created_at
       }))
     };
 
     try {
-      await generateReport(4, reportData); // 4 is the report ID for Audit Log
+      await generatePdfReport(4, reportData); // 4 is the report ID for Audit Log
     } catch (error) {
       console.error('Error generating report:', error);
     }
@@ -227,7 +288,7 @@ export default function AuditLogDetail({ report, onClose, onDownload }) {
               className="flex items-center gap-2 bg-[#01579B] text-white px-4 py-2 rounded hover:bg-[#01416E]"
             >
               <Download className="h-4 w-4" />
-              Download Word
+              Download PDF
             </button>
           </div>
 
@@ -272,7 +333,7 @@ export default function AuditLogDetail({ report, onClose, onDownload }) {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`${getActionColor(log.action)} font-medium`}>
-                        {log.action}
+                        {getDescriptiveAction(log)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
@@ -298,4 +359,4 @@ export default function AuditLogDetail({ report, onClose, onDownload }) {
       </div>
     </div>
   );
-} 
+}

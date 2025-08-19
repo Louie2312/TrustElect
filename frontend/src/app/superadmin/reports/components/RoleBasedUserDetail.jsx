@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { X, Download, Users, ArrowUpRight, ArrowDownRight, Activity, ChevronLeft, ChevronRight, ArrowUp } from 'lucide-react';
-import { generateReport } from '@/utils/reportGenerator';
+import { generatePdfReport } from '@/utils/pdfGenerator';
 
 export default function RoleBasedUserDetail({ report, onClose, onDownload }) {
   const [currentPage, setCurrentPage] = useState(1);
@@ -150,7 +150,7 @@ export default function RoleBasedUserDetail({ report, onClose, onDownload }) {
     };
 
     try {
-      await generateReport(2, reportData); // 2 is the report ID for Role Based User
+      await generatePdfReport(2, reportData); // 2 is the report ID for Role Based User
     } catch (error) {
       console.error('Error generating report:', error);
     }
@@ -176,7 +176,7 @@ export default function RoleBasedUserDetail({ report, onClose, onDownload }) {
                 className="flex items-center gap-2 px-4 py-2 bg-[#01579B] text-white rounded-lg hover:bg-[#01416E] transition-colors"
               >
                 <Download className="h-5 w-5" />
-                Download Word
+                Download PDF
               </button>
               <button
                 onClick={onClose}
@@ -435,4 +435,4 @@ export default function RoleBasedUserDetail({ report, onClose, onDownload }) {
       </div>
     </div>
   );
-} 
+}

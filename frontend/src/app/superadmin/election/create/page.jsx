@@ -262,14 +262,6 @@ export default function CreateElectionPage() {
     }));
   };
 
-  // Add function to check if a program is already assigned to another precinct
-  const isProgramAssignedToOtherPrecinct = (program, currentPrecinct) => {
-    return Object.entries(eventData.eligibleVoters.precinctPrograms)
-      .some(([precinct, programs]) => 
-        precinct !== currentPrecinct && programs.includes(program)
-      );
-  };
-
   useEffect(() => {
     const fetchMaintenanceData = async () => {
       try {
@@ -505,13 +497,6 @@ export default function CreateElectionPage() {
   };
 
   const handlePrecinctProgramChange = (precinct, program) => {
-    // Check if program is already assigned to another precinct
-    if (!eventData.eligibleVoters.precinctPrograms[precinct]?.includes(program) &&
-        isProgramAssignedToOtherPrecinct(program, precinct)) {
-      toast.error(`${program} is already assigned to another precinct`);
-      return;
-    }
-
     setEventData(prev => {
       const precinctPrograms = { ...prev.eligibleVoters.precinctPrograms };
       
@@ -960,25 +945,20 @@ export default function CreateElectionPage() {
                                 <p className="text-sm font-medium text-gray-600 mb-2">Select programs for {precinct}:</p>
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                                   {eventData.eligibleVoters.programs.sort(sortPrograms).map(program => {
-                                    const isAssignedToOther = isProgramAssignedToOtherPrecinct(program, precinct);
                                     const isChecked = eventData.eligibleVoters.precinctPrograms[precinct]?.includes(program) || false;
                                     
                                     return (
                                       <label 
                                         key={program} 
-                                        className={`inline-flex items-center bg-white px-2 py-1 rounded ${
-                                          isAssignedToOther && !isChecked ? 'opacity-50 cursor-not-allowed' : ''
-                                        }`}
-                                        title={isAssignedToOther && !isChecked ? 'This program is already assigned to another precinct' : ''}
+                                        className={"inline-flex items-center bg-white px-2 py-1 rounded"}
                                       >
                                         <input
                                           type="checkbox"
                                           checked={isChecked}
                                           onChange={() => handlePrecinctProgramChange(precinct, program)}
                                           className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"
-                                          disabled={isAssignedToOther && !isChecked}
                                         />
-                                        <span className={`text-sm ${isAssignedToOther && !isChecked ? 'text-gray-400' : 'text-gray-600'}`}>
+                                        <span className="text-sm text-gray-600">
                                           {program}
                                         </span>
                                       </label>

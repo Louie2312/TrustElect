@@ -1,7 +1,7 @@
 "use client";
 
 import { X, Download, Shield, Lock, AlertTriangle } from 'lucide-react';
-import { generateReport } from '@/utils/reportGenerator';
+import { generatePdfReport } from '@/utils/pdfGenerator';
 
 export default function FailedLoginDetail({ report, onClose, onDownload }) {
   const formatNumber = (num) => {
@@ -30,7 +30,7 @@ export default function FailedLoginDetail({ report, onClose, onDownload }) {
     };
 
     try {
-      await generateReport(3, reportData); // 3 is the report ID for Failed Login
+      await generatePdfReport(3, reportData); // 3 is the report ID for Failed Login
     } catch (error) {
       console.error('Error generating report:', error);
     }
@@ -57,7 +57,7 @@ export default function FailedLoginDetail({ report, onClose, onDownload }) {
                 className="flex items-center gap-2 px-4 py-2 bg-[#01579B] text-white rounded-lg hover:bg-[#01416E] transition-colors"
               >
                 <Download className="h-5 w-5" />
-                Download Word
+                Download PDF
               </button>
               <button
                 onClick={onClose}
@@ -159,4 +159,4 @@ export default function FailedLoginDetail({ report, onClose, onDownload }) {
       </div>
     </div>
   );
-} 
+}

@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { Download, X, Users, CheckCircle, XCircle, Search, ChevronLeft, ChevronRight, ArrowUp, Info } from "lucide-react";
-import { generateReport } from '@/utils/reportGenerator';
+import { generatePdfReport } from '@/utils/pdfGenerator';
 import {
   BarChart,
   Bar,
@@ -307,7 +307,7 @@ export default function VoterParticipationDetail({ report, onClose, onDownload }
     };
 
     try {
-      await generateReport(8, reportData); // 8 is the report ID for Voter Participation
+      await generatePdfReport(8, reportData); // 8 is the report ID for Voter Participation
     } catch (error) {
       console.error('Error generating report:', error);
     }
@@ -702,7 +702,7 @@ export default function VoterParticipationDetail({ report, onClose, onDownload }
               className="flex items-center text-white bg-[#01579B] px-4 py-2 rounded hover:bg-[#01416E]"
             >
               <Download className="w-5 h-5 mr-2" />
-              Download Word
+              Download PDF
             </button>
           </div>
 
@@ -720,4 +720,4 @@ export default function VoterParticipationDetail({ report, onClose, onDownload }
       </div>
     </div>
   );
-} 
+}

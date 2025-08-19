@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Download, X, ChevronLeft, ChevronRight, Search, Users, Activity, Clock, Filter } from 'lucide-react';
 import axios from 'axios';
 import Cookies from 'js-cookie';
-import { generateReport } from '@/utils/reportGenerator';
+import { generatePdfReport } from '@/utils/pdfGenerator';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
@@ -144,7 +144,7 @@ const AdminActivityDetail = ({ report, onClose, onDownload }) => {
     };
 
     try {
-      await generateReport(10, reportData); // 10 is the report ID for Admin Activity
+      await generatePdfReport(10, reportData); // 10 is the report ID for Admin Activity
     } catch (error) {
       console.error('Error generating report:', error);
     }
@@ -165,7 +165,7 @@ const AdminActivityDetail = ({ report, onClose, onDownload }) => {
                 className="flex items-center text-white bg-[#01579B] px-4 py-2 rounded hover:bg-[#01416E]"
               >
                 <Download className="w-4 h-4 mr-2" />
-                Download Word
+                Download PDF
               </button>
               <button
                 onClick={onClose}
@@ -373,4 +373,4 @@ const AdminActivityDetail = ({ report, onClose, onDownload }) => {
   );
 };
 
-export default AdminActivityDetail; 
+export default AdminActivityDetail;

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Download, Search, X } from 'lucide-react';
-import { generateReport } from '@/utils/reportGenerator';
+import { generatePdfReport } from '@/utils/pdfGenerator';
 
 const CandidateListDetail = ({ report, onClose, onDownload }) => {
   const [selectedElection, setSelectedElection] = useState(report.data.elections[0]?.id);
@@ -75,7 +75,7 @@ const CandidateListDetail = ({ report, onClose, onDownload }) => {
     };
 
     try {
-      await generateReport(9, reportData); // 9 is the report ID for Candidate List
+      await generatePdfReport(9, reportData); // 9 is the report ID for Candidate List
     } catch (error) {
       console.error('Error generating report:', error);
     }
@@ -124,7 +124,7 @@ const CandidateListDetail = ({ report, onClose, onDownload }) => {
               className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
             >
               <Download size={20} />
-              Download Word
+              Download PDF
             </button>
           </div>
 
@@ -197,4 +197,4 @@ const CandidateListDetail = ({ report, onClose, onDownload }) => {
   );
 };
 
-export default CandidateListDetail; 
+export default CandidateListDetail;

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Download, X, Clock, Users, Activity, BarChart2 } from "lucide-react";
-import { generateReport } from '@/utils/reportGenerator';
+import { generatePdfReport } from '@/utils/pdfGenerator';
 import {
   BarChart,
   Bar,
@@ -112,7 +112,7 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
     };
 
     try {
-      await generateReport(7, reportData); // 7 is the report ID for System Load
+      await generatePdfReport(7, reportData); // 7 is the report ID for System Load
     } catch (error) {
       console.error('Error generating report:', error);
     }
@@ -306,11 +306,11 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
               className="flex items-center text-white bg-[#01579B] px-4 py-2 rounded hover:bg-[#01416E]"
             >
               <Download className="w-5 h-5 mr-2" />
-              Download Word
+              Download PDF
             </button>
           </div>
         </div>
       </div>
     </div>
   );
-} 
+}

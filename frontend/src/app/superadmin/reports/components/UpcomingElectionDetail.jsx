@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Download, X, Calendar, Filter, Users, BarChart2, ImageIcon } from "lucide-react";
-import { generateReport } from '@/utils/reportGenerator';
+import { generatePdfReport } from '@/utils/pdfGenerator';
 
 export default function UpcomingElectionDetail({ report, onClose, onDownload }) {
   const [activeTab, setActiveTab] = useState("summary");
@@ -98,7 +98,7 @@ export default function UpcomingElectionDetail({ report, onClose, onDownload }) 
     };
 
     try {
-      await generateReport(5, reportData); // 5 is the report ID for Upcoming Elections
+      await generatePdfReport(5, reportData); // 5 is the report ID for Upcoming Elections
     } catch (error) {
       console.error('Error generating report:', error);
     }
@@ -139,7 +139,7 @@ export default function UpcomingElectionDetail({ report, onClose, onDownload }) 
               className="flex items-center text-white bg-[#01579B] px-4 py-2 rounded hover:bg-[#01416E]"
             >
               <Download className="w-5 h-5 mr-2" />
-              Download Word
+              Download PDF
             </button>
           </div>
 
@@ -300,4 +300,4 @@ export default function UpcomingElectionDetail({ report, onClose, onDownload }) 
       </div>
     </div>
   );
-} 
+}

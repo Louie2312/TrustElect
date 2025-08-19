@@ -1180,30 +1180,30 @@ export default function ElectionDetailsPage() {
           </div>
         </>
       ) : activeTab === 'partial' ? (
-        <div ref={partialCountingRef} className={`${isFullScreen ? 'fixed inset-0 bg-white z-50 overflow-y-auto' : ''}`}>
+        <div ref={partialCountingRef} className={`${isFullScreen ? 'fixed inset-0 bg-white z-50 overflow-y-auto p-4' : ''}`}>
           {/* Vote Summary Section */}
-          <div className="bg-white rounded-lg shadow p-4 mb-6">
+          <div className={`bg-white rounded-lg shadow p-4 mb-6 ${isFullScreen ? 'sticky top-0 z-10' : ''}`}>
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-8">
+              <div className={`flex items-center ${isFullScreen ? 'space-x-12' : 'space-x-8'}`}>
                 <div className="flex items-center">
-                  <Users className="w-5 h-5 mr-2 text-gray-600" />
+                  <Users className={`${isFullScreen ? 'w-6 h-6' : 'w-5 h-5'} mr-2 text-gray-600`} />
                   <div>
-                    <div className="text-sm text-gray-500">Total Voters</div>
-                    <div className="font-bold text-black">{Number(election.voter_count || 0).toLocaleString()}</div>
+                    <div className={`${isFullScreen ? 'text-base' : 'text-sm'} text-gray-500`}>Total Voters</div>
+                    <div className={`font-bold text-black ${isFullScreen ? 'text-xl' : ''}`}>{Number(election.voter_count || 0).toLocaleString()}</div>
                   </div>
                 </div>
                 <div className="flex items-center">
-                  <CheckCircle className="w-5 h-5 mr-2 text-gray-600" />
+                  <CheckCircle className={`${isFullScreen ? 'w-6 h-6' : 'w-5 h-5'} mr-2 text-gray-600`} />
                   <div>
-                    <div className="text-sm text-gray-500">Votes Cast</div>
-                    <div className="font-bold text-black">{Number(election.vote_count || 0).toLocaleString()}</div>
+                    <div className={`${isFullScreen ? 'text-base' : 'text-sm'} text-gray-500`}>Votes Cast</div>
+                    <div className={`font-bold text-black ${isFullScreen ? 'text-xl' : ''}`}>{Number(election.vote_count || 0).toLocaleString()}</div>
                   </div>
                 </div>
                 <div className="flex items-center">
-                  <PieChart className="w-5 h-5 mr-2 text-gray-600" />
+                  <PieChart className={`${isFullScreen ? 'w-6 h-6' : 'w-5 h-5'} mr-2 text-gray-600`} />
                   <div>
-                    <div className="text-sm text-gray-500">Votes Percentage</div>
-                    <div className="font-bold text-black">
+                    <div className={`${isFullScreen ? 'text-base' : 'text-sm'} text-gray-500`}>Votes Percentage</div>
+                    <div className={`font-bold text-black ${isFullScreen ? 'text-xl' : ''}`}>
                       {election.voter_count ? ((election.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
                     </div>
                   </div>
@@ -1229,131 +1229,157 @@ export default function ElectionDetailsPage() {
           </div>
 
           {/* Partial Counting Results */}
-          <div className={`bg-white rounded-lg shadow p-6 ${isFullScreen ? 'mx-4' : ''}`}>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold text-black">Partial Vote Counting</h2>
-              <div className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">
+          <div className={`bg-white rounded-lg shadow p-6 ${isFullScreen ? 'mx-auto max-w-7xl' : ''}`}>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className={`${isFullScreen ? 'text-3xl' : 'text-xl'} font-semibold text-black`}>Partial Vote Counting</h2>
+              <div className={`px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full ${isFullScreen ? 'text-base' : 'text-sm'}`}>
                 Partial Updates
               </div>
             </div>
 
             {election.positions && election.positions.length > 0 ? (
-              <div className="space-y-6">
+              <div className="space-y-10">
                 {election.positions.map(position => {
                   const { top3, others } = getTop3AndOtherCandidates(position.candidates || []);
                   
                   return (
-                    <div key={position.id} className="border rounded-lg p-4">
-                      <h3 className="text-lg font-medium text-black mb-4">
+                    <div key={position.id} className={`border rounded-lg p-6 ${isFullScreen ? 'shadow-lg' : ''}`}>
+                      <h3 className={`${isFullScreen ? 'text-2xl' : 'text-lg'} font-medium text-black mb-6`}>
                         {position.name}
                       </h3>
 
-                      <div className="space-y-3">
-                        {/* Top 3 Candidates */}
-                        {top3.map((candidate, index) => (
-                          <div key={candidate.id} className="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
-                            <div className="relative">
-                              <div className="relative w-16 h-16 mr-4">
-                                {candidate.image_url && !imageErrors[candidate.id] ? (
-                                  <Image
-                                    src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
-                                    alt={`${candidate.first_name} ${candidate.last_name}`}
-                                    fill
-                                    sizes="64px"
-                                    className="object-cover rounded-full"
-                                    onError={() => handleImageError(candidate.id)}
-                                  />
-                                ) : (
-                                  <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
-                                    <User className="w-8 h-8 text-gray-400" />
+                      {/* Top 3 Candidates - Displayed prominently */}
+                      {top3.length > 0 && (
+                        <div className={`mb-8 ${isFullScreen ? 'grid grid-cols-3 gap-6' : 'space-y-3'}`}>
+                          {top3.map((candidate, index) => (
+                            <div 
+                              key={candidate.id} 
+                              className={`${isFullScreen ? 'flex flex-col items-center text-center p-6' : 'flex items-center p-3'} 
+                                bg-gray-50 rounded-lg border ${index === 0 ? 'border-blue-300' : index === 1 ? 'border-gray-300' : 'border-gray-200'} 
+                                ${isFullScreen && index === 0 ? 'shadow-lg bg-blue-50' : ''}`}
+                            >
+                              <div className={`relative ${isFullScreen ? 'mb-4' : ''}`}>
+                                <div className={`relative ${isFullScreen ? 'w-32 h-32' : 'w-16 h-16'} ${!isFullScreen ? 'mr-4' : ''}`}>
+                                  {candidate.image_url && !imageErrors[candidate.id] ? (
+                                    <Image
+                                      src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
+                                      alt={`${candidate.first_name} ${candidate.last_name}`}
+                                      fill
+                                      sizes={isFullScreen ? "128px" : "64px"}
+                                      className="object-cover rounded-full"
+                                      priority
+                                      onError={() => handleImageError(candidate.id)}
+                                    />
+                                  ) : (
+                                    <div className={`${isFullScreen ? 'w-32 h-32' : 'w-16 h-16'} rounded-full bg-gray-200 flex items-center justify-center`}>
+                                      <User className={`${isFullScreen ? 'w-16 h-16' : 'w-8 h-8'} text-gray-400`} />
+                                    </div>
+                                  )}
+                                  <div className={`absolute -top-2 -right-2 rounded-full p-1.5 text-xs font-bold ${
+                                    index === 0 ? 'bg-blue-500 text-white' :
+                                    index === 1 ? 'bg-gray-500 text-white' :
+                                    'bg-gray-400 text-white'
+                                  } ${isFullScreen ? 'text-base p-2' : ''}`}>
+                                    {getRankLabel(index)}
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <div className={`${isFullScreen ? 'w-full' : 'flex-1'}`}>
+                                <div className={`${isFullScreen ? '' : 'flex items-center justify-between'}`}>
+                                  <div>
+                                    <h4 className={`font-medium text-black ${isFullScreen ? 'text-xl mb-2' : ''}`}>
+                                      {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
+                                    </h4>
+                                    {candidate.party && (
+                                      <span className={`${isFullScreen ? 'block px-3 py-1 bg-gray-100 rounded-full mb-3' : 'text-sm'} text-black`}>
+                                        {candidate.party}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className={`${isFullScreen ? 'mt-4' : 'text-right'}`}>
+                                    <div className={`font-bold text-black ${isFullScreen ? 'text-3xl' : 'text-lg'}`}>
+                                      {Number(candidate.vote_count || 0).toLocaleString()}
+                                    </div>
+                                    <div className={`${isFullScreen ? 'text-base' : 'text-sm'} text-gray-600`}>
+                                      {election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
+                                    </div>
+                                  </div>
+                                </div>
+                                {isFullScreen && (
+                                  <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden mt-3">
+                                    <div 
+                                      className={`h-full rounded-full ${index === 0 ? 'bg-blue-500' : index === 1 ? 'bg-gray-500' : 'bg-gray-400'}`}
+                                      style={{ width: `${election.voter_count ? (candidate.vote_count / election.voter_count * 100).toFixed(2) : 0}%` }}
+                                    />
                                   </div>
                                 )}
-                                <div className={`absolute -top-2 -right-2 rounded-full p-1 text-xs font-bold ${
-                                  index === 0 ? 'bg-blue-500 text-white' :
-                                  index === 1 ? 'bg-gray-500 text-white' :
-                                  'bg-gray-400 text-white'
-                                }`}>
-                                  {getRankLabel(index)}
-                                </div>
                               </div>
                             </div>
-                            
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <h4 className="font-medium text-black">
-                                    {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
-                                  </h4>
-                                  {candidate.party && (
-                                    <span className="text-sm text-black">
-                                      {candidate.party}
-                                    </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Other Candidates - Displayed in a grid when in fullscreen */}
+                      {others.length > 0 && (
+                        <div>
+                          <h4 className={`font-medium text-gray-700 mb-3 ${isFullScreen ? 'text-xl' : ''}`}>Other Candidates</h4>
+                          <div className={`${isFullScreen ? 'grid grid-cols-2 md:grid-cols-3 gap-4' : 'space-y-3'}`}>
+                            {others.map(candidate => (
+                              <div 
+                                key={candidate.id} 
+                                className={`flex items-center p-3 bg-gray-50 rounded-lg ${isFullScreen ? 'shadow-sm' : ''}`}
+                              >
+                                <div className="relative w-16 h-16 mr-4">
+                                  {candidate.image_url && !imageErrors[candidate.id] ? (
+                                    <Image
+                                      src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
+                                      alt={`${candidate.first_name} ${candidate.last_name}`}
+                                      fill
+                                      sizes="64px"
+                                      className="object-cover rounded-full"
+                                      onError={() => handleImageError(candidate.id)}
+                                    />
+                                  ) : (
+                                    <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
+                                      <User className="w-8 h-8 text-gray-400" />
+                                    </div>
                                   )}
                                 </div>
-                                <div className="text-right">
-                                  <div className="font-bold text-black text-lg">
-                                    {Number(candidate.vote_count || 0).toLocaleString()}
-                                  </div>
-                                  <div className="text-sm text-gray-600">
-                                    {election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-
-                        {/* Other Candidates */}
-                        {others.map(candidate => (
-                          <div key={candidate.id} className="flex items-center p-3 bg-gray-50 rounded-lg">
-                            <div className="relative w-16 h-16 mr-4">
-                              {candidate.image_url && !imageErrors[candidate.id] ? (
-                                <Image
-                                  src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
-                                  alt={`${candidate.first_name} ${candidate.last_name}`}
-                                  fill
-                                  sizes="64px"
-                                  className="object-cover rounded-full"
-                                  onError={() => handleImageError(candidate.id)}
-                                />
-                              ) : (
-                                <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
-                                  <User className="w-8 h-8 text-gray-400" />
-                                </div>
-                              )}
-                            </div>
-                            
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <h4 className="font-medium text-black">
-                                    {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
-                                  </h4>
-                                  {candidate.party && (
-                                    <span className="text-sm text-black">
-                                      {candidate.party}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="text-right">
-                                  <div className="font-bold text-black text-lg">
-                                    {Number(candidate.vote_count || 0).toLocaleString()}
-                                  </div>
-                                  <div className="text-sm text-gray-600">
-                                    {election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
+                                
+                                <div className="flex-1">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <h4 className={`font-medium text-black ${isFullScreen ? 'text-lg' : ''}`}>
+                                        {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
+                                      </h4>
+                                      {candidate.party && (
+                                        <span className="text-sm text-black">
+                                          {candidate.party}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-right">
+                                      <div className={`font-bold text-black ${isFullScreen ? 'text-xl' : 'text-lg'}`}>
+                                        {Number(candidate.vote_count || 0).toLocaleString()}
+                                      </div>
+                                      <div className="text-sm text-gray-600">
+                                        {election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
+                                      </div>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
-                            </div>
+                            ))}
                           </div>
-                        ))}
+                        </div>
+                      )}
 
-                        {position.candidates && position.candidates.length === 0 && (
-                          <div className="text-center py-4 text-gray-500">
-                            No candidates for this position
-                          </div>
-                        )}
-                      </div>
+                      {position.candidates && position.candidates.length === 0 && (
+                        <div className="text-center py-4 text-gray-500">
+                          No candidates for this position
+                        </div>
+                      )}
                     </div>
                   );
                 })}

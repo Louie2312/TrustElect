@@ -1,9 +1,11 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Calendar, Clock, Users, CheckCircle, XCircle, AlertCircle, Trash2 } from 'lucide-react';
+import { Calendar, Clock, Users, CheckCircle, XCircle, AlertCircle, Trash2, BarChart, PieChart, RefreshCw, Download, X } from 'lucide-react';
 import Link from 'next/link';
 import Cookies from 'js-cookie';
+import axios from 'axios';
+import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell } from 'recharts';
 
 const API_BASE = 'http://localhost:5000/api';
 
@@ -213,6 +215,11 @@ export default function SuperAdminDashboard() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [actionMessage, setActionMessage] = useState(null);
   const [totalUniqueVoters, setTotalUniqueVoters] = useState(0);
+  const [liveVoteData, setLiveVoteData] = useState(null);
+  const [showLiveVoteModal, setShowLiveVoteModal] = useState(false);
+  const [selectedElection, setSelectedElection] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshTime, setRefreshTime] = useState(new Date());
 
   const loadElections = async (status) => {
     try {
@@ -312,6 +319,35 @@ export default function SuperAdminDashboard() {
     }
   };
 
+  const loadLiveVoteCount = async () => {
+    try {
+      setIsRefreshing(true);
+      const token = Cookies.get('token');
+      const response = await fetch(`${API_BASE}/reports/live-vote-count`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch live vote count data');
+      }
+      
+      const data = await response.json();
+      setLiveVoteData(data.data);
+      setRefreshTime(new Date());
+    } catch (error) {
+      console.error('Error loading live vote count:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const handleViewLiveVoteDetails = (election) => {
+    setSelectedElection(election);
+    setShowLiveVoteModal(true);
+  };
+
   useEffect(() => {
     // Initial load of everything
     const initialLoad = async () => {
@@ -324,7 +360,8 @@ export default function SuperAdminDashboard() {
         await Promise.all([
           loadStats(),
           loadElections(activeTab),
-          loadTotalUniqueVoters()
+          loadTotalUniqueVoters(),
+          loadLiveVoteCount()
         ]);
       } catch (error) {
         console.error('[SuperAdmin] Error during initial load:', error);
@@ -341,6 +378,7 @@ export default function SuperAdminDashboard() {
     
     const statsInterval = setInterval(() => {
       loadStats();
+      loadLiveVoteCount();
     }, 30000);
 
     return () => {
@@ -429,7 +467,7 @@ export default function SuperAdminDashboard() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 bg-gray-50 min-h-screen">
+    <div className="container mx-auto px-4 py-8 min-h-screen">
       <h1 className="text-3xl font-bold mb-2 text-black">Dashboard</h1>      
      
       {actionMessage && (
@@ -441,19 +479,19 @@ export default function SuperAdminDashboard() {
      
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="font-medium text-black mb-2 text-black">Total Elections</h3>
+          <h3 className="font-medium mb-2 text-black">Total Elections</h3>
           <p className="text-3xl font-bold text-black">
             {Number(stats.reduce((sum, stat) => sum + parseInt(stat.count || 0), 0)).toLocaleString()}
           </p>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="font-medium text-black mb-2 text-black">Total Voters</h3>
+          <h3 className="font-medium mb-2 text-black">Total Voters</h3>
           <p className="text-3xl font-bold text-black">
             {Number(totalUniqueVoters).toLocaleString()}
           </p>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="font-medium text-black mb-2 text-black">Total Votes Cast</h3>
+          <h3 className="font-medium mb-2 text-black">Total Votes Cast</h3>
           <p className="text-3xl font-bold text-black">
             {Number(stats.reduce((sum, stat) => sum + parseInt(stat.total_votes || 0), 0)).toLocaleString()}
           </p>
@@ -472,10 +510,10 @@ export default function SuperAdminDashboard() {
                 key={tab.id}
                 className={`flex items-center justify-center px-6 py-3 font-medium text-sm transition-colors duration-200 flex-1 
                   ${activeTab === tab.id 
-                    ? 'bg-blue-50 text-blue-600 rounded-md' 
+                    ? 'bg-gray-200 text-black font-bold rounded-md' 
                     : hasPending 
-                      ? 'text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100'
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                      ? 'text-black hover:text-black bg-purple-50 hover:bg-purple-100'
+                      : 'text-black hover:text-black hover:bg-gray-50'
                   }`}
                 onClick={() => setActiveTab(tab.id)}
               >
@@ -570,6 +608,79 @@ export default function SuperAdminDashboard() {
         </div>
       )}
       
+      {/* Live Vote Count Section */}
+      {activeTab === 'ongoing' && elections.length > 0 && liveVoteData && (
+        <div className="mt-8 bg-gray-50 rounded-lg shadow-lg p-6 border border-gray-200">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-bold text-black flex items-center">
+              <BarChart className="mr-2 text-black" />
+              Live Vote Count
+              <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full animate-pulse">
+                Live
+              </span>
+            </h2>
+            <div className="flex items-center text-sm text-black bg-gray-100 px-3 py-2 rounded-md shadow-sm">
+              <Clock className="w-4 h-4 mr-1" />
+              Last updated: {refreshTime.toLocaleTimeString()}
+              <button 
+                onClick={loadLiveVoteCount} 
+                disabled={isRefreshing}
+                className={`ml-2 text-gray-600 hover:text-gray-800 ${isRefreshing ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto bg-white rounded-lg shadow-inner">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-gray-100 border-b-2 border-gray-200">
+                  <th className="p-4 text-left text-sm font-bold text-black">Election Name</th>
+                  <th className="p-4 text-left text-sm font-bold text-black">Type</th>
+                  <th className="p-4 text-left text-sm font-bold text-black">Eligible Voters</th>
+                  <th className="p-4 text-left text-sm font-bold text-black">Current Votes</th>
+                  <th className="p-4 text-left text-sm font-bold text-black">Live Turnout</th>
+                  <th className="p-4 text-left text-sm font-bold text-black">Time Remaining</th>
+                  <th className="p-4 text-left text-sm font-bold text-black">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {liveVoteData.live_elections && liveVoteData.live_elections.map((election) => (
+                  <tr key={election.id} className="border-b hover:bg-gray-50 transition-colors duration-150">
+                    <td className="p-4 text-sm font-medium text-black">{election.title}</td>
+                    <td className="p-4 text-sm text-black">{election.election_type}</td>
+                    <td className="p-4 text-sm font-medium text-black">{election.eligible_voters.toLocaleString()}</td>
+                    <td className="p-4 text-sm font-medium text-black">{election.current_votes.toLocaleString()}</td>
+                    <td className="p-4 text-sm text-black">
+                      <div className="flex items-center">
+                        <div className="w-24 bg-gray-200 rounded-full h-3 mr-2 shadow-inner">
+                          <div 
+                            className="bg-black h-3 rounded-full" 
+                            style={{ width: `${Math.min(election.live_turnout * 100, 100)}%` }}
+                          ></div>
+                        </div>
+                        <span className="font-medium">{(election.live_turnout * 100).toFixed(1)}%</span>
+                      </div>
+                    </td>
+                    <td className="p-4 text-sm font-medium text-black">{election.time_remaining}</td>
+                    <td className="p-4 text-sm text-black">
+                      <button 
+                        onClick={() => handleViewLiveVoteDetails(election)}
+                        className="text-black bg-gray-200 hover:bg-gray-300 px-3 py-1.5 rounded-md flex items-center transition-colors duration-150 shadow-sm"
+                      >
+                        <PieChart className="w-4 h-4 mr-1" />
+                        View Details
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      
     
       <DeleteConfirmationModal 
         isOpen={deleteModalOpen}
@@ -581,7 +692,121 @@ export default function SuperAdminDashboard() {
         onConfirm={handleDeleteConfirm}
         isDeleting={isDeleting}
       />
+
+      {/* Live Vote Count Modal */}
+      {showLiveVoteModal && selectedElection && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="bg-gray-50 rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-auto border border-gray-300">
+            <div className="p-8">
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-black">{selectedElection.title} - Live Vote Count</h2>
+                  <p className="text-sm text-black bg-gray-100 px-3 py-1 rounded-md inline-block mt-2 shadow-sm">
+                    <Clock className="w-4 h-4 inline mr-1" />
+                    Last updated: {refreshTime.toLocaleTimeString()}
+                  </p>
+                </div>
+                <button onClick={() => setShowLiveVoteModal(false)} className="text-black hover:text-gray-700 bg-gray-200 p-2 rounded-full hover:bg-gray-300 transition-colors duration-150">
+                   <X className="w-6 h-6" />
+                 </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="border border-gray-200 rounded-lg p-5 bg-white shadow-md hover:shadow-lg transition-all duration-200">
+                  <h3 className="text-sm font-medium text-black mb-2">Eligible Voters</h3>
+                  <p className="text-3xl font-bold text-black">{selectedElection.eligible_voters.toLocaleString()}</p>
+                </div>
+                <div className="border border-gray-200 rounded-lg p-5 bg-white shadow-md hover:shadow-lg transition-all duration-200">
+                  <h3 className="text-sm font-medium text-black mb-2">Current Votes</h3>
+                  <p className="text-3xl font-bold text-black">{selectedElection.current_votes.toLocaleString()}</p>
+                </div>
+                <div className="border border-gray-200 rounded-lg p-5 bg-white shadow-md hover:shadow-lg transition-all duration-200">
+                  <h3 className="text-sm font-medium text-black mb-2">Live Turnout</h3>
+                  <p className="text-3xl font-bold text-black">{(selectedElection.live_turnout * 100).toFixed(1)}%</p>
+                </div>
+              </div>
+
+              <div className="mb-8 bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                <h3 className="text-lg font-bold text-black mb-4">Voter Participation</h3>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RechartsPieChart>
+                      <Pie
+                        data={[
+                          { name: 'Voted', value: selectedElection.current_votes },
+                          { name: 'Not Voted', value: selectedElection.eligible_voters - selectedElection.current_votes }
+                        ]}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        outerRadius={120}
+                        fill="#8884d8"
+                        dataKey="value"
+                        label={({ name, value, percent }) => `${name}: ${value.toLocaleString()} (${(percent * 100).toFixed(1)}%)`}
+                      >
+                        <Cell fill="#000000" />
+                        <Cell fill="#E0E0E0" />
+                      </Pie>
+                      <Tooltip formatter={(value) => value.toLocaleString()} />
+                      <Legend formatter={(value) => <span className="text-black font-medium">{value}</span>} />
+                    </RechartsPieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {selectedElection.positions && selectedElection.positions.length > 0 && (
+                <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                  <h3 className="text-lg font-bold text-black mb-4">Votes by Position</h3>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RechartsBarChart
+                        data={selectedElection.positions.map(pos => ({
+                          name: pos.name,
+                          votes: pos.votes || 0
+                        }))}
+                        margin={{ top: 20, right: 30, left: 20, bottom: 70 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" />
+                        <XAxis 
+                          dataKey="name" 
+                          angle={-45} 
+                          textAnchor="end" 
+                          height={70} 
+                          tick={{ fill: '#000000', fontSize: 12 }}
+                        />
+                        <YAxis tick={{ fill: '#000000' }} />
+                        <Tooltip 
+                          formatter={(value) => value.toLocaleString()} 
+                          labelStyle={{ color: '#000000', fontWeight: 'bold' }}
+                          contentStyle={{ backgroundColor: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '6px' }}
+                        />
+                        <Bar dataKey="votes" fill="#000000" radius={[4, 4, 0, 0]} />
+                      </RechartsBarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-8 flex justify-end space-x-4">
+                <button
+                  onClick={loadLiveVoteCount}
+                  disabled={isRefreshing}
+                  className="flex items-center text-black bg-gray-200 px-5 py-2.5 rounded-md hover:bg-gray-300 shadow-sm transition-all duration-150 font-medium"
+                >
+                  <RefreshCw className={`w-5 h-5 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  Refresh Data
+                </button>
+                <button
+                  onClick={() => setShowLiveVoteModal(false)}
+                  className="flex items-center text-black bg-gray-200 px-5 py-2.5 rounded-md hover:bg-gray-300 shadow-sm transition-all duration-150 font-medium"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
