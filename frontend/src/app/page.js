@@ -14,9 +14,8 @@ export default function Home() {
   const [showLogin, setShowLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [apiConnected, setApiConnected] = useState(false);
-  const [showAbout, setShowAbout] = useState(false);
+  // Remove showAbout state since we're removing the modal
   
-
   const [landingContent, setLandingContent] = useState({
     logo: {
       imageUrl: null
@@ -220,7 +219,7 @@ export default function Home() {
 
   return (
     <div className="relative min-h-screen bg-white flex flex-col">
-      {/* Header Section */}
+      {/* Header Section - Updated to remove About button */}
       <header className="w-full flex justify-between items-center p-6 bg-[#01579B] shadow-md fixed top-0 left-0 right-0 z-10">
         <h1 className="text-2xl font-bold flex items-center">
           {landingContent.logo?.imageUrl ? (
@@ -252,14 +251,7 @@ export default function Home() {
         </h1>
         
         <nav className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            className="cursor-pointer px-4 py-2 text-white font-semibold rounded-lg hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            style={{ background: 'transparent', boxShadow: 'none' }}
-            onClick={() => setShowAbout(true)}
-          >
-            About
-          </Button>
+          {/* Removed About button */}
           <Button
             onClick={() => setShowLogin(true)}
             className="cursor-pointer px-6 py-2 br-5 bg-[#0000FF] text-white font-semibold rounded-lg shadow-md hover:bg-blue-800"
@@ -267,7 +259,6 @@ export default function Home() {
             Login
           </Button>
         </nav>
-        
       </header>
 
       <main className="flex-grow pt-24">
@@ -465,7 +456,80 @@ export default function Home() {
           </div>
         </section>
       )}
-    </main>
+
+      {/* New About Us Section */}
+      <section className="py-20 px-6 bg-white">
+        <div className="container mx-auto max-w-6xl">
+          <h2 className="text-4xl font-bold text-center mb-12 text-blue-900">
+            About Us
+          </h2>
+          
+          <div className="max-w-4xl mx-auto">
+            <p className="mb-6 text-lg text-gray-800 leading-relaxed">
+              TrustElect is a comprehensive election management system dedicated to fostering secure, efficient, and transparent electoral processes. We provide a robust platform designed to empower both administrators and voters throughout every stage of an election, from initial setup to the declaration of results.
+            </p>
+            
+            <div className="mb-8">
+              <h3 className="text-2xl font-semibold mb-4 text-blue-800">
+                Our Platform Provides:
+              </h3>
+              <ul className="list-disc pl-6 space-y-2 text-gray-800">
+                <li>Secure Administration with Role-Based Access Control (RBAC) and data encryption using Advance Encryption System 256 (AES – 256)</li>
+                <li>Efficient Database Management for fast and accurate processing</li>
+                <li>User-Friendly Interfaces that prioritize ease of use</li>
+                <li>Verifiable Ballot Receipts through encrypted ballots and receipt confirmation</li>
+                <li>Transparent Results with partial vote counting for clear visualization and easily understandable results promoting transparency and integrity</li>
+              </ul>
+            </div>
+            
+            <p className="mb-8 text-lg text-gray-800 leading-relaxed">
+              At TrustElect, our objective is to increase trust in the electoral process by providing a safe, transparent, and dependable platform. We are devoted to fair elections, accurate results, and the ongoing strengthening of democratic processes.
+            </p>
+            
+            <div className="mb-8">
+              <h3 className="text-2xl font-semibold mb-6 text-blue-800">
+                Meet the Team
+              </h3>
+              <p className="mb-6 text-lg text-gray-800 leading-relaxed">
+                Our team consists of enthusiastic individuals with growing experience in software development, cybersecurity, and election systems. We deliver a trusted and effective election management platform by combining technical skills with real-world understanding, guided by an experienced IT instructor.
+              </p>
+              
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="bg-blue-50 p-6 rounded-lg">
+                  <h4 className="font-bold text-blue-900 mb-2">Steven Baradero</h4>
+                  <p className="text-blue-700 font-semibold mb-2">Project Manager</p>
+                  <p className="text-gray-700">Leads project planning, execution, and team coordination.</p>
+                </div>
+                
+                <div className="bg-blue-50 p-6 rounded-lg">
+                  <h4 className="font-bold text-blue-900 mb-2">Suiluj Louis Anunciado</h4>
+                  <p className="text-blue-700 font-semibold mb-2">Lead Programmer</p>
+                  <p className="text-gray-700">Heads development, system architecture, and security implementation.</p>
+                </div>
+                
+                <div className="bg-blue-50 p-6 rounded-lg">
+                  <h4 className="font-bold text-blue-900 mb-2">Elmie Sanico</h4>
+                  <p className="text-blue-700 font-semibold mb-2">System Analyst</p>
+                  <p className="text-gray-700">Translate user needs into functional, effective system designs.</p>
+                </div>
+                
+                <div className="bg-blue-50 p-6 rounded-lg">
+                  <h4 className="font-bold text-blue-900 mb-2">Giann Emerson Ararao</h4>
+                  <p className="text-blue-700 font-semibold mb-2">Quality Assurance</p>
+                  <p className="text-gray-700">Ensures the platform is secure, bug-free, and reliable through rigorous testing.</p>
+                </div>
+                
+                <div className="bg-blue-100 p-6 rounded-lg md:col-span-2">
+                  <h4 className="font-bold text-blue-900 mb-2">John Robert Soriano</h4>
+                  <p className="text-blue-700 font-semibold mb-2">Adviser: IT Instructor</p>
+                  <p className="text-gray-700">Provides expert technical guidance and oversight to uphold industry standards.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        </section>
+      </main>
 
       {/* Footer */}
       <footer className="bg-[#01579B] text-white py-8 px-6">
@@ -489,40 +553,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* About Modal */}
-      {showAbout && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
-          <div className="bg-white max-w-2xl w-full rounded-lg shadow-lg p-8 relative overflow-y-auto max-h-[90vh]">
-            <button
-              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl font-bold"
-              onClick={() => setShowAbout(false)}
-              aria-label="Close About"
-            >
-              &times;
-            </button>
-            <h2 className="text-3xl font-bold mb-4 text-blue-900">About Us</h2>
-            <p className="mb-4 text-gray-800">TrustElect is a comprehensive election management system dedicated to fostering secure, efficient, and transparent electoral processes. We provide a robust platform designed to empower both administrators and voters throughout every stage of an election, from initial setup to the declaration of results.</p>
-            <p className="mb-2 font-semibold text-blue-800">Our platform provides:</p>
-            <ul className="list-disc pl-6 mb-4 text-gray-800">
-              <li>Secure Administration with Role-Based Access Control (RBAC) and data encryption using Advance Encryption System 256 (AES – 256)</li>
-              <li>Efficient Database Management for fast and accurate processing</li>
-              <li>User-Friendly Interfaces that prioritize ease of use</li>
-              <li>Verifiable Ballot Receipts through encrypted ballots and receipt confirmation</li>
-              <li>Transparent Results with partial vote counting for clear visualization and easily understandable results promoting transparency and integrity</li>
-            </ul>
-            <p className="mb-4 text-gray-800">At TrustElect, our objective is to increase trust in the electoral process by providing a safe, transparent, and dependable platform. We are devoted to fair elections, accurate results, and the ongoing strengthening of democratic processes.</p>
-            <h3 className="text-2xl font-bold mb-2 text-blue-900">Meet the Team</h3>
-            <p className="mb-4 text-gray-800">Our team consists of enthusiastic individuals with growing experience in software development, cybersecurity, and election systems. We deliver a trusted and effective election management platform by combining technical skills with real-world understanding, guided by an experienced IT instructor.</p>
-            <ul className="list-disc pl-6 mb-4 text-gray-800">
-              <li><span className="font-semibold">Steven Baradero</span> – Project Manager<br/>Leads project planning, execution, and team coordination.</li>
-              <li><span className="font-semibold">Suiluj Louis Anunciado</span> – Lead Programmer<br/>Heads development, system architecture, and security implementation</li>
-              <li><span className="font-semibold">Elmie Sanico</span> – System Analyst<br/>Translate user needs into functional, effective system designs.</li>
-              <li><span className="font-semibold">Giann Emerson Ararao</span> – Quality Assurance<br/>Ensures the platform is secure, bug-free, and reliable through rigorous testing.</li>
-              <li><span className="font-semibold">Adviser: John Robert Soriano</span> – IT Instructor<br/>Provides expert technical guidance and oversight to uphold industry standards.</li>
-            </ul>
-          </div>
-        </div>
-      )}
+      {/* Remove the About Modal completely */}
     </div>
   );
 }

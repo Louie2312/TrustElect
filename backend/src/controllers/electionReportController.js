@@ -320,6 +320,32 @@ const getLiveVoteCount = async (req, res) => {
 
     const liveElections = result.rows;
 
+    // Get votes by course/program for each ongoing election
+    const electionsWithCourseData = await Promise.all(
+      liveElections.map(async (election) => {
+        const courseVotesQuery = `
+          SELECT 
+            s.course_name as program,
+            COUNT(DISTINCT v.student_id) as votes_cast
+          FROM votes v
+          JOIN students s ON v.student_id = s.id
+          WHERE v.election_id = $1
+          GROUP BY s.course_name
+          ORDER BY votes_cast DESC, s.course_name
+        `;
+        
+        const courseVotesResult = await pool.query(courseVotesQuery, [election.id]);
+        
+        return {
+          ...election,
+          votes_by_program: courseVotesResult.rows.map(row => ({
+            program: row.program,
+            votes_cast: parseInt(row.votes_cast)
+          }))
+        };
+      })
+    );
+
     // Calculate summary statistics
     const summary = {
       total_live_elections: liveElections.length,
@@ -333,7 +359,7 @@ const getLiveVoteCount = async (req, res) => {
       success: true,
       data: {
         summary,
-        live_elections: liveElections
+        live_elections: electionsWithCourseData
       }
     });
 
@@ -351,4 +377,4 @@ module.exports = {
   getElectionDetails,
   getUpcomingElections,
   getLiveVoteCount
-}; 
+};

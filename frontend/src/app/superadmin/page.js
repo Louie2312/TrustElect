@@ -711,11 +711,12 @@ export default function SuperAdminDashboard() {
                  </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <div className="border border-gray-200 rounded-lg p-5 bg-white shadow-md hover:shadow-lg transition-all duration-200">
-                  <h3 className="text-sm font-medium text-black mb-2">Eligible Voters</h3>
-                  <p className="text-3xl font-bold text-black">{selectedElection.eligible_voters.toLocaleString()}</p>
+                  <h3 className="text-sm font-medium text-black mb-2">Total Eligible Voters</h3>
+                  <p className="text-3xl font-bold text-black">{Number(totalUniqueVoters).toLocaleString()}</p>
                 </div>
+               
                 <div className="border border-gray-200 rounded-lg p-5 bg-white shadow-md hover:shadow-lg transition-all duration-200">
                   <h3 className="text-sm font-medium text-black mb-2">Current Votes</h3>
                   <p className="text-3xl font-bold text-black">{selectedElection.current_votes.toLocaleString()}</p>
@@ -742,13 +743,34 @@ export default function SuperAdminDashboard() {
                         outerRadius={120}
                         fill="#8884d8"
                         dataKey="value"
-                        label={({ name, value, percent }) => `${name}: ${value.toLocaleString()} (${(percent * 100).toFixed(1)}%)`}
+                        label={({ name, value }) => {
+                          if (name === 'Not Voted' && value === 0) {
+                            return '';
+                          }
+                          // Calculate percentage based on total eligible voters
+                          const percentage = (value / selectedElection.eligible_voters * 100).toFixed(1);
+                          return `${name}: ${value.toLocaleString()} (${percentage}%)`;
+                        }}
                       >
-                        <Cell fill="#000000" />
-                        <Cell fill="#E0E0E0" />
+                        <Cell fill="#22C55E" />
+                        <Cell fill="#EF4444" />
                       </Pie>
-                      <Tooltip formatter={(value) => value.toLocaleString()} />
-                      <Legend formatter={(value) => <span className="text-black font-medium">{value}</span>} />
+                      <Tooltip 
+                        formatter={(value, name) => {
+                          if (name === 'Not Voted' && value === 0) {
+                            return ['', ''];
+                          }
+                          return [value.toLocaleString(), name];
+                        }} 
+                      />
+                      <Legend 
+                        formatter={(value, entry) => {
+                          if (value === 'Not Voted' && entry.payload.value === 0) {
+                            return '';
+                          }
+                          return <span className="text-black font-medium">{value}</span>;
+                        }} 
+                      />
                     </RechartsPieChart>
                   </ResponsiveContainer>
                 </div>
@@ -781,6 +803,69 @@ export default function SuperAdminDashboard() {
                           contentStyle={{ backgroundColor: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '6px' }}
                         />
                         <Bar dataKey="votes" fill="#000000" radius={[4, 4, 0, 0]} />
+                      </RechartsBarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+
+              {/* New Bar Chart for Votes by Program/Course */}
+              {selectedElection.votes_by_program && selectedElection.votes_by_program.length > 0 && (
+                <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 mt-6">
+                  <h3 className="text-lg font-bold text-black mb-4">Votes Cast by Course</h3>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RechartsBarChart
+                        data={selectedElection.votes_by_program
+                          .sort((a, b) => b.votes_cast - a.votes_cast)
+                          .map((item, index) => ({
+                            ...item,
+                            fill: [
+                              '#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6',
+                              '#EC4899', '#06B6D4', '#84CC16', '#F97316', '#6366F1',
+                              '#14B8A6', '#F43F5E', '#22C55E', '#A855F7', '#0EA5E9'
+                            ][index % 15]
+                          }))
+                        }
+                        margin={{ top: 20, right: 30, left: 20, bottom: 70 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" />
+                        <XAxis 
+                          dataKey="program" 
+                          angle={-45} 
+                          textAnchor="end" 
+                          height={70} 
+                          tick={{ fill: '#000000', fontSize: 12 }}
+                        />
+                        <YAxis 
+                          tick={{ fill: '#000000' }}
+                          label={{ value: 'Votes Cast', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: '#000000' } }}
+                        />
+                        <Tooltip 
+                          formatter={(value) => [value.toLocaleString(), 'Votes Cast']} 
+                          labelStyle={{ color: '#000000', fontWeight: 'bold' }}
+                          contentStyle={{ backgroundColor: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '6px' }}
+                        />
+                        <Bar 
+                          dataKey="votes_cast" 
+                          radius={[4, 4, 0, 0]}
+                          stroke="#ffffff"
+                          strokeWidth={1}
+                        >
+                          {selectedElection.votes_by_program
+                            .sort((a, b) => b.votes_cast - a.votes_cast)
+                            .map((entry, index) => (
+                              <Cell 
+                                key={`cell-${index}`} 
+                                fill={[
+                                  '#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6',
+                                  '#EC4899', '#06B6D4', '#84CC16', '#F97316', '#6366F1',
+                                  '#14B8A6', '#F43F5E', '#22C55E', '#A855F7', '#0EA5E9'
+                                ][index % 15]}
+                              />
+                            ))
+                          }
+                        </Bar>
                       </RechartsBarChart>
                     </ResponsiveContainer>
                   </div>
