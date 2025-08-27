@@ -1,5 +1,4 @@
 const pool = require("../config/db");
-
 /**
  * Get all permissions for a specific admin
  * @param {number} adminId - The admin's user ID

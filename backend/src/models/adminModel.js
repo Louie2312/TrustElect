@@ -1,5 +1,5 @@
 const pool = require("../config/db");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs"); // Changed from "bcrypt" to "bcryptjs"
 
 
 const checkEmployeeNumberExists = async (employeeNumber, excludeAdminId = null) => {
