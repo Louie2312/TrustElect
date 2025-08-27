@@ -56,7 +56,7 @@ export default function Home() {
   useEffect(() => {
     checkApiConnection();
     fetchContent();
-  }, []);
+  }, [fetchContent]); // Add fetchContent dependency
 
 
   const checkApiConnection = async () => {

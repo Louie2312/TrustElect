@@ -397,26 +397,14 @@ export default function AdminDashboard() {
           return;
         }
         
+        // Try to load all data
         try {
-          // Load all elections first to ensure we have counts for calculations
-          await loadAllElections();
-          
-          // Then load stats
-          const token = Cookies.get("token");
-          
-          // Fetch stats
-          const statsResponse = await axios.get("http://localhost:5000/api/elections/stats", {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          
-          // The API returns an array of stats by status
-          const statsData = statsResponse.data || [];
-          console.log("Raw stats data:", statsData);
-          
-          // Set the stats directly - our component will handle the array format
-          setStats(statsData);
+          await Promise.all([
+            loadAllElections(),
+            loadStats()
+          ]);
         } catch (error) {
-          console.error("Error initializing dashboard:", error);
+          console.error('Error loading dashboard data:', error);
           // Try individual functions as fallback
           await loadStats();
         }
@@ -424,42 +412,14 @@ export default function AdminDashboard() {
     };
     
     initializeDashboard();
-  }, [permissionsLoading, hasPermission]);
+  }, [permissionsLoading, hasPermission, loadAllElections]);
 
-  // Update stats when all elections are loaded - handled differently now
+  // Add the missing useEffect hooks inside the component
   useEffect(() => {
-    // If we don't have stats yet but we have elections, this will provide fallback counts
-    if (Object.keys(allElections).length > 0 && (!stats || !stats.length)) {
-      const fallbackStats = [
-        { 
-          status: 'ongoing', 
-          count: allElections.ongoing?.length || 0,
-          total_voters: (allElections.ongoing || []).reduce((sum, e) => sum + (e.voter_count || 0), 0),
-          total_votes: (allElections.ongoing || []).reduce((sum, e) => sum + (e.vote_count || 0), 0)
-        },
-        { 
-          status: 'upcoming', 
-          count: allElections.upcoming?.length || 0,
-          total_voters: (allElections.upcoming || []).reduce((sum, e) => sum + (e.voter_count || 0), 0),
-          total_votes: (allElections.upcoming || []).reduce((sum, e) => sum + (e.vote_count || 0), 0)
-        },
-        { 
-          status: 'completed', 
-          count: allElections.completed?.length || 0,
-          total_voters: (allElections.completed || []).reduce((sum, e) => sum + (e.voter_count || 0), 0),
-          total_votes: (allElections.completed || []).reduce((sum, e) => sum + (e.vote_count || 0), 0)
-        },
-        { 
-          status: 'to_approve', 
-          count: allElections.to_approve?.length || 0,
-          total_voters: (allElections.to_approve || []).reduce((sum, e) => sum + (e.voter_count || 0), 0),
-          total_votes: (allElections.to_approve || []).reduce((sum, e) => sum + (e.vote_count || 0), 0)
-        }
-      ];
-      
-      setStats(fallbackStats);
+    if (!permissionsLoading && hasPermission('elections', 'view')) {
+      loadStats();
     }
-  }, [allElections, stats]);
+  }, [permissionsLoading, hasPermission, loadStats]);
 
   // Handle tab change without loading indicator
   useEffect(() => {
@@ -857,11 +817,3 @@ export default function AdminDashboard() {
     </div>
   );
 }
-
-useEffect(() => {
-  loadElections();
-}, [loadElections]); // Add loadElections dependency
-
-useEffect(() => {
-  loadStats();
-}, [loadStats]); // Add loadStats dependency

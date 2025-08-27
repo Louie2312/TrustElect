@@ -221,7 +221,7 @@ export default function SuperAdminDashboard() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshTime, setRefreshTime] = useState(new Date());
 
-  const loadElections = async (status) => {
+  const loadElections = useCallback(async (status) => {
     try {
       setIsLoading(true);
       setError(null);
@@ -260,9 +260,9 @@ export default function SuperAdminDashboard() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const loadPendingApprovals = async () => {
+  const loadPendingApprovals = useCallback(async () => {
     try {
       const response = await fetch(`${API_BASE}/elections/pending-approval`, {
         headers: {
@@ -285,23 +285,20 @@ export default function SuperAdminDashboard() {
     } catch (err) {
       console.error('[SuperAdmin] Error loading pending approvals:', err);
     }
-  };
+  }, [activeTab]);
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       const data = await fetchWithAuth('/elections/stats');
-     
       setStats(data || []);
     } catch (err) {
       console.error("[SuperAdmin] Failed to load stats:", err);
-    
       setStats([]);
     }
-  };
+  }, []);
 
-  const loadTotalUniqueVoters = async () => {
+  const loadTotalUniqueVoters = useCallback(async () => {
     try {
-      // Using the preview-voters endpoint that returns the total count of students
       const response = await fetchWithAuth('/elections/preview-voters', {
         method: 'POST',
         body: JSON.stringify({
@@ -317,9 +314,9 @@ export default function SuperAdminDashboard() {
       console.error("[SuperAdmin] Failed to load total unique voters:", err);
       setTotalUniqueVoters(0);
     }
-  };
+  }, []);
 
-  const loadLiveVoteCount = async () => {
+  const loadLiveVoteCount = useCallback(async () => {
     try {
       setIsRefreshing(true);
       const token = Cookies.get('token');
@@ -341,7 +338,7 @@ export default function SuperAdminDashboard() {
     } finally {
       setIsRefreshing(false);
     }
-  };
+  }, []);
 
   const handleViewLiveVoteDetails = (election) => {
     setSelectedElection(election);
@@ -353,9 +350,7 @@ export default function SuperAdminDashboard() {
       setIsLoading(true);
       
       try {
-     
         await loadPendingApprovals();
-
         await Promise.all([
           loadStats(),
           loadElections(activeTab),
