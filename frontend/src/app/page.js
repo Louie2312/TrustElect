@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react"; // Add useCallback import
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import LoginForm from "@/components/Auth/LoginForm";
@@ -52,11 +52,11 @@ export default function Home() {
     }
   });
 
-  useEffect(() => {
-    checkApiConnection();
-    fetchContent();
-  }, [fetchContent]); // This creates a circular dependency
-
+  // REMOVE THIS ENTIRE useEffect BLOCK (lines 51-54)
+  // useEffect(() => {
+  //   checkApiConnection();
+  //   fetchContent();
+  // }, [fetchContent]); // This creates a circular dependency
 
   const checkApiConnection = async () => {
     try {
@@ -168,12 +168,13 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
-  }, [landingContent]); // Add landingContent as dependency
+  }, [landingContent]);
 
+  // KEEP ONLY THIS useEffect - the one with empty dependency array
   useEffect(() => {
     checkApiConnection();
     fetchContent();
-  }, []); // Remove fetchContent dependency
+  }, []); // Empty dependency array - this is correct
 
 
   const formatImageUrl = (url) => {
