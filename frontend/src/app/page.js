@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react"; // Add useCallback import
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import LoginForm from "@/components/Auth/LoginForm";
@@ -14,7 +14,6 @@ export default function Home() {
   const [showLogin, setShowLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [apiConnected, setApiConnected] = useState(false);
-  // Remove showAbout state since we're removing the modal
   
   const [landingContent, setLandingContent] = useState({
     logo: {
@@ -56,7 +55,7 @@ export default function Home() {
   useEffect(() => {
     checkApiConnection();
     fetchContent();
-  }, [fetchContent]); // Add fetchContent dependency
+  }, [fetchContent]); // This creates a circular dependency
 
 
   const checkApiConnection = async () => {
@@ -104,15 +103,13 @@ export default function Home() {
     }
   };
 
-  const fetchContent = async () => {
+  // Wrap fetchContent in useCallback to prevent circular dependency
+  const fetchContent = useCallback(async () => {
     setIsLoading(true);
     
     try {
-    
       const timestamp = new Date().getTime();
-
       const response = await axios.get(`${API_URL}/api/content?t=${timestamp}`, {
-
         timeout: 5000
       });
       
@@ -158,15 +155,12 @@ export default function Home() {
         };
 
         setLandingContent(newContent);
-
         cacheLandingContent(newContent);
       }
     } catch (error) {
       console.error("Error fetching content:", error);
-
       const cachedContent = getCachedLandingContent();
       if (cachedContent) {
-
         setLandingContent(cachedContent);
       } else {
         console.log("No cached content available, using defaults");
@@ -174,7 +168,13 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [landingContent]); // Add landingContent as dependency
+
+  useEffect(() => {
+    checkApiConnection();
+    fetchContent();
+  }, []); // Remove fetchContent dependency
+
 
   const formatImageUrl = (url) => {
     if (!url) return null; 
