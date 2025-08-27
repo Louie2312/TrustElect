@@ -1,3 +1,4 @@
+'use client';
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Cookies from 'js-cookie';
@@ -292,4 +293,4 @@ const AdminPermissionsModal = ({ admin, onClose, onSave }) => {
   );
 };
 
-export default AdminPermissionsModal; 
+export default AdminPermissionsModal;

@@ -1,3 +1,5 @@
+'use client';
+
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Cookies from 'js-cookie';
@@ -53,4 +55,4 @@ const ElectionDetailPage = () => {
   // ... rest of component ...
 };
 
-export default ElectionDetailPage; 
+export default ElectionDetailPage;
