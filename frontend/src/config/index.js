@@ -1,5 +1,8 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
+// Add BASE_URL export
+export const BASE_URL = API_URL;
+
 export const config = {
   API_URL,
   API_BASE: `${API_URL}/api`,
@@ -28,4 +31,4 @@ export const formatImageUrl = (url) => {
   }
 };
 
-export default config; 
+export default config;

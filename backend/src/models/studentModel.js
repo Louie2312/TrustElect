@@ -1,5 +1,5 @@
 const pool = require("../config/db");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 
 const checkStudentNumberExists = async (studentNumber) => {
   const query = "SELECT COUNT(*) FROM students WHERE student_number = $1";

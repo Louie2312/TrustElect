@@ -230,7 +230,7 @@ export const formatImageUrl = (url) => {
   return `${API_URL}${url}`;
 };
 
-export default {
+const ContentService = {
   checkApiConnection,
   getLandingContent,
   cacheLandingContent,
@@ -240,4 +240,6 @@ export default {
   getAllMedia,
   deleteMedia,
   formatImageUrl
-}; 
+};
+
+export default ContentService;

@@ -681,7 +681,7 @@ export default function AdminDashboard() {
             </div>
             <h2 className="text-2xl font-bold mt-4 mb-2 text-black">Access Denied</h2>
             <p className="text-gray-600 mb-4">
-              You don't have permission to view elections. Please contact your administrator for access.
+              You don&apos;t have permission to view elections. Please contact your administrator for access.
             </p>
             <div className="mt-6">
               <Link href="/admin" className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">
@@ -857,3 +857,11 @@ export default function AdminDashboard() {
     </div>
   );
 }
+
+useEffect(() => {
+  loadElections();
+}, [loadElections]); // Add loadElections dependency
+
+useEffect(() => {
+  loadStats();
+}, [loadStats]); // Add loadStats dependency

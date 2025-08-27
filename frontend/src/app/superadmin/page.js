@@ -349,7 +349,6 @@ export default function SuperAdminDashboard() {
   };
 
   useEffect(() => {
-    // Initial load of everything
     const initialLoad = async () => {
       setIsLoading(true);
       
@@ -385,11 +384,11 @@ export default function SuperAdminDashboard() {
       clearInterval(pendingInterval);
       clearInterval(statsInterval);
     };
-  }, []);
+  }, [activeTab, loadPendingApprovals, loadStats, loadElections, loadTotalUniqueVoters, loadLiveVoteCount]);
 
   useEffect(() => {
     loadElections(activeTab);
-  }, [activeTab]);
+  }, [activeTab, loadElections]);
 
   const handleElectionClick = (electionId) => {
     if (!electionId || isNaN(parseInt(electionId))) {

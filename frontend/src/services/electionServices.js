@@ -4,7 +4,7 @@ import { getAuthHeader } from './authService';
 
 const API_BASE = '/api/elections';
 
-export default {
+const ElectionServices = {
   async createElection(electionData) {
     try {
       const response = await axios.post(`${API_BASE}/create`, electionData, {
@@ -76,3 +76,5 @@ export default {
     }
   }
 };
+
+export default ElectionServices;
