@@ -1,0 +1,10 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "npm start"
+
+[env]
+RAILWAY_DISABLE_CORS_OVERRIDE = "true"
+CORS_ORIGIN = "https://www.trustelectonline.com,https://trustelectonline.com"
+NODE_ENV = "production"
