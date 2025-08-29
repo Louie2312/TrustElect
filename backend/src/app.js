@@ -52,12 +52,9 @@ const videosDir = path.join(uploadsDir, 'videos');
 });
 
 app.use(cors({ 
-  origin: [
-    "http://localhost:3000", 
-    "http://127.0.0.1:3000",
-    "https://trustelectonline.com",
-    "https://www.trustelectonline.com"
-  ],
+  origin: process.env.NODE_ENV === 'production' 
+    ? ["https://trustelectonline.com", "https://www.trustelectonline.com"]
+    : ["http://localhost:3000", "http://127.0.0.1:3000"],
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Student-ID", "X-Vote-Token"],
   credentials: true,
