@@ -12,6 +12,9 @@ import { ArrowLeft } from "lucide-react";
 import stiLogo from "../../assets/sti_logo.png";
 
 export default function LoginForm({ onClose }) {
+  // Add API URL configuration at the top
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -76,14 +79,13 @@ export default function LoginForm({ onClose }) {
 
     setLoading(true);
     try {
-    
+      // Updated API URL
       const response = await axios.post(
-        "http://localhost:5000/api/auth/login",
+        `${API_URL}/api/auth/login`,
         { email, password },
         { withCredentials: true } 
       );
 
-      
       if (!response.data.user_id) {
         throw new Error("Missing user_id in response.");
       }
@@ -96,7 +98,6 @@ export default function LoginForm({ onClose }) {
       Cookies.set("userId", user_id, { expires: 1, path: "/", secure: false, sameSite: "strict" });
       
       if (studentId) {
-    
         Cookies.set("studentId", studentId.toString(), { expires: 1, path: "/", secure: false, sameSite: "strict" });
         localStorage.setItem("studentId", studentId.toString());
       }
@@ -106,12 +107,11 @@ export default function LoginForm({ onClose }) {
       localStorage.setItem("email", email);
       localStorage.setItem("userId", user_id);
 
+      // Updated API URL
       const otpResponse = await axios.post(
-        "http://localhost:5000/api/auth/request-otp",
+        `${API_URL}/api/auth/request-otp`,
         { userId: user_id, email }
       );
-      
-    
 
       if (otpResponse.data.devMode && otpResponse.data.otp) {
         setDevOtp(otpResponse.data.otp);
@@ -146,23 +146,23 @@ export default function LoginForm({ onClose }) {
     }
     setLoading(true);
     try {
-     
       const userId = Cookies.get("userId");
 
+      // Updated API URL
       const response = await axios.post(
-        "http://localhost:5000/api/auth/verify-otp",
+        `${API_URL}/api/auth/verify-otp`,
         { userId, otp }
       );
       
       if (response.data.success) {
         const role = Cookies.get("role");
-        
 
         if (role !== "Super Admin") {
           try {
             const token = Cookies.get("token");
+            // Updated API URL
             const firstLoginCheckResponse = await axios.get(
-              "http://localhost:5000/api/auth/check-first-login",
+              `${API_URL}/api/auth/check-first-login`,
               { 
                 headers: { 
                   Authorization: `Bearer ${token}`
@@ -177,7 +177,6 @@ export default function LoginForm({ onClose }) {
             }
           } catch (firstLoginCheckError) {
             console.error("Error checking first login status:", firstLoginCheckError);
-          
           }
         }
 
@@ -186,15 +185,11 @@ export default function LoginForm({ onClose }) {
         throw new Error("Verification failed. Please try again.");
       }
     } catch (err) {
- 
       if (err.response && err.response.status === 400) {
-    
         setError("Invalid verification code. Please check and try again.");
       } else if (err.response && err.response.status === 401) {
-        
         setError("Verification code has expired or already been used. Please request a new one.");
       } else {
-     
         console.log("OTP verification failed with error");
         setError(err.response?.data?.message || "Invalid verification code. Please try again.");
       }
@@ -204,7 +199,6 @@ export default function LoginForm({ onClose }) {
   };
 
   const handlePasswordChange = async () => {
-
     if (newPassword.length < 8) {
       setError("New password must be at least 8 characters.");
       return;
@@ -219,8 +213,9 @@ export default function LoginForm({ onClose }) {
     try {
       const token = Cookies.get("token");
       
+      // Updated API URL
       const response = await axios.post(
-        "http://localhost:5000/api/auth/change-first-password",
+        `${API_URL}/api/auth/change-first-password`,
         { newPassword },
         { 
           headers: { 
@@ -230,7 +225,6 @@ export default function LoginForm({ onClose }) {
       );
       
       if (response.data.success) {
-  
         Cookies.remove("token");
         Cookies.remove("role");
         Cookies.remove("email");
@@ -252,11 +246,9 @@ export default function LoginForm({ onClose }) {
         setNewPassword("");
         setConfirmPassword("");
         setIsFirstLogin(false);
-        
 
         setError("");
         setResendMessage("Password changed successfully. Please login again with your new password.");
-        
 
         setStep(1);
       } else {
@@ -292,8 +284,9 @@ export default function LoginForm({ onClose }) {
     try {
       const userId = Cookies.get("userId");
       const userEmail = Cookies.get("email");
+      // Updated API URL
       const response = await axios.post(
-        "http://localhost:5000/api/auth/request-otp",
+        `${API_URL}/api/auth/request-otp`,
         { userId, email: userEmail }
       );
 
@@ -334,8 +327,9 @@ export default function LoginForm({ onClose }) {
     
     setLoading(true);
     try {
+      // Updated API URL
       const response = await axios.post(
-        "http://localhost:5000/api/auth/forgot-password",
+        `${API_URL}/api/auth/forgot-password`,
         { email: forgotEmail }
       );
 
@@ -365,8 +359,9 @@ export default function LoginForm({ onClose }) {
     
     setLoading(true);
     try {
+      // Updated API URL
       const response = await axios.post(
-        "http://localhost:5000/api/auth/verify-reset-otp",
+        `${API_URL}/api/auth/verify-reset-otp`,
         { email: forgotEmail, otp: resetOtp }
       );
       
@@ -400,13 +395,13 @@ export default function LoginForm({ onClose }) {
     
     setLoading(true);
     try {
+      // Updated API URL
       const response = await axios.post(
-        "http://localhost:5000/api/auth/reset-password",
+        `${API_URL}/api/auth/reset-password`,
         { resetToken, newPassword: resetPassword }
       );
       
       if (response.data.success) {
-   
         setForgotEmail("");
         setResetOtp("");
         setResetToken("");
@@ -428,7 +423,6 @@ export default function LoginForm({ onClose }) {
   };
 
   const handleResendResetOTP = async () => {
-  
     if (cooldownActive) {
       setResendMessage(`Please wait ${cooldownTime} seconds before requesting another code.`);
       return;
@@ -438,23 +432,22 @@ export default function LoginForm({ onClose }) {
     setResendMessage("");
     setDevOtp("");
     try {
+      // Updated API URL
       const response = await axios.post(
-        "http://localhost:5000/api/auth/forgot-password",
+        `${API_URL}/api/auth/forgot-password`,
         { email: forgotEmail }
       );
       
-   
       if (response.data.devMode && response.data.otp) {
         setDevOtp(response.data.otp);
       }
       
       setResendMessage("Verification code resent. Check your email.");
       
-
       setCooldownActive(true);
       setCooldownTime(COOLDOWN_SECONDS);
     } catch (err) {
-      console.error("Resend OTP error:", err);
+      console.error("Resend reset OTP error:", err);
       setResendMessage("Failed to resend code. Try again later.");
     } finally {
       setResendLoading(false);
