@@ -54,17 +54,18 @@ const videosDir = path.join(uploadsDir, 'videos');
 // Remove or comment out line 82: app.options('*', cors());
 // Replace the entire CORS section (lines 54-82) with this:
 
-// RAILWAY ENVIRONMENT-AWARE CORS SOLUTION
+// NUCLEAR CORS SOLUTION - BYPASS RAILWAY COMPLETELY
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  console.log('🔍 Request origin:', origin);
+  console.log('🔍 NUCLEAR CORS - Request origin:', origin);
   
-  // Get allowed origins from environment or use defaults
-  const corsOrigin = process.env.CORS_ORIGIN || 'https://www.trustelectonline.com,https://trustelectonline.com';
-  const allowedOrigins = corsOrigin.split(',').map(o => o.trim());
-  
-  // Add localhost for development
-  allowedOrigins.push('http://localhost:3000', 'http://127.0.0.1:3000');
+  // Define allowed origins
+  const allowedOrigins = [
+    'https://www.trustelectonline.com',
+    'https://trustelectonline.com',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000'
+  ];
   
   // Allow Vercel preview deployments
   const isVercelDomain = origin && origin.includes('.vercel.app');
@@ -73,22 +74,22 @@ app.use((req, res, next) => {
   if (isAllowed) {
     const allowedOrigin = origin || 'https://www.trustelectonline.com';
     
-    // Force set CORS headers
-    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Student-ID, X-Vote-Token, Accept, Origin, X-Requested-With');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Max-Age', '86400');
-    res.setHeader('Vary', 'Origin');
+    // AGGRESSIVELY SET CORS HEADERS - OVERRIDE EVERYTHING
+    res.header('Access-Control-Allow-Origin', allowedOrigin);
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Student-ID, X-Vote-Token, Accept, Origin, X-Requested-With');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Max-Age', '86400');
+    res.header('Vary', 'Origin');
     
-    console.log('✅ CORS headers set for:', allowedOrigin);
+    console.log('✅ NUCLEAR CORS - Headers set for:', allowedOrigin);
   } else {
-    console.log('❌ CORS blocked for origin:', origin);
+    console.log('❌ NUCLEAR CORS - Blocked origin:', origin);
   }
   
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
-    console.log('🔄 Handling OPTIONS preflight for:', origin);
+    console.log('🔄 NUCLEAR CORS - Handling OPTIONS for:', origin);
     if (isAllowed) {
       res.status(200).end();
     } else {
@@ -96,6 +97,46 @@ app.use((req, res, next) => {
     }
     return;
   }
+  
+  next();
+});
+
+// DOUBLE OVERRIDE - Set headers again before response
+app.use((req, res, next) => {
+  const originalSend = res.send;
+  const originalJson = res.json;
+  const originalEnd = res.end;
+  
+  const setFinalHeaders = () => {
+    const origin = req.headers.origin;
+    const allowedOrigins = [
+      'https://www.trustelectonline.com',
+      'https://trustelectonline.com'
+    ];
+    const isVercelDomain = origin && origin.includes('.vercel.app');
+    const isAllowed = !origin || allowedOrigins.includes(origin) || isVercelDomain;
+    
+    if (isAllowed) {
+      const allowedOrigin = origin || 'https://www.trustelectonline.com';
+      res.header('Access-Control-Allow-Origin', allowedOrigin);
+      console.log('🔥 FINAL OVERRIDE - Set origin to:', allowedOrigin);
+    }
+  };
+  
+  res.send = function(data) {
+    setFinalHeaders();
+    return originalSend.call(this, data);
+  };
+  
+  res.json = function(data) {
+    setFinalHeaders();
+    return originalJson.call(this, data);
+  };
+  
+  res.end = function(data) {
+    setFinalHeaders();
+    return originalEnd.call(this, data);
+  };
   
   next();
 });

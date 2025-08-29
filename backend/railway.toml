@@ -7,6 +7,11 @@ startCommand = "npm start"
 [env]
 RAILWAY_DISABLE_CORS_OVERRIDE = "true"
 RAILWAY_STATIC_URL = "false"
-CORS_ORIGIN = "https://www.trustelectonline.com,https://trustelectonline.com,https://trust-elect-qz9k-git-main-louie2312s-projects.vercel.app,https://trust-elect-jiq9-h8rxhtpx1-louie2312s-projects.vercel.app"
+RAILWAY_DISABLE_CORS = "true"
+RAILWAY_CORS_DISABLED = "true"
+DISABLE_RAILWAY_CORS = "true"
+CORS_ORIGIN = "https://www.trustelectonline.com,https://trustelectonline.com"
 NODE_ENV = "production"
 RAILWAY_ENVIRONMENT = "production"
+RAILWAY_OVERRIDE_CORS = "false"
+
