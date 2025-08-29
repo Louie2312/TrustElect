@@ -51,27 +51,34 @@ const videosDir = path.join(uploadsDir, 'videos');
   }
 });
 
-app.use(cors({ 
-  origin: function (origin, callback) {
-    const allowedOrigins = [
-      "https://trustelectonline.com",
-      "https://www.trustelectonline.com"
-    ];
-    
-    // Allow Vercel preview deployments
-    const isVercelDomain = origin && origin.includes('.vercel.app');
-    
-    if (!origin || allowedOrigins.includes(origin) || isVercelDomain) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Student-ID", "X-Vote-Token"],
-  credentials: true,
-  maxAge: 86400 
-}));
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    "https://trustelectonline.com",
+    "https://www.trustelectonline.com"
+  ];
+  
+  // Allow Vercel preview deployments
+  const isVercelDomain = origin && origin.includes('.vercel.app');
+  
+  if (allowedOrigins.includes(origin) || isVercelDomain) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Student-ID, X-Vote-Token');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Max-Age', '86400');
+  
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+  
+  next();
+});
+
+
 app.options('*', cors());
 
 app.use(express.json({ limit: '50mb' })); 
@@ -315,3 +322,5 @@ app.get("/", (req, res) => {
 });
 
 module.exports = app;
+
+
