@@ -52,9 +52,21 @@ const videosDir = path.join(uploadsDir, 'videos');
 });
 
 app.use(cors({ 
-  origin: process.env.NODE_ENV === 'production' 
-    ? ["https://trustelectonline.com", "https://www.trustelectonline.com"]
-    : ["http://localhost:3000", "http://127.0.0.1:3000"],
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      "https://trustelectonline.com",
+      "https://www.trustelectonline.com"
+    ];
+    
+    // Allow Vercel preview deployments
+    const isVercelDomain = origin && origin.includes('.vercel.app');
+    
+    if (!origin || allowedOrigins.includes(origin) || isVercelDomain) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Student-ID", "X-Vote-Token"],
   credentials: true,
