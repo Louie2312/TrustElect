@@ -51,8 +51,13 @@ const videosDir = path.join(uploadsDir, 'videos');
   }
 });
 
+// Remove or comment out line 82: app.options('*', cors());
+// Replace the entire CORS section (lines 54-82) with this:
+
 app.use((req, res, next) => {
   const origin = req.headers.origin;
+  console.log('Request origin:', origin); // Debug log
+  
   const allowedOrigins = [
     "https://trustelectonline.com",
     "https://www.trustelectonline.com"
@@ -61,15 +66,20 @@ app.use((req, res, next) => {
   // Allow Vercel preview deployments
   const isVercelDomain = origin && origin.includes('.vercel.app');
   
-  if (allowedOrigins.includes(origin) || isVercelDomain) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
+  // Always set CORS headers for allowed origins
+  if (!origin || allowedOrigins.includes(origin) || isVercelDomain) {
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Student-ID, X-Vote-Token');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Max-Age', '86400');
+    
+    console.log('CORS headers set for origin:', origin); // Debug log
+  } else {
+    console.log('CORS blocked for origin:', origin); // Debug log
   }
   
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Student-ID, X-Vote-Token');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Max-Age', '86400');
-  
+  // Handle preflight requests
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
@@ -78,8 +88,8 @@ app.use((req, res, next) => {
   next();
 });
 
-
-app.options('*', cors());
+// REMOVE THIS LINE COMPLETELY:
+// app.options('*', cors());
 
 app.use(express.json({ limit: '50mb' })); 
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
