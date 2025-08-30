@@ -51,98 +51,42 @@ const videosDir = path.join(uploadsDir, 'videos');
   }
 });
 
-// Remove or comment out line 82: app.options('*', cors());
-// Replace the entire CORS section (lines 54-82) with this:
+const allowedOrigins = [
+  "https://trustelectonline.com",
+  "https://www.trustelectonline.com",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000"
+];
 
-// NUCLEAR CORS SOLUTION - BYPASS RAILWAY COMPLETELY
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  console.log('🔍 NUCLEAR CORS - Request origin:', origin);
-  
-  // Define allowed origins
-  const allowedOrigins = [
-    'https://www.trustelectonline.com',
-    'https://trustelectonline.com',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000'
-  ];
-  
-  // Allow Vercel preview deployments
-  const isVercelDomain = origin && origin.includes('.vercel.app');
-  const isAllowed = !origin || allowedOrigins.includes(origin) || isVercelDomain;
-  
-  if (isAllowed) {
-    const allowedOrigin = origin || 'https://www.trustelectonline.com';
-    
-    // AGGRESSIVELY SET CORS HEADERS - OVERRIDE EVERYTHING
-    res.header('Access-Control-Allow-Origin', allowedOrigin);
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Student-ID, X-Vote-Token, Accept, Origin, X-Requested-With');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Max-Age', '86400');
-    res.header('Vary', 'Origin');
-    
-    console.log('✅ NUCLEAR CORS - Headers set for:', allowedOrigin);
-  } else {
-    console.log('❌ NUCLEAR CORS - Blocked origin:', origin);
-  }
-  
-  // Handle preflight requests
-  if (req.method === 'OPTIONS') {
-    console.log('🔄 NUCLEAR CORS - Handling OPTIONS for:', origin);
-    if (isAllowed) {
-      res.status(200).end();
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin) || (origin && origin.includes(".vercel.app"))) {
+      callback(null, true);
     } else {
-      res.status(403).end();
+      callback(new Error("Not allowed by CORS"));
     }
-    return;
-  }
-  
-  next();
-});
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Student-ID", "X-Vote-Token", "Accept"]
+}));
 
-// DOUBLE OVERRIDE - Set headers again before response
+
+app.use(express.json({ limit: '50mb' })); 
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Request logging
 app.use((req, res, next) => {
-  const originalSend = res.send;
-  const originalJson = res.json;
-  const originalEnd = res.end;
-  
-  const setFinalHeaders = () => {
-    const origin = req.headers.origin;
-    const allowedOrigins = [
-      'https://www.trustelectonline.com',
-      'https://trustelectonline.com'
-    ];
-    const isVercelDomain = origin && origin.includes('.vercel.app');
-    const isAllowed = !origin || allowedOrigins.includes(origin) || isVercelDomain;
-    
-    if (isAllowed) {
-      const allowedOrigin = origin || 'https://www.trustelectonline.com';
-      res.header('Access-Control-Allow-Origin', allowedOrigin);
-      console.log('🔥 FINAL OVERRIDE - Set origin to:', allowedOrigin);
-    }
-  };
-  
-  res.send = function(data) {
-    setFinalHeaders();
-    return originalSend.call(this, data);
-  };
-  
-  res.json = function(data) {
-    setFinalHeaders();
-    return originalJson.call(this, data);
-  };
-  
-  res.end = function(data) {
-    setFinalHeaders();
-    return originalEnd.call(this, data);
-  };
-  
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
   next();
 });
 
-// REMOVE THIS LINE COMPLETELY:
-// app.options('*', cors());
+app.use('/api', (req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  next();
+});
+
+app.use('/api', createAuditLog);
 
 app.use(express.json({ limit: '50mb' })); 
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
