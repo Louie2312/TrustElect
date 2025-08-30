@@ -16,7 +16,7 @@ const auditLogRoutes = require("./routes/auditLogRoutes");
 const roleBasedUserReportRoutes = require('./routes/roleBasedUserReportRoutes');
 const failedLoginRoutes = require('./routes/failedLoginRoutes');
 const systemLoadRoutes = require('./routes/systemLoadRoutes');
-const votingTimeRoutes = require('./routes/votingTimeRoutes'); // Added voting time routes
+const votingTimeRoutes = require('./routes/votingTimeRoutes'); 
 const { createAuditLog } = require("./middlewares/auditLogMiddleware");
 const path = require("path");
 const app = express();
@@ -51,12 +51,40 @@ const videosDir = path.join(uploadsDir, 'videos');
   }
 });
 
+// Environment-aware CORS configuration
+const corsOrigins = process.env.CORS_ORIGIN 
+  ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+  : ['https://www.trustelectonline.com', 'https://trustelectonline.com'];
+
+// Add localhost for development
 const allowedOrigins = [
-  "https://trustelectonline.com",
-  "https://www.trustelectonline.com",
-  "http://localhost:3000",
-  "http://127.0.0.1:3000"
+  ...corsOrigins,
+  'http://localhost:3000',
+  'http://127.0.0.1:3000'
 ];
+
+console.log('CORS Origins:', allowedOrigins);
+
+// Nuclear CORS Middleware - Override Railway's interference
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  
+  // Check if origin is allowed
+  if (!origin || allowedOrigins.includes(origin) || (origin && origin.includes('.vercel.app'))) {
+    res.header('Access-Control-Allow-Origin', origin || allowedOrigins[0]);
+  }
+  
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Student-ID,X-Vote-Token,Accept');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
+  next();
+});
 
 app.use(cors({
   origin: function (origin, callback) {
