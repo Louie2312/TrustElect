@@ -63,40 +63,62 @@ const allowedOrigins = [
   'http://127.0.0.1:3000'
 ];
 
-console.log('CORS Origins:', allowedOrigins);
+console.log('🚀 CORS Origins loaded:', allowedOrigins);
+console.log('🔧 Environment CORS_ORIGIN:', process.env.CORS_ORIGIN);
+console.log('🛡️ Railway CORS Override Disabled:', process.env.RAILWAY_DISABLE_CORS_OVERRIDE);
 
-// Nuclear CORS Middleware - Override Railway's interference
+// NUCLEAR CORS Middleware - Override Railway's aggressive interference
 app.use((req, res, next) => {
   const origin = req.headers.origin;
+  console.log(`🌐 Request from origin: ${origin}`);
   
-  // Check if origin is allowed
-  if (!origin || allowedOrigins.includes(origin) || (origin && origin.includes('.vercel.app'))) {
-    res.header('Access-Control-Allow-Origin', origin || allowedOrigins[0]);
+  // Determine allowed origin
+  let allowedOrigin = null;
+  if (!origin) {
+    allowedOrigin = allowedOrigins[0]; // Default to first allowed origin
+  } else if (allowedOrigins.includes(origin)) {
+    allowedOrigin = origin;
+  } else if (origin && origin.includes('.vercel.app')) {
+    allowedOrigin = origin; // Allow Vercel preview deployments
   }
   
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Student-ID,X-Vote-Token,Accept');
+  if (allowedOrigin) {
+    // Aggressively set CORS headers BEFORE Railway can interfere
+    res.header('Access-Control-Allow-Origin', allowedOrigin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Student-ID,X-Vote-Token,Accept,Origin,X-Requested-With');
+    res.header('Access-Control-Max-Age', '86400'); // 24 hours
+    
+    console.log(`✅ CORS headers set for origin: ${allowedOrigin}`);
+  } else {
+    console.log(`❌ Origin not allowed: ${origin}`);
+  }
   
-  // Handle preflight requests
+  // Handle preflight OPTIONS requests immediately
   if (req.method === 'OPTIONS') {
+    console.log('🔄 Handling preflight OPTIONS request');
     return res.status(200).end();
   }
   
   next();
 });
 
+// Standard CORS middleware as backup
 app.use(cors({
   origin: function (origin, callback) {
+    console.log(`🔍 CORS middleware checking origin: ${origin}`);
+    
     if (!origin || allowedOrigins.includes(origin) || (origin && origin.includes(".vercel.app"))) {
       callback(null, true);
     } else {
+      console.log(`🚫 CORS rejected origin: ${origin}`);
       callback(new Error("Not allowed by CORS"));
     }
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Student-ID", "X-Vote-Token", "Accept"]
+  allowedHeaders: ["Content-Type", "Authorization", "X-Student-ID", "X-Vote-Token", "Accept", "Origin", "X-Requested-With"]
 }));
 
 
