@@ -17,8 +17,11 @@ const nextConfig = {
     ],
   },
   async rewrites() {
-    // Ensure rewrites always work both locally and in production
-    const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5000';
+    // Always provide rewrites, even if BACKEND_URL is not set
+    const BACKEND_URL = process.env.BACKEND_URL || 'https://trustelect-production.up.railway.app';
+    
+    console.log('Next.js rewrites using BACKEND_URL:', BACKEND_URL);
+    
     return [
       { source: '/api/:path*', destination: `${BACKEND_URL}/api/:path*` },
       { source: '/uploads/:path*', destination: `${BACKEND_URL}/uploads/:path*` },

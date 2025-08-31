@@ -3,9 +3,9 @@ import { useState, useEffect } from 'react';
 import { toast } from "react-toastify";
 import axios from 'axios';
 
-// Configure axios with base URL
+// Configure axios to use relative URLs (proxy)
 const api = axios.create({
-  baseURL: 'http://localhost:5000',
+  baseURL: '', // Empty string for same-origin requests
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json'
@@ -339,4 +339,4 @@ const PositionManager = ({ electionTypes }) => {
   );
 };
 
-export default PositionManager; 
+export default PositionManager;
