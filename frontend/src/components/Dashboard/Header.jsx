@@ -11,7 +11,7 @@ import axios from "axios";
 export default function Header() {
   const router = useRouter();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
   const handleLogout = async () => {
     try {

@@ -6,7 +6,7 @@ import { Calendar, Clock, Users, CheckCircle, XCircle, AlertCircle, CalendarRang
 import Cookies from 'js-cookie';
 
 // Replace this line:
-// const API_BASE = 'http://localhost:5000/api';
+// const API_BASE = '/api';
 
 // With this:
 const API_BASE = '/api'; // Use relative path for proxy

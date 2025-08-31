@@ -9,7 +9,7 @@ import usePermissions, { ensureUserIdFromToken } from '../../hooks/usePermission
 import axios from "axios";
 
 // Replace this line:
-// const API_BASE = 'http://localhost:5000/api';
+// const API_BASE = '/api';
 
 // With this:
 const API_BASE = '/api'; // Use relative path for proxy

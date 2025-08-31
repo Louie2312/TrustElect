@@ -17,7 +17,7 @@ const PartylistCard = ({
           <div className="text-sm font-medium text-black mb-2">Logo</div>
           {partylist.logo_url ? (
             <img 
-              src={`http://localhost:5000${partylist.logo_url}`} 
+              src={`${partylist.logo_url}`} 
               alt={`${partylist.name} logo`} 
               className={`h-28 w-28 object-contain border rounded-md bg-gray-50 p-1 ${isArchived ? 'opacity-60' : ''}`}
             />

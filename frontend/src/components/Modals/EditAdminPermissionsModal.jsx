@@ -34,7 +34,7 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
       setLoading(true);
       const token = Cookies.get("token");
       
-      const response = await axios.get(`http://localhost:5000/api/admin-permissions/${admin.id}`, {
+      const response = await axios.get(`/api/admin-permissions/${admin.id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -122,7 +122,7 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
       const token = Cookies.get("token");
       
       // More robust URL construction
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
 
       console.log('Manually validating permissions instead of using API');
       console.log('Permissions we attempted to save:', permissions);
@@ -151,7 +151,7 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
       
       console.log('Saving permissions:', JSON.stringify(formattedPermissions));
 
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
       const apiUrl = `${baseUrl}/api/admin-permissions/${admin.id}`;
       
       console.log('Making API request to:', apiUrl);

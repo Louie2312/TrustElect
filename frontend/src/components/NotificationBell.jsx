@@ -187,7 +187,7 @@ const NotificationBell = () => {
       
       const token = Cookies.get('token');
       const userId = Cookies.get('userId');
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
       
      
       const response = await fetch(`${API_URL}/api/elections/student/status/${electionId}`, {
@@ -232,7 +232,7 @@ const NotificationBell = () => {
         try {
        
           const token = Cookies.get('token');
-          const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+          const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
           
          
           const electionResponse = await fetch(`${API_URL}/api/elections/${entity_id}/details`, {
@@ -400,7 +400,7 @@ const NotificationBell = () => {
       if (normalizedRole === 'student') {
         try {
           const token = Cookies.get('token');
-          const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+          const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
           
           console.log(`Processing notification with entity_id: ${notification.entity_id}`);
           

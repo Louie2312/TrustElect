@@ -23,7 +23,7 @@ function DepartmentTable({ departments, fetchDepartments }) {
     setLoading(true);
     try {
       const token = Cookies.get("token");
-      const res = await axios.delete(`http://localhost:5000/api/superadmin/departments/${id}`, {
+      const res = await axios.delete(`/api/superadmin/departments/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       

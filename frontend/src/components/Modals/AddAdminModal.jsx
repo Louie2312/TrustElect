@@ -33,7 +33,7 @@ export default function AddAdminModal({ onClose }) {
     const fetchDepartments = async () => {
       try {
         const token = Cookies.get("token");
-        const res = await axios.get("http://localhost:5000/api/superadmin/department-names", {
+        const res = await axios.get("/api/superadmin/department-names", {
           headers: { Authorization: `Bearer ${token}` },
         });
         
@@ -65,7 +65,7 @@ export default function AddAdminModal({ onClose }) {
     const fetchDepartmentsWithAdmins = async () => {
       try {
         const token = Cookies.get("token");
-        const res = await axios.get("http://localhost:5000/api/superadmin/admins", {
+        const res = await axios.get("/api/superadmin/admins", {
           headers: { Authorization: `Bearer ${token}` },
         });
         
@@ -222,7 +222,7 @@ export default function AddAdminModal({ onClose }) {
         permissions: { ...permissions }
       };
       console.log("Submitting admin:", adminData);
-      const res = await axios.post("http://localhost:5000/api/superadmin/admins", adminData, {
+      const res = await axios.post("/api/superadmin/admins", adminData, {
         headers: { Authorization: `Bearer ${token}` },
       });
       alert(res.data.message || "Admin added successfully!");

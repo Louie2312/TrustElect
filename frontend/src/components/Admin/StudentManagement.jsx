@@ -30,7 +30,7 @@ export default function StudentManagement() {
     try {
       setLoading(true);
       const token = Cookies.get("token");
-      const response = await axios.get(`http://localhost:5000/api/admin/students`, {
+      const response = await axios.get(`/api/admin/students`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setStudents(response.data.students || []);
@@ -72,7 +72,7 @@ export default function StudentManagement() {
     
     try {
       const token = Cookies.get("token");
-      await axios.delete(`http://localhost:5000/api/admin/students/${studentId}`, {
+      await axios.delete(`/api/admin/students/${studentId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       

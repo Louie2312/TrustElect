@@ -29,7 +29,7 @@ export default function AdminsPage() {
   const fetchAdmins = async () => {
     try {
       const token = Cookies.get("token");
-      const res = await axios.get("http://localhost:5000/api/superadmin/admins", {
+      const res = await axios.get("/api/superadmin/admins", {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -85,7 +85,7 @@ export default function AdminsPage() {
     if (!confirm("Are you sure you want to delete this Admin?")) return;
     try {
       const token = Cookies.get("token");
-      await axios.delete(`http://localhost:5000/api/superadmin/admins/${id}`, {
+      await axios.delete(`/api/superadmin/admins/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -101,7 +101,7 @@ export default function AdminsPage() {
     try {
       const token = Cookies.get("token");
       await axios.patch(
-        `http://localhost:5000/api/superadmin/admins/${adminId}/unlock`,
+        `/api/superadmin/admins/${adminId}/unlock`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` },

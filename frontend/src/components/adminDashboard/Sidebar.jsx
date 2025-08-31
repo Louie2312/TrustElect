@@ -18,7 +18,7 @@ export default function Sidebar() {
       const token = Cookies.get("token");
       if (!token) return;
   
-      const res = await axios.get("http://localhost:5000/api/admin/profile", {
+      const res = await axios.get("/api/admin/profile", {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -32,7 +32,7 @@ export default function Sidebar() {
   
       // Ensure Image Path is Correct
       const imageUrl = res.data.profile_picture
-        ? `http://localhost:5000${res.data.profile_picture}?timestamp=${new Date().getTime()}`
+        ? `${res.data.profile_picture}?timestamp=${new Date().getTime()}`
         : "https://via.placeholder.com/80";
   
       setProfilePic(imageUrl);

@@ -17,7 +17,7 @@ export default function ArchivedStudents() {
   const fetchArchivedStudents = async () => {
     try {
       const token = Cookies.get("token");
-      const res = await axios.get("http://localhost:5000/api/superadmin/students", {
+      const res = await axios.get("/api/superadmin/students", {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -35,7 +35,7 @@ export default function ArchivedStudents() {
     if (!confirm("Are you sure you want to restore this student?")) return;
     try {
       const token = Cookies.get("token");
-      await axios.patch(`http://localhost:5000/api/superadmin/students/${id}/restore`, {}, {
+      await axios.patch(`/api/superadmin/students/${id}/restore`, {}, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -57,7 +57,7 @@ export default function ArchivedStudents() {
   const permanentlyDeleteStudent = async () => {
     try {
       const token = Cookies.get("token");
-      await axios.delete(`http://localhost:5000/api/superadmin/students/${selectedStudentId}/permanent`, {
+      await axios.delete(`/api/superadmin/students/${selectedStudentId}/permanent`, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });

@@ -64,7 +64,7 @@ const MaintenancePage = () => {
         let response;
         if (activeTab === "departments") {
           response = await axios.get(
-            "http://localhost:5000/api/superadmin/departments",
+            "/api/superadmin/departments",
             { headers: { Authorization: `Bearer ${token}` } }
           );
           // Transform the data to match the expected format
@@ -76,7 +76,7 @@ const MaintenancePage = () => {
           })));
         } else {
           response = await axios.get(
-            `http://localhost:5000/api/maintenance/${endpoint}`,
+            `/api/maintenance/${endpoint}`,
             { headers: { Authorization: `Bearer ${token}` } }
           );
           setItems(response.data.data);
@@ -85,7 +85,7 @@ const MaintenancePage = () => {
         if (activeTab === "semesters") {
           try {
             const currentSemesterResponse = await axios.get(
-              "http://localhost:5000/api/maintenance/current-semester",
+              "/api/maintenance/current-semester",
               { headers: { Authorization: `Bearer ${token}` } }
             );
             
@@ -123,7 +123,7 @@ const MaintenancePage = () => {
       
       if (activeTab === "departments") {
         await axios.post(
-          "http://localhost:5000/api/superadmin/departments",
+          "/api/superadmin/departments",
           {
             department_name: newItemName,
             department_type: departmentType
@@ -133,7 +133,7 @@ const MaintenancePage = () => {
       } else {
         const endpoint = API_ENDPOINTS[activeTab];
         await axios.post(
-          `http://localhost:5000/api/maintenance/${endpoint}`,
+          `/api/maintenance/${endpoint}`,
           { name: newItemName },
           { headers: { Authorization: `Bearer ${token}` } }
         );
@@ -171,7 +171,7 @@ const MaintenancePage = () => {
       
       if (activeTab === "departments") {
         await axios.put(
-          `http://localhost:5000/api/superadmin/departments/${editingItem.id}`,
+          `/api/superadmin/departments/${editingItem.id}`,
           {
             department_name: editName,
             department_type: departmentType
@@ -181,7 +181,7 @@ const MaintenancePage = () => {
       } else {
         const endpoint = API_ENDPOINTS[activeTab];
         await axios.put(
-          `http://localhost:5000/api/maintenance/${endpoint}/${editingItem.id}`,
+          `/api/maintenance/${endpoint}/${editingItem.id}`,
           { name: editName },
           { headers: { Authorization: `Bearer ${token}` } }
         );
@@ -208,13 +208,13 @@ const MaintenancePage = () => {
       
       if (activeTab === "departments") {
         await axios.delete(
-          `http://localhost:5000/api/superadmin/departments/${item.id}`,
+          `/api/superadmin/departments/${item.id}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
       } else {
         const endpoint = API_ENDPOINTS[activeTab];
         await axios.delete(
-          `http://localhost:5000/api/maintenance/${endpoint}/${item.id}`,
+          `/api/maintenance/${endpoint}/${item.id}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
       }
@@ -235,7 +235,7 @@ const MaintenancePage = () => {
       const token = Cookies.get("token");
       
       await axios.post(
-        `http://localhost:5000/api/maintenance/set-current-semester`,
+        `/api/maintenance/set-current-semester`,
         { semesterId },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -273,7 +273,7 @@ const MaintenancePage = () => {
     try {
       const token = Cookies.get("token");
       const response = await axios.get(
-        "http://localhost:5000/api/maintenance/election-types",
+        "/api/maintenance/election-types",
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
@@ -290,7 +290,7 @@ const MaintenancePage = () => {
     try {
       const token = Cookies.get("token");
       const response = await axios.get(
-        "http://localhost:5000/api/partylists",
+        "/api/partylists",
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
@@ -307,7 +307,7 @@ const MaintenancePage = () => {
     try {
       const token = Cookies.get("token");
       const response = await axios.get(
-        "http://localhost:5000/api/partylists/archived",
+        "/api/partylists/archived",
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
@@ -331,7 +331,7 @@ const MaintenancePage = () => {
     try {
       const token = Cookies.get("token");
       const response = await axios.delete(
-        `http://localhost:5000/api/partylists/${id}`,
+        `/api/partylists/${id}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -350,7 +350,7 @@ const MaintenancePage = () => {
     try {
       const token = Cookies.get("token");
       const response = await axios.post(
-        `http://localhost:5000/api/partylists/${id}/restore`,
+        `/api/partylists/${id}/restore`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -372,7 +372,7 @@ const MaintenancePage = () => {
     try {
       const token = Cookies.get("token");
       const response = await axios.delete(
-        `http://localhost:5000/api/partylists/${id}/permanent`,
+        `/api/partylists/${id}/permanent`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 

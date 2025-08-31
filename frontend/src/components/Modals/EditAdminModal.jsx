@@ -26,7 +26,7 @@ export default function EditAdminModal({ admin, onClose }) {
     const fetchDepartments = async () => {
       try {
         const token = Cookies.get("token");
-        const res = await axios.get("http://localhost:5000/api/superadmin/department-names", {
+        const res = await axios.get("/api/superadmin/department-names", {
           headers: { Authorization: `Bearer ${token}` },
         });
         
@@ -55,7 +55,7 @@ export default function EditAdminModal({ admin, onClose }) {
     const fetchDepartmentsWithAdmins = async () => {
       try {
         const token = Cookies.get("token");
-        const res = await axios.get("http://localhost:5000/api/superadmin/admins", {
+        const res = await axios.get("/api/superadmin/admins", {
           headers: { Authorization: `Bearer ${token}` },
         });
         
@@ -135,7 +135,7 @@ export default function EditAdminModal({ admin, onClose }) {
       
       console.log("Sending update for admin ID:", admin.id, updateData);
       
-      await axios.put(`http://localhost:5000/api/superadmin/admins/${admin.id}`, updateData, {
+      await axios.put(`/api/superadmin/admins/${admin.id}`, updateData, {
         headers: { Authorization: `Bearer ${token}` },
       });
       

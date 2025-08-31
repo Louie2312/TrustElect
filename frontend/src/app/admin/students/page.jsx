@@ -69,7 +69,7 @@ export default function StudentsListPage() {
   const fetchAdminProfile = async () => {
     try {
       const token = Cookies.get("token");
-      const response = await axios.get("http://localhost:5000/api/admin/profile", {
+      const response = await axios.get("/api/admin/profile", {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -131,7 +131,7 @@ export default function StudentsListPage() {
 
       // First try getting all students that admin has access to
       try {
-        const response = await axios.get("http://localhost:5000/api/students", {
+        const response = await axios.get("/api/students", {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
@@ -174,7 +174,7 @@ export default function StudentsListPage() {
           const queryParams = new URLSearchParams();
           queryParams.append('courses', courses.join(','));
           
-          const response = await axios.get(`http://localhost:5000/api/students/by-courses?${queryParams.toString()}`, {
+          const response = await axios.get(`/api/students/by-courses?${queryParams.toString()}`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json',
@@ -344,7 +344,7 @@ export default function StudentsListPage() {
       
       try {
         const response = await axios.put(
-          `http://localhost:5000/api/students/${editingStudent.id}`,
+          `/api/students/${editingStudent.id}`,
           updateData,
           {
             headers: {
@@ -408,7 +408,7 @@ export default function StudentsListPage() {
       const token = Cookies.get("token");
       
       try {
-        await axios.delete(`http://localhost:5000/api/students/${studentToDelete.id}`, {
+        await axios.delete(`/api/students/${studentToDelete.id}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

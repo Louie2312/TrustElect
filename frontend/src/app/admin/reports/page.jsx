@@ -13,7 +13,7 @@ import CandidateListReport from "./components/CandidateListReport";
 import AdminActivityReport from "./components/AdminActivityReport";
 import Cookies from "js-cookie";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 export default function AdminReportsPage() {
   const [selectedReport, setSelectedReport] = useState(null);

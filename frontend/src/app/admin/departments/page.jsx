@@ -72,7 +72,7 @@ export default function AdminDepartmentsPage() {
       }
 
       // Get the current admin's profile first
-      const profileRes = await axios.get("http://localhost:5000/api/admin/profile", {
+      const profileRes = await axios.get("/api/admin/profile", {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -167,7 +167,7 @@ export default function AdminDepartmentsPage() {
 
       try {
         // First try the admin endpoint
-        const res = await axios.get("http://localhost:5000/api/departments", {
+        const res = await axios.get("/api/departments", {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -183,7 +183,7 @@ export default function AdminDepartmentsPage() {
         
         try {
           // Try superadmin endpoint as fallback
-          const res = await axios.get("http://localhost:5000/api/superadmin/departments", {
+          const res = await axios.get("/api/superadmin/departments", {
             headers: {
               Authorization: `Bearer ${token}`,
               'Content-Type': 'application/json'
@@ -199,7 +199,7 @@ export default function AdminDepartmentsPage() {
           
           // Try getting admin profile as last resort
           try {
-            const profileRes = await axios.get("http://localhost:5000/api/admin/profile", {
+            const profileRes = await axios.get("/api/admin/profile", {
               headers: {
                 Authorization: `Bearer ${token}`,
                 'Content-Type': 'application/json'
@@ -309,7 +309,7 @@ export default function AdminDepartmentsPage() {
       
       try {
         // First try admin endpoint
-        response = await axios.delete(`http://localhost:5000/api/departments/${id}`, {
+        response = await axios.delete(`/api/departments/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         success = true;
@@ -318,7 +318,7 @@ export default function AdminDepartmentsPage() {
         
         try {
           // Try superadmin endpoint as last resort
-          response = await axios.delete(`http://localhost:5000/api/superadmin/departments/${id}`, {
+          response = await axios.delete(`/api/superadmin/departments/${id}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           success = true;
@@ -613,7 +613,7 @@ function AddDepartmentModal({ onClose, onSuccess }) {
       try {
         // First try admin endpoint
         response = await axios.post(
-          "http://localhost:5000/api/admin/departments",
+          "/api/admin/departments",
           formData,
           {
             headers: { Authorization: `Bearer ${token}` },
@@ -626,7 +626,7 @@ function AddDepartmentModal({ onClose, onSuccess }) {
         try {
           // Fallback to generic endpoint
           response = await axios.post(
-            "http://localhost:5000/api/departments",
+            "/api/departments",
             formData,
             {
               headers: { Authorization: `Bearer ${token}` },
@@ -638,7 +638,7 @@ function AddDepartmentModal({ onClose, onSuccess }) {
           
           // Try superadmin endpoint as last resort
           response = await axios.post(
-            "http://localhost:5000/api/superadmin/departments",
+            "/api/superadmin/departments",
             formData,
             {
               headers: { Authorization: `Bearer ${token}` },
@@ -738,7 +738,7 @@ function AssignAdminModal({ department, admins: initialAdmins, onClose, onSucces
 
         try {
           // First try the superadmin endpoint since it has all admins
-          const res = await axios.get("http://localhost:5000/api/superadmin/admins", {
+          const res = await axios.get("/api/superadmin/admins", {
             headers: {
               Authorization: `Bearer ${token}`,
               'Content-Type': 'application/json'
@@ -754,7 +754,7 @@ function AssignAdminModal({ department, admins: initialAdmins, onClose, onSucces
           
           try {
             // Try the regular admins endpoint as fallback
-            const res = await axios.get("http://localhost:5000/api/admins", {
+            const res = await axios.get("/api/admins", {
               headers: {
                 Authorization: `Bearer ${token}`,
                 'Content-Type': 'application/json'
@@ -843,7 +843,7 @@ function AssignAdminModal({ department, admins: initialAdmins, onClose, onSucces
         }
         
         return axios.put(
-          `http://localhost:5000/api/superadmin/admins/${adminId}`,
+          `/api/superadmin/admins/${adminId}`,
           { 
             department: currentDepartments.join(', '),
             first_name: admin.first_name,
@@ -872,7 +872,7 @@ function AssignAdminModal({ department, admins: initialAdmins, onClose, onSucces
         const updatedDepartments = departments.filter(d => d !== department.department_name);
         
         return axios.put(
-          `http://localhost:5000/api/superadmin/admins/${admin.id}`,
+          `/api/superadmin/admins/${admin.id}`,
           { 
             department: updatedDepartments.join(', '),
             first_name: admin.first_name,
@@ -1013,7 +1013,7 @@ function EditDepartmentModal({ department, onClose, onSuccess }) {
     try {
       const token = Cookies.get("token");
       const res = await axios.put(
-        `http://localhost:5000/api/admin/departments/${department.id}`,
+        `/api/admin/departments/${department.id}`,
         formData,
         {
           headers: { Authorization: `Bearer ${token}` },

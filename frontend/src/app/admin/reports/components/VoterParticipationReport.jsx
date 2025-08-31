@@ -7,7 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { generateReport } from '@/utils/reportGenerator';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 const VOTERS_PER_PAGE = 10;
 
 export default function VoterParticipationReport() {

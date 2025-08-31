@@ -6,7 +6,7 @@ import Cookies from 'js-cookie';
 import usePermissions from '../../../hooks/usePermissions';
 import Link from 'next/link';
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = '/api';
 
 async function fetchWithAuth(url, options = {}) {
   const token = Cookies.get('token');

@@ -38,7 +38,7 @@ export default function AddStudentModal({ onClose }) {
 
       try {
         setLoading(prev => ({ ...prev, courses: true }));
-        const coursesResponse = await axios.get("http://localhost:5000/api/courses", {
+        const coursesResponse = await axios.get("/api/courses", {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -72,7 +72,7 @@ export default function AddStudentModal({ onClose }) {
 
         try {
           console.log("Trying maintenance API as fallback");
-          const maintenanceResponse = await axios.get("http://localhost:5000/api/maintenance/programs", {
+          const maintenanceResponse = await axios.get("/api/maintenance/programs", {
             headers: { Authorization: `Bearer ${token}` }
           });
           
@@ -133,7 +133,7 @@ export default function AddStudentModal({ onClose }) {
 
       try {
         setLoading(prev => ({ ...prev, yearLevels: true }));
-        const yearLevelsResponse = await axios.get("http://localhost:5000/api/maintenance/year-levels", {
+        const yearLevelsResponse = await axios.get("/api/maintenance/year-levels", {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -283,7 +283,7 @@ export default function AddStudentModal({ onClose }) {
 
       console.log("Submitting student:", studentData); 
 
-      const res = await axios.post("http://localhost:5000/api/superadmin/students", studentData, {
+      const res = await axios.post("/api/superadmin/students", studentData, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

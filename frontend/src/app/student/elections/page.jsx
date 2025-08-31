@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Calendar, Clock, CheckCircle, Users, CalendarRange, BarChart } from 'lucide-react';
 import Cookies from 'js-cookie';
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = '/api';
 
 async function fetchWithAuth(url, options = {}) {
   const token = Cookies.get('token');

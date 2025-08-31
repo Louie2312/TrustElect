@@ -91,7 +91,7 @@ export default function AdminAddStudentModal({ onClose, onSuccess, departmentCou
       console.log("Submitting student:", studentData);
 
       const res = await axios.post(
-        "http://localhost:5000/api/students", 
+        "/api/students", 
         studentData, 
         {
           headers: { Authorization: `Bearer ${token}` },

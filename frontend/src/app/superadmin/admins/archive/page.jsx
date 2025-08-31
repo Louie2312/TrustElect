@@ -16,7 +16,7 @@ export default function ArchivedAdminsPage() {
   const fetchArchivedAdmins = async () => {
     try {
       const token = Cookies.get("token");
-      const res = await axios.get("http://localhost:5000/api/superadmin/admins", {
+      const res = await axios.get("/api/superadmin/admins", {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -36,7 +36,7 @@ export default function ArchivedAdminsPage() {
     if (!confirm("Are you sure you want to restore this Admin?")) return;
     try {
       const token = Cookies.get("token");
-      await axios.patch(`http://localhost:5000/api/superadmin/admins/${id}/restore`, {}, {
+      await axios.patch(`/api/superadmin/admins/${id}/restore`, {}, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -59,7 +59,7 @@ export default function ArchivedAdminsPage() {
       const token = Cookies.get("token");
       console.log("Attempting to permanently delete admin ID:", selectedAdminId);
       
-      const response = await axios.delete(`http://localhost:5000/api/superadmin/admins/${selectedAdminId}/permanent-delete`, {
+      const response = await axios.delete(`/api/superadmin/admins/${selectedAdminId}/permanent-delete`, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });

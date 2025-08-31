@@ -33,7 +33,7 @@ export default function EditStudentModal({ student, onClose }) {
       const token = Cookies.get("token");
       
       const coursesResponse = await axios.get(
-        "http://localhost:5000/api/maintenance/programs", 
+        "/api/maintenance/programs", 
         {
           headers: { Authorization: `Bearer ${token}` },
           withCredentials: true,
@@ -41,7 +41,7 @@ export default function EditStudentModal({ student, onClose }) {
       );
 
       const yearLevelsResponse = await axios.get(
-        "http://localhost:5000/api/maintenance/year-levels",
+        "/api/maintenance/year-levels",
         {
           headers: { Authorization: `Bearer ${token}` },
           withCredentials: true,
@@ -108,7 +108,7 @@ export default function EditStudentModal({ student, onClose }) {
     try {
       const token = Cookies.get("token");
       const res = await axios.put(
-        `http://localhost:5000/api/superadmin/students/${student.id}`,
+        `/api/superadmin/students/${student.id}`,
         formData,
         { headers: { Authorization: `Bearer ${token}` }, withCredentials: true }
       );

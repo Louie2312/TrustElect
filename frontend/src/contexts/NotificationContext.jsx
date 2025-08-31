@@ -51,7 +51,7 @@ export const NotificationProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const [lastFetched, setLastFetched] = useState(null);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
   // Get user's role and token
   const getAuthInfo = useCallback(() => {

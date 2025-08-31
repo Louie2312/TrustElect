@@ -300,7 +300,7 @@ export default function CreateElectionPage() {
         const requests = Object.entries(endpoints).map(async ([category, endpoint]) => {
           try {
             const response = await axios.get(
-              `http://localhost:5000/api/maintenance/${endpoint}`,
+              `/api/maintenance/${endpoint}`,
               { headers: { Authorization: `Bearer ${token}` } }
             );
             
@@ -313,7 +313,7 @@ export default function CreateElectionPage() {
         
         // Fetch current semester
         const currentSemesterRequest = axios.get(
-          "http://localhost:5000/api/maintenance/current-semester",
+          "/api/maintenance/current-semester",
           { headers: { Authorization: `Bearer ${token}` } }
         );
         requests.push(currentSemesterRequest);
@@ -388,7 +388,7 @@ export default function CreateElectionPage() {
         };
         
         const response = await axios.post(
-          "http://localhost:5000/api/elections/preview-voters",
+          "/api/elections/preview-voters",
           { eligible_voters: optimizedEligibleVoters },
           {
             headers: {
@@ -425,7 +425,7 @@ export default function CreateElectionPage() {
       try {
         const token = Cookies.get("token");
         const response = await axios.post(
-          "http://localhost:5000/api/elections/preview-voters",
+          "/api/elections/preview-voters",
           { eligible_voters: { programs: [], yearLevels: [], gender: [], semester: [], precinct: [] } },
           { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` } }
         );
@@ -643,7 +643,7 @@ export default function CreateElectionPage() {
       };
   
       const response = await axios.post(
-        "http://localhost:5000/api/elections",
+        "/api/elections",
         {
           title: eventData.title,
           description: eventData.description,

@@ -40,7 +40,7 @@ export default function ProfilePage() {
       }
 
       console.log("Fetching latest profile...");
-      const res = await axios.get("http://localhost:5000/api/superadmin/profile", {
+      const res = await axios.get("/api/superadmin/profile", {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -52,7 +52,7 @@ export default function ProfilePage() {
       setEmail(res.data.email || "");
 
       const imageUrl = res.data.profile_picture
-        ? `http://localhost:5000${res.data.profile_picture}?timestamp=${new Date().getTime()}`
+        ? `${res.data.profile_picture}?timestamp=${new Date().getTime()}`
         : "https://via.placeholder.com/100";
 
       setProfilePic(imageUrl);
@@ -78,7 +78,7 @@ export default function ProfilePage() {
       const token = Cookies.get("token");
       if (!token) return;
 
-      const res = await axios.post("http://localhost:5000/api/superadmin/upload", formData, {
+      const res = await axios.post("/api/superadmin/upload", formData, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -90,7 +90,7 @@ export default function ProfilePage() {
         return;
       }
 
-      const imageUrl = `http://localhost:5000${res.data.filePath}?timestamp=${new Date().getTime()}`;
+      const imageUrl = `${res.data.filePath}?timestamp=${new Date().getTime()}`;
 
       setProfilePic(imageUrl);
       console.log("Profile Picture Updated:", imageUrl);
@@ -105,7 +105,7 @@ export default function ProfilePage() {
       if (!token) return;
 
       await axios.put(
-        "http://localhost:5000/api/superadmin/profile",
+        "/api/superadmin/profile",
         {
           firstName,
           lastName,
@@ -164,7 +164,7 @@ export default function ProfilePage() {
       if (!token) return;
       
       await axios.post(
-        "http://localhost:5000/api/superadmin/change-password",
+        "/api/superadmin/change-password",
         {
           currentPassword,
           newPassword

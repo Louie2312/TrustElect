@@ -28,7 +28,7 @@ export default function AuditLogsPage() {
   
   const [showFilters, setShowFilters] = useState(false);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
   
   const { hasPermission, permissionsLoading } = usePermissions();
   if (!permissionsLoading && !hasPermission('auditLog', 'view')) {

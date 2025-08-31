@@ -44,7 +44,7 @@ export default function ResetPasswordModal({ admin, onClose }) {
 
       
       const res = await axios.post(
-        "http://localhost:5000/api/superadmin/admins/reset-password",
+        "/api/superadmin/admins/reset-password",
         { id: admin.id, newPassword }, 
         { headers: { Authorization: `Bearer ${token}` }, withCredentials: true }
       );

@@ -38,7 +38,7 @@ const PartylistForm = ({
       let response;
       if (editingPartylist) {
         response = await axios.put(
-          `http://localhost:5000/api/partylists/${editingPartylist.id}`,
+          `/api/partylists/${editingPartylist.id}`,
           formData,
           {
             headers: {
@@ -50,7 +50,7 @@ const PartylistForm = ({
         toast.success("Partylist updated successfully");
       } else {
         response = await axios.post(
-          "http://localhost:5000/api/partylists",
+          "/api/partylists",
           formData,
           {
             headers: {
@@ -158,7 +158,7 @@ const PartylistForm = ({
               ) : editingPartylist && editingPartylist.logo_url ? (
                 <div className="relative w-40 h-40 border rounded overflow-hidden mx-auto">
                   <img 
-                    src={`http://localhost:5000${editingPartylist.logo_url}`} 
+                    src={`${editingPartylist.logo_url}`} 
                     alt="Current logo" 
                     className="w-full h-full object-contain"
                   />

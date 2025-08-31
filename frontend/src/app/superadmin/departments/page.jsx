@@ -30,7 +30,7 @@ export default function DepartmentsPage() {
         throw new Error("No authentication token found");
       }
   
-      const res = await axios.get("http://localhost:5000/api/superadmin/departments", {
+      const res = await axios.get("/api/superadmin/departments", {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -58,7 +58,7 @@ export default function DepartmentsPage() {
         throw new Error("No authentication token found");
       }
   
-      const res = await axios.get("http://localhost:5000/api/superadmin/admins", {
+      const res = await axios.get("/api/superadmin/admins", {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -97,7 +97,7 @@ export default function DepartmentsPage() {
     
     try {
       const token = Cookies.get("token");
-      const res = await axios.delete(`http://localhost:5000/api/superadmin/departments/${id}`, {
+      const res = await axios.delete(`/api/superadmin/departments/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       
@@ -328,7 +328,7 @@ function AddDepartmentModal({ onClose, onSuccess }) {
     try {
       const token = Cookies.get("token");
       const res = await axios.post(
-        "http://localhost:5000/api/superadmin/departments",
+        "/api/superadmin/departments",
         formData,
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -417,7 +417,7 @@ function AssignAdminModal({ department, admins: initialAdmins, onClose, onSucces
           throw new Error("No authentication token found");
         }
     
-        const res = await axios.get("http://localhost:5000/api/superadmin/admins", {
+        const res = await axios.get("/api/superadmin/admins", {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -500,7 +500,7 @@ function AssignAdminModal({ department, admins: initialAdmins, onClose, onSucces
         }
         
         return axios.put(
-          `http://localhost:5000/api/superadmin/admins/${adminId}`,
+          `/api/superadmin/admins/${adminId}`,
           { 
             department: currentDepartments.join(', '),
             first_name: admin.first_name,
@@ -529,7 +529,7 @@ function AssignAdminModal({ department, admins: initialAdmins, onClose, onSucces
         const updatedDepartments = departments.filter(d => d !== department.department_name);
         
         return axios.put(
-          `http://localhost:5000/api/superadmin/admins/${admin.id}`,
+          `/api/superadmin/admins/${admin.id}`,
           { 
             department: updatedDepartments.join(', '),
             first_name: admin.first_name,
@@ -657,7 +657,7 @@ function EditDepartmentModal({ department, onClose, onSuccess }) {
     const fetchAdmins = async () => {
       try {
         const token = Cookies.get("token");
-        const res = await axios.get("http://localhost:5000/api/superadmin/admins", {
+        const res = await axios.get("/api/superadmin/admins", {
           headers: { Authorization: `Bearer ${token}` },
           withCredentials: true
         });
@@ -695,7 +695,7 @@ function EditDepartmentModal({ department, onClose, onSuccess }) {
       const token = Cookies.get("token");
       
       const res = await axios.put(
-        `http://localhost:5000/api/superadmin/departments/${department.id}`,
+        `/api/superadmin/departments/${department.id}`,
         formData,
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -712,7 +712,7 @@ function EditDepartmentModal({ department, onClose, onSuccess }) {
           );
           
           return axios.put(
-            `http://localhost:5000/api/superadmin/admins/${admin.id}`,
+            `/api/superadmin/admins/${admin.id}`,
             { 
               department: updatedDepartments.join(', '),
               first_name: admin.first_name,

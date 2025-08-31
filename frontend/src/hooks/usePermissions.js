@@ -88,7 +88,7 @@ export default function usePermissions() {
         return true;
       }
  
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
     
       const url = `/api/admin/permissions`;
       

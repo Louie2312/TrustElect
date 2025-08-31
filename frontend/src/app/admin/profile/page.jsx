@@ -36,7 +36,7 @@ export default function AdminProfilePage() {
       }
 
       console.log("Fetching admin profile...");
-      const res = await axios.get("http://localhost:5000/api/admin/profile", {
+      const res = await axios.get("/api/admin/profile", {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -50,7 +50,7 @@ export default function AdminProfilePage() {
       setDepartment(res.data.department || "");
 
       const imageUrl = res.data.profile_picture
-        ? `http://localhost:5000${res.data.profile_picture}?timestamp=${new Date().getTime()}`
+        ? `${res.data.profile_picture}?timestamp=${new Date().getTime()}`
         : "https://via.placeholder.com/100";
 
       setProfilePic(imageUrl);
@@ -87,7 +87,7 @@ export default function AdminProfilePage() {
       setUploadSuccess(false);
       setUploadError("");
 
-      const res = await axios.post("http://localhost:5000/api/admin/upload", formData, {
+      const res = await axios.post("/api/admin/upload", formData, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -100,7 +100,7 @@ export default function AdminProfilePage() {
         return;
       }
 
-      const imageUrl = `http://localhost:5000${res.data.filePath}?timestamp=${new Date().getTime()}`;
+      const imageUrl = `${res.data.filePath}?timestamp=${new Date().getTime()}`;
 
       setProfilePic(imageUrl);
       setPreviewImage(null);

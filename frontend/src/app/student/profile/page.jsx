@@ -49,7 +49,7 @@ export default function StudentProfilePage() {
       }
 
       console.log("Fetching latest profile...");
-      const res = await axios.get("http://localhost:5000/api/students/profile", {
+      const res = await axios.get("/api/students/profile", {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -64,7 +64,7 @@ export default function StudentProfilePage() {
       setYearLevel(res.data.yearLevel || "");
 
       const imageUrl = res.data.profile_picture
-        ? `http://localhost:5000${res.data.profile_picture}?timestamp=${new Date().getTime()}`
+        ? `${res.data.profile_picture}?timestamp=${new Date().getTime()}`
         : "https://via.placeholder.com/100";
 
       setProfilePic(imageUrl);
@@ -101,7 +101,7 @@ export default function StudentProfilePage() {
       setUploadSuccess(false);
       setUploadError("");
 
-      const res = await axios.post("http://localhost:5000/api/students/upload", formData, {
+      const res = await axios.post("/api/students/upload", formData, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -114,7 +114,7 @@ export default function StudentProfilePage() {
         return;
       }
 
-      const imageUrl = `http://localhost:5000${res.data.filePath}?timestamp=${new Date().getTime()}`;
+      const imageUrl = `${res.data.filePath}?timestamp=${new Date().getTime()}`;
 
       setProfilePic(imageUrl);
       setPreviewImage(null);
@@ -175,7 +175,7 @@ export default function StudentProfilePage() {
       }
       
       const response = await axios.post(
-        "http://localhost:5000/api/students/change-password",
+        "/api/students/change-password",
         {
           currentPassword,
           newPassword

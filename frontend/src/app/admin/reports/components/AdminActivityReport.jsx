@@ -4,7 +4,7 @@ import axios from 'axios';
 import Cookies from 'js-cookie';
 import { generateReport } from '@/utils/reportGenerator';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 const AdminActivityReport = () => {
   const [selectedTimeframe, setSelectedTimeframe] = useState('all');

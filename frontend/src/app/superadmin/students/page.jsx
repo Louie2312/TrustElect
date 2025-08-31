@@ -60,7 +60,7 @@ export default function ManageStudents() {
       const token = Cookies.get("token");
       
     
-      const coursesResponse = await axios.get("http://localhost:5000/api/maintenance/programs", {
+      const coursesResponse = await axios.get("/api/maintenance/programs", {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -74,7 +74,7 @@ export default function ManageStudents() {
       }
       
   
-      const yearLevelsResponse = await axios.get("http://localhost:5000/api/maintenance/year-levels", {
+      const yearLevelsResponse = await axios.get("/api/maintenance/year-levels", {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -113,7 +113,7 @@ export default function ManageStudents() {
       formData.append('file', selectedFile);
       formData.append('createdBy', superAdminId);
   
-      const res = await axios.post('http://localhost:5000/api/superadmin/students/batch', formData, {
+      const res = await axios.post('/api/superadmin/students/batch', formData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -156,7 +156,7 @@ export default function ManageStudents() {
     try {
       setLoading(true);
       const token = Cookies.get("token");
-      const res = await axios.get("http://localhost:5000/api/superadmin/students", {
+      const res = await axios.get("/api/superadmin/students", {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -236,7 +236,7 @@ export default function ManageStudents() {
     if (!confirm("Are you sure you want to archive this student?")) return;
     try {
       const token = Cookies.get("token");
-      await axios.delete(`http://localhost:5000/api/superadmin/students/${id}`, {
+      await axios.delete(`/api/superadmin/students/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -253,7 +253,7 @@ export default function ManageStudents() {
     try {
       const token = Cookies.get("token");
       await axios.patch(
-        `http://localhost:5000/api/superadmin/students/${studentId}/unlock`,
+        `/api/superadmin/students/${studentId}/unlock`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` },

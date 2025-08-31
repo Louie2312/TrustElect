@@ -6,7 +6,7 @@ import axios from 'axios';
 import { useAuth } from '@/context/AuthContext';
 import { generateReport } from '@/utils/reportGenerator';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 export default function CandidateListReport() {
   const [loading, setLoading] = useState(true);

@@ -16,7 +16,7 @@ export default function ResetStudentPasswordModal({ student, onClose }) {
   
       
       const res = await axios.post(
-        "http://localhost:5000/api/superadmin/students/reset-password", 
+        "/api/superadmin/students/reset-password", 
         { studentId: student.id, newPassword },
         { headers: { Authorization: `Bearer ${token}` } }
       );

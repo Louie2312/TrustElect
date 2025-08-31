@@ -6,8 +6,8 @@ import Cookies from "js-cookie";
 import { useDropzone } from 'react-dropzone';
 import { X, Upload, Image as ImageIcon } from "lucide-react";
 
-const API_BASE = 'http://localhost:5000/api';
-const BASE_URL = 'http://localhost:5000';
+const API_BASE = '/api';
+const BASE_URL = '';
 
 function formatNameSimple(lastName, firstName, fallback) {
   const cap = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
@@ -119,7 +119,7 @@ const PartylistDetails = ({
   const fetchAllStudents = async () => {
     try {
       const token = Cookies.get("token");
-      const res = await axios.get("http://localhost:5000/api/superadmin/students", {
+      const res = await axios.get("/api/superadmin/students", {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -138,7 +138,7 @@ const PartylistDetails = ({
     setIsLoading(true);
     try {
       const token = Cookies.get("token");
-      const response = await axios.get(`http://localhost:5000/api/partylists/${partylistId}/candidates`, {
+      const response = await axios.get(`/api/partylists/${partylistId}/candidates`, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -170,7 +170,7 @@ const PartylistDetails = ({
     try {
       const token = Cookies.get("token");
     
-      const electionTypesResponse = await axios.get("http://localhost:5000/api/maintenance/election-types", {
+      const electionTypesResponse = await axios.get("/api/maintenance/election-types", {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -192,7 +192,7 @@ const PartylistDetails = ({
         studentCouncilElectionTypeId = 1;
       }
       
-      const response = await axios.get(`http://localhost:5000/api/direct/positions?electionTypeId=${studentCouncilElectionTypeId}`, {
+      const response = await axios.get(`/api/direct/positions?electionTypeId=${studentCouncilElectionTypeId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -358,7 +358,7 @@ const PartylistDetails = ({
       const token = Cookies.get("token");
 
       const partylistsResponse = await axios.get(
-        "http://localhost:5000/api/partylists",
+        "/api/partylists",
         {
           headers: { Authorization: `Bearer ${token}` },
           withCredentials: true,
@@ -374,7 +374,7 @@ const PartylistDetails = ({
       for (const party of partylistsResponse.data.data) {
         try {
           const candidatesResponse = await axios.get(
-            `http://localhost:5000/api/partylists/${party.id}/candidates`,
+            `/api/partylists/${party.id}/candidates`,
             {
               headers: { Authorization: `Bearer ${token}` },
               withCredentials: true,
@@ -669,7 +669,7 @@ const PartylistDetails = ({
       console.log('Adding candidate with data:', requestData);
       
       const response = await axios.post(
-        `http://localhost:5000/api/partylists/${partylist.id}/candidates`, 
+        `/api/partylists/${partylist.id}/candidates`, 
         requestData,
         {
           headers: { 
@@ -724,7 +724,7 @@ const PartylistDetails = ({
     setIsLoading(true);
     try {
       const token = Cookies.get("token");
-      const response = await axios.delete(`http://localhost:5000/api/candidates/${candidateId}`, {
+      const response = await axios.delete(`/api/candidates/${candidateId}`, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true
       });
@@ -1087,7 +1087,7 @@ const PartylistDetails = ({
         <div className="md:col-span-3 flex flex-col items-center">
           {partylist.logo_url ? (
             <img 
-              src={`http://localhost:5000${partylist.logo_url}`} 
+              src={`${partylist.logo_url}`} 
               alt={`${partylist.name} logo`} 
               className="h-40 w-40 object-contain border rounded-md bg-gray-50 p-2 mb-3"
             />

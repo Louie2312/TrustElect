@@ -7,7 +7,7 @@ import * as utils from './utils';
 import { updateAllBackgrounds, updateCTASettings } from './utils/themeUtils';
 import usePermissions from "../../../hooks/usePermissions";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 export default function ContentManagement() {
   const { hasPermission, permissionsLoading } = usePermissions();

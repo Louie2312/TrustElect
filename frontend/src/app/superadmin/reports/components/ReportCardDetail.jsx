@@ -6,8 +6,8 @@ import { generatePdfReport } from '@/utils/pdfGenerator';
 import Cookies from 'js-cookie';
 import Image from 'next/image';
 
-const API_BASE = 'http://localhost:5000/api';
-const BASE_URL = 'http://localhost:5000';
+const API_BASE = '/api';
+const BASE_URL = '';
 
 const getImageUrl = (imageUrl) => {
   if (!imageUrl) return '/default-candidate.png';

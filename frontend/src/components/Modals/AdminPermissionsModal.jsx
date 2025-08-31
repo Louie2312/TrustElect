@@ -26,7 +26,7 @@ const AdminPermissionsModal = ({ admin, onClose, onSave }) => {
     try {
       setLoading(true);
       const token = Cookies.get('token');
-      const response = await axios.get(`http://localhost:5000/api/admin-permissions/${admin.id}`, {
+      const response = await axios.get(`/api/admin-permissions/${admin.id}`, {
         headers: { 
           Authorization: `Bearer ${token}`,
           'Cache-Control': 'no-cache'
@@ -96,7 +96,7 @@ const AdminPermissionsModal = ({ admin, onClose, onSave }) => {
       const token = Cookies.get("token");
       
       // More robust URL construction
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
       
       // We'll skip the validation API call since it's returning 404
       // Instead, we'll directly compare the local state with what we intended to save
@@ -125,7 +125,7 @@ const AdminPermissionsModal = ({ admin, onClose, onSave }) => {
       console.log('Saving permissions:', JSON.stringify(permissions));
       
       // More robust URL construction
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
       const apiUrl = `${baseUrl}/api/admin-permissions/${admin.id}`;
       
       console.log('Making API request to:', apiUrl);
