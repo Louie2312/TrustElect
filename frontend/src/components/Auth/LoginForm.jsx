@@ -12,9 +12,7 @@ import { ArrowLeft } from "lucide-react";
 import stiLogo from "../../assets/sti_logo.png";
 
 export default function LoginForm({ onClose }) {
-  // Add API URL configuration at the top
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-  
+  const API_URL = '';
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

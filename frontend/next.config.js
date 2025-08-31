@@ -16,6 +16,17 @@ const nextConfig = {
       },
     ],
   },
+  async rewrites() {
+    const backend = process.env.BACKEND_URL;
+    if (!backend) {
+      console.warn('BACKEND_URL is not set; rewrites will not be applied.');
+      return [];
+    }
+    return [
+      { source: '/api/:path*', destination: `${backend}/api/:path*` },
+      { source: '/uploads/:path*', destination: `${backend}/uploads/:path*` },
+    ];
+  },
 }
 
 module.exports = nextConfig
