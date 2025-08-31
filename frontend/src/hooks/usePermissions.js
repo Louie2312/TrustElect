@@ -36,7 +36,7 @@ export const ensureUserIdFromToken = () => {
  * Custom hook to fetch and check admin permissions
  * @returns {Object} Permission check functions and loading state
  */
-const usePermissions = () => {
+export default function usePermissions() {
   const [permissions, setPermissions] = useState({});
   const [permissionsLoading, setPermissionsLoading] = useState(true);
   const [permissionsLastUpdated, setPermissionsLastUpdated] = useState(0);
@@ -90,7 +90,7 @@ const usePermissions = () => {
  
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     
-      const url = `${apiUrl}/api/admin/permissions`;
+      const url = `/api/admin/permissions`;
       
       const cacheParam = `_t=${Date.now()}`;
       const requestUrl = `${url}?${cacheParam}`;
@@ -229,5 +229,3 @@ const usePermissions = () => {
     permissionsLastUpdated 
   };
 };
-
-export default usePermissions;

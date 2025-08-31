@@ -17,14 +17,11 @@ const nextConfig = {
     ],
   },
   async rewrites() {
-    const backend = process.env.BACKEND_URL;
-    if (!backend) {
-      console.warn('BACKEND_URL is not set; rewrites will not be applied.');
-      return [];
-    }
+    // Ensure rewrites always work both locally and in production
+    const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5000';
     return [
-      { source: '/api/:path*', destination: `${backend}/api/:path*` },
-      { source: '/uploads/:path*', destination: `${backend}/uploads/:path*` },
+      { source: '/api/:path*', destination: `${BACKEND_URL}/api/:path*` },
+      { source: '/uploads/:path*', destination: `${BACKEND_URL}/uploads/:path*` },
     ];
   },
 }

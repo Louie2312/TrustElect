@@ -315,6 +315,9 @@ app.get("/api/healthcheck", (req, res) => {
   });
 });
 
+app.head("/api/healthcheck", (req, res) => {
+  res.status(200).end();
+});
 app.use('/uploads', express.static(path.join(__dirname, '../uploads'), {
   setHeaders: (res, filePath) => {
     res.set('Cross-Origin-Resource-Policy', 'cross-origin');

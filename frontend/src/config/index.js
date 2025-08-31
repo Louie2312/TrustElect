@@ -1,13 +1,13 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = ''; // same-origin so Next.js rewrites proxy the request
 
 // Add BASE_URL export
 export const BASE_URL = API_URL;
 
 export const config = {
   API_URL,
-  API_BASE: `${API_URL}/api`,
-  UPLOADS_URL: `${API_URL}/uploads`,
-  PUBLIC_URL: `${API_URL}/public`,
+  API_BASE: `/api`,
+  UPLOADS_URL: `/uploads`,
+  PUBLIC_URL: `/public`,
 };
 
 export const formatImageUrl = (url) => {
@@ -22,9 +22,9 @@ export const formatImageUrl = (url) => {
       return url;
     }
 
-    // Remove any leading slashes
+    // Remove any leading slashes and keep same-origin path
     const cleanPath = url.replace(/^\/+/, '');
-    return `${API_URL}/${cleanPath}`;
+    return `/${cleanPath}`;
   } catch (error) {
     console.error('Error formatting URL:', error, url);
     return null;
