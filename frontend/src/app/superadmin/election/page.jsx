@@ -5,7 +5,11 @@ import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, Plus, ArrowLeft } f
 import Cookies from 'js-cookie';
 import Link from 'next/link';
 
-const API_BASE = 'http://localhost:5000/api';
+// Replace this line:
+// const API_BASE = 'http://localhost:5000/api';
+
+// With this:
+const API_BASE = '/api'; // Use relative path for proxy
 
 async function fetchWithAuth(url, options = {}) {
   const token = Cookies.get('token');

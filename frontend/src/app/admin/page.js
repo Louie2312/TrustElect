@@ -8,7 +8,11 @@ import PermissionDisplay from '../../components/Admin/PermissionDisplay';
 import usePermissions, { ensureUserIdFromToken } from '../../hooks/usePermissions.js';
 import axios from "axios";
 
-const API_BASE = 'http://localhost:5000/api';
+// Replace this line:
+// const API_BASE = 'http://localhost:5000/api';
+
+// With this:
+const API_BASE = '/api'; // Use relative path for proxy
 
 async function fetchWithAuth(url, options = {}) {
   const token = Cookies.get('token');
