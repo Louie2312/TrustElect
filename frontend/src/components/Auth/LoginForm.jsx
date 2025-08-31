@@ -77,11 +77,11 @@ export default function LoginForm({ onClose }) {
 
     setLoading(true);
     try {
-      // Updated API URL
+      // Updated: same-origin path + credentials
       const response = await axios.post(
-        `${API_URL}/api/auth/login`,
+        `/api/auth/login`,
         { email, password },
-        { withCredentials: true } 
+        { withCredentials: true }
       );
 
       if (!response.data.user_id) {
@@ -105,10 +105,11 @@ export default function LoginForm({ onClose }) {
       localStorage.setItem("email", email);
       localStorage.setItem("userId", user_id);
 
-      // Updated API URL
+      // Updated: same-origin path + credentials
       const otpResponse = await axios.post(
-        `${API_URL}/api/auth/request-otp`,
-        { userId: user_id, email }
+        `/api/auth/request-otp`,
+        { userId: user_id, email },
+        { withCredentials: true }
       );
 
       if (otpResponse.data.devMode && otpResponse.data.otp) {
@@ -146,25 +147,27 @@ export default function LoginForm({ onClose }) {
     try {
       const userId = Cookies.get("userId");
 
-      // Updated API URL
+      // Updated: same-origin path + credentials
       const response = await axios.post(
-        `${API_URL}/api/auth/verify-otp`,
-        { userId, otp }
+        `/api/auth/verify-otp`,
+        { userId, otp },
+        { withCredentials: true }
       );
-      
+
       if (response.data.success) {
         const role = Cookies.get("role");
 
         if (role !== "Super Admin") {
           try {
             const token = Cookies.get("token");
-            // Updated API URL
+            // Updated: same-origin path
             const firstLoginCheckResponse = await axios.get(
-              `${API_URL}/api/auth/check-first-login`,
-              { 
-                headers: { 
+              `/api/auth/check-first-login`,
+              {
+                headers: {
                   Authorization: `Bearer ${token}`
-                } 
+                },
+                withCredentials: true
               }
             );
             
@@ -211,14 +214,15 @@ export default function LoginForm({ onClose }) {
     try {
       const token = Cookies.get("token");
       
-      // Updated API URL
+      // Updated: same-origin path
       const response = await axios.post(
-        `${API_URL}/api/auth/change-first-password`,
+        `/api/auth/change-first-password`,
         { newPassword },
-        { 
-          headers: { 
+        {
+          headers: {
             Authorization: `Bearer ${token}`
-          } 
+          },
+          withCredentials: true
         }
       );
       
@@ -282,10 +286,11 @@ export default function LoginForm({ onClose }) {
     try {
       const userId = Cookies.get("userId");
       const userEmail = Cookies.get("email");
-      // Updated API URL
+      // Updated: same-origin path + credentials
       const response = await axios.post(
-        `${API_URL}/api/auth/request-otp`,
-        { userId, email: userEmail }
+        `/api/auth/request-otp`,
+        { userId, email: userEmail },
+        { withCredentials: true }
       );
 
       if (response.data.devMode && response.data.otp) {
@@ -325,10 +330,11 @@ export default function LoginForm({ onClose }) {
     
     setLoading(true);
     try {
-      // Updated API URL
+      // Updated: same-origin path
       const response = await axios.post(
-        `${API_URL}/api/auth/forgot-password`,
-        { email: forgotEmail }
+        `/api/auth/forgot-password`,
+        { email: forgotEmail },
+        { withCredentials: true }
       );
 
       if (response.data.devMode && response.data.otp) {
@@ -357,10 +363,11 @@ export default function LoginForm({ onClose }) {
     
     setLoading(true);
     try {
-      // Updated API URL
+      // Updated: same-origin path
       const response = await axios.post(
-        `${API_URL}/api/auth/verify-reset-otp`,
-        { email: forgotEmail, otp: resetOtp }
+        `/api/auth/verify-reset-otp`,
+        { email: forgotEmail, otp: resetOtp },
+        { withCredentials: true }
       );
       
       if (response.data.success) {
@@ -393,10 +400,11 @@ export default function LoginForm({ onClose }) {
     
     setLoading(true);
     try {
-      // Updated API URL
+      // Updated: same-origin path
       const response = await axios.post(
-        `${API_URL}/api/auth/reset-password`,
-        { resetToken, newPassword: resetPassword }
+        `/api/auth/reset-password`,
+        { resetToken, newPassword: resetPassword },
+        { withCredentials: true }
       );
       
       if (response.data.success) {
@@ -430,9 +438,9 @@ export default function LoginForm({ onClose }) {
     setResendMessage("");
     setDevOtp("");
     try {
-      // Updated API URL
+      // Updated: same-origin path
       const response = await axios.post(
-        `${API_URL}/api/auth/forgot-password`,
+        `/api/auth/forgot-password`,
         { email: forgotEmail }
       );
       

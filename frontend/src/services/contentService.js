@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // API base URL
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = ''; // use same-origin so Next.js rewrites proxy the request
 
 // Create Axios instance with defaults
 const apiClient = axios.create({
@@ -58,8 +58,8 @@ apiClient.interceptors.response.use(
  */
 export const checkApiConnection = async () => {
   try {
-    // Use HEAD request with a short timeout for fast checking
-    await axios.head(`${API_URL}/api/healthcheck`, { timeout: 5000 });
+    // Use same-origin so it goes through the rewrite
+    await axios.head(`/api/healthcheck`, { timeout: 5000 });
     return true;
   } catch (error) {
     console.error('API connection check failed:', error);
@@ -227,7 +227,8 @@ export const formatImageUrl = (url) => {
   if (!url) return null;
   if (url.startsWith('blob:')) return url;
   if (url.startsWith('http')) return url;
-  return `${API_URL}${url}`;
+  // Return a same-origin path so Next rewrites proxy /uploads
+  return url.startsWith('/') ? url : `/${url}`;
 };
 
 const ContentService = {

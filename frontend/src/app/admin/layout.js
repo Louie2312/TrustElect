@@ -7,15 +7,15 @@ import Header from "@/components/adminDashboard/Header";
 import Sidebar from "@/components/adminDashboard/Sidebar";
 import AuthProvider from "@/context/AuthContext";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API_BASE = ''; // same-origin
 
 function formatImageUrl(url) {
   if (!url) return null;
   if (url.startsWith("blob:") || url.startsWith("http")) return url;
   if (url.startsWith("/api/") || url.startsWith("/uploads/")) {
-    return `${API_BASE}${url}`;
+    return url; // same-origin path
   }
-  return `${API_BASE}${url.startsWith("/") ? url : "/" + url}`;
+  return url.startsWith("/") ? url : "/" + url;
 }
 
 export default function AdminLayout({children}){
@@ -51,7 +51,7 @@ export default function AdminLayout({children}){
     const fetchUIDesign = async () => {
       try {
         const token = Cookies.get("token");
-        const response = await fetch(`${API_BASE}/api/studentUI`, {
+        const response = await fetch(`/api/studentUI`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (response.ok) {
@@ -63,7 +63,7 @@ export default function AdminLayout({children}){
           };
           setUiDesign(config);
           if (config.type === "landing" || config.use_landing_design) {
-            const landingRes = await fetch(`${API_BASE}/api/content`);
+            const landingRes = await fetch(`/api/content`);
             if (landingRes.ok) {
               const landingData = await landingRes.json();
               setLandingContent(landingData.content);

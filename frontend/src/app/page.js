@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import stiLogo from "../assets/sti_logo.png";
 import axios from "axios";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = ''; // use same-origin
 
 export default function Home() {
   const [showLogin, setShowLogin] = useState(false);
@@ -60,7 +60,7 @@ export default function Home() {
 
   const checkApiConnection = async () => {
     try {
-      await axios.head(`${API_URL}/api/healthcheck`, { timeout: 5000 });
+      await axios.head(`/api/healthcheck`, { timeout: 5000 });
       console.log('API connection successful');
       setApiConnected(true);
       return true;
@@ -109,7 +109,7 @@ export default function Home() {
     
     try {
       const timestamp = new Date().getTime();
-      const response = await axios.get(`${API_URL}/api/content?t=${timestamp}`, {
+      const response = await axios.get(`/api/content?t=${timestamp}`, {
         timeout: 5000
       });
       
@@ -190,7 +190,7 @@ export default function Home() {
       }
 
       const path = url.startsWith('/') ? url : `/${url}`;
-      const fullUrl = `${API_URL}${path}`;
+      const fullUrl = `${path}`; // same-origin path (e.g., /uploads/...)
       return fullUrl;
     } catch (error) {
       console.error('Error formatting URL:', error, url);
