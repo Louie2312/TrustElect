@@ -9,8 +9,8 @@ import { use } from 'react';
 import Image from 'next/image';
 import { toast } from 'react-hot-toast';
 
-const API_BASE = 'http://localhost:5000/api';
-const BASE_URL = 'http://localhost:5000';
+const API_BASE = '/api';
+const BASE_URL = '';
 
 function formatNameSimple(lastName, firstName, fallback) {
   const cap = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';

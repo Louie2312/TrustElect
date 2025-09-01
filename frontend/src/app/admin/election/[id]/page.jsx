@@ -14,8 +14,8 @@ import Image from 'next/image';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import toast from 'react-hot-toast';
 
-const API_BASE = 'http://localhost:5000/api';
-const BASE_URL = 'http://localhost:5000';
+const API_BASE = '/api';
+const BASE_URL = '';
 
 // Add a color palette array at the top of the file, outside the component
 const CHART_COLORS = [

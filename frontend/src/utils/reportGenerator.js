@@ -242,7 +242,7 @@ const generateAdminActivityReport = (data) => {
 
 // Add more report generators for other report types...
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 export const generateReport = async (reportId, data) => {
   try {

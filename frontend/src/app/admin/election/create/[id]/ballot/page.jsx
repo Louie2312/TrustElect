@@ -4,8 +4,8 @@ import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Plus, Trash2, Upload, Image as ImageIcon } from "lucide-react";
 import Cookies from "js-cookie";
 
-const API_BASE = 'http://localhost:5000/api';
-const BASE_URL = 'http://localhost:5000';
+const API_BASE = '/api';
+const BASE_URL = '';
 
 async function fetchWithAuth(url, options = {}) {
   const token = Cookies.get('token');

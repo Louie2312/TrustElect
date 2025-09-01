@@ -15,7 +15,7 @@ import PositionItem from './components/PositionItem';
 
 const fetchWithAuth = async (endpoint, options = {}) => {
   const token = Cookies.get('token');
-  const apiUrl = BASE_URL || 'http://localhost:5000';
+  const apiUrl = BASE_URL || '';
 
   const normalizedEndpoint = endpoint.startsWith('/api') 
     ? endpoint 
@@ -119,7 +119,7 @@ const fetchWithAuth = async (endpoint, options = {}) => {
 
 const fetchWithFormData = async (endpoint, formData, method = 'POST') => {
   const token = Cookies.get('token');
-  const apiUrl = BASE_URL || 'http://localhost:5000';
+  const apiUrl = BASE_URL || '';
   
   console.log(`Making form data API request to: ${apiUrl}${endpoint}`);
   

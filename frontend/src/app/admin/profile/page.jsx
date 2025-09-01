@@ -62,7 +62,6 @@ export default function AdminProfilePage() {
     }
   };
 
-  // Handle file selection
   const handleFileChange = (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -73,7 +72,6 @@ export default function AdminProfilePage() {
     setUploadError("");
   };
 
-  // Handle saving profile picture
   const handleSaveProfilePicture = async () => {
     if (!selectedFile) return;
 
@@ -107,8 +105,7 @@ export default function AdminProfilePage() {
       setSelectedFile(null);
       setUploadSuccess(true);
       console.log("Profile Picture Updated:", imageUrl);
-      
-      // Trigger profile update event for sidebar
+
       window.dispatchEvent(new Event("adminProfileUpdated"));
     } catch (error) {
       setUploadError("Failed to upload image. Please try again.");

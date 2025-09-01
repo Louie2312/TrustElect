@@ -8,8 +8,8 @@ import Cookies from 'js-cookie';
 import Image from 'next/image';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 
-const API_BASE = 'http://localhost:5000/api';
-const BASE_URL = 'http://localhost:5000';
+const API_BASE = '/api';
+const BASE_URL = '';
 
 // Add color palette for different candidates
 const CHART_COLORS = [

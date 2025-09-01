@@ -1,6 +1,6 @@
 import Cookies from 'js-cookie';
 
-const API_BASE = 'http://your-backend-url/api';
+const API_BASE = 'http://trustelect.railway.internal/api';
 
 async function fetchWithAuth(url, options = {}) {
   const token = Cookies.get('token');

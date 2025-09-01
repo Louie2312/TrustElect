@@ -8,10 +8,7 @@ import PermissionDisplay from '../../components/Admin/PermissionDisplay';
 import usePermissions, { ensureUserIdFromToken } from '../../hooks/usePermissions.js';
 import axios from "axios";
 
-// Replace this line:
-// const API_BASE = '/api';
 
-// With this:
 const API_BASE = '/api'; // Use relative path for proxy
 
 async function fetchWithAuth(url, options = {}) {
