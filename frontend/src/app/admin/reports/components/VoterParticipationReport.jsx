@@ -39,7 +39,7 @@ export default function VoterParticipationReport() {
   const fetchParticipationData = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_BASE}/api/reports/admin/voter-participation`, {
+      const response = await axios.get(`${API_BASE}/reports/admin/voter-participation`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -351,4 +351,4 @@ export default function VoterParticipationReport() {
       )}
     </div>
   );
-} 
+}

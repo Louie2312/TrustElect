@@ -24,7 +24,7 @@ export default function VotingTimeReport() {
 
   const fetchElections = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/elections`, {
+      const response = await axios.get(`${API_BASE}/elections`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setElections(response.data);
@@ -181,4 +181,4 @@ export default function VotingTimeReport() {
       </div>
     </div>
   );
-} 
+}

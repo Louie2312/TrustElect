@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ['localhost', 'trustelect-production.up.railway.app'],
+    domains: ['localhost', 'trustelectonline.com'],
     remotePatterns: [
       {
         protocol: 'http',
@@ -11,13 +11,12 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'trustelect-production.up.railway.app',
+        hostname: 'trustelectonline.com',
         pathname: '/uploads/**',
       },
     ],
   },
   async rewrites() {
-    // Always provide rewrites, even if BACKEND_URL is not set
     const BACKEND_URL = process.env.BACKEND_URL || 'https://trustelectonline.com';
     
     console.log('Next.js rewrites using BACKEND_URL:', BACKEND_URL);

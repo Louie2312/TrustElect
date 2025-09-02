@@ -32,7 +32,7 @@ export default function ElectionSummaryReport() {
   const fetchSummaryData = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_BASE}/api/reports/admin/summary`, {
+      const response = await axios.get(`${API_BASE}/reports/admin/summary`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 

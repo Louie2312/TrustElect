@@ -23,7 +23,7 @@ export default function CandidateListReport() {
   const fetchCandidateList = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_BASE}/api/reports/candidate-list/admin/candidate-list`, {
+      const response = await axios.get(`${API_BASE}/reports/candidate-list/admin/candidate-list`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
