@@ -42,7 +42,7 @@ exports.loginSuperAdmin = async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: superAdmin.id, email: superAdmin.email, role: "SuperAdmin" },
+      { id: superAdmin.id, email: superAdmin.email, role: "Super Admin" }, // Changed from "SuperAdmin" to "Super Admin"
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
@@ -62,7 +62,7 @@ exports.loginSuperAdmin = async (req, res) => {
         lastName: superAdmin.last_name,
         email: superAdmin.email,
         username: superAdmin.username,
-        role: "SuperAdmin",
+        role: "Super Admin", // Changed from "SuperAdmin" to "Super Admin"
       },
     });
   } catch (error) {
