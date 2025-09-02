@@ -6,7 +6,7 @@ import axios from 'axios';
 import Cookies from 'js-cookie';
 import { generatePdfReport } from '@/utils/pdfGenerator';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 const AdminActivityDetail = ({ report, onClose, onDownload }) => {
   const [selectedTimeframe, setSelectedTimeframe] = useState('all');

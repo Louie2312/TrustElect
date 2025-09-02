@@ -17,7 +17,7 @@ const nextConfig = {
     ],
   },
   async rewrites() {
-    const BACKEND_URL = process.env.BACKEND_URL || 'https://trustelectonline.com';
+    const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5000';
     
     console.log('Next.js rewrites using BACKEND_URL:', BACKEND_URL);
     

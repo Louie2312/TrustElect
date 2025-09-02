@@ -1,11 +1,11 @@
-const API_URL = ''; // same-origin so Next.js rewrites proxy the request
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 // Add BASE_URL export
 export const BASE_URL = API_URL;
 
 export const config = {
   API_URL,
-  API_BASE: `/api`,
+  API_BASE: process.env.NEXT_PUBLIC_API_URL || '',
   UPLOADS_URL: `/uploads`,
   PUBLIC_URL: `/public`,
 };

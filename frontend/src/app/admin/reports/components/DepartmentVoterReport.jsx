@@ -5,7 +5,7 @@ import Cookies from 'js-cookie';
 import { Download } from 'lucide-react';
 import { generateReport } from '@/utils/reportGenerator';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 const DepartmentVoterReport = () => {
   const [loading, setLoading] = useState(true);

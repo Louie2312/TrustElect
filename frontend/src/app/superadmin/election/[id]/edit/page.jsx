@@ -449,7 +449,7 @@ export default function EditElectionPage() {
       
       // Update election basic details
       const updateResponse = await axios.put(
-        `/api/elections/${electionId}`,
+        `/elections/${electionId}`,
         updatePayload,
         {
           headers: {

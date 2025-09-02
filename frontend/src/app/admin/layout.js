@@ -7,7 +7,7 @@ import Header from "@/components/adminDashboard/Header";
 import Sidebar from "@/components/adminDashboard/Sidebar";
 import AuthProvider from "@/context/AuthContext";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 function formatImageUrl(url) {
   if (!url) return null;
@@ -51,7 +51,7 @@ export default function AdminLayout({children}){
     const fetchUIDesign = async () => {
       try {
         const token = Cookies.get("token");
-        const response = await fetch(`/api/studentUI`, {
+        const response = await fetch(`/studentUI`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (response.ok) {

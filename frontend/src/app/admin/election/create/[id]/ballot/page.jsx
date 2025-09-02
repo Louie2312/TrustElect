@@ -4,7 +4,7 @@ import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Plus, Trash2, Upload, Image as ImageIcon } from "lucide-react";
 import Cookies from "js-cookie";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 const BASE_URL = '';
 
 async function fetchWithAuth(url, options = {}) {

@@ -6,7 +6,7 @@ import Cookies from "js-cookie";
 import { useDropzone } from 'react-dropzone';
 import { X, Upload, Image as ImageIcon } from "lucide-react";
 
-const API_BASE = '/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 const BASE_URL = '';
 
 function formatNameSimple(lastName, firstName, fallback) {

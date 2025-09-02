@@ -34,15 +34,13 @@ export default function VotingTimeReport() {
     }
   };
 
-  const fetchVotingData = async () => {
+  const fetchVotingTimeData = async (electionId) => {
     try {
-      setLoading(true);
-      const endpoint = selectedElection === 'all' 
-        ? '/api/reports/voting-time'
-        : `/api/reports/voting-time/${selectedElection}`;
-      
+      const endpoint = `/reports/voting-time/${electionId}`; // Removed /api prefix
       const response = await axios.get(`${API_BASE}${endpoint}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
       });
       
       if (response.data.success) {

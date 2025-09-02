@@ -13,7 +13,7 @@ import CandidateListReport from "./components/CandidateListReport";
 import AdminActivityReport from "./components/AdminActivityReport";
 import Cookies from "js-cookie";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 export default function AdminReportsPage() {
   const [selectedReport, setSelectedReport] = useState(null);
@@ -76,13 +76,13 @@ export default function AdminReportsPage() {
   const handleDownloadReport = async (report) => {
     try {
       const downloadEndpoints = {
-        1: '/api/reports/download/department-voter',
-        2: '/api/reports/download/election-result',
-        3: '/api/reports/download/voting-time',
-        4: '/api/reports/download/election-summary',
-        5: '/api/reports/download/voter-participation',
-        6: '/api/reports/download/candidate-list',
-        7: '/api/reports/download/admin-activity'
+        1: '/eports/download/department-voter',
+        2: '/reports/download/election-result',
+        3: '/reports/download/voting-time',
+        4: '/reports/download/election-summary',
+        5: '/reports/download/voter-participation',
+        6: '/reports/download/candidate-list',
+        7: '/reports/download/admin-activity' 
       };
 
       const endpoint = downloadEndpoints[report.id];

@@ -6,7 +6,7 @@ import { generatePdfReport } from '@/utils/pdfGenerator';
 import Cookies from 'js-cookie';
 import Image from 'next/image';
 
-const API_BASE = '/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 const BASE_URL = '';
 
 const getImageUrl = (imageUrl) => {

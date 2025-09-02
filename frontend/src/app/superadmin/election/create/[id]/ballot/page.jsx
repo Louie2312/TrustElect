@@ -6,7 +6,7 @@ import Cookies from "js-cookie";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 const BASE_URL = '';
 
 const studentCouncilPositionOrder = {
@@ -266,7 +266,7 @@ const PartylistSelectionModal = ({ partylists, onSelect, onCancel, currentPositi
           console.log('Fetching partylist for student:', currentStudent.student_number);
           try {
             const response = await axios.get(
-              `/api/partylist-candidates/student/${currentStudent.student_number}`,
+              `/partylist-candidates/student/${currentStudent.student_number}`,
               {
                 headers: { Authorization: `Bearer ${token}` },
                 withCredentials: true,
@@ -296,7 +296,7 @@ const PartylistSelectionModal = ({ partylists, onSelect, onCancel, currentPositi
           const candidatesPromises = partylists.map(async (party) => {
             if (!party || party.name === "Independent") return null;
             const response = await axios.get(
-              `/api/partylist-candidates/${party.id}/candidates`,
+              `/partylist-candidates/${party.id}/candidates`,
               {
                 headers: { Authorization: `Bearer ${token}` },
                 withCredentials: true,
@@ -489,7 +489,7 @@ export default function BallotPage() {
       try {
         const token = Cookies.get("token");
 
-        const typesResponse = await axios.get('/api/maintenance/election-types', {
+        const typesResponse = await axios.get('/maintenance/election-types', {
           headers: { 
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -508,7 +508,7 @@ export default function BallotPage() {
         }
 
         if (studentCouncilTypeId) {
-          const response = await axios.get(`/api/direct/positions?electionTypeId=${studentCouncilTypeId}`, {
+          const response = await axios.get(`/direct/positions?electionTypeId=${studentCouncilTypeId}`, {
             headers: { 
               Authorization: `Bearer ${token}`,
               'Content-Type': 'application/json'
@@ -525,7 +525,7 @@ export default function BallotPage() {
           }
         }
 
-        const response = await axios.get('/api/direct/positions', {
+        const response = await axios.get('/direct/positions', {
           headers: { 
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -634,7 +634,7 @@ export default function BallotPage() {
       try {
         const token = Cookies.get("token");
         const response = await axios.get(
-          '/api/partylists',
+          '/partylists',
           { headers: { Authorization: `Bearer ${token}` } }
         );
         

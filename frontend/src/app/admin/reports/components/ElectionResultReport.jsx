@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { Download } from 'lucide-react';
 import { generateReport } from '@/utils/reportGenerator';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 const ElectionResultReport = () => {
   const [loading, setLoading] = useState(true);

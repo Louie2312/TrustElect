@@ -276,13 +276,13 @@ export default function CreateElectionPage() {
         ];
 
         const requests = endpoints.map(endpoint => 
-          axios.get(`/api/maintenance/${endpoint.url}`, {
+          axios.get(`/maintenance/${endpoint.url}`, {
             headers: { Authorization: `Bearer ${token}` }
           })
         );
         
         const currentSemesterRequest = axios.get(
-          "/api/maintenance/current-semester", 
+          "/maintenance/current-semester", 
           { headers: { Authorization: `Bearer ${token}` } }
         );
         
@@ -333,7 +333,7 @@ export default function CreateElectionPage() {
       try {
         const token = Cookies.get("token");
         const response = await axios.post(
-          "/api/elections/preview-voters",
+          "/elections/preview-voters",
           { 
             eligible_voters: {
               programs: [],
@@ -395,7 +395,7 @@ export default function CreateElectionPage() {
         };
         
         const response = await axios.post(
-          "/api/elections/preview-voters",
+          "/elections/preview-voters",
           { eligible_voters: optimizedEligibleVoters },
           {
             headers: {
@@ -636,7 +636,7 @@ export default function CreateElectionPage() {
       };
       
       const response = await axios.post(
-        "/api/elections",
+        "/elections",
         {
           title: eventData.title,
           description: eventData.description,
