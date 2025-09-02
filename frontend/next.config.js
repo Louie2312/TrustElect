@@ -18,7 +18,7 @@ const nextConfig = {
   },
   async rewrites() {
     // Always provide rewrites, even if BACKEND_URL is not set
-    const BACKEND_URL = process.env.BACKEND_URL || 'https://trustelect-production.up.railway.app';
+    const BACKEND_URL = process.env.BACKEND_URL || 'https://trustelectonline.com';
     
     console.log('Next.js rewrites using BACKEND_URL:', BACKEND_URL);
     

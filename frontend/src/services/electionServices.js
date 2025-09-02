@@ -2,7 +2,7 @@
 import axios from 'axios';
 import { getAuthHeader } from './authService';
 
-const API_BASE = '/api/elections';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api/elections';
 
 const ElectionServices = {
   async createElection(electionData) {

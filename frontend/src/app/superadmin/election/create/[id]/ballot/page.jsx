@@ -6,7 +6,7 @@ import Cookies from "js-cookie";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 
-const API_BASE = '/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 const BASE_URL = '';
 
 const studentCouncilPositionOrder = {
@@ -99,7 +99,7 @@ const createBallot = async (ballotData) => {
 };
 
 const getBallotByElection = async (electionId) => {
-  return fetchWithAuth(`/elections/${electionId}/ballot`);
+  return fetchWithAuth(`${API_BASE}/elections/${electionId}/ballot`);
 };
 
 const createPosition = async (ballotId, positionData) => {

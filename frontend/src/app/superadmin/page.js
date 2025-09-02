@@ -7,11 +7,7 @@ import Cookies from 'js-cookie';
 import axios from 'axios';
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell } from 'recharts';
 
-// Replace this line:
-// const API_BASE = '/api';
-
-// With this:
-const API_BASE = '/api'; // Use relative path for proxy
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 async function fetchWithAuth(url, options = {}) {
   const token = Cookies.get('token');

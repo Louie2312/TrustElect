@@ -119,7 +119,7 @@ export default function EditElectionPage() {
         // Fetch election details
         const token = Cookies.get("token");
         const electionResponse = await axios.get(
-          `/api/elections/${electionId}/details`,
+          `${API_BASE}/elections/${electionId}/details`,
           {
             headers: {
               'Authorization': `Bearer ${token}`
@@ -137,7 +137,7 @@ export default function EditElectionPage() {
         let eligibilityResponse;
         try {
           eligibilityResponse = await axios.get(
-            `/api/elections/${electionId}/criteria`,
+            `${API_BASE}/elections/${electionId}/criteria`,
             {
               headers: {
                 'Authorization': `Bearer ${token}`
@@ -182,7 +182,7 @@ export default function EditElectionPage() {
         // Fetch current semester from maintenance
         try {
           const currentSemesterResponse = await axios.get(
-            `/api/maintenance/current-semester`,
+            `${API_BASE}/maintenance/current-semester`,
             {
               headers: {
                 'Authorization': `Bearer ${token}`
@@ -217,7 +217,7 @@ export default function EditElectionPage() {
         ];
 
         const requests = endpoints.map(endpoint => 
-          axios.get(`/api/maintenance/${endpoint.url}`, {
+          axios.get(`${API_BASE}/maintenance/${endpoint.url}`, {
             headers: { Authorization: `Bearer ${token}` }
           })
         );
@@ -279,7 +279,7 @@ export default function EditElectionPage() {
       };
       
       const response = await axios.post(
-        '/api/elections/preview-voters',
+        `${API_BASE}/elections/preview-voters`,
         { eligible_voters: optimizedEligibleVoters },
         {
           headers: {
@@ -460,7 +460,7 @@ export default function EditElectionPage() {
       );
 
       const currentCriteriaResponse = await axios.get(
-        `/api/elections/${electionId}/criteria`,
+        `${API_BASE}/elections/${electionId}/criteria`,
         {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -502,7 +502,7 @@ export default function EditElectionPage() {
         };
         
         const eligibilityResponse = await axios.put(
-          `/api/elections/${electionId}/criteria`,
+          `${API_BASE}/elections/${electionId}/criteria`,
           {
             eligibility: optimizedEligibleVoters
           },

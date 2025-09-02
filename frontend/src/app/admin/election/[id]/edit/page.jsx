@@ -119,7 +119,7 @@ export default function EditElectionPage() {
         // Fetch election details
         const token = Cookies.get("token");
         const electionResponse = await axios.get(
-          `/api/elections/${electionId}/details`,
+          `${API_BASE}/elections/${electionId}/details`,
           {
             headers: {
               'Authorization': `Bearer ${token}`
@@ -196,7 +196,7 @@ export default function EditElectionPage() {
         ];
 
         const requests = endpoints.map(endpoint => 
-          axios.get(`/api/maintenance/${endpoint.url}`, {
+          axios.get(`${API_BASE}/maintenance/${endpoint.url}`, {
             headers: { Authorization: `Bearer ${token}` }
           })
         );
@@ -258,7 +258,7 @@ export default function EditElectionPage() {
       };
       
       const response = await axios.post(
-        '/api/elections/preview-voters',
+        `${API_BASE}/elections/preview-voters`,
         { eligible_voters: optimizedEligibleVoters },
         {
           headers: {
@@ -391,7 +391,7 @@ export default function EditElectionPage() {
       
       // First get the current election data to preserve any fields we're not updating
       const currentElectionResponse = await axios.get(
-        `/api/elections/${electionId}`,
+        `${API_BASE}/elections/${electionId}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -415,7 +415,7 @@ export default function EditElectionPage() {
       
       // Update election basic details
       const updateResponse = await axios.put(
-        `/api/elections/${electionId}`,
+        `${API_BASE}/elections/${electionId}`,
         updatePayload,
         {
           headers: {
@@ -469,7 +469,7 @@ export default function EditElectionPage() {
         };
         
         const eligibilityResponse = await axios.put(
-          `/api/elections/${electionId}/criteria`,
+          `${API_BASE}/elections/${electionId}/criteria`,   
           {
             eligibility: optimizedEligibleVoters
           },

@@ -7,7 +7,7 @@ import Header from "@/components/adminDashboard/Header";
 import Sidebar from "@/components/adminDashboard/Sidebar";
 import AuthProvider from "@/context/AuthContext";
 
-const API_BASE = ''; // same-origin
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 function formatImageUrl(url) {
   if (!url) return null;

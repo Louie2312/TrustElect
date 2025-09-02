@@ -72,7 +72,7 @@ export default function AdminDepartmentsPage() {
       }
 
       // Get the current admin's profile first
-      const profileRes = await axios.get("/api/admin/profile", {
+      const profileRes = await axios.get(`${API_BASE}/admin/profile`, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
