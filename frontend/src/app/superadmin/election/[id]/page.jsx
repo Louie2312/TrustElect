@@ -159,7 +159,7 @@ export default function ElectionDetailsPage() {
     const loadElectionDetails = async () => {
       try {
         setIsLoading(true);
-        const data = await fetchWithAuth(`${API_BASE}/elections/${params.id}/details`);
+        const data = await fetchWithAuth(`/elections/${params.id}/details`);
         
         let electionData = data.election;
 
@@ -255,10 +255,10 @@ export default function ElectionDetailsPage() {
         
         try {
           // Get the complete election data which includes precinct programs
-          const completeElectionData = await fetchWithAuth(`${API_BASE}/elections/${params.id}`);
+          const completeElectionData = await fetchWithAuth(`/elections/${params.id}`);
           
           // Get the eligibility criteria from the /criteria endpoint
-          const eligibilityCriteriaResponse = await fetchWithAuth(`${API_BASE}/elections/${params.id}/criteria`);
+          const eligibilityCriteriaResponse = await fetchWithAuth(`/elections/${params.id}/criteria`);
           
           // Merge the data from both endpoints
           electionData.eligibility_criteria = {
