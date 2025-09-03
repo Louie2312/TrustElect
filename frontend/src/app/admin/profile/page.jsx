@@ -49,9 +49,9 @@ export default function AdminProfilePage() {
       setEmployeeNumber(res.data.employeeNumber || "");
       setDepartment(res.data.department || "");
   
-      // Fix: Properly format the image URL
+      // Fix: Properly format the image URL to ensure Next.js rewrite works
       const imageUrl = res.data.profile_picture
-        ? `${res.data.profile_picture}?timestamp=${new Date().getTime()}`
+        ? `${res.data.profile_picture.startsWith('/uploads/') ? res.data.profile_picture : `/uploads/admins/${res.data.profile_picture}`}?timestamp=${new Date().getTime()}`
         : "https://via.placeholder.com/100";
   
       setProfilePic(imageUrl);
@@ -100,8 +100,11 @@ export default function AdminProfilePage() {
       }
 
       // Update profile picture state with the returned file path
-      const imageUrl = `${res.data.filePath}?timestamp=${new Date().getTime()}`;
-      setProfilePic(imageUrl);
+      const uploadImageUrl = res.data.filePath
+        ? `${res.data.filePath.startsWith('/uploads/') ? res.data.filePath : `/uploads/admins/${res.data.filePath}`}?timestamp=${new Date().getTime()}`
+        : "https://via.placeholder.com/100";
+      
+      setProfilePic(uploadImageUrl);
       setPreviewImage(null);
       setSelectedFile(null);
       setUploadSuccess(true);

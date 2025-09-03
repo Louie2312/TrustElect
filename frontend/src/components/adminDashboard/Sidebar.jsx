@@ -32,9 +32,9 @@ export default function Sidebar() {
       const lastName = res.data.lastName || "";
       setAdminName(`${firstName} ${lastName}`);
   
-      // Fix: Properly format the image URL
+      // Fix: Properly format the image URL to ensure Next.js rewrite works
       const imageUrl = res.data.profile_picture
-        ? `${res.data.profile_picture}?timestamp=${new Date().getTime()}`
+        ? `${res.data.profile_picture.startsWith('/uploads/') ? res.data.profile_picture : `/uploads/admins/${res.data.profile_picture}`}?timestamp=${new Date().getTime()}`
         : "https://via.placeholder.com/80";
   
       setProfilePic(imageUrl);
