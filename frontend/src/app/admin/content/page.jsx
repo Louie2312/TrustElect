@@ -382,10 +382,69 @@ export default function ContentManagement() {
       const token = Cookies.get('token');
       const formData = new FormData();
       
-      // Create a copy of the content to avoid modifying state directly
-      const contentToSave = { ...landingContent[section] };
+      // Create content data based on section
+      let contentData;
       
-      formData.append('content', JSON.stringify(contentToSave));
+      if (section === 'logo') {
+        contentData = {
+          imageUrl: landingContent.logo.imageUrl
+        };
+        
+        // Append logo file if selected
+        const logoInput = document.querySelector('#logo-input');
+        if (logoInput && logoInput.files.length > 0) {
+          formData.append('logo', logoInput.files[0]);
+        }
+        
+        if (landingContent.logo.imageUrl === null) {
+          formData.append('removeLogo', 'true');
+        }
+      } else if (section === 'hero') {
+        contentData = {
+          title: landingContent.hero.title,
+          subtitle: landingContent.hero.subtitle,
+          videoUrl: landingContent.hero.videoUrl,
+          posterImage: landingContent.hero.posterImage,
+          bgColor: landingContent.hero.bgColor,
+          textColor: landingContent.hero.textColor
+        };
+  
+        // Append hero video file if selected
+        const videoInput = document.querySelector('input[type="file"][accept*="video"]');
+        if (videoInput && videoInput.files.length > 0) {
+          formData.append('heroVideo', videoInput.files[0]);
+        }
+        
+        if (landingContent.hero.videoUrl === null) {
+          formData.append('removeHeroVideo', 'true');
+        }
+  
+        // Append hero poster file if selected
+        const imageInput = document.querySelector('#hero-poster-input');
+        if (imageInput && imageInput.files.length > 0) {
+          formData.append('heroPoster', imageInput.files[0]);
+        }
+        
+        if (landingContent.hero.posterImage === null) {
+          formData.append('removeHeroPoster', 'true');
+        }
+      } else if (section === 'features') {
+        // Handle features section
+        contentData = { ...landingContent[section] };
+        
+        // Handle feature images
+        landingContent.features.columns.forEach((feature, index) => {
+          const featureInput = document.querySelector(`#feature-image-${index}`);
+          if (featureInput && featureInput.files.length > 0) {
+            formData.append(`featureImage${index}`, featureInput.files[0]);
+          }
+        });
+      } else {
+        // For other sections, just use the content as-is
+        contentData = { ...landingContent[section] };
+      }
+      
+      formData.append('content', JSON.stringify(contentData));
       
       const response = await axios.post(
         `${API_URL}/api/content/${section}`,
@@ -397,7 +456,7 @@ export default function ContentManagement() {
           }
         }
       );
-
+  
       if (response.status === 200) {
         setSaveStatus("Changes saved successfully!");
         // Update initialContent to reflect the saved state

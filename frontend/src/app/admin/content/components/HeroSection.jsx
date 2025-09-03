@@ -1,4 +1,4 @@
- "use client"
+"use client"
 import { useState } from 'react';
 
 const HeroSection = ({ 
@@ -124,14 +124,14 @@ const HeroSection = ({
               Poster Image
             </label>
             <div className="flex items-center">
+            // Around line 130, add id to the hero poster input:
             <input 
+              id="hero-poster-input"
               type="file" 
               accept="image/jpeg,image/png,image/webp"
               onChange={(e) => handleFileUpload('heroPoster', null, e)}
               className="w-full border rounded p-1 text-sm file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-blue-50 file:text-black text-black"
-                id="hero-poster-input"
-                data-section="hero"
-              />
+            />
               {landingContent.hero.posterImage && (
                 <button
                   onClick={() => removeImage('heroPoster')}
@@ -191,4 +191,4 @@ const HeroSection = ({
   );
 }
 
-export default HeroSection; 
+export default HeroSection;
