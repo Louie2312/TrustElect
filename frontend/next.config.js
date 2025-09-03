@@ -22,7 +22,8 @@ const nextConfig = {
     console.log('Next.js rewrites using BACKEND_URL:', BACKEND_URL);
     
     return [
-      { source: '/api/:path*', destination: `${BACKEND_URL}/api/:path*` },
+      // For production, if backend is same domain, proxy to same server
+      { source: '/api/:path*', destination: `${BACKEND_URL}/:path*` },
       { source: '/uploads/:path*', destination: `${BACKEND_URL}/uploads/:path*` },
     ];
   },
