@@ -51,43 +51,42 @@ async function fetchWithAuth(url, options = {}) {
     headers['Content-Type'] = 'application/json';
   }
 
-  // Construct the full URL
-  const fullUrl = API_BASE ? `${API_BASE}${url}` : url;
+  const response = await fetch(`${API_BASE}${url}`, {
+    ...options,
+    headers,
+    credentials: 'include'
+  });
+
+  if (!response.ok) {
+    try {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Request failed');
+    } catch (e) {
+      throw new Error(`Request failed: ${response.statusText}`);
+    }
+  }
+
+  const contentType = response.headers.get('content-type');
   
-  console.log('Making API request to:', fullUrl); // Debug log
+  if (contentType && contentType.includes('application/json')) {
+    return response.json();
+  } 
 
-  try {
-    const response = await fetch(fullUrl, {
-      ...options,
-      headers,
-      credentials: 'include'
-    });
+  else if (contentType && (contentType.includes('image/') || contentType.includes('application/octet-stream'))) {
+    return response.blob();
+  }
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API Error Response:', errorText);
-      throw new Error(`API Error: ${response.status} - ${response.statusText}`);
-    }
+  else if (contentType && contentType.includes('text/')) {
+    return response.text();
+  }
 
-    const contentType = response.headers.get('content-type');
-    
-    if (contentType && contentType.includes('application/json')) {
-      return response.json();
-    } else if (contentType && (contentType.includes('image/') || contentType.includes('application/octet-stream'))) {
-      return response.blob();
-    } else if (contentType && contentType.includes('text/')) {
+  else {
+    try {
+      return await response.json();
+    } catch (e) {
+      console.warn('Response was not JSON, returning text instead');
       return response.text();
-    } else {
-      try {
-        return await response.json();
-      } catch (e) {
-        console.warn('Response was not JSON, returning text instead');
-        return response.text();
-      }
     }
-  } catch (error) {
-    console.error('Fetch error:', error);
-    throw error;
   }
 }
 
@@ -471,6 +470,7 @@ export default function BallotPage() {
   const [imagePreviews, setImagePreviews] = useState({});
   const [showBackConfirmation, setShowBackConfirmation] = useState(false);
   const [isStudentCouncilElection, setIsStudentCouncilElection] = useState(false);
+  const [studentCouncilPositions, setStudentCouncilPositions] = useState([]);
   const [partylists, setPartylists] = useState([]);
   const [partylistCandidates, setPartylistCandidates] = useState({});
   const [showPartylistModal, setShowPartylistModal] = useState(false);
@@ -484,17 +484,150 @@ export default function BallotPage() {
   const [showStudentNumberSuggestions, setShowStudentNumberSuggestions] = useState(false);
   const [activeInput, setActiveInput] = useState({ posId: null, candId: null, field: null });
 
-  // Define static default student council positions
-  const defaultStudentCouncilPositions = [
-    "President",
-    "Vice President",
-    "Secretary",
-    "Treasurer",
-    "Auditor",
-    "Public Relations Officer",
-    "Business Manager",
-    "Sergeant at Arms"
-  ];
+  useEffect(() => {
+    const fetchStudentCouncilPositions = async () => {
+      try {
+        const token = Cookies.get("token");
+
+        const typesResponse = await axios.get('/api/maintenance/election-types', {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          withCredentials: true
+        });
+        
+        let studentCouncilTypeId = null;
+        if (typesResponse.data.success && typesResponse.data.data) {
+          const scType = typesResponse.data.data.find(type => 
+            type.name.toLowerCase() === "student council"
+          );
+          if (scType) {
+            studentCouncilTypeId = scType.id;
+          }
+        }
+
+        if (studentCouncilTypeId) {
+          const response = await axios.get(`/api/direct/positions?electionTypeId=${studentCouncilTypeId}`, {
+            headers: { 
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            withCredentials: true
+          });
+          
+          if (response.data.success && response.data.data && response.data.data.length > 0) {
+            const scPositions = response.data.data;
+            const positionNames = scPositions.map(pos => pos.name);
+            positionNames.sort((a, b) => (studentCouncilPositionOrder[a] || 999) - (studentCouncilPositionOrder[b] || 999));
+            setStudentCouncilPositions(positionNames);
+            return;
+          }
+        }
+
+        const response = await axios.get('/api/direct/positions', {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          withCredentials: true
+        });
+        
+        if (response.data.success && response.data.data) {
+          const allPositions = response.data.data;
+
+          const scPositions = allPositions.filter(pos => 
+            ["president", "vice president", "secretary", "treasurer", "auditor", "vp", "pro", "public relations officer", "business manager", "sergeant at arms"].some(
+              term => pos.name.toLowerCase().includes(term)
+            )
+          );
+          
+          if (scPositions.length > 0) {
+            const positionNames = scPositions.map(pos => pos.name);
+            positionNames.sort((a, b) => (studentCouncilPositionOrder[a] || 999) - (studentCouncilPositionOrder[b] || 999));
+            setStudentCouncilPositions(positionNames);
+            return;
+          }
+        }
+
+        tryLocalStorageForPositions();
+      } catch (error) {
+        console.error("Error fetching positions from API:", error);
+
+        tryLocalStorageForPositions();
+      }
+    };
+    
+    const tryLocalStorageForPositions = () => {
+      try {
+        const allPositionsData = JSON.parse(localStorage.getItem('electionPositions') || '{}');
+
+        const electionTypes = JSON.parse(localStorage.getItem('election_types') || '[]');
+        const scType = electionTypes.find(type => 
+          type.name && type.name.toLowerCase() === "student council"
+        );
+        
+        let scPositions = [];
+
+        if (scType && scType.id && allPositionsData[scType.id]) {
+          scPositions = allPositionsData[scType.id];
+        } else {
+
+          // Go through each election type to find Student Council positions
+          Object.values(allPositionsData).forEach(positionsArray => {
+            if (Array.isArray(positionsArray) && positionsArray.length > 0) {
+
+              const foundSCPositions = positionsArray.filter(pos => 
+                ["president", "vice president", "secretary", "treasurer", "auditor", "vp", "pro", "public relations officer", "business manager", "sergeant at arms"].some(
+                  term => pos.name && pos.name.toLowerCase().includes(term)
+                )
+              );
+              
+              if (foundSCPositions.length > 0) {
+              
+                scPositions = [...scPositions, ...foundSCPositions];
+              }
+            }
+          });
+        }
+        
+        // If we found SC positions, extract their names and sort them
+        if (scPositions.length > 0) {
+          const positionNames = scPositions.map(pos => pos.name);
+          positionNames.sort((a, b) => (studentCouncilPositionOrder[a] || 999) - (studentCouncilPositionOrder[b] || 999));
+          setStudentCouncilPositions(positionNames);
+        } else {
+
+          console.log("No Student Council positions found, using default positions");
+          setStudentCouncilPositions([ 
+            "President",
+            "Vice President",
+            "Secretary",
+            "Treasurer",
+            "Auditor",
+            "Public Relations Officer",
+            "Business Manager",
+            "Sergeant at Arms"
+          ].sort((a, b) => (studentCouncilPositionOrder[a] || 999) - (studentCouncilPositionOrder[b] || 999)));
+        }
+      } catch (error) {
+        console.error("Error loading Student Council positions from localStorage:", error);
+        // Fallback to default positions if local storage fails, also sorted
+        setStudentCouncilPositions([
+          "President",
+          "Vice President",
+          "Secretary",
+          "Treasurer",
+          "Auditor",
+          "Public Relations Officer",
+          "Business Manager",
+          "Sergeant at Arms"
+        ].sort((a, b) => (studentCouncilPositionOrder[a] || 999) - (studentCouncilPositionOrder[b] || 999)));
+      }
+    };
+    
+    fetchStudentCouncilPositions();
+  }, []);
 
   useEffect(() => {
     const fetchPartylists = async () => {
@@ -536,13 +669,8 @@ export default function BallotPage() {
     const loadData = async () => {
       try {
         setIsLoading(true);
-        setApiError(null); // Clear previous errors
-        
-        console.log('Loading election data for ID:', electionId);
         
         const electionData = await fetchWithAuth(`/api/elections/${electionId}`);
-        console.log('Election data loaded:', electionData);
-        
         setElection(electionData);
         
         if (electionData.election_type === "Student Council") {
@@ -574,45 +702,34 @@ export default function BallotPage() {
             ...ballotData,
             positions
           });
-        } catch (ballotError) {
-          console.log("No existing ballot found, creating default positions");
-          // Create default ballot structure
+        } catch (error) {
           if (electionData.election_type === "Student Council") {
-            const studentCouncilPositionOrder = {
-              "President": 1,
-              "Vice President": 2,
-              "Secretary": 3,
-              "Treasurer": 4,
-              "Auditor": 5,
-              "Public Relations Officer": 6,
-              "PRO": 6,
-              "Business Manager": 7,
-              "Sergeant at Arms": 8
-            };
-            
-            const sortedPositions = [...defaultStudentCouncilPositions].sort(
-              (a, b) => (studentCouncilPositionOrder[a] || 999) - (studentCouncilPositionOrder[b] || 999)
-            );
-            
-            setBallot(prev => ({
-              ...prev,
-              positions: [{
-                id: Math.floor(Math.random() * 1000000).toString(),
-                name: sortedPositions[0],
-                max_choices: 1,
-                candidates: [{
+            if (studentCouncilPositions.length > 0) {
+              // Sort student council positions before creating initial position
+              const sortedPositions = [...studentCouncilPositions].sort(
+                (a, b) => (studentCouncilPositionOrder[a] || 999) - (studentCouncilPositionOrder[b] || 999)
+              );
+              
+              setBallot(prev => ({
+                ...prev,
+                positions: [{
                   id: Math.floor(Math.random() * 1000000).toString(),
-                  first_name: "",
-                  last_name: "",
-                  student_number: "",
-                  course: "",
-                  party: "",
-                  slogan: "",
-                  platform: "",
-                  image_url: null
+                  name: sortedPositions[0],
+                  max_choices: 1,
+                  candidates: [{
+                    id: Math.floor(Math.random() * 1000000).toString(),
+                    first_name: "",
+                    last_name: "",
+                    student_number: "", // Add student_number here
+                    course: "", // Add course here
+                    party: "",
+                    slogan: "",
+                    platform: "",
+                    image_url: null
+                  }]
                 }]
-              }]
-            }));
+              }));
+            }
           } else {
             setBallot(prev => ({
               ...prev,
@@ -624,8 +741,8 @@ export default function BallotPage() {
                   id: Math.floor(Math.random() * 1000000).toString(),
                   first_name: "",
                   last_name: "",
-                  student_number: "",
-                  course: "",
+                  student_number: "", // Add student_number here
+                  course: "", // Add course here
                   party: "",
                   slogan: "",
                   platform: "",
@@ -636,27 +753,140 @@ export default function BallotPage() {
           }
         }
       } catch (error) {
-        console.error("Failed to load election data:", error);
-        setApiError(`Failed to load election data: ${error.message}. Please check your connection and try again.`);
-        // Set a fallback election object to prevent infinite loading
-        setElection({ 
-          id: electionId, 
-          title: "Unknown Election", 
-          election_type: "General" 
-        });
+        setApiError("Failed to load data");
+        console.error(error);
       } finally {
         setIsLoading(false);
       }
     };
-    
-    if (electionId) {
-      loadData();
-    }
-  }, [electionId]);
+    loadData();
+  }, [electionId, studentCouncilPositions]);
 
   const reloadStudentCouncilPositions = async () => {
-    // Simply return the static default positions, no API calls needed
-    return defaultStudentCouncilPositions;
+    try {
+      const token = Cookies.get("token");
+      
+      const studentCouncilPositionOrder = {
+        "President": 1,
+        "Vice President": 2,
+        "Secretary": 3,
+        "Treasurer": 4,
+        "Auditor": 5,
+        "Public Relations Officer": 6,
+        "PRO": 6,
+        "Business Manager": 7,
+        "Sergeant at Arms": 8
+      };
+
+      const typesResponse = await axios.get('/api/maintenance/election-types', {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        withCredentials: true
+      });
+      
+      let studentCouncilTypeId = null;
+      if (typesResponse.data.success && typesResponse.data.data) {
+        const scType = typesResponse.data.data.find(type => 
+          type.name.toLowerCase() === "student council"
+        );
+        if (scType) {
+          studentCouncilTypeId = scType.id;
+          console.log("Found Student Council election type ID:", studentCouncilTypeId);
+        }
+      }
+
+      if (studentCouncilTypeId) {
+        const response = await axios.get(`/api/direct/positions?electionTypeId=${studentCouncilTypeId}`, {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          withCredentials: true
+        });
+        
+        if (response.data.success && response.data.data && response.data.data.length > 0) {
+          const scPositions = response.data.data;
+          console.log("Found Student Council positions from API for type ID:", scPositions);
+          const positionNames = scPositions.map(pos => pos.name);
+          positionNames.sort((a, b) => (studentCouncilPositionOrder[a] || 999) - (studentCouncilPositionOrder[b] || 999));
+          setStudentCouncilPositions(positionNames);
+          return true;
+        }
+      }
+
+      const response = await axios.get('/api/direct/positions', {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        withCredentials: true
+      });
+      
+      if (response.data.success && response.data.data) {
+        const allPositions = response.data.data;
+        
+     
+        const scPositions = allPositions.filter(pos => 
+          ["president", "vice president", "secretary", "treasurer", "auditor", "vp", "pro", "public relations officer", "business manager", "sergeant at arms"].some(
+            term => pos.name.toLowerCase().includes(term)
+          )
+        );
+        
+        if (scPositions.length > 0) {
+          console.log("Found Student Council positions on reload:", scPositions);
+          const positionNames = scPositions.map(pos => pos.name);
+          positionNames.sort((a, b) => (studentCouncilPositionOrder[a] || 999) - (studentCouncilPositionOrder[b] || 999));
+          setStudentCouncilPositions(positionNames);
+          return true;
+        }
+      }
+
+      const allPositionsData = JSON.parse(localStorage.getItem('electionPositions') || '{}');
+      let foundPositions = false;
+      
+      // Try to find the Student Council type ID in localStorage
+      const electionTypes = JSON.parse(localStorage.getItem('election_types') || '[]');
+      const scType = electionTypes.find(type => 
+        type.name && type.name.toLowerCase() === "student council"
+      );
+      
+      // If we found the SC type, check for its positions directly
+      if (scType && scType.id && allPositionsData[scType.id]) {
+        const scPositions = allPositionsData[scType.id];
+        console.log("Found Student Council positions in localStorage by type ID:", scPositions);
+        const positionNames = scPositions.map(pos => pos.name);
+        positionNames.sort((a, b) => (studentCouncilPositionOrder[a] || 999) - (studentCouncilPositionOrder[b] || 999));
+        setStudentCouncilPositions(positionNames);
+        return true;
+      }
+      
+      // Otherwise search all positions
+      Object.values(allPositionsData).forEach(positionsArray => {
+        if (!foundPositions && Array.isArray(positionsArray) && positionsArray.length > 0) {
+          // Filter positions that match common Student Council position names
+          const foundSCPositions = positionsArray.filter(pos => 
+            ["president", "vice president", "secretary", "treasurer", "auditor", "vp", "pro", "public relations officer", "business manager", "sergeant at arms"].some(
+              term => pos.name && pos.name.toLowerCase().includes(term)
+            )
+          );
+          
+          if (foundSCPositions.length > 0) {
+            console.log("Found Student Council positions in localStorage on reload:", foundSCPositions);
+            const positionNames = foundSCPositions.map(pos => pos.name);
+            positionNames.sort((a, b) => (studentCouncilPositionOrder[a] || 999) - (studentCouncilPositionOrder[b] || 999));
+            setStudentCouncilPositions(positionNames);
+            foundPositions = true;
+          }
+        }
+      });
+      
+      return foundPositions;
+    } catch (error) {
+      console.error("Error reloading Student Council positions:", error);
+      return false;
+    }
   };
 
   const validateField = (field, value) => {
@@ -1066,7 +1296,7 @@ export default function BallotPage() {
       
       if (isStudentCouncilElection) {
         const usedPositionNames = ballot.positions.map(p => p.name);
-        const availablePositions = defaultStudentCouncilPositions
+        const availablePositions = studentCouncilPositions
           .filter(pos => !usedPositionNames.includes(pos))
           .sort((a, b) => (studentCouncilPositionOrder[a] || 999) - (studentCouncilPositionOrder[b] || 999));
         
@@ -1793,7 +2023,7 @@ export default function BallotPage() {
                     errors[`position-${position.id}`] ? "border-red-500" : "border-gray-300"
                   }`}
                 >
-                  {defaultStudentCouncilPositions
+                  {studentCouncilPositions
                     .filter(posName => 
                       position.name === posName || 
                       !ballot.positions.some(p => p.id !== position.id && p.name === posName)
