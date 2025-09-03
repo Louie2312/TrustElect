@@ -6,7 +6,7 @@ import axios from "axios";
 import Cookies from "js-cookie";
 import usePermissions from "../../hooks/usePermissions";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+// Remove API_BASE usage - use relative paths instead
 
 export default function Sidebar() {
   const router = useRouter();
@@ -20,7 +20,8 @@ export default function Sidebar() {
       const token = Cookies.get("token");
       if (!token) return;
   
-      const res = await axios.get(`${API_BASE}/api/admin/profile`, {
+      // Fix: Use relative path - Next.js rewrites will handle the routing
+      const res = await axios.get("/api/admin/profile", {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -32,9 +33,9 @@ export default function Sidebar() {
       const lastName = res.data.lastName || "";
       setAdminName(`${firstName} ${lastName}`);
   
-      // Ensure Image Path is Correct with API_BASE
+      // Fix: Use relative path for profile picture URL
       const imageUrl = res.data.profile_picture
-        ? `${API_BASE}${res.data.profile_picture}?timestamp=${new Date().getTime()}`
+        ? `${res.data.profile_picture}?timestamp=${new Date().getTime()}`
         : "https://via.placeholder.com/80";
   
       setProfilePic(imageUrl);
