@@ -760,7 +760,7 @@ export default function BallotPage() {
       }
     };
     loadData();
-  }, [electionId, studentCouncilPositions]);
+  }, [electionId]);
 
   const reloadStudentCouncilPositions = async () => {
     try {
