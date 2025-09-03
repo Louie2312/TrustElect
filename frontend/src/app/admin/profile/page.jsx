@@ -9,6 +9,8 @@ import Cookies from "js-cookie";
 // Add API_BASE constant
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
+
+
 export default function AdminProfilePage() {
   const router = useRouter();
   const [profilePic, setProfilePic] = useState("https://via.placeholder.com/100");
