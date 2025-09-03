@@ -19,11 +19,9 @@ const nextConfig = {
   async rewrites() {
     const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5000';
     
-    console.log('Next.js rewrites using BACKEND_URL:', BACKEND_URL);
-    
     return [
-      // Fixed: Add /api to destination since BACKEND_URL no longer includes it
-      { source: '/api/:path*', destination: `${BACKEND_URL}/api/:path*` },
+      // Remove /api from source to avoid double /api
+      { source: '/api/:path*', destination: `${BACKEND_URL}/:path*` },
       { source: '/uploads/:path*', destination: `${BACKEND_URL}/uploads/:path*` },
     ];
   },
