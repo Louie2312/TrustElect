@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import stiLogo from "../assets/sti_logo.png";
 import axios from "axios";
 
-const API_URL = ''; // use same-origin
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 export default function Home() {
   const [showLogin, setShowLogin] = useState(false);
@@ -52,15 +52,9 @@ export default function Home() {
     }
   });
 
-  // REMOVE THIS ENTIRE useEffect BLOCK (lines 51-54)
-  // useEffect(() => {
-  //   checkApiConnection();
-  //   fetchContent();
-  // }, [fetchContent]); // This creates a circular dependency
-
   const checkApiConnection = async () => {
     try {
-      await axios.head(`/api/healthcheck`, { timeout: 5000 });
+      await axios.head(`${API_BASE}/healthcheck`, { timeout: 5000 });
       console.log('API connection successful');
       setApiConnected(true);
       return true;
@@ -103,13 +97,12 @@ export default function Home() {
     }
   };
 
-  // Wrap fetchContent in useCallback to prevent circular dependency
   const fetchContent = useCallback(async () => {
     setIsLoading(true);
     
     try {
       const timestamp = new Date().getTime();
-      const response = await axios.get(`/api/content?t=${timestamp}`, {
+      const response = await axios.get(`${API_BASE}/content?t=${timestamp}`, {
         timeout: 5000
       });
       
