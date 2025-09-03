@@ -6,6 +6,8 @@ import axios from "axios";
 import Cookies from "js-cookie";
 import usePermissions from "../../hooks/usePermissions";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+
 export default function Sidebar() {
   const router = useRouter();
   const [profilePic, setProfilePic] = useState("https://via.placeholder.com/80");
@@ -18,7 +20,7 @@ export default function Sidebar() {
       const token = Cookies.get("token");
       if (!token) return;
   
-      const res = await axios.get("/api/admin/profile", {
+      const res = await axios.get(`${API_BASE}/api/admin/profile`, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -30,14 +32,16 @@ export default function Sidebar() {
       const lastName = res.data.lastName || "";
       setAdminName(`${firstName} ${lastName}`);
   
-      // Ensure Image Path is Correct
+      // Ensure Image Path is Correct with API_BASE
       const imageUrl = res.data.profile_picture
-        ? `${res.data.profile_picture}?timestamp=${new Date().getTime()}`
+        ? `${API_BASE}${res.data.profile_picture}?timestamp=${new Date().getTime()}`
         : "https://via.placeholder.com/80";
   
       setProfilePic(imageUrl);
     } catch (error) {
       console.error("Error fetching admin profile:", error);
+      // Set fallback image on error
+      setProfilePic("https://via.placeholder.com/80");
     }
   };
   

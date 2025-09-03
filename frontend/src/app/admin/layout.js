@@ -13,9 +13,9 @@ function formatImageUrl(url) {
   if (!url) return null;
   if (url.startsWith("blob:") || url.startsWith("http")) return url;
   if (url.startsWith("/api/") || url.startsWith("/uploads/")) {
-    return url; // same-origin path
+    return `${API_BASE}${url}`; // Add API_BASE prefix
   }
-  return url.startsWith("/") ? url : "/" + url;
+  return url.startsWith("/") ? `${API_BASE}${url}` : `${API_BASE}/${url}`;
 }
 
 export default function AdminLayout({children}){
@@ -51,7 +51,7 @@ export default function AdminLayout({children}){
     const fetchUIDesign = async () => {
       try {
         const token = Cookies.get("token");
-        const response = await fetch(`/studentUI`, {
+        const response = await fetch(`${API_BASE}/studentUI`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (response.ok) {
@@ -63,17 +63,23 @@ export default function AdminLayout({children}){
           };
           setUiDesign(config);
           if (config.type === "landing" || config.use_landing_design) {
-            const landingRes = await fetch(`/api/content`);
+            const landingRes = await fetch(`${API_BASE}/api/content`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
             if (landingRes.ok) {
               const landingData = await landingRes.json();
               setLandingContent(landingData.content);
             }
           }
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error('Error fetching UI design:', e);
+      }
     };
-    fetchUIDesign();
-  }, []);
+    if (isAuthorized) {
+      fetchUIDesign();
+    }
+  }, [isAuthorized]);
 
   // Style logic
   const containerStyle = {
@@ -85,7 +91,7 @@ export default function AdminLayout({children}){
     backgroundSize: "cover",
     backgroundPosition: "center",
     backgroundRepeat: "no-repeat",
-    backgroundColor: uiDesign?.type === "landing" ? "#f3f4f6" : "transparent",
+    backgroundColor: uiDesign?.type === "landing" ? "#f3f4f6" : "#ffffff",
     position: "relative",
   };
 
