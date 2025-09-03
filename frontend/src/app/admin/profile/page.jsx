@@ -6,11 +6,6 @@ import { ArrowLeft, Upload, Save } from "lucide-react";
 import axios from "axios";
 import Cookies from "js-cookie";
 
-// Add API_BASE constant
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
-
-
-
 export default function AdminProfilePage() {
   const router = useRouter();
   const [profilePic, setProfilePic] = useState("https://via.placeholder.com/100");
@@ -41,8 +36,8 @@ export default function AdminProfilePage() {
       }
 
       console.log("Fetching admin profile...");
-      // Fix: Add API_BASE prefix
-      const res = await axios.get(`${API_BASE}/api/admin/profile`, {
+      // Fix: Use relative path - Next.js rewrites will handle the routing
+      const res = await axios.get("/api/admin/profile", {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -55,9 +50,9 @@ export default function AdminProfilePage() {
       setEmployeeNumber(res.data.employeeNumber || "");
       setDepartment(res.data.department || "");
 
-      // Fix: Add API_BASE prefix to profile picture URL
+      // Fix: Use relative path for profile picture URL
       const imageUrl = res.data.profile_picture
-        ? `${API_BASE}${res.data.profile_picture}?timestamp=${new Date().getTime()}`
+        ? `${res.data.profile_picture}?timestamp=${new Date().getTime()}`
         : "https://via.placeholder.com/100";
 
       setProfilePic(imageUrl);
@@ -92,8 +87,8 @@ export default function AdminProfilePage() {
       setUploadSuccess(false);
       setUploadError("");
 
-      // Fix: Add API_BASE prefix
-      const res = await axios.post(`${API_BASE}/api/admin/upload`, formData, {
+      // Fix: Use relative path - Next.js rewrites will handle the routing
+      const res = await axios.post("/api/admin/upload", formData, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -106,8 +101,8 @@ export default function AdminProfilePage() {
         return;
       }
 
-      // Fix: Add API_BASE prefix to the uploaded image URL
-      const imageUrl = `${API_BASE}${res.data.filePath}?timestamp=${new Date().getTime()}`;
+      // Fix: Use relative path for the uploaded image URL
+      const imageUrl = `${res.data.filePath}?timestamp=${new Date().getTime()}`;
 
       setProfilePic(imageUrl);
       setPreviewImage(null);
