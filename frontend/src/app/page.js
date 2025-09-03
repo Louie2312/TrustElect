@@ -8,8 +8,6 @@ import { Button } from "@/components/ui/button";
 import stiLogo from "../assets/sti_logo.png";
 import axios from "axios";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
-
 export default function Home() {
   const [showLogin, setShowLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -54,7 +52,8 @@ export default function Home() {
 
   const checkApiConnection = async () => {
     try {
-      await axios.head(`${API_BASE}/healthcheck`, { timeout: 5000 });
+      // Fix: Use relative path - Next.js rewrites will handle the routing
+      await axios.head('/api/healthcheck', { timeout: 5000 });
       console.log('API connection successful');
       setApiConnected(true);
       return true;
@@ -102,7 +101,8 @@ export default function Home() {
     
     try {
       const timestamp = new Date().getTime();
-      const response = await axios.get(`${API_BASE}/content?t=${timestamp}`, {
+      // Fix: Use relative path - Next.js rewrites will handle the routing
+      const response = await axios.get(`/api/content?t=${timestamp}`, {
         timeout: 5000
       });
       
