@@ -41,18 +41,23 @@ export default function usePermissions() {
   const [permissionsLoading, setPermissionsLoading] = useState(true);
   const [permissionsLastUpdated, setPermissionsLastUpdated] = useState(0);
   const [userData, setUserData] = useState(null);
+  const [initialized, setInitialized] = useState(false);
 
+  // Initialize user data once
   useEffect(() => {
-    const userId = Cookies.get('userId');
-    const userRole = Cookies.get('role');
-    
-    if (userId) {
-      setUserData({
-        id: userId,
-        role: userRole || 'Admin'
-      });
+    if (!initialized) {
+      const userId = Cookies.get('userId');
+      const userRole = Cookies.get('role');
+      
+      if (userId) {
+        setUserData({
+          id: userId,
+          role: userRole || 'Admin'
+        });
+      }
+      setInitialized(true);
     }
-  }, []);
+  }, [initialized]);
 
   if (typeof window !== 'undefined' && !window.GLOBAL_PERMISSIONS_TIMESTAMP) {
     window.GLOBAL_PERMISSIONS_TIMESTAMP = Date.now();
@@ -149,7 +154,7 @@ export default function usePermissions() {
       setPermissionsLoading(false);
       return false;
     }
-  }, []);
+  }, []); // REMOVED all dependencies to prevent circular re-renders
 
   const refreshPermissions = useCallback(() => {
     const userId = userData?.id || Cookies.get('userId');
@@ -160,10 +165,9 @@ export default function usePermissions() {
     }
     
     return Promise.resolve(false);
-  }, [userData, fetchPermissions]);
+  }, [fetchPermissions]); // Only depend on fetchPermissions
 
   const hasPermission = useCallback((module, action) => {
-
     const userRole = Cookies.get('role');
     if (userRole === 'Super Admin') {
       return true;
@@ -177,13 +181,14 @@ export default function usePermissions() {
     return false;
   }, [permissions]);
 
+  // Initial permissions fetch - only run once when userData is available
   useEffect(() => {
-    const userId = userData?.id || Cookies.get('userId');
-    if (userId) {
-      fetchPermissions(userId);
+    if (userData?.id && !permissionsLastUpdated) {
+      fetchPermissions(userData.id);
     }
-  }, [userData, fetchPermissions]);
+  }, [userData?.id]); // REMOVED fetchPermissions from dependencies
 
+  // Global permissions update listener - FIXED to prevent circular dependencies
   useEffect(() => {
     const handlePermissionUpdate = (event) => {
       const { adminId, timestamp } = event.detail;
@@ -192,7 +197,8 @@ export default function usePermissions() {
       // Check if this update applies to the current user
       if (userData?.id && userData.id.toString() === adminId.toString()) {
         console.log('Updating permissions for current user based on event');
-        refreshPermissions();
+        const userId = userData.id;
+        fetchPermissions(userId); // Call directly instead of through refreshPermissions
       }
     };
 
@@ -200,12 +206,15 @@ export default function usePermissions() {
       if (typeof window !== 'undefined' && window.GLOBAL_PERMISSIONS_TIMESTAMP) {
         if (window.GLOBAL_PERMISSIONS_TIMESTAMP > permissionsLastUpdated) {
           console.log('Global permissions timestamp updated, refreshing permissions');
-          refreshPermissions();
+          const userId = userData?.id || Cookies.get('userId');
+          if (userId) {
+            fetchPermissions(userId); // Call directly instead of through refreshPermissions
+          }
         }
       }
     };
-    window.addEventListener('admin-permissions-updated', handlePermissionUpdate);
     
+    window.addEventListener('admin-permissions-updated', handlePermissionUpdate);
     const permissionCheckInterval = setInterval(checkGlobalPermissionsUpdate, 10000); 
 
     // Clean up
@@ -213,12 +222,16 @@ export default function usePermissions() {
       window.removeEventListener('admin-permissions-updated', handlePermissionUpdate);
       clearInterval(permissionCheckInterval);
     };
-  }, [userData, refreshPermissions, permissionsLastUpdated]);
+  }, [userData?.id, permissionsLastUpdated]); // REMOVED refreshPermissions and fetchPermissions
 
   const triggerGlobalPermissionsRefresh = useCallback(() => {
     updateGlobalPermissionsTimestamp();
-    return refreshPermissions();
-  }, [refreshPermissions]);
+    const userId = userData?.id || Cookies.get('userId');
+    if (userId) {
+      return fetchPermissions(userId);
+    }
+    return Promise.resolve(false);
+  }, [userData?.id, fetchPermissions]);
 
   return { 
     permissions, 

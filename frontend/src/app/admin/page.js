@@ -222,63 +222,53 @@ export default function AdminDashboard() {
   const [landingContent, setLandingContent] = useState(null);
   const [dataLoaded, setDataLoaded] = useState(false);
 
-  // Load UI design - simplified
-  useEffect(() => {
-    const loadUIDesign = async () => {
-      try {
-        const token = Cookies.get('token');
-        const response = await fetch(`${API_BASE}/studentUI`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data && data.content) {
-            const config = {
-              type: data.content.type || 'poster',
-              background_image: data.content.background_image || null,
-              use_landing_design: data.content.use_landing_design || false
-            };
-            setUiDesign(config);
-            
-            if (config.type === 'landing' || config.use_landing_design) {
-              try {
-                const landingResponse = await fetch(`${API_BASE}/content`);
-                if (landingResponse.ok) {
-                  const landingData = await landingResponse.json();
-                  if (landingData && landingData.content) {
-                    setLandingContent(landingData.content);
-                  }
-                }
-              } catch (landingError) {
-                console.error('Error loading landing content:', landingError);
-              }
-            }
-          } else {
-            setUiDesign({
-              type: 'poster',
-              background_image: null,
-              use_landing_design: false
-            });
-          }
+  // Load UI design - simplified and memoized
+  const loadUIDesign = useCallback(async () => {
+    try {
+      const token = Cookies.get('token');
+      const response = await fetch(`${API_BASE}/studentUI`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
         }
-      } catch (error) {
-        console.error('Error loading UI design:', error);
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.content) {
+          const config = {
+            type: data.content.type || 'poster',
+            background_image: data.content.background_image || null,
+            use_landing_design: data.content.use_landing_design || false
+          };
+          setUiDesign(config);
+          
+          if (config.type === 'landing' || config.use_landing_design) {
+            try {
+              const landingResponse = await fetch(`${API_BASE}/content`);
+              if (landingResponse.ok) {
+                const landingData = await landingResponse.json();
+                if (landingData && landingData.content) {
+                  setLandingContent(landingData.content);
+                }
+              }
+            } catch (landingError) {
+              console.error('Error loading landing content:', landingError);
+            }
+          }
+        } else {
+          setUiDesign({
+            type: 'poster',
+            background_image: null,
+            use_landing_design: false
+          });
+        }
       }
-    };
-    
-    loadUIDesign();
+    } catch (error) {
+      console.error('Error loading UI design:', error);
+    }
   }, []);
 
-  // Ensure user ID is available from token
-  useEffect(() => {
-    const userId = ensureUserIdFromToken();
-    console.log('Admin Dashboard - Ensured User ID:', userId);
-  }, []);
-
-  // Load all elections data - memoized with useCallback
+  // Load all elections data - memoized without activeTab dependency
   const loadAllElections = useCallback(async () => {
     try {
       const statuses = ['ongoing', 'upcoming', 'completed'];
@@ -328,16 +318,15 @@ export default function AdminDashboard() {
       }
       
       setAllElections(results);
-      setElections(results[activeTab] || []);
       return results;
     } catch (err) {
       console.error('Error in loadAllElections:', err);
       setError('Failed to load elections data');
       throw err;
     }
-  }, [activeTab]);
+  }, []); // REMOVED activeTab dependency
 
-  // Load stats - memoized with useCallback
+  // Load stats - memoized
   const loadStats = useCallback(async () => {
     try {
       const token = Cookies.get('token');
@@ -390,7 +379,8 @@ export default function AdminDashboard() {
         // Load data in parallel
         await Promise.all([
           loadAllElections(),
-          loadStats()
+          loadStats(),
+          loadUIDesign()
         ]);
         
         if (isMounted) {
@@ -411,14 +401,20 @@ export default function AdminDashboard() {
     return () => {
       isMounted = false;
     };
-  }, [permissionsLoading, hasPermission, dataLoaded]); // REMOVED loadAllElections and loadStats from dependencies
+  }, [permissionsLoading, hasPermission, dataLoaded]); // REMOVED function dependencies
 
-  // Handle tab change
+  // Handle tab change - update elections when tab or allElections change
   useEffect(() => {
     if (allElections && allElections[activeTab]) {
       setElections(allElections[activeTab] || []);
     }
   }, [activeTab, allElections]);
+
+  // Ensure user ID is available from token - run once
+  useEffect(() => {
+    const userId = ensureUserIdFromToken();
+    console.log('Admin Dashboard - Ensured User ID:', userId);
+  }, []);
 
   const handleElectionClick = (electionId) => {
     if (!electionId || isNaN(parseInt(electionId))) {
