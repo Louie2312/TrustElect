@@ -20,7 +20,7 @@ const nextConfig = {
     const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5000';
     
     return [
-      // Remove /api from destination since the source already includes it
+      // FIXED: Remove /api from destination to prevent double /api
       { source: '/api/:path*', destination: `${BACKEND_URL}/:path*` },
       { source: '/uploads/:path*', destination: `${BACKEND_URL}/uploads/:path*` },
     ];
