@@ -51,42 +51,43 @@ async function fetchWithAuth(url, options = {}) {
     headers['Content-Type'] = 'application/json';
   }
 
-  const response = await fetch(`${API_BASE}${url}`, {
-    ...options,
-    headers,
-    credentials: 'include'
-  });
-
-  if (!response.ok) {
-    try {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Request failed');
-    } catch (e) {
-      throw new Error(`Request failed: ${response.statusText}`);
-    }
-  }
-
-  const contentType = response.headers.get('content-type');
+  // Construct the full URL
+  const fullUrl = API_BASE ? `${API_BASE}${url}` : url;
   
-  if (contentType && contentType.includes('application/json')) {
-    return response.json();
-  } 
+  console.log('Making API request to:', fullUrl); // Debug log
 
-  else if (contentType && (contentType.includes('image/') || contentType.includes('application/octet-stream'))) {
-    return response.blob();
-  }
+  try {
+    const response = await fetch(fullUrl, {
+      ...options,
+      headers,
+      credentials: 'include'
+    });
 
-  else if (contentType && contentType.includes('text/')) {
-    return response.text();
-  }
-
-  else {
-    try {
-      return await response.json();
-    } catch (e) {
-      console.warn('Response was not JSON, returning text instead');
-      return response.text();
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('API Error Response:', errorText);
+      throw new Error(`API Error: ${response.status} - ${response.statusText}`);
     }
+
+    const contentType = response.headers.get('content-type');
+    
+    if (contentType && contentType.includes('application/json')) {
+      return response.json();
+    } else if (contentType && (contentType.includes('image/') || contentType.includes('application/octet-stream'))) {
+      return response.blob();
+    } else if (contentType && contentType.includes('text/')) {
+      return response.text();
+    } else {
+      try {
+        return await response.json();
+      } catch (e) {
+        console.warn('Response was not JSON, returning text instead');
+        return response.text();
+      }
+    }
+  } catch (error) {
+    console.error('Fetch error:', error);
+    throw error;
   }
 }
 
@@ -535,8 +536,13 @@ export default function BallotPage() {
     const loadData = async () => {
       try {
         setIsLoading(true);
+        setApiError(null); // Clear previous errors
+        
+        console.log('Loading election data for ID:', electionId);
         
         const electionData = await fetchWithAuth(`/api/elections/${electionId}`);
+        console.log('Election data loaded:', electionData);
+        
         setElection(electionData);
         
         if (electionData.election_type === "Student Council") {
@@ -568,9 +574,10 @@ export default function BallotPage() {
             ...ballotData,
             positions
           });
-        } catch (error) {
+        } catch (ballotError) {
+          console.log("No existing ballot found, creating default positions");
+          // Create default ballot structure
           if (electionData.election_type === "Student Council") {
-            // Use static default student council positions
             const studentCouncilPositionOrder = {
               "President": 1,
               "Vice President": 2,
@@ -629,13 +636,22 @@ export default function BallotPage() {
           }
         }
       } catch (error) {
-        setApiError("Failed to load data");
-        console.error(error);
+        console.error("Failed to load election data:", error);
+        setApiError(`Failed to load election data: ${error.message}. Please check your connection and try again.`);
+        // Set a fallback election object to prevent infinite loading
+        setElection({ 
+          id: electionId, 
+          title: "Unknown Election", 
+          election_type: "General" 
+        });
       } finally {
         setIsLoading(false);
       }
     };
-    loadData();
+    
+    if (electionId) {
+      loadData();
+    }
   }, [electionId]);
 
   const reloadStudentCouncilPositions = async () => {

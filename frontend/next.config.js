@@ -22,8 +22,8 @@ const nextConfig = {
     console.log('Next.js rewrites using BACKEND_URL:', BACKEND_URL);
     
     return [
-      // Fixed: Preserve the /api prefix in the destination
-      { source: '/api/:path*', destination: `${BACKEND_URL}/:path*` },
+      // Fixed: Keep /api prefix in destination for proper routing
+      { source: '/api/:path*', destination: `${BACKEND_URL}/api/:path*` },
       { source: '/uploads/:path*', destination: `${BACKEND_URL}/uploads/:path*` },
     ];
   },
