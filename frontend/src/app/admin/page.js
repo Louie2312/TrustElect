@@ -8,11 +8,9 @@ import PermissionDisplay from '../../components/Admin/PermissionDisplay';
 import usePermissions, { ensureUserIdFromToken } from '../../hooks/usePermissions.js';
 import axios from "axios";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
-
 async function fetchWithAuth(url, options = {}) {
   const token = Cookies.get('token');
-  const response = await fetch(`${API_BASE}${url}`, {
+  const response = await fetch(`/api${url}`, {
     ...options,
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -226,7 +224,7 @@ export default function AdminDashboard() {
   const loadUIDesign = useCallback(async () => {
     try {
       const token = Cookies.get('token');
-      const response = await fetch(`${API_BASE}/studentUI`, {
+      const response = await fetch(`/api/studentUI`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -244,7 +242,7 @@ export default function AdminDashboard() {
           
           if (config.type === 'landing' || config.use_landing_design) {
             try {
-              const landingResponse = await fetch(`${API_BASE}/content`);
+              const landingResponse = await fetch(`/api/content`);
               if (landingResponse.ok) {
                 const landingData = await landingResponse.json();
                 if (landingData && landingData.content) {
@@ -276,7 +274,7 @@ export default function AdminDashboard() {
       
       await Promise.all(statuses.map(async (status) => {
         try {
-          const response = await fetch(`${API_BASE}/elections/status/${status}`, {
+          const response = await fetch(`/api/elections/status/${status}`, {
             headers: {
               'Authorization': `Bearer ${Cookies.get('token')}`,
               'Content-Type': 'application/json'
@@ -298,7 +296,7 @@ export default function AdminDashboard() {
       
       // Load pending approval elections
       try {
-        const response = await fetch(`${API_BASE}/elections/admin-pending-approval`, {
+        const response = await fetch(`/api/elections/admin-pending-approval`, {
           headers: {
             'Authorization': `Bearer ${Cookies.get('token')}`,
             'Content-Type': 'application/json'
@@ -324,13 +322,13 @@ export default function AdminDashboard() {
       setError('Failed to load elections data');
       throw err;
     }
-  }, []); // REMOVED activeTab dependency
+  }, []);
 
   // Load stats - memoized
   const loadStats = useCallback(async () => {
     try {
       const token = Cookies.get('token');
-      const response = await fetch(`${API_BASE}/elections/stats`, {
+      const response = await fetch(`/api/elections/stats`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
