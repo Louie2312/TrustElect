@@ -20,9 +20,9 @@ const nextConfig = {
     const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5000';
     
     return [
-      // FIXED: Keep /api in destination to match backend routes
-      { source: '/api/:path*', destination: `${BACKEND_URL}/api/:path*` },
-      { source: '/uploads/:path*', destination: `${BACKEND_URL}/uploads/:path*` },
+      // Remove /api from destination since BACKEND_URL now includes /api
+      { source: '/api/:path*', destination: `${BACKEND_URL}/:path*` },
+      { source: '/uploads/:path*', destination: `${BACKEND_URL}/../uploads/:path*` },
     ];
   },
 }
