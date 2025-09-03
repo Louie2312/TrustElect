@@ -298,8 +298,8 @@ export default function AdminDashboard() {
     console.log('Admin Dashboard - Permissions:', permissions);
   }, [permissionsLoading, permissions]);
 
-  // Load all elections data at once
-  const loadAllElections = async () => {
+  // Load all elections data at once - memoized with useCallback
+  const loadAllElections = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -360,9 +360,9 @@ export default function AdminDashboard() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [activeTab]);
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       const token = Cookies.get('token');
       const response = await fetch(`${API_BASE}/elections/stats`, {
@@ -385,9 +385,9 @@ export default function AdminDashboard() {
       console.error("Failed to load stats:", err);
       setStats([]);
     }
-  };
+  }, []);
 
-  // Load initial data
+  // Load initial data - simplified and fixed
   useEffect(() => {
     const initializeDashboard = async () => {
       if (!permissionsLoading) {
@@ -397,7 +397,7 @@ export default function AdminDashboard() {
           return;
         }
         
-        // Try to load all data
+        // Load all data
         try {
           await Promise.all([
             loadAllElections(),
@@ -405,28 +405,20 @@ export default function AdminDashboard() {
           ]);
         } catch (error) {
           console.error('Error loading dashboard data:', error);
-          // Try individual functions as fallback
-          await loadStats();
+          setIsLoading(false);
         }
       }
     };
     
     initializeDashboard();
-  }, [permissionsLoading, hasPermission, loadAllElections]);
-
-  // Add the missing useEffect hooks inside the component
-  useEffect(() => {
-    if (!permissionsLoading && hasPermission('elections', 'view')) {
-      loadStats();
-    }
-  }, [permissionsLoading, hasPermission, loadStats]);
+  }, [permissionsLoading, hasPermission, loadAllElections, loadStats]);
 
   // Handle tab change without loading indicator
   useEffect(() => {
     // Just update the elections based on the activeTab from the already loaded data
     setElections(allElections[activeTab] || []);
   }, [activeTab, allElections]);
-  
+
   const handleElectionClick = (electionId) => {
     if (!electionId || isNaN(parseInt(electionId))) {
       console.error('Invalid election ID:', electionId);
