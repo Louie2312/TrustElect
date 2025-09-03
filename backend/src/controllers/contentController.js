@@ -166,7 +166,7 @@ const updateSectionContent = async (req, res) => {
         if (logoFile) {
           const fileUrl = `/uploads/images/${logoFile.filename}`;
           
-          // Save media to database (this was missing!)
+          // Add missing media saving functionality
           try {
             const logoMedia = await contentModel.saveMedia({
               filename: logoFile.filename,
