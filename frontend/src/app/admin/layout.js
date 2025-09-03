@@ -51,7 +51,8 @@ export default function AdminLayout({children}){
     const fetchUIDesign = async () => {
       try {
         const token = Cookies.get("token");
-        const response = await fetch(`${API_BASE}/studentUI`, {
+        // Fix: Change from /studentUI to /api/studentUI
+        const response = await fetch(`${API_BASE}/api/studentUI`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (response.ok) {
