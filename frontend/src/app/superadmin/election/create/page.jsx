@@ -276,13 +276,13 @@ export default function CreateElectionPage() {
         ];
 
         const requests = endpoints.map(endpoint => 
-          axios.get(`/maintenance/${endpoint.url}`, {
+          axios.get(`/api/maintenance/${endpoint.url}`, {
             headers: { Authorization: `Bearer ${token}` }
           })
         );
         
         const currentSemesterRequest = axios.get(
-          "/maintenance/current-semester", 
+          "/api/maintenance/current-semester", 
           { headers: { Authorization: `Bearer ${token}` } }
         );
         
