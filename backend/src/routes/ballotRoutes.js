@@ -22,7 +22,10 @@ const router = express.Router();
 
 router.post("/", verifyToken,  createBallot);
 router.get("/", verifyToken, createBallot);
+// Change this line:
 router.get("/:electionId/ballot", verifyToken, getBallotByElection);
+// To:
+router.get("/election/:electionId", verifyToken, getBallotByElection);
 router.put("/:ballotId/description", verifyToken,  updateBallotdescription);
 router.delete("/:ballotId", verifyToken,  deleteBallot);
 

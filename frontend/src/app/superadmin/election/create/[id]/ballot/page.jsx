@@ -6,8 +6,8 @@ import Cookies from "js-cookie";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
-const BASE_URL = '';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 const studentCouncilPositionOrder = {
   "President": 1,
@@ -38,55 +38,54 @@ function formatNameSimple(lastName, firstName, fallback) {
 }
 
 async function fetchWithAuth(url, options = {}) {
-  const token = Cookies.get('token');
-  const headers = {
-    ...options.headers
+  const token = Cookies.get("token");
+  const apiBase = API_BASE || '/api';
+  
+  // Ensure URL starts with /api if API_BASE is empty
+  const fullUrl = url.startsWith('/api') ? url : `${apiBase}${url}`;
+  
+  const defaultHeaders = {
+    "Authorization": `Bearer ${token}`,
+    "Content-Type": "application/json"
   };
 
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
+  try {
+    const response = await fetch(fullUrl, {
+      ...options,
+      headers: {
+        ...defaultHeaders,
+        ...options.headers
+      },
+      credentials: 'include'
+    });
 
-  if (!(options.body instanceof FormData)) {
-    headers['Content-Type'] = 'application/json';
-  }
-
-  const response = await fetch(`${API_BASE}${url}`, {
-    ...options,
-    headers,
-    credentials: 'include'
-  });
-
-  if (!response.ok) {
-    try {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Request failed');
-    } catch (e) {
-      throw new Error(`Request failed: ${response.statusText}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage;
+      
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = errorData.message || `HTTP ${response.status}`;
+      } catch {
+        errorMessage = errorText || `HTTP ${response.status}`;
+      }
+      
+      if (response.status === 404 && errorMessage.includes('No ballot found')) {
+        return null; // This is expected for new elections
+      }
+      
+      throw new Error(errorMessage);
     }
-  }
 
-  const contentType = response.headers.get('content-type');
-  
-  if (contentType && contentType.includes('application/json')) {
-    return response.json();
-  } 
-
-  else if (contentType && (contentType.includes('image/') || contentType.includes('application/octet-stream'))) {
-    return response.blob();
-  }
-
-  else if (contentType && contentType.includes('text/')) {
-    return response.text();
-  }
-
-  else {
-    try {
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
       return await response.json();
-    } catch (e) {
-      console.warn('Response was not JSON, returning text instead');
-      return response.text();
     }
+    
+    return await response.text();
+  } catch (error) {
+    console.error(`API call failed for ${fullUrl}:`, error);
+    throw error;
   }
 }
 
@@ -99,7 +98,13 @@ const createBallot = async (ballotData) => {
 };
 
 const getBallotByElection = async (electionId) => {
-  return fetchWithAuth(`/api/elections/${electionId}/ballot`);
+  try {
+    const response = await fetchWithAuth(`/api/ballots/election/${electionId}`);
+    return response;
+  } catch (error) {
+    console.error('Error fetching ballot:', error);
+    throw error;
+  }
 };
 
 const createPosition = async (ballotId, positionData) => {
@@ -667,107 +672,112 @@ export default function BallotPage() {
 
   useEffect(() => {
     const loadData = async () => {
+      if (!electionId) {
+        setApiError("No election ID provided");
+        setIsLoading(false);
+        return;
+      }
+
       try {
         setIsLoading(true);
+        setApiError(null);
         
+        // Fetch election data
         const electionData = await fetchWithAuth(`/api/elections/${electionId}`);
+        if (!electionData) {
+          throw new Error("Election not found");
+        }
+        
         setElection(electionData);
         
         if (electionData.election_type === "Student Council") {
           setIsStudentCouncilElection(true);
         }
         
+        // Try to fetch existing ballot
         try {
           const ballotData = await getBallotByElection(electionId);
-          const positions = ballotData.positions || [];
-          
-          const studentCouncilPositionOrder = {
-            "President": 1,
-            "Vice President": 2,
-            "Secretary": 3,
-            "Treasurer": 4,
-            "Auditor": 5,
-            "Public Relations Officer": 6,
-            "PRO": 6,
-            "Business Manager": 7,
-            "Sergeant at Arms": 8
-          };
-
-          // Sort positions if it's a student council election
-          if (electionData.election_type === "Student Council") {
-            positions.sort((a, b) => (studentCouncilPositionOrder[a.name] || 999) - (studentCouncilPositionOrder[b.name] || 999));
-          }
-          
-          setBallot({
-            ...ballotData,
-            positions
-          });
-        } catch (error) {
-          if (electionData.election_type === "Student Council") {
-            // Use the studentCouncilPositions from state if available, otherwise use default
-            const defaultPositions = [
-              "President",
-              "Vice President", 
-              "Secretary",
-              "Treasurer",
-              "Auditor",
-              "Public Relations Officer",
-              "Business Manager",
-              "Sergeant at Arms"
-            ];
+          if (ballotData && ballotData.positions) {
+            const positions = ballotData.positions || [];
             
-            const sortedPositions = defaultPositions.sort(
-              (a, b) => (studentCouncilPositionOrder[a] || 999) - (studentCouncilPositionOrder[b] || 999)
-            );
+            // Sort positions if it's a student council election
+            if (electionData.election_type === "Student Council") {
+              positions.sort((a, b) => (studentCouncilPositionOrder[a.name] || 999) - (studentCouncilPositionOrder[b.name] || 999));
+            }
             
-            setBallot(prev => ({
-              ...prev,
-              positions: [{
-                id: Math.floor(Math.random() * 1000000).toString(),
-                name: sortedPositions[0],
-                max_choices: 1,
-                candidates: [{
-                  id: Math.floor(Math.random() * 1000000).toString(),
-                  first_name: "",
-                  last_name: "",
-                  student_number: "",
-                  course: "",
-                  party: "",
-                  slogan: "",
-                  platform: "",
-                  image_url: null
-                }]
-              }]
-            }));
+            setBallot({
+              ...ballotData,
+              positions
+            });
           } else {
-            setBallot(prev => ({
-              ...prev,
-              positions: [{
-                id: Math.floor(Math.random() * 1000000).toString(),
-                name: "",
-                max_choices: 1,
-                candidates: [{
-                  id: Math.floor(Math.random() * 1000000).toString(),
-                  first_name: "",
-                  last_name: "",
-                  student_number: "",
-                  course: "",
-                  party: "",
-                  slogan: "",
-                  platform: "",
-                  image_url: null
-                }]
-              }]
-            }));
+            // No existing ballot, create default structure
+            createDefaultBallotStructure(electionData.election_type);
           }
+        } catch (ballotError) {
+          console.log("No existing ballot found, creating default structure");
+          createDefaultBallotStructure(electionData.election_type);
         }
       } catch (error) {
-        setApiError("Failed to load data");
-        console.error(error);
+        console.error("Error loading election data:", error);
+        setApiError(error.message || "Failed to load election data");
       } finally {
         setIsLoading(false);
       }
     };
+
+    const createDefaultBallotStructure = (electionType) => {
+      if (electionType === "Student Council") {
+        const defaultPositions = [
+          "President", "Vice President", "Secretary", "Treasurer", 
+          "Auditor", "Public Relations Officer", "Business Manager", "Sergeant at Arms"
+        ];
+        
+        const sortedPositions = defaultPositions.sort(
+          (a, b) => (studentCouncilPositionOrder[a] || 999) - (studentCouncilPositionOrder[b] || 999)
+        );
+        
+        setBallot(prev => ({
+          ...prev,
+          positions: [{
+            id: Math.floor(Math.random() * 1000000).toString(),
+            name: sortedPositions[0],
+            max_choices: 1,
+            candidates: [{
+              id: Math.floor(Math.random() * 1000000).toString(),
+              first_name: "",
+              last_name: "",
+              student_number: "",
+              course: "",
+              party: "",
+              slogan: "",
+              platform: "",
+              image_url: null
+            }]
+          }]
+        }));
+      } else {
+        setBallot(prev => ({
+          ...prev,
+          positions: [{
+            id: Math.floor(Math.random() * 1000000).toString(),
+            name: "",
+            max_choices: 1,
+            candidates: [{
+              id: Math.floor(Math.random() * 1000000).toString(),
+              first_name: "",
+              last_name: "",
+              student_number: "",
+              course: "",
+              party: "",
+              slogan: "",
+              platform: "",
+              image_url: null
+            }]
+          }]
+        }));
+      }
+    };
+
     loadData();
   }, [electionId]);
 
