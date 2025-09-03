@@ -220,8 +220,9 @@ export default function AdminDashboard() {
   const { hasPermission, permissionsLoading, permissions } = usePermissions();
   const [uiDesign, setUiDesign] = useState(null);
   const [landingContent, setLandingContent] = useState(null);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
-  // Load UI design
+  // Load UI design - simplified
   useEffect(() => {
     const loadUIDesign = async () => {
       try {
@@ -234,25 +235,19 @@ export default function AdminDashboard() {
         
         if (response.ok) {
           const data = await response.json();
-          console.log('Loaded UI design data:', data);
-          
-          // Ensure we have content data with proper structure
           if (data && data.content) {
             const config = {
               type: data.content.type || 'poster',
               background_image: data.content.background_image || null,
               use_landing_design: data.content.use_landing_design || false
             };
-            
             setUiDesign(config);
             
-            // If using landing design, fetch landing content
             if (config.type === 'landing' || config.use_landing_design) {
               try {
                 const landingResponse = await fetch(`${API_BASE}/content`);
                 if (landingResponse.ok) {
                   const landingData = await landingResponse.json();
-                  console.log('Loaded landing content:', landingData);
                   if (landingData && landingData.content) {
                     setLandingContent(landingData.content);
                   }
@@ -262,16 +257,12 @@ export default function AdminDashboard() {
               }
             }
           } else {
-            console.warn('UI design data has unexpected format:', data);
-            // Set default values if data structure is unexpected
             setUiDesign({
               type: 'poster',
               background_image: null,
               use_landing_design: false
             });
           }
-        } else {
-          console.error('Failed to load UI design, status:', response.status);
         }
       } catch (error) {
         console.error('Error loading UI design:', error);
@@ -281,33 +272,18 @@ export default function AdminDashboard() {
     loadUIDesign();
   }, []);
 
-  // Ensure user ID is available from token if needed
+  // Ensure user ID is available from token
   useEffect(() => {
     const userId = ensureUserIdFromToken();
     console.log('Admin Dashboard - Ensured User ID:', userId);
   }, []);
 
-  // For debugging
-  useEffect(() => {
-    console.log('Admin Dashboard - User info:', {
-      userId: Cookies.get('userId'),
-      role: Cookies.get('role'),
-      token: Cookies.get('token') ? 'Token exists' : 'No token'
-    });
-    console.log('Admin Dashboard - Permissions loading:', permissionsLoading);
-    console.log('Admin Dashboard - Permissions:', permissions);
-  }, [permissionsLoading, permissions]);
-
-  // Load all elections data at once - memoized with useCallback
+  // Load all elections data - memoized with useCallback
   const loadAllElections = useCallback(async () => {
     try {
-      setIsLoading(true);
-      setError(null);
-      
       const statuses = ['ongoing', 'upcoming', 'completed'];
       const results = {};
       
-      // Load regular election statuses
       await Promise.all(statuses.map(async (status) => {
         try {
           const response = await fetch(`${API_BASE}/elections/status/${status}`, {
@@ -352,16 +328,16 @@ export default function AdminDashboard() {
       }
       
       setAllElections(results);
-      // Set the elections for the active tab
       setElections(results[activeTab] || []);
+      return results;
     } catch (err) {
       console.error('Error in loadAllElections:', err);
       setError('Failed to load elections data');
-    } finally {
-      setIsLoading(false);
+      throw err;
     }
   }, [activeTab]);
 
+  // Load stats - memoized with useCallback
   const loadStats = useCallback(async () => {
     try {
       const token = Cookies.get('token');
@@ -377,46 +353,71 @@ export default function AdminDashboard() {
       }
       
       const data = await response.json();
-      console.log("Stats data received:", data); // Debug log
-      
-      // The API returns an array of stats, just like in superadmin
       setStats(data || []);
+      return data;
     } catch (err) {
       console.error("Failed to load stats:", err);
       setStats([]);
+      throw err;
     }
   }, []);
 
-  // Load initial data - simplified and fixed
+  // Single initialization effect - FIXED
   useEffect(() => {
+    let isMounted = true;
+    
     const initializeDashboard = async () => {
-      if (!permissionsLoading) {
-        // First check if user has permission to view elections
-        if (!hasPermission('elections', 'view')) {
-          setIsLoading(false);
-          return;
-        }
+      // Wait for permissions to load
+      if (permissionsLoading) {
+        return;
+      }
+      
+      // Check if already loaded
+      if (dataLoaded) {
+        return;
+      }
+      
+      // Check permissions
+      if (!hasPermission('elections', 'view')) {
+        setIsLoading(false);
+        return;
+      }
+      
+      try {
+        setIsLoading(true);
+        setError(null);
         
-        // Load all data
-        try {
-          await Promise.all([
-            loadAllElections(),
-            loadStats()
-          ]);
-        } catch (error) {
-          console.error('Error loading dashboard data:', error);
+        // Load data in parallel
+        await Promise.all([
+          loadAllElections(),
+          loadStats()
+        ]);
+        
+        if (isMounted) {
+          setDataLoaded(true);
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        if (isMounted) {
+          setError('Failed to load dashboard data');
           setIsLoading(false);
         }
       }
     };
     
     initializeDashboard();
-  }, [permissionsLoading, hasPermission, loadAllElections, loadStats]);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [permissionsLoading, hasPermission, dataLoaded]); // REMOVED loadAllElections and loadStats from dependencies
 
-  // Handle tab change without loading indicator
+  // Handle tab change
   useEffect(() => {
-    // Just update the elections based on the activeTab from the already loaded data
-    setElections(allElections[activeTab] || []);
+    if (allElections && allElections[activeTab]) {
+      setElections(allElections[activeTab] || []);
+    }
   }, [activeTab, allElections]);
 
   const handleElectionClick = (electionId) => {
