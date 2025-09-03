@@ -704,32 +704,41 @@ export default function BallotPage() {
           });
         } catch (error) {
           if (electionData.election_type === "Student Council") {
-            if (studentCouncilPositions.length > 0) {
-              // Sort student council positions before creating initial position
-              const sortedPositions = [...studentCouncilPositions].sort(
-                (a, b) => (studentCouncilPositionOrder[a] || 999) - (studentCouncilPositionOrder[b] || 999)
-              );
-              
-              setBallot(prev => ({
-                ...prev,
-                positions: [{
+            // Use default student council positions instead of relying on state
+            const defaultSCPositions = [
+              "President",
+              "Vice President", 
+              "Secretary",
+              "Treasurer",
+              "Auditor",
+              "Public Relations Officer",
+              "Business Manager",
+              "Sergeant at Arms"
+            ];
+            
+            const sortedPositions = [...defaultSCPositions].sort(
+              (a, b) => (studentCouncilPositionOrder[a] || 999) - (studentCouncilPositionOrder[b] || 999)
+            );
+            
+            setBallot(prev => ({
+              ...prev,
+              positions: [{
+                id: Math.floor(Math.random() * 1000000).toString(),
+                name: sortedPositions[0],
+                max_choices: 1,
+                candidates: [{
                   id: Math.floor(Math.random() * 1000000).toString(),
-                  name: sortedPositions[0],
-                  max_choices: 1,
-                  candidates: [{
-                    id: Math.floor(Math.random() * 1000000).toString(),
-                    first_name: "",
-                    last_name: "",
-                    student_number: "", // Add student_number here
-                    course: "", // Add course here
-                    party: "",
-                    slogan: "",
-                    platform: "",
-                    image_url: null
-                  }]
+                  first_name: "",
+                  last_name: "",
+                  student_number: "",
+                  course: "",
+                  party: "",
+                  slogan: "",
+                  platform: "",
+                  image_url: null
                 }]
-              }));
-            }
+              }]
+            }));
           } else {
             setBallot(prev => ({
               ...prev,
@@ -741,8 +750,8 @@ export default function BallotPage() {
                   id: Math.floor(Math.random() * 1000000).toString(),
                   first_name: "",
                   last_name: "",
-                  student_number: "", // Add student_number here
-                  course: "", // Add course here
+                  student_number: "",
+                  course: "",
                   party: "",
                   slogan: "",
                   platform: "",
