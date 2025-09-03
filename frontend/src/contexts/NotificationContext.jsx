@@ -8,8 +8,10 @@ const normalizeRole = (role) => {
   
   console.log(`Normalizing role: "${role}"`);
   
+ 
   const lowercaseRole = typeof role === 'string' ? role.toLowerCase() : '';
   
+ 
   if (lowercaseRole.includes('super') && lowercaseRole.includes('admin')) {
     console.log(`Role "${role}" normalized to "superadmin"`);
     return 'superadmin';
@@ -25,6 +27,7 @@ const normalizeRole = (role) => {
     return 'student';
   }
   
+
   return lowercaseRole;
 };
 
@@ -48,7 +51,7 @@ export const NotificationProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const [lastFetched, setLastFetched] = useState(null);
 
-  // Remove API_URL usage - use relative paths instead
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
   // Get user's role and token
   const getAuthInfo = useCallback(() => {
@@ -86,6 +89,7 @@ export const NotificationProvider = ({ children }) => {
 
     const { token, role } = getAuthInfo();
     console.log(`Fetching notifications for ${role} user, limit: ${finalLimit}, offset: ${finalOffset}`);
+    console.log(`Using API URL: ${API_URL}`);
 
     if (!token) {
       setError('Authentication required');
@@ -94,8 +98,7 @@ export const NotificationProvider = ({ children }) => {
     }
 
     try {
-      // Fix: Use relative path - Next.js rewrites will handle the routing
-      const response = await axios.get('/api/notifications', {
+      const response = await axios.get(`${API_URL}/api/notifications`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -129,7 +132,7 @@ export const NotificationProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [API_URL]);
 
   // Fetch unread count
   const countUnreadNotifications = useCallback(async () => {
@@ -140,8 +143,7 @@ export const NotificationProvider = ({ children }) => {
     }
 
     try {
-      // Fix: Use relative path
-      const response = await axios.get('/api/notifications/unread-count', {
+      const response = await axios.get(`${API_URL}/api/notifications/unread-count`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -152,7 +154,8 @@ export const NotificationProvider = ({ children }) => {
       console.error('Error counting unread notifications:', err);
       console.error('Error details:', err.response || err.message);
     }
-  }, []);
+  }, [API_URL]);
+
 
   const markAsRead = useCallback(async (notificationId) => {
     try {
@@ -161,9 +164,9 @@ export const NotificationProvider = ({ children }) => {
         throw new Error('Authentication token not found');
       }
       
-      // Fix: Use relative path
+      
       const response = await axios.put(
-        `/api/notifications/${notificationId}/read`,
+        `${API_URL}/api/notifications/${notificationId}/read`,
         {},
         {
           headers: {
@@ -208,7 +211,7 @@ export const NotificationProvider = ({ children }) => {
       
       return false;
     }
-  }, []);
+  }, [API_URL]);
 
   // Mark all notifications as read
   const markAllAsRead = useCallback(async () => {
@@ -218,9 +221,8 @@ export const NotificationProvider = ({ children }) => {
         throw new Error('Authentication token not found');
       }
 
-      // Fix: Use relative path
       const response = await axios.put(
-        '/api/notifications/read-all',
+        `${API_URL}/api/notifications/read-all`,
         {},
         {
           headers: {
@@ -238,6 +240,7 @@ export const NotificationProvider = ({ children }) => {
         // Reset unread count
         setUnreadCount(0);
         
+       
         return true;
       } else {
         console.error('API reported error:', response.data.message);
@@ -262,7 +265,7 @@ export const NotificationProvider = ({ children }) => {
       
       return false;
     }
-  }, []);
+  }, [API_URL]);
 
   // Delete a notification
   const deleteNotification = useCallback(async (notificationId) => {
@@ -272,9 +275,10 @@ export const NotificationProvider = ({ children }) => {
         throw new Error('Authentication token not found');
       }
       
-      // Fix: Use relative path
+  
+      
       const response = await axios.delete(
-        `/api/notifications/${notificationId}`,
+        `${API_URL}/api/notifications/${notificationId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`
@@ -320,7 +324,7 @@ export const NotificationProvider = ({ children }) => {
       
       return false;
     }
-  }, [notifications]);
+  }, [API_URL, notifications]);
 
   // Load initial data
   useEffect(() => {
@@ -390,4 +394,4 @@ export const NotificationProvider = ({ children }) => {
   );
 };
 
-export default NotificationContext;
+export default NotificationContext; 
