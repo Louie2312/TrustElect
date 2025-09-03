@@ -165,7 +165,27 @@ const updateSectionContent = async (req, res) => {
         const logoFile = req.files?.logo?.[0];
         if (logoFile) {
           const fileUrl = `/uploads/images/${logoFile.filename}`;
-          contentData.imageUrl = fileUrl;
+          
+          // Save media to database (this was missing!)
+          try {
+            const logoMedia = await contentModel.saveMedia({
+              filename: logoFile.filename,
+              originalFilename: logoFile.originalname,
+              fileType: 'image',
+              mimeType: logoFile.mimetype,
+              fileSize: logoFile.size,
+              path: logoFile.path,
+              url: fileUrl,
+              altText: 'Logo image'
+            });
+            
+            contentData.imageUrl = fileUrl;
+            console.log('Logo media saved successfully:', logoFile.filename);
+          } catch (error) {
+            console.error('Error saving logo media:', error);
+            // Still set the URL even if media save fails
+            contentData.imageUrl = fileUrl;
+          }
         } else if (req.body.removeLogo === 'true') {
           // If removing logo, delete the old file if it exists
           if (contentData.imageUrl) {
@@ -603,4 +623,4 @@ module.exports = {
   getThemeById,
   updateTheme,
   deleteTheme
-}; 
+};
