@@ -20,9 +20,9 @@ const nextConfig = {
     const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5000';
     
     return [
-      // Remove /api from destination since BACKEND_URL now includes /api
-      { source: '/api/:path*', destination: `${BACKEND_URL}/:path*` },
-      // Fix: Correct the uploads path rewrite
+      // API routes - add /api to destination since BACKEND_URL now excludes it
+      { source: '/api/:path*', destination: `${BACKEND_URL}/api/:path*` },
+      // Static uploads - direct to backend uploads
       { source: '/uploads/:path*', destination: `${BACKEND_URL}/uploads/:path*` },
     ];
   },

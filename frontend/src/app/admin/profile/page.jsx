@@ -99,16 +99,14 @@ export default function AdminProfilePage() {
         return;
       }
 
-      // Fix: Use the returned path directly (Next.js rewrites will handle routing)
+      // Update profile picture state with the returned file path
       const imageUrl = `${res.data.filePath}?timestamp=${new Date().getTime()}`;
-
       setProfilePic(imageUrl);
       setPreviewImage(null);
       setSelectedFile(null);
       setUploadSuccess(true);
-      console.log("Profile Picture Updated:", imageUrl);
-
-      // Trigger sidebar update
+      
+      // Dispatch event to update sidebar
       window.dispatchEvent(new Event("adminProfileUpdated"));
     } catch (error) {
       setUploadError("Failed to upload image. Please try again.");
