@@ -20,7 +20,6 @@ export default function Sidebar() {
       const token = Cookies.get("token");
       if (!token) return;
   
-      // Fix: Use relative path - Next.js rewrites will handle the routing
       const res = await axios.get("/api/admin/profile", {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
@@ -33,7 +32,7 @@ export default function Sidebar() {
       const lastName = res.data.lastName || "";
       setAdminName(`${firstName} ${lastName}`);
   
-      // Fix: Use relative path for profile picture URL
+      // Fix: Properly format the image URL
       const imageUrl = res.data.profile_picture
         ? `${res.data.profile_picture}?timestamp=${new Date().getTime()}`
         : "https://via.placeholder.com/80";

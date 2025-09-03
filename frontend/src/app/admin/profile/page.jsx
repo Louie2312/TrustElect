@@ -34,27 +34,26 @@ export default function AdminProfilePage() {
         setLoading(false);
         return;
       }
-
+  
       console.log("Fetching admin profile...");
-      // Fix: Use relative path - Next.js rewrites will handle the routing
       const res = await axios.get("/api/admin/profile", {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
-
+  
       console.log("Admin Profile Data:", res.data);
-
+  
       setFirstName(res.data.firstName || "");
       setLastName(res.data.lastName || "");
       setEmail(res.data.email || "");
       setEmployeeNumber(res.data.employeeNumber || "");
       setDepartment(res.data.department || "");
-
-      // Fix: Use relative path for profile picture URL
+  
+      // Fix: Properly format the image URL
       const imageUrl = res.data.profile_picture
         ? `${res.data.profile_picture}?timestamp=${new Date().getTime()}`
         : "https://via.placeholder.com/100";
-
+  
       setProfilePic(imageUrl);
       setLoading(false);
     } catch (error) {
@@ -87,7 +86,6 @@ export default function AdminProfilePage() {
       setUploadSuccess(false);
       setUploadError("");
 
-      // Fix: Use relative path - Next.js rewrites will handle the routing
       const res = await axios.post("/api/admin/upload", formData, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
@@ -101,7 +99,7 @@ export default function AdminProfilePage() {
         return;
       }
 
-      // Fix: Use relative path for the uploaded image URL
+      // Fix: Use the returned path directly (Next.js rewrites will handle routing)
       const imageUrl = `${res.data.filePath}?timestamp=${new Date().getTime()}`;
 
       setProfilePic(imageUrl);
@@ -110,6 +108,7 @@ export default function AdminProfilePage() {
       setUploadSuccess(true);
       console.log("Profile Picture Updated:", imageUrl);
 
+      // Trigger sidebar update
       window.dispatchEvent(new Event("adminProfileUpdated"));
     } catch (error) {
       setUploadError("Failed to upload image. Please try again.");

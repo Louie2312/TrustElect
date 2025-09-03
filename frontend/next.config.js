@@ -22,7 +22,8 @@ const nextConfig = {
     return [
       // Remove /api from destination since BACKEND_URL now includes /api
       { source: '/api/:path*', destination: `${BACKEND_URL}/:path*` },
-      { source: '/uploads/:path*', destination: `${BACKEND_URL}/../uploads/:path*` },
+      // Fix: Correct the uploads path rewrite
+      { source: '/uploads/:path*', destination: `${BACKEND_URL}/uploads/:path*` },
     ];
   },
 }
