@@ -2,16 +2,9 @@
 import { useState, useEffect } from 'react';
 import { toast } from "react-toastify";
 import axios from 'axios';
+import Cookies from "js-cookie";
 
-// Configure axios to use relative URLs (proxy)
-const api = axios.create({
-  baseURL: '', // Empty string for same-origin requests
-  withCredentials: true,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-});
-
+// Remove the custom api instance and use regular axios with proper headers
 const PositionManager = ({ electionTypes }) => {
   const [selectedElectionType, setSelectedElectionType] = useState(null);
   const [positions, setPositions] = useState([]);
@@ -31,7 +24,11 @@ const PositionManager = ({ electionTypes }) => {
   const fetchPositions = async (electionTypeId) => {
     try {
       setLoading(true);
-      const response = await api.get(`/api/direct/positions?electionTypeId=${electionTypeId}`);
+      const token = Cookies.get("token");
+      const response = await axios.get(
+        `/api/maintenance/positions?electionTypeId=${electionTypeId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       
       if (response.data.success) {
         setPositions(response.data.data);
@@ -74,11 +71,14 @@ const PositionManager = ({ electionTypes }) => {
 
     try {
       setLoading(true);
+      const token = Cookies.get("token");
       
       if (isEditing) {
-        const response = await api.put(`/api/direct/positions/${editingPosition.id}`, {
-          name: newPositionName
-        });
+        const response = await axios.put(
+          `/api/maintenance/positions/${editingPosition.id}`,
+          { name: newPositionName },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
         
         if (response.data.success) {
           setPositions(positions.map(pos => 
@@ -91,10 +91,14 @@ const PositionManager = ({ electionTypes }) => {
           toast.error("Failed to update position");
         }
       } else {
-        const response = await api.post('/api/direct/positions', {
-          name: newPositionName,
-          electionTypeId: selectedElectionType.id
-        });
+        const response = await axios.post(
+          '/api/maintenance/positions',
+          {
+            name: newPositionName,
+            electionTypeId: selectedElectionType.id
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
         
         if (response.data.success) {
           setPositions([...positions, response.data.data]);
@@ -170,7 +174,11 @@ const PositionManager = ({ electionTypes }) => {
     
     try {
       setLoading(true);
-      const response = await api.delete(`/api/direct/positions/${positionId}`);
+      const token = Cookies.get("token");
+      const response = await axios.delete(
+        `/api/maintenance/positions/${positionId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       
       if (response.data.success) {
         setPositions(positions.filter(p => p.id !== positionId));
