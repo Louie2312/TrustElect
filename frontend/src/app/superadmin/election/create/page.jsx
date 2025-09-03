@@ -636,24 +636,24 @@ export default function CreateElectionPage() {
       };
       
       const response = await axios.post(
-        "/elections",
-        {
-          title: eventData.title,
-          description: eventData.description,
-          election_type: eventData.electionType,
-          date_from: eventData.dateFrom,
-          date_to: eventData.dateTo,
-          start_time: eventData.startTime,
-          end_time: eventData.endTime,
-          eligible_voters: optimizedEligibleVoters
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          }
+      "/api/elections",
+      {
+        title: eventData.title,
+        description: eventData.description,
+        election_type: eventData.electionType,
+        date_from: eventData.dateFrom,
+        date_to: eventData.dateTo,
+        start_time: eventData.startTime,
+        end_time: eventData.endTime,
+        eligible_voters: optimizedEligibleVoters
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         }
-      );
+      }
+    );
       
       toast.success('Election created successfully!');
       router.push(`/superadmin/election/create/${response.data.election.id}/ballot`);

@@ -92,52 +92,52 @@ async function fetchWithAuth(url, options = {}) {
 
 
 const createBallot = async (ballotData) => {
-  return fetchWithAuth('/ballots', {
+  return fetchWithAuth('/api/ballots', {
     method: 'POST',
     body: JSON.stringify(ballotData)
   });
 };
 
 const getBallotByElection = async (electionId) => {
-  return fetchWithAuth(`${API_BASE}/elections/${electionId}/ballot`);
+  return fetchWithAuth(`/api/elections/${electionId}/ballot`);
 };
 
 const createPosition = async (ballotId, positionData) => {
-  return fetchWithAuth(`/ballots/${ballotId}/positions`, {
+  return fetchWithAuth(`/api/ballots/${ballotId}/positions`, {
     method: 'POST',
     body: JSON.stringify(positionData)
   });
 };
 
 const updatePosition = async (positionId, updates) => {
-  return fetchWithAuth(`/ballots/positions/${positionId}`, {
+  return fetchWithAuth(`/api/ballots/positions/${positionId}`, {
     method: 'PUT',
     body: JSON.stringify(updates)
   });
 };
 
 const deletePosition = async (positionId) => {
-  return fetchWithAuth(`/ballots/positions/${positionId}`, {
+  return fetchWithAuth(`/api/ballots/positions/${positionId}`, {
     method: 'DELETE'
   });
 };
 
 const createCandidate = async (positionId, formData) => {
-  return fetchWithAuth(`/ballots/positions/${positionId}/candidates`, {
+  return fetchWithAuth(`/api/ballots/positions/${positionId}/candidates`, {
     method: 'POST',
     body: formData
   });
 };
 
 const updateCandidate = async (candidateId, updates) => {
-  return fetchWithAuth(`/ballots/candidates/${candidateId}`, {
+  return fetchWithAuth(`/api/ballots/candidates/${candidateId}`, {
     method: 'PUT',
     body: JSON.stringify(updates)
   });
 };
 
 const deleteCandidate = async (candidateId) => {
-  return fetchWithAuth(`/ballots/candidates/${candidateId}`, {
+  return fetchWithAuth(`/api/ballots/candidates/${candidateId}`, {
     method: 'DELETE'
   });
 };
@@ -266,7 +266,7 @@ const PartylistSelectionModal = ({ partylists, onSelect, onCancel, currentPositi
           console.log('Fetching partylist for student:', currentStudent.student_number);
           try {
             const response = await axios.get(
-              `/partylist-candidates/student/${currentStudent.student_number}`,
+              `/api/partylist-candidates/student/${currentStudent.student_number}`,
               {
                 headers: { Authorization: `Bearer ${token}` },
                 withCredentials: true,
@@ -296,7 +296,7 @@ const PartylistSelectionModal = ({ partylists, onSelect, onCancel, currentPositi
           const candidatesPromises = partylists.map(async (party) => {
             if (!party || party.name === "Independent") return null;
             const response = await axios.get(
-              `/partylist-candidates/${party.id}/candidates`,
+              `/api/partylist-candidates/${party.id}/candidates`,
               {
                 headers: { Authorization: `Bearer ${token}` },
                 withCredentials: true,
@@ -489,7 +489,7 @@ export default function BallotPage() {
       try {
         const token = Cookies.get("token");
 
-        const typesResponse = await axios.get('/maintenance/election-types', {
+        const typesResponse = await axios.get('/api/maintenance/election-types', {
           headers: { 
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -508,7 +508,7 @@ export default function BallotPage() {
         }
 
         if (studentCouncilTypeId) {
-          const response = await axios.get(`/direct/positions?electionTypeId=${studentCouncilTypeId}`, {
+          const response = await axios.get(`/api/direct/positions?electionTypeId=${studentCouncilTypeId}`, {
             headers: { 
               Authorization: `Bearer ${token}`,
               'Content-Type': 'application/json'
@@ -525,7 +525,7 @@ export default function BallotPage() {
           }
         }
 
-        const response = await axios.get('/direct/positions', {
+        const response = await axios.get('/api/direct/positions', {
           headers: { 
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -634,7 +634,7 @@ export default function BallotPage() {
       try {
         const token = Cookies.get("token");
         const response = await axios.get(
-          '/partylists',
+          '/api/partylists',
           { headers: { Authorization: `Bearer ${token}` } }
         );
         
@@ -670,7 +670,7 @@ export default function BallotPage() {
       try {
         setIsLoading(true);
         
-        const electionData = await fetchWithAuth(`/elections/${electionId}`);
+        const electionData = await fetchWithAuth(`/api/elections/${electionId}`);
         setElection(electionData);
         
         if (electionData.election_type === "Student Council") {
@@ -1243,7 +1243,7 @@ export default function BallotPage() {
       formData.append('image', file);
       
  
-      const imageResponse = await fetchWithAuth('/ballots/candidates/upload-image', {
+      const imageResponse = await fetchWithAuth('/api/ballots/candidates/upload-image', {
         method: 'POST',
         body: formData,
         headers: {} 
@@ -1815,12 +1815,12 @@ export default function BallotPage() {
       let response;
       try {
         if (ballot.id) {
-          response = await fetchWithAuth(`/ballots/${ballot.id}`, {
+          response = await fetchWithAuth(`/api/ballots/${ballot.id}`, {
             method: 'PUT',
             body: JSON.stringify(apiData)
           });
         } else {
-          response = await fetchWithAuth('/ballots', {
+          response = await fetchWithAuth('/api/ballots', {
             method: 'POST',
             body: JSON.stringify(apiData)
           });
