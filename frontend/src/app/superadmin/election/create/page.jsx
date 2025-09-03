@@ -333,7 +333,7 @@ export default function CreateElectionPage() {
       try {
         const token = Cookies.get("token");
         const response = await axios.post(
-          "/elections/preview-voters",
+          "/api/elections/preview-voters",
           { 
             eligible_voters: {
               programs: [],
@@ -395,7 +395,7 @@ export default function CreateElectionPage() {
         };
         
         const response = await axios.post(
-          "/elections/preview-voters",
+          "/api/elections/preview-voters",
           { eligible_voters: optimizedEligibleVoters },
           {
             headers: {
