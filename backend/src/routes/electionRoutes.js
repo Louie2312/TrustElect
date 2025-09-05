@@ -30,7 +30,7 @@ const {
     getBallotByElection
 } = require("../controllers/ballotController");
 const { verifyToken, isSuperAdmin, isAdmin, isStudent, verifyStudentRecord } = require("../middlewares/authMiddleware");
-
+const electionStatusService = require('../services/electionStatusService');
 const router = express.Router();
 
 // Election creation and management
@@ -78,5 +78,33 @@ router.get("/:id/vote-token", verifyToken, isStudent, getVoteToken);
 router.get("/ballot/:id/student", verifyToken, getBallotForStudent);
 router.get("/ballot/:id/voting", verifyToken, getBallotForVoting);
 router.get("/student/status/:id", verifyToken, getStudentElectionStatus);
+
+// Add this route to your existing electionRoutes.js file
+// (add after your existing routes)
+
+// Manual trigger for election status updates (for testing)
+router.post('/trigger-status-update', verifyToken, isSuperAdmin, async (req, res) => {
+  try {
+    console.log('[MANUAL TRIGGER] Running election status update...');
+    const result = await electionStatusService.updateElectionStatuses();
+    
+    res.json({
+      success: true,
+      message: 'Election status update completed',
+      data: {
+        processedElections: result.statusChanges?.length || 0,
+        statusChanges: result.statusChanges || [],
+        newlyCompletedElections: result.newlyCompletedElections?.length || 0
+      }
+    });
+  } catch (error) {
+    console.error('[MANUAL TRIGGER] Error updating election statuses:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update election statuses',
+      error: error.message
+    });
+  }
+});
 
 module.exports = router;

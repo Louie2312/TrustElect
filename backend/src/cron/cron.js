@@ -1,8 +1,8 @@
 const cron = require('node-cron');
 const electionStatusService = require('../services/electionStatusService');
 
-// Use electionStatusService instead of electionModel for consistent timezone handling
-cron.schedule('*/15 * * * *', async () => {
+// Run every minute for more responsive status updates
+cron.schedule('* * * * *', async () => {
   try {
     console.log('[CRON] Running election status update...');
     await electionStatusService.updateElectionStatuses();
