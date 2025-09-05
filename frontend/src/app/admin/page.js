@@ -397,10 +397,19 @@ export default function AdminDashboard() {
     
     initializeDashboard();
     
+    // ADD THIS: Auto-refresh elections every 5 minutes
+    const electionsRefreshInterval = setInterval(() => {
+      if (hasPermission('elections', 'view') && dataLoaded) {
+        loadAllElections();
+        loadStats();
+      }
+    }, 5 * 60 * 1000); // 5 minutes
+    
     return () => {
       isMounted = false;
+      clearInterval(electionsRefreshInterval); // Clean up interval
     };
-  }, [permissionsLoading, hasPermission, dataLoaded]); // REMOVED function dependencies
+  }, [permissionsLoading, hasPermission, dataLoaded]);
 
   // Handle tab change - update elections when tab or allElections change
   useEffect(() => {

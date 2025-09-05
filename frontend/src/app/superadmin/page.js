@@ -374,9 +374,15 @@ export default function SuperAdminDashboard() {
       loadLiveVoteCount();
     }, 30000);
 
+    // ADD THIS: Refresh elections every 5 minutes to catch status changes
+    const electionsInterval = setInterval(() => {
+      loadElections(activeTab);
+    }, 5 * 60 * 1000); // 5 minutes
+
     return () => {
       clearInterval(pendingInterval);
       clearInterval(statsInterval);
+      clearInterval(electionsInterval); // Clean up new interval
     };
   }, [activeTab, loadPendingApprovals, loadStats, loadElections, loadTotalUniqueVoters, loadLiveVoteCount]);
 
