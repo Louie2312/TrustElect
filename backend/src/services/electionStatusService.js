@@ -23,23 +23,22 @@ async function updateElectionStatuses() {
     const newlyCompletedElections = [];
 
     for (const election of elections) {
-      const startDateTime = DateTime.fromISO(election.date_from)
-        .setZone(MANILA_TIMEZONE)
-        .set({
-          hour: election.start_time ? parseInt(election.start_time.split(':')[0]) : 0,
-          minute: election.start_time ? parseInt(election.start_time.split(':')[1]) : 0
-        });
-
-      const endDateTime = DateTime.fromISO(election.date_to)
-        .setZone(MANILA_TIMEZONE)
-        .set({
-          hour: election.end_time ? parseInt(election.end_time.split(':')[0]) : 23,
-          minute: election.end_time ? parseInt(election.end_time.split(':')[1]) : 59
-        });
-
+      // Properly combine date and time strings before parsing
+      const startDateTimeString = `${election.date_from}T${election.start_time || '00:00:00'}`;
+      const endDateTimeString = `${election.date_to}T${election.end_time || '23:59:59'}`;
+      
+      // Parse the combined datetime string and set Manila timezone
+      const startDateTime = DateTime.fromISO(startDateTimeString, { zone: MANILA_TIMEZONE });
+      const endDateTime = DateTime.fromISO(endDateTimeString, { zone: MANILA_TIMEZONE });
+      
+      console.log(`[STATUS UPDATE] Election "${election.title}":`); 
+      console.log(`  Start: ${startDateTime.toISO()} (${startDateTimeString})`);
+      console.log(`  End: ${endDateTime.toISO()} (${endDateTimeString})`);
+      console.log(`  Current: ${now.toISO()}`);
+  
       let newStatus = election.status;
       const oldStatus = election.status;
-
+  
       if (now < startDateTime) {
         newStatus = 'upcoming';
       } else if (now >= startDateTime && now <= endDateTime) {
