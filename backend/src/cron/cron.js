@@ -1,30 +1,14 @@
 const cron = require('node-cron');
-const { updateElectionStatuses, getElectionById } = require('../models/electionModel');
-const pool = require('../config/db');
-const notificationService = require('../services/notificationService');
+const electionStatusService = require('../services/electionStatusService');
 
-cron.schedule('* * * * *', async () => {
+// Use electionStatusService instead of electionModel for consistent timezone handling
+cron.schedule('*/15 * * * *', async () => {
   try {
-   
-    const result = await updateElectionStatuses();
-    if (result.statusChanges && result.statusChanges.length > 0) {
-  
-      for (const change of result.statusChanges) {
-        try {
-         
-          const election = await getElectionById(change.id);
-          if (election) {
-            await notificationService.notifyElectionStatusChange(election, change.oldStatus, change.newStatus);
-          }
-        } catch (notifError) {
-          console.error(`[CRON] Error sending notification for election ${change.id}:`, notifError);
-        }
-      }
-    }
-    
-    await pool.query('SELECT 1');
+    console.log('[CRON] Running election status update...');
+    await electionStatusService.updateElectionStatuses();
+    console.log('[CRON] Election status update completed');
   } catch (error) {
-    console.error('[CRON] Error:', error);
+    console.error('[CRON] Error updating election statuses:', error);
   }
 });
 

@@ -1,6 +1,5 @@
 const pool = require("../config/db");
 const { DateTime } = require("luxon");
-// Import the notification service
 const notificationService = require("./notificationService");
 
 // Manila timezone (UTC+8)
@@ -18,8 +17,9 @@ async function updateElectionStatuses() {
     );
 
     const now = DateTime.now().setZone(MANILA_TIMEZONE);
+    console.log(`[STATUS UPDATE] Current Manila time: ${now.toISO()}`);
     
-    // Track elections that transitioned to completed status
+    const statusChanges = [];
     const newlyCompletedElections = [];
 
     for (const election of elections) {
@@ -49,15 +49,21 @@ async function updateElectionStatuses() {
       }
 
       if (newStatus !== oldStatus) {
-        await client.query(
-          `UPDATE elections 
-           SET status = $1, last_status_update = NOW() 
-           WHERE id = $2`,
-          [newStatus, election.id]
-        );
+        console.log(`[STATUS UPDATE] Election "${election.title}" status changed: ${oldStatus} -> ${newStatus}`);
         
-        // If transitioning to completed status, track for notifications
-        if (newStatus === 'completed' && oldStatus !== 'completed') {
+        await client.query(
+          `UPDATE elections SET status = $1, updated_at = $2 WHERE id = $3`,
+          [newStatus, now.toJSDate(), election.id]
+        );
+
+        statusChanges.push({
+          id: election.id,
+          title: election.title,
+          oldStatus,
+          newStatus
+        });
+
+        if (newStatus === 'completed') {
           newlyCompletedElections.push(election);
         }
       }
@@ -65,41 +71,32 @@ async function updateElectionStatuses() {
 
     await client.query('COMMIT');
     
-    // After transaction is committed, send notifications for completed elections
-    if (newlyCompletedElections.length > 0) {
-      // Process each completed election
-      for (const election of newlyCompletedElections) {
-        try {
-          // Get complete election details for the notification
-          const { rows } = await pool.query(
-            'SELECT * FROM elections WHERE id = $1',
-            [election.id]
-          );
-          
-          if (rows.length > 0) {
-            const completeElection = rows[0];
-            
-            // Send notifications to students
-            await notificationService.notifyStudentsAboutElectionResults(completeElection);
-          }
-        } catch (error) {
-          console.error(`Error sending notifications for completed election ${election.id}:`, error);
-          // Continue with other elections even if one fails
-        }
+    // Send notifications for status changes
+    for (const change of statusChanges) {
+      try {
+        await notificationService.notifyElectionStatusChange(
+          { id: change.id, title: change.title }, 
+          change.oldStatus, 
+          change.newStatus
+        );
+      } catch (notifError) {
+        console.error(`[STATUS UPDATE] Error sending notification for election ${change.id}:`, notifError);
       }
     }
+
+    console.log(`[STATUS UPDATE] Processed ${elections.length} elections, ${statusChanges.length} status changes`);
+    return { statusChanges, newlyCompletedElections };
     
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('Error updating election statuses:', error);
+    console.error('[STATUS UPDATE] Error updating election statuses:', error);
     throw error;
   } finally {
     client.release();
   }
 }
 
-// Run this more frequently to catch elections ending
-setInterval(updateElectionStatuses, 15 * 60 * 1000); // Every 15 minutes
-updateElectionStatuses(); // Run immediately on startup
-
-module.exports = { updateElectionStatuses };
+// Export the function for use by cron job
+module.exports = {
+  updateElectionStatuses
+};

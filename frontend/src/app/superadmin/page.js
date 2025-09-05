@@ -365,20 +365,28 @@ export default function SuperAdminDashboard() {
     
     initialLoad();
 
+    // Refresh pending approvals every 15 seconds
     const pendingInterval = setInterval(() => {
       loadPendingApprovals();
     }, 15000);
     
+    // Refresh stats and live vote count every 30 seconds
     const statsInterval = setInterval(() => {
       loadStats();
       loadLiveVoteCount();
     }, 30000);
 
+    // Refresh election data every 5 minutes
+    const electionInterval = setInterval(() => {
+      loadElections(activeTab);
+    }, 300000);
+
     return () => {
       clearInterval(pendingInterval);
       clearInterval(statsInterval);
+      clearInterval(electionInterval);
     };
-  }, [activeTab, loadPendingApprovals, loadStats, loadElections, loadTotalUniqueVoters, loadLiveVoteCount]);
+  }, [activeTab]);
 
   useEffect(() => {
     loadElections(activeTab);
@@ -888,3 +896,4 @@ export default function SuperAdminDashboard() {
     </div>
   );
 }
+

@@ -395,10 +395,43 @@ export default function AdminDashboard() {
       }
     };
     
-    initializeDashboard();
+    const initialLoad = async () => {
+      if (isMounted) {
+        await initializeDashboard();
+      }
+    };
+    
+    initialLoad();
+    
+    // Set up intervals for auto-refresh
+    const intervals = [];
+    
+    // Refresh pending approvals every 15 seconds
+    intervals.push(setInterval(() => {
+      if (isMounted) {
+        loadPendingApprovals();
+      }
+    }, 15000));
+    
+    // Refresh stats and live vote count every 30 seconds
+    intervals.push(setInterval(() => {
+      if (isMounted) {
+        loadStats();
+        loadLiveVoteCount();
+      }
+    }, 30000));
+    
+    // Refresh election data every 5 minutes to sync with backend status updates
+    intervals.push(setInterval(() => {
+      if (isMounted) {
+        console.log('[FRONTEND] Auto-refreshing election data...');
+        loadElections();
+      }
+    }, 300000)); // 5 minutes
     
     return () => {
       isMounted = false;
+      intervals.forEach(interval => clearInterval(interval));
     };
   }, [permissionsLoading, hasPermission, dataLoaded]); // REMOVED function dependencies
 
