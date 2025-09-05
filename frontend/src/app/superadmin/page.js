@@ -344,28 +344,11 @@ export default function SuperAdminDashboard() {
     setShowLiveVoteModal(true);
   };
 
+  // In the useEffect with intervals, add election refresh
   useEffect(() => {
-    const initialLoad = async () => {
-      setIsLoading(true);
-      
-      try {
-        await loadPendingApprovals();
-        await Promise.all([
-          loadStats(),
-          loadElections(activeTab),
-          loadTotalUniqueVoters(),
-          loadLiveVoteCount()
-        ]);
-      } catch (error) {
-        console.error('[SuperAdmin] Error during initial load:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
     initialLoad();
-
-    const pendingInterval = setInterval(() => {
+    
+    const pendingApprovalsInterval = setInterval(() => {
       loadPendingApprovals();
     }, 15000);
     
@@ -373,18 +356,18 @@ export default function SuperAdminDashboard() {
       loadStats();
       loadLiveVoteCount();
     }, 30000);
-
-    // ADD THIS: Refresh elections every 5 minutes to catch status changes
+    
+    // Add election data refresh every 5 minutes to sync with backend
     const electionsInterval = setInterval(() => {
-      loadElections(activeTab);
-    }, 5 * 60 * 1000); // 5 minutes
-
+      loadElections();
+    }, 300000); // 5 minutes
+    
     return () => {
-      clearInterval(pendingInterval);
+      clearInterval(pendingApprovalsInterval);
       clearInterval(statsInterval);
-      clearInterval(electionsInterval); // Clean up new interval
+      clearInterval(electionsInterval);
     };
-  }, [activeTab, loadPendingApprovals, loadStats, loadElections, loadTotalUniqueVoters, loadLiveVoteCount]);
+  }, []);
 
   useEffect(() => {
     loadElections(activeTab);

@@ -1,31 +1,35 @@
 const cron = require('node-cron');
-const { updateElectionStatuses, getElectionById } = require('../models/electionModel');
 const pool = require('../config/db');
-const notificationService = require('../services/notificationService');
+// Remove the conflicting election status update
+// const { updateElectionStatuses } = require('../models/electionModel');
+// const notificationService = require('../services/notificationService');
 
+// Comment out or remove this entire cron job
+/*
 cron.schedule('* * * * *', async () => {
   try {
-   
-    const result = await updateElectionStatuses();
-    if (result.statusChanges && result.statusChanges.length > 0) {
-  
-      for (const change of result.statusChanges) {
-        try {
-         
-          const election = await getElectionById(change.id);
-          if (election) {
-            await notificationService.notifyElectionStatusChange(election, change.oldStatus, change.newStatus);
-          }
-        } catch (notifError) {
-          console.error(`[CRON] Error sending notification for election ${change.id}:`, notifError);
-        }
-      }
-    }
+    console.log('Running election status update...');
     
-    await pool.query('SELECT 1');
+    const client = await pool.connect();
+    
+    try {
+      const statusChanges = await updateElectionStatuses();
+      
+      for (const change of statusChanges) {
+        await notificationService.notifyElectionStatusChange(
+          change.electionId,
+          change.oldStatus,
+          change.newStatus
+        );
+      }
+    } finally {
+      client.release();
+    }
   } catch (error) {
-    console.error('[CRON] Error:', error);
+    console.error('Error in cron job:', error);
   }
 });
+*/
 
-module.exports = cron;
+// Keep only other cron jobs if any exist
+module.exports = {};
