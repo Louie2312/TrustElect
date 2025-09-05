@@ -561,16 +561,10 @@ const getElectionWithBallot = async (electionId) => {
   }
 };
 
-const { DateTime } = require('luxon');
-
 async function updateElectionStatuses() {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-
-    // Get current Manila time
-    const manilaTime = DateTime.now().setZone('Asia/Manila');
-    const currentManilaTimestamp = manilaTime.toISO();
 
     // Get current statuses of all elections
     const { rows: currentElections } = await client.query(`
@@ -588,7 +582,7 @@ async function updateElectionStatuses() {
       currentStatusMap[election.id] = election.status;
     });
 
-    // Update statuses using Manila timezone
+    // Update statuses for all elections that don't need approval or are created by superadmin
     const result = await client.query(`
       UPDATE elections
       SET status = 
@@ -598,10 +592,9 @@ async function updateElectionStatuses() {
             WHERE u.id = elections.created_by 
             AND u.role_id = 1
           ) THEN 'pending'
-          WHEN $1::timestamptz BETWEEN (date_from::date + start_time::time) AT TIME ZONE 'Asia/Manila' 
-               AND (date_to::date + end_time::time) AT TIME ZONE 'Asia/Manila' THEN 'ongoing'
-          WHEN $1::timestamptz < (date_from::date + start_time::time) AT TIME ZONE 'Asia/Manila' THEN 'upcoming'
-          WHEN $1::timestamptz > (date_to::date + end_time::time) AT TIME ZONE 'Asia/Manila' THEN 'completed'
+          WHEN CURRENT_TIMESTAMP BETWEEN (date_from::date + start_time::time) AND (date_to::date + end_time::time) THEN 'ongoing'
+          WHEN CURRENT_TIMESTAMP < (date_from::date + start_time::time) THEN 'upcoming'
+          WHEN CURRENT_TIMESTAMP > (date_to::date + end_time::time) THEN 'completed'
           ELSE status
         END
       WHERE needs_approval = FALSE 
@@ -611,7 +604,7 @@ async function updateElectionStatuses() {
         AND u.role_id = 1
       )
       RETURNING id, status;
-    `, [currentManilaTimestamp]);
+    `);
 
     const statusChanges = [];
     for (const updatedElection of result.rows) {
