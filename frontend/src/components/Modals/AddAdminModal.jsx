@@ -97,30 +97,12 @@ export default function AddAdminModal({ onClose }) {
 
   const validateInputs = () => {
     let newErrors = {};
-    if (!formData.firstName.trim()) {
-      newErrors.firstName = "First Name is required.";
-    } else if (!validateLettersOnly(formData.firstName)) {
-      newErrors.firstName = "First Name should contain letters only.";
-    }
-    
-    if (!formData.lastName.trim()) {
-      newErrors.lastName = "Last Name is required.";
-    } else if (!validateLettersOnly(formData.lastName)) {
-      newErrors.lastName = "Last Name should contain letters only.";
-    }
-    
-    if (!formData.email.trim() || !formData.email.endsWith("@novaliches.sti.edu.ph")) {
-      newErrors.email = "Invalid STI email.";
-    }
-    
-    if (!formData.employeeNumber.match(/^\d{4,}$/)) {
-      newErrors.employeeNumber = "Employee Number must be at least 11 numbers";
-    }
-    
-    if (!formData.department) {
-      newErrors.department = "Select a department.";
-    }
-  
+    if (!formData.firstName.trim()) newErrors.firstName = "First Name is required.";
+    if (!formData.lastName.trim()) newErrors.lastName = "Last Name is required.";
+    if (!formData.email.trim() || !formData.email.endsWith("@novaliches.sti.edu.ph")) newErrors.email = "Invalid STI email.";
+    if (!formData.employeeNumber.match(/^\d{4,}$/)) newErrors.employeeNumber = "Employee Number must be at least 4 digits.";
+    if (!formData.department) newErrors.department = "Select a department.";
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -262,51 +244,20 @@ export default function AddAdminModal({ onClose }) {
               <form className="space-y-3">
 
                 <label name="studentNumber" className="text-black font-bold">Employee Number:</label>
-                <input 
-                  type="text" 
-                  name="employeeNumber" 
-                  placeholder="Employee Number (numbers only)" 
-                  onChange={handleEmployeeNumberChange} 
-                  value={formData.employeeNumber}
-                  required 
-                  className="border w-full p-2 rounded text-black" 
-                />
+                <input type="text" name="employeeNumber" placeholder="Employee Number" onChange={handleChange} required className="border w-full p-2 rounded text-black" />
                 {errors.employeeNumber && <p className="text-red-500 text-sm">{errors.employeeNumber}</p>}
 
+
                 <label name="firstName" className="text-black font-bold">First Name:</label>
-                <input 
-                  type="text" 
-                  name="firstName" 
-                  placeholder="First Name (letters only)" 
-                  onChange={handleNameChange} 
-                  value={formData.firstName}
-                  required 
-                  className="border w-full p-2 rounded text-black" 
-                />
+                <input type="text" name="firstName" placeholder="First Name" onChange={handleChange} required className="border w-full p-2 rounded text-black" />
                 {errors.firstName && <p className="text-red-500 text-sm">{errors.firstName}</p>}
 
                 <label name="lastName" className="text-black font-bold">Last Name:</label>
-                <input 
-                  type="text" 
-                  name="lastName" 
-                  placeholder="Last Name (letters only)" 
-                  onChange={handleNameChange} 
-                  value={formData.lastName}
-                  required 
-                  className="border w-full p-2 rounded text-black" 
-                />
+                <input type="text" name="lastName" placeholder="Last Name" onChange={handleChange} required className="border w-full p-2 rounded text-black" />
                 {errors.lastName && <p className="text-red-500 text-sm">{errors.lastName}</p>}
 
                 <label name="email" className="text-black font-bold">Email:</label>
-                <input 
-                  type="email" 
-                  name="email" 
-                  placeholder="Email" 
-                  onChange={handleChange} 
-                  value={formData.email}
-                  required 
-                  className="border w-full p-2 rounded text-black" 
-                />
+                <input type="email" name="email" placeholder="Email" onChange={handleChange} required className="border w-full p-2 rounded text-black" />
                 {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
 
                 {/* Department Dropdown */}
@@ -702,43 +653,24 @@ export default function AddAdminModal({ onClose }) {
   );
 }
 
-// Function to validate letters and spaces only
+// Add this function after the existing functions, around line 80
 const validateLettersOnly = (value) => {
   return /^[a-zA-Z\s]*$/.test(value);
 };
 
-// Function to validate numbers only
-const validateNumbersOnly = (value) => {
-  return /^[0-9]*$/.test(value);
-};
-
-// Handle name changes (firstName and lastName)
 const handleNameChange = (e) => {
   const { name, value } = e.target;
   
   // Only allow letters and spaces for first name and last name
-  if ((name === 'firstName' || name === 'lastName')) {
-    // Allow empty string or valid letters/spaces
-    if (value === '' || validateLettersOnly(value)) {
-      setFormData({ ...formData, [name]: value });
-    }
-    // If invalid characters, don't update state (prevents typing)
-    return;
+  if ((name === 'firstName' || name === 'lastName') && !validateLettersOnly(value)) {
+    return; // Don't update state if invalid characters are entered
   }
-};
-
-// Handle employee number changes (numbers only)
-const handleEmployeeNumberChange = (e) => {
-  const { name, value } = e.target;
   
-  // Only allow numbers for employee number
-  if (value === '' || validateNumbersOnly(value)) {
-    setFormData({ ...formData, [name]: value });
-    
-    // Update password generation logic
-    if (formData.lastName && value.length >= 3) {
-      setGeneratedPassword(generatePassword(formData.lastName, value));
+  setFormData({ ...formData, [name]: value });
+
+  if (name === "lastName" || name === "employeeNumber") {
+    if (formData.lastName && formData.employeeNumber.length >= 3) {
+      setGeneratedPassword(generatePassword(formData.lastName, formData.employeeNumber));
     }
   }
-  // If invalid characters, don't update state (prevents typing)
 };
