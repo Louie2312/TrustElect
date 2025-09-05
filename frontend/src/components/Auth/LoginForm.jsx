@@ -537,10 +537,16 @@ export default function LoginForm({ onClose }) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                className="pr-16" // Add padding-right to make room for our button
+                style={{
+                  // Hide browser's default password reveal button
+                  WebkitTextSecurity: showPassword ? 'none' : 'disc',
+                }}
+                autoComplete="current-password"
               />
               <button
                 type="button"
-                className="absolute inset-y-0 right-3 text-sm text-[#01579B] hover:underline"
+                className="absolute inset-y-0 right-3 text-sm text-[#01579B] hover:underline z-10"
                 onClick={() => setShowPassword(!showPassword)}
               >
                 {showPassword ? "Hide" : "Show"}
