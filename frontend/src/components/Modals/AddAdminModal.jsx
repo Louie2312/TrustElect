@@ -262,15 +262,22 @@ export default function AddAdminModal({ onClose }) {
               <form className="space-y-3">
 
                 <label name="studentNumber" className="text-black font-bold">Employee Number:</label>
-                <input type="text" name="employeeNumber" placeholder="Employee Number" onChange={handleChange} required className="border w-full p-2 rounded text-black" />
+                <input 
+                  type="text" 
+                  name="employeeNumber" 
+                  placeholder="Employee Number (numbers only)" 
+                  onChange={handleEmployeeNumberChange} 
+                  value={formData.employeeNumber}
+                  required 
+                  className="border w-full p-2 rounded text-black" 
+                />
                 {errors.employeeNumber && <p className="text-red-500 text-sm">{errors.employeeNumber}</p>}
-
 
                 <label name="firstName" className="text-black font-bold">First Name:</label>
                 <input 
                   type="text" 
                   name="firstName" 
-                  placeholder="First Name" 
+                  placeholder="First Name (letters only)" 
                   onChange={handleNameChange} 
                   value={formData.firstName}
                   required 
@@ -282,7 +289,7 @@ export default function AddAdminModal({ onClose }) {
                 <input 
                   type="text" 
                   name="lastName" 
-                  placeholder="Last Name" 
+                  placeholder="Last Name (letters only)" 
                   onChange={handleNameChange} 
                   value={formData.lastName}
                   required 
@@ -695,19 +702,31 @@ export default function AddAdminModal({ onClose }) {
   );
 }
 
-// Add this function after the existing functions, around line 80
+// Update the validateLettersOnly function to be more permissive
 const validateLettersOnly = (value) => {
   return /^[a-zA-Z\s]*$/.test(value);
 };
 
+// Create a new function for number-only validation
+const validateNumbersOnly = (value) => {
+  return /^[0-9]*$/.test(value);
+};
+
+// Fix the handleNameChange function
 const handleNameChange = (e) => {
   const { name, value } = e.target;
   
   // Only allow letters and spaces for first name and last name
-  if ((name === 'firstName' || name === 'lastName') && !validateLettersOnly(value)) {
-    return; // Don't update state if invalid characters are entered
+  if ((name === 'firstName' || name === 'lastName')) {
+    // Allow empty string or valid letters/spaces
+    if (value === '' || validateLettersOnly(value)) {
+      setFormData({ ...formData, [name]: value });
+    }
+    // If invalid characters, don't update state (prevents typing)
+    return;
   }
   
+  // For other fields, use normal handling
   setFormData({ ...formData, [name]: value });
 
   if (name === "lastName" || name === "employeeNumber") {
@@ -715,4 +734,20 @@ const handleNameChange = (e) => {
       setGeneratedPassword(generatePassword(formData.lastName, formData.employeeNumber));
     }
   }
+};
+
+// Create a new function for employee number handling
+const handleEmployeeNumberChange = (e) => {
+  const { name, value } = e.target;
+  
+  // Only allow numbers for employee number
+  if (value === '' || validateNumbersOnly(value)) {
+    setFormData({ ...formData, [name]: value });
+    
+    // Update password generation logic
+    if (formData.lastName && value.length >= 3) {
+      setGeneratedPassword(generatePassword(formData.lastName, value));
+    }
+  }
+  // If invalid characters, don't update state (prevents typing)
 };
