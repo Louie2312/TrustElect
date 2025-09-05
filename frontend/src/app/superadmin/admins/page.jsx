@@ -231,51 +231,53 @@ export default function AdminsPage() {
                   </div>
                 )}
               </td>
-              <td className="p-3 flex justify-center gap-2 flex-wrap">
-                {!isSuperAdmin(admin) ? (
-                  <>
-                    <button
-                      onClick={() => {
-                        setSelectedAdmin({ ...admin });
-                        setShowEditModal(true);
-                      }}
-                      className="bg-green-500 text-white px-3 py-1 rounded"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleManagePermissions(admin)}
-                      className="bg-indigo-600 text-white px-3 py-1 rounded"
-                    >
-                      Permissions
-                    </button>
-                    <button
-                      onClick={() => deleteAdmin(admin.id)}
-                      className="bg-yellow-500 text-white px-3 py-1 rounded"
-                    >
-                      Archive
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSelectedAdmin({ ...admin });
-                        setShowResetModal(true);
-                      }}
-                      className="bg-[#01579B] text-white px-3 py-1 rounded"
-                    >
-                      Reset Password
-                    </button>
-                    {admin.is_locked && (
-                      <button 
-                        onClick={() => unlockAdminAccount(admin.id)} 
-                        className="bg-orange-500 text-white px-3 py-1 rounded"
+              <td className="p-2">
+                <div className="grid grid-cols-2 gap-1 max-w-[200px] mx-auto">
+                  {!isSuperAdmin(admin) ? (
+                    <>
+                      <button
+                        onClick={() => {
+                          setSelectedAdmin({ ...admin });
+                          setShowEditModal(true);
+                        }}
+                        className="bg-green-500 text-white px-2 py-1 rounded text-xs whitespace-nowrap"
                       >
-                        Unlock
+                        Edit
                       </button>
-                    )}
-                  </>
-                ) : (
-                  <span className="text-gray-500 italic">System Admin account</span>
-                )}
+                      <button
+                        onClick={() => handleManagePermissions(admin)}
+                        className="bg-indigo-600 text-white px-2 py-1 rounded text-xs whitespace-nowrap"
+                      >
+                        Permissions
+                      </button>
+                      <button
+                        onClick={() => deleteAdmin(admin.id)}
+                        className="bg-yellow-500 text-white px-2 py-1 rounded text-xs whitespace-nowrap"
+                      >
+                        Archive
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedAdmin({ ...admin });
+                          setShowResetModal(true);
+                        }}
+                        className="bg-[#01579B] text-white px-2 py-1 rounded text-xs whitespace-nowrap col-span-2"
+                      >
+                        Reset Password
+                      </button>
+                      {admin.is_locked && (
+                        <button 
+                          onClick={() => unlockAdminAccount(admin.id)} 
+                          className="bg-orange-500 text-white px-2 py-1 rounded text-xs whitespace-nowrap col-span-2"
+                        >
+                          Unlock
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-gray-500 italic text-xs col-span-2 text-center">System Admin account</span>
+                  )}
+                </div>
               </td>
             </tr>
           ))}
