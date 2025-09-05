@@ -702,17 +702,17 @@ export default function AddAdminModal({ onClose }) {
   );
 }
 
-// Update the validateLettersOnly function to be more permissive
+// Function to validate letters and spaces only
 const validateLettersOnly = (value) => {
   return /^[a-zA-Z\s]*$/.test(value);
 };
 
-// Create a new function for number-only validation
+// Function to validate numbers only
 const validateNumbersOnly = (value) => {
   return /^[0-9]*$/.test(value);
 };
 
-// Fix the handleNameChange function
+// Handle name changes (firstName and lastName)
 const handleNameChange = (e) => {
   const { name, value } = e.target;
   
@@ -725,18 +725,9 @@ const handleNameChange = (e) => {
     // If invalid characters, don't update state (prevents typing)
     return;
   }
-  
-  // For other fields, use normal handling
-  setFormData({ ...formData, [name]: value });
-
-  if (name === "lastName" || name === "employeeNumber") {
-    if (formData.lastName && formData.employeeNumber.length >= 3) {
-      setGeneratedPassword(generatePassword(formData.lastName, formData.employeeNumber));
-    }
-  }
 };
 
-// Create a new function for employee number handling
+// Handle employee number changes (numbers only)
 const handleEmployeeNumberChange = (e) => {
   const { name, value } = e.target;
   
