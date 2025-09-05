@@ -78,7 +78,8 @@ const ElectionCard = ({ election, onClick }) => {
       const hours = parseInt(timeParts[0], 10);
       const minutes = parseInt(timeParts[1], 10);
       
-      const dateObj = new Date(year, month - 1, day + 1, hours, minutes);
+      // FIX: Remove the +1 from day
+      const dateObj = new Date(year, month - 1, day, hours, minutes);
       
       if (isNaN(dateObj.getTime())) return 'Invalid date';
       

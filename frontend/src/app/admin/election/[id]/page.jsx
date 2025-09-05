@@ -389,7 +389,7 @@ export default function ElectionDetailsPage() {
       const hours = parseInt(timeParts[0], 10);
       const minutes = parseInt(timeParts[1], 10);
       
-      const dateObj = new Date(year, month - 1, day + 1, hours, minutes);
+      const dateObj = new Date(year, month - 1, day, hours, minutes);
       
       if (isNaN(dateObj.getTime())) return 'Invalid date';
       
@@ -1132,4 +1132,4 @@ export default function ElectionDetailsPage() {
       ) : null}
     </div>
   );
-} 
+}
