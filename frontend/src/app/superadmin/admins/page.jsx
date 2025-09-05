@@ -232,7 +232,7 @@ export default function AdminsPage() {
                 )}
               </td>
               <td className="p-2">
-                <div className="flex flex-wrap justify-center gap-1 min-w-[160px] max-w-[200px]">
+                <div className="flex flex-wrap justify-center gap-1 min-w-[280px]">
                   {!isSuperAdmin(admin) ? (
                     <>
                       <button
@@ -240,19 +240,19 @@ export default function AdminsPage() {
                           setSelectedAdmin({ ...admin });
                           setShowEditModal(true);
                         }}
-                        className="bg-green-500 text-white px-2 py-1 rounded text-xs whitespace-nowrap"
+                        className="bg-green-500 text-white px-1.5 py-0.5 rounded text-xs whitespace-nowrap"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => handleManagePermissions(admin)}
-                        className="bg-indigo-600 text-white px-2 py-1 rounded text-xs whitespace-nowrap"
+                        className="bg-indigo-600 text-white px-1.5 py-0.5 rounded text-xs whitespace-nowrap"
                       >
-                        Permissions
+                        Perms
                       </button>
                       <button
                         onClick={() => deleteAdmin(admin.id)}
-                        className="bg-yellow-500 text-white px-2 py-1 rounded text-xs whitespace-nowrap"
+                        className="bg-yellow-500 text-white px-1.5 py-0.5 rounded text-xs whitespace-nowrap"
                       >
                         Archive
                       </button>
@@ -261,21 +261,21 @@ export default function AdminsPage() {
                           setSelectedAdmin({ ...admin });
                           setShowResetModal(true);
                         }}
-                        className="bg-[#01579B] text-white px-2 py-1 rounded text-xs whitespace-nowrap w-full"
+                        className="bg-[#01579B] text-white px-1.5 py-0.5 rounded text-xs whitespace-nowrap"
                       >
-                        Reset Password
+                        Reset PW
                       </button>
                       {admin.is_locked && (
                         <button 
                           onClick={() => unlockAdminAccount(admin.id)} 
-                          className="bg-orange-500 text-white px-2 py-1 rounded text-xs whitespace-nowrap w-full"
+                          className="bg-orange-500 text-white px-1.5 py-0.5 rounded text-xs whitespace-nowrap"
                         >
                           Unlock
                         </button>
                       )}
                     </>
                   ) : (
-                    <span className="text-gray-500 italic text-xs text-center w-full py-2">System Admin account</span>
+                    <span className="text-gray-500 italic text-xs text-center py-1">System Admin account</span>
                   )}
                 </div>
               </td>
