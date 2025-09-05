@@ -232,7 +232,7 @@ export default function AdminsPage() {
                 )}
               </td>
               <td className="p-2">
-                <div className="grid grid-cols-2 gap-1 max-w-[200px] mx-auto">
+                <div className="flex flex-wrap justify-center gap-1 min-w-[160px] max-w-[200px]">
                   {!isSuperAdmin(admin) ? (
                     <>
                       <button
@@ -261,21 +261,21 @@ export default function AdminsPage() {
                           setSelectedAdmin({ ...admin });
                           setShowResetModal(true);
                         }}
-                        className="bg-[#01579B] text-white px-2 py-1 rounded text-xs whitespace-nowrap col-span-2"
+                        className="bg-[#01579B] text-white px-2 py-1 rounded text-xs whitespace-nowrap w-full"
                       >
                         Reset Password
                       </button>
                       {admin.is_locked && (
                         <button 
                           onClick={() => unlockAdminAccount(admin.id)} 
-                          className="bg-orange-500 text-white px-2 py-1 rounded text-xs whitespace-nowrap col-span-2"
+                          className="bg-orange-500 text-white px-2 py-1 rounded text-xs whitespace-nowrap w-full"
                         >
                           Unlock
                         </button>
                       )}
                     </>
                   ) : (
-                    <span className="text-gray-500 italic text-xs col-span-2 text-center">System Admin account</span>
+                    <span className="text-gray-500 italic text-xs text-center w-full py-2">System Admin account</span>
                   )}
                 </div>
               </td>
