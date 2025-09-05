@@ -8,7 +8,7 @@ import Cookies from "js-cookie";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import stiLogo from "../../assets/sti_logo.png";
 
 export default function LoginForm({ onClose }) {
@@ -537,9 +537,9 @@ export default function LoginForm({ onClose }) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="pr-16" // Add padding-right to make room for our button
+                className="pr-16"
                 style={{
-                  // Hide browser's default password reveal button
+                  // Hide browser's default password reveal button completely
                   WebkitTextSecurity: showPassword ? 'none' : 'disc',
                 }}
                 autoComplete="current-password"

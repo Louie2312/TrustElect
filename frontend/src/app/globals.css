@@ -25,4 +25,31 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Hide all browser default password reveal buttons */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none !important;
+}
+
+input[type="password"]::-webkit-credentials-auto-fill-button,
+input[type="password"]::-webkit-strong-password-auto-fill-button {
+  display: none !important;
+}
+
+/* For Firefox */
+input[type="password"] {
+  -moz-appearance: textfield;
+}
+
+/* Additional styles to ensure no default password toggles appear */
+input[type="password"]::-webkit-textfield-decoration-container {
+  visibility: hidden !important;
+}
+
+/* Hide any other potential password reveal elements */
+input[type="password"]::-webkit-inner-spin-button,
+input[type="password"]::-webkit-outer-spin-button {
+  display: none !important;
+}
+
 
