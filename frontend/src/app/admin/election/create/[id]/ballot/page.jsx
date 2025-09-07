@@ -2390,7 +2390,7 @@ export default function BallotPage() {
                           value={candidate.course || ''}
                           readOnly 
                           className="w-full p-2 border border-gray-300 rounded text-black bg-blue-50"
-                          placeholder="Course (auto-filled when student is selected)"
+                          placeholder="Course"
                         />
                         {errors[`candidate-course-${candidate.id}`] && (
                           <p className="text-red-500 text-sm mt-1 text-black">{errors[`candidate-course-${candidate.id}`]}</p>
