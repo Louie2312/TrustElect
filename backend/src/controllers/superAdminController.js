@@ -91,7 +91,11 @@ const upload = multer({ storage });
 
 const buildAbsoluteUrl = (req, relativePath) => {
   if (!relativePath) return null;
-  const basePath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
+  let basePath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
+  // Normalize to /api/uploads if the path starts with /uploads
+  if (basePath.startsWith('/uploads/')) {
+    basePath = `/api${basePath}`; // serve under /api/uploads as well
+  }
   const protocol = req.protocol;
   const host = req.get('host');
   return `${protocol}://${host}${basePath}`;
