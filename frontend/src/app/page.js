@@ -188,6 +188,10 @@ export default function Home() {
 
       // For relative URLs, ensure they start with /
       const path = baseUrl.startsWith('/') ? baseUrl : `/${baseUrl}`;
+      
+      // Log the URL for debugging
+      console.log('Formatting image URL:', url, '->', path);
+      
       return path; // Return clean relative path
     } catch (error) {
       console.error('Error formatting URL:', error, url);
@@ -230,8 +234,11 @@ export default function Home() {
               priority
               style={{ maxHeight: 'calc(51px - (0px * 2))' }}
               onError={(e) => {
-                console.error("Error loading logo");
+                console.error("Error loading logo:", landingContent.logo.imageUrl);
                 e.currentTarget.style.display = 'none';
+              }}
+              onLoad={() => {
+                console.log('Logo loaded successfully:', landingContent.logo.imageUrl);
               }}
             />
           ) : (
@@ -320,6 +327,7 @@ export default function Home() {
               } else if (heroPosterUrl) {
                 // Add cache-busting timestamp to prevent caching issues
                 const posterWithTimestamp = `${heroPosterUrl}?timestamp=${new Date().getTime()}`;
+                console.log('Rendering hero poster:', posterWithTimestamp);
                 return (
               <div className="w-full max-w-6xl aspect-video bg-black/20 rounded-lg overflow-hidden">
                 <Image
@@ -339,6 +347,9 @@ export default function Home() {
                     </div>
                   `;
                 }
+                  }}
+                  onLoad={() => {
+                    console.log('Hero poster loaded successfully:', posterWithTimestamp);
                   }}
                 />
               </div>

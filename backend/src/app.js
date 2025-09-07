@@ -322,6 +322,32 @@ app.get("/api/healthcheck", (req, res) => {
   });
 });
 
+// Debug endpoint to check uploaded files
+app.get("/api/debug/files", (req, res) => {
+  try {
+    const uploadsDir = path.join(__dirname, '../uploads');
+    const imagesDir = path.join(uploadsDir, 'images');
+    
+    let files = [];
+    if (fs.existsSync(imagesDir)) {
+      files = fs.readdirSync(imagesDir).map(file => ({
+        name: file,
+        path: `/uploads/images/${file}`,
+        fullPath: path.join(imagesDir, file)
+      }));
+    }
+    
+    res.json({
+      uploadsDir,
+      imagesDir,
+      files,
+      exists: fs.existsSync(imagesDir)
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.head("/api/healthcheck", (req, res) => {
   res.status(200).end();
 });
@@ -351,6 +377,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads'), {
 }));
 console.log('Static files served from:', path.join(__dirname, '../uploads'));
 
+// Also expose uploads under /api/uploads for reverse proxy setups that only route /api
 app.use('/api/uploads', express.static(path.join(__dirname, '../uploads'), {
   setHeaders: (res, filePath) => {
     res.set('Cross-Origin-Resource-Policy', 'cross-origin');
