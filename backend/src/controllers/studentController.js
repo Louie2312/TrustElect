@@ -690,7 +690,11 @@ exports.getStudentProfile = async (req, res) => {
 
       const profile = result.rows[0];
       if (profile.profile_picture) {
-        profile.profile_picture = `/uploads/profiles/${profile.profile_picture}`;
+        // Return absolute URL for production, relative for development
+        const baseUrl = process.env.NODE_ENV === 'production' 
+          ? (req.protocol + '://' + req.get('host'))
+          : '';
+        profile.profile_picture = `${baseUrl}/uploads/profiles/${profile.profile_picture}`;
       }
 
       return res.status(200).json(profile);
@@ -745,7 +749,11 @@ exports.uploadProfilePicture = async (req, res) => {
         WHERE id = $2
       `, [req.file.filename, actualStudentId]);
       
-      const filePath = `/uploads/profiles/${req.file.filename}`;
+      // Return absolute URL for production, relative for development
+      const baseUrl = process.env.NODE_ENV === 'production' 
+        ? (req.protocol + '://' + req.get('host'))
+        : '';
+      const filePath = `${baseUrl}/uploads/profiles/${req.file.filename}`;
       
       return res.json({ success: true, filePath });
     } catch (err) {

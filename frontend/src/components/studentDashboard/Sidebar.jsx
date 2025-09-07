@@ -28,11 +28,19 @@ export default function Sidebar() {
       const lastName = res.data.lastName || "";
       setStudentName(`${firstName} ${lastName}`);
   
-      // Ensure Image Path is Correct
-      const imageUrl = res.data.profile_picture
-        ? `${res.data.profile_picture}?timestamp=${new Date().getTime()}`
-        : "https://via.placeholder.com/80";
-  
+      // Format image URL properly
+      let imageUrl = "https://via.placeholder.com/80";
+      if (res.data.profile_picture) {
+        // If it's already a full URL, use it as is
+        if (res.data.profile_picture.startsWith('http')) {
+          imageUrl = `${res.data.profile_picture}?timestamp=${new Date().getTime()}`;
+        } else {
+          // If it's a relative path, make it absolute
+          const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
+          imageUrl = `${baseUrl}${res.data.profile_picture}?timestamp=${new Date().getTime()}`;
+        }
+      }
+
       setProfilePic(imageUrl);
     } catch (error) {
       console.error("Error fetching profile:", error);
@@ -60,6 +68,15 @@ export default function Sidebar() {
               src={profilePic}
               alt="Profile"
               className="w-20 h-20 rounded-full mx-auto border-2 border-white hover:opacity-80"
+              onError={(e) => {
+                console.log("Error loading sidebar profile image:", e.target.src);
+                // Try fallback URL
+                if (!e.target.src.includes('via.placeholder.com')) {
+                  const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
+                  const fallbackUrl = `${baseUrl}/api/uploads/profiles/${profilePic.split('/').pop()}`;
+                  e.target.src = fallbackUrl;
+                }
+              }}
             />
           </div>
           <h3 className="mt-2 text-lg font-semibold">{studentName}</h3>
@@ -71,7 +88,20 @@ export default function Sidebar() {
               <button className="absolute top-2 right-2 text-gray-600 hover:text-gray-900 text-xl" onClick={() => setShowImageModal(false)}>
                 ×
               </button>
-              <img src={profilePic} alt="Profile" className="w-40 h-40 rounded-full mx-auto border-4 border-gray-300" />
+              <img 
+                src={profilePic} 
+                alt="Profile" 
+                className="w-40 h-40 rounded-full mx-auto border-4 border-gray-300"
+                onError={(e) => {
+                  console.log("Error loading modal profile image:", e.target.src);
+                  // Try fallback URL
+                  if (!e.target.src.includes('via.placeholder.com')) {
+                    const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
+                    const fallbackUrl = `${baseUrl}/api/uploads/profiles/${profilePic.split('/').pop()}`;
+                    e.target.src = fallbackUrl;
+                  }
+                }}
+              />
             </div>
           </div>
         )}

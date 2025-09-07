@@ -63,9 +63,18 @@ export default function StudentProfilePage() {
       setCourseName(res.data.courseName || "");
       setYearLevel(res.data.yearLevel || "");
 
-      const imageUrl = res.data.profile_picture
-        ? `${res.data.profile_picture}?timestamp=${new Date().getTime()}`
-        : "https://via.placeholder.com/100";
+      // Format image URL properly
+      let imageUrl = "https://via.placeholder.com/100";
+      if (res.data.profile_picture) {
+        // If it's already a full URL, use it as is
+        if (res.data.profile_picture.startsWith('http')) {
+          imageUrl = `${res.data.profile_picture}?timestamp=${new Date().getTime()}`;
+        } else {
+          // If it's a relative path, make it absolute
+          const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
+          imageUrl = `${baseUrl}${res.data.profile_picture}?timestamp=${new Date().getTime()}`;
+        }
+      }
 
       setProfilePic(imageUrl);
       setLoading(false);
@@ -114,7 +123,18 @@ export default function StudentProfilePage() {
         return;
       }
 
-      const imageUrl = `${res.data.filePath}?timestamp=${new Date().getTime()}`;
+      // Format the uploaded image URL properly
+      let imageUrl = "https://via.placeholder.com/100";
+      if (res.data.filePath) {
+        // If it's already a full URL, use it as is
+        if (res.data.filePath.startsWith('http')) {
+          imageUrl = `${res.data.filePath}?timestamp=${new Date().getTime()}`;
+        } else {
+          // If it's a relative path, make it absolute
+          const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
+          imageUrl = `${baseUrl}${res.data.filePath}?timestamp=${new Date().getTime()}`;
+        }
+      }
 
       setProfilePic(imageUrl);
       setPreviewImage(null);
@@ -236,6 +256,15 @@ export default function StudentProfilePage() {
                 src={previewImage || profilePic} 
                 alt="Profile" 
                 className="w-32 h-32 rounded-full mx-auto border-2 border-gray-300 object-cover"
+                onError={(e) => {
+                  console.log("Error loading profile image:", e.target.src);
+                  // Try fallback URL
+                  if (!e.target.src.includes('via.placeholder.com')) {
+                    const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
+                    const fallbackUrl = `${baseUrl}/api/uploads/profiles/${profilePic.split('/').pop()}`;
+                    e.target.src = fallbackUrl;
+                  }
+                }}
               />
               
               {!previewImage && (
