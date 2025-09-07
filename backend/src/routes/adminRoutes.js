@@ -52,7 +52,7 @@ router.post(
     check("lastName", "Last Name is required").not().isEmpty(),
     check("email", "Valid email is required")
       .isEmail()
-      .matches(/^[a-zA-Z0-9._%+-]+@novaliches\.sti\.edu\.ph$/),
+      .matches(/^[a-zA-Z0-9._%+-]+@novaliches\.sti\.edu(\.ph)?$/),
     check("employeeNumber", "Employee Number must be at least 4 digits.").isLength({ min: 4 }),
     check("department", "Department is required.").not().isEmpty(),
   ],

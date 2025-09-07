@@ -71,7 +71,7 @@ router.post(
     check("lastName", "Last Name is required").not().isEmpty(),
     check("email", "Valid email is required")
       .isEmail()
-      .matches(/^[a-zA-Z0-9._%+-]+@novaliches\.sti\.edu\.ph$/),
+      .matches(/^[a-zA-Z0-9._%+-]+@novaliches\.sti\.edu(\.ph)?$/),
     check("studentNumber", "Student Number must be 11 digits and start with '02000'")
       .matches(/^02000[0-9]{6}$/),
     check("courseName", "Course name is required unless Course ID is provided")
