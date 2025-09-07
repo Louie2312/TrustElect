@@ -40,8 +40,8 @@ exports.registerAdmin = async (req, res) => {
     }
     const createdBy = decoded.id || 1; 
 
-    if (!email.endsWith("@novaliches.sti.edu.ph")) {
-      return res.status(400).json({ message: "Invalid email domain. Only @novaliches.sti.edu.ph emails are allowed." });
+    if (!email.endsWith("@novaliches.sti.edu.ph") && !email.endsWith("@novaliches.sti.edu")) {
+      return res.status(400).json({ message: "Invalid email domain. Only @novaliches.sti.edu.ph or @novaliches.sti.edu emails are allowed." });
     }
 
     const emailExists = await checkAdminEmailExists(email);
@@ -128,8 +128,8 @@ exports.updateAdmin = async (req, res) => {
       return res.status(400).json({ message: "At least one field is required to update." });
     }
 
-    if (email && !email.endsWith("@novaliches.sti.edu.ph")) {
-      return res.status(400).json({ message: "Invalid email domain. Only @novaliches.sti.edu.ph emails are allowed." });
+    if (email && !email.endsWith("@novaliches.sti.edu.ph") && !email.endsWith("@novaliches.sti.edu")) {
+      return res.status(400).json({ message: "Invalid email domain. Only @novaliches.sti.edu.ph or @novaliches.sti.edu emails are allowed." });
     }
 
     const updatedAdmin = await updateAdmin(id, { 

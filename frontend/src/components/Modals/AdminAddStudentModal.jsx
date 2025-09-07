@@ -40,7 +40,7 @@ export default function AdminAddStudentModal({ onClose, onSuccess, departmentCou
     let newErrors = {};
     if (!formData.firstName.trim()) newErrors.firstName = "First Name is required.";
     if (!formData.lastName.trim()) newErrors.lastName = "Last Name is required.";
-    if (!formData.email.trim() || !formData.email.endsWith("@novaliches.sti.edu.ph")) newErrors.email = "Invalid STI email.";
+    if (!formData.email.trim() || (!formData.email.endsWith("@novaliches.sti.edu.ph") && !formData.email.endsWith("@novaliches.sti.edu"))) newErrors.email = "Invalid STI email. Must end with @novaliches.sti.edu.ph or @novaliches.sti.edu";
     if (!formData.studentNumber.match(/^02000[0-9]{6}$/)) newErrors.studentNumber = "Must start with '02000' and be 11 digits.";
     if (!formData.courseName) newErrors.courseName = "Select a course.";
     if (!formData.yearLevel) newErrors.yearLevel = "Select a year level.";

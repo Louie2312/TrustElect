@@ -99,7 +99,7 @@ export default function AddAdminModal({ onClose }) {
     let newErrors = {};
     if (!formData.firstName.trim()) newErrors.firstName = "First Name is required.";
     if (!formData.lastName.trim()) newErrors.lastName = "Last Name is required.";
-    if (!formData.email.trim() || !formData.email.endsWith("@novaliches.sti.edu.ph")) newErrors.email = "Invalid STI email.";
+    if (!formData.email.trim() || (!formData.email.endsWith("@novaliches.sti.edu.ph") && !formData.email.endsWith("@novaliches.sti.edu"))) newErrors.email = "Invalid STI email. Must end with @novaliches.sti.edu.ph or @novaliches.sti.edu";
     if (!formData.employeeNumber.match(/^\d{4,}$/)) newErrors.employeeNumber = "Employee Number must be at least 4 digits.";
     if (!formData.department) newErrors.department = "Select a department.";
 

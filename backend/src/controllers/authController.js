@@ -16,7 +16,7 @@ exports.checkEmailExists = async (req, res) => {
   try {
     const { email } = req.body;
 
-    if (!email || !email.endsWith("@novaliches.sti.edu.ph")) {
+    if (!email || (!email.endsWith("@novaliches.sti.edu.ph") && !email.endsWith("@novaliches.sti.edu"))) {
       return res.status(400).json({ success: false, message: "Invalid STI email format." });
     }
 
@@ -41,7 +41,7 @@ exports.loginUser = async (req, res) => {
     const { email, password } = req.body;
     const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
 
-    if (!email || !email.endsWith("@novaliches.sti.edu.ph")) {
+    if (!email || (!email.endsWith("@novaliches.sti.edu.ph") && !email.endsWith("@novaliches.sti.edu"))) {
       return res.status(400).json({ success: false, message: "Invalid email format." });
     }
 
@@ -490,7 +490,7 @@ exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
     
-    if (!email || !email.endsWith("@novaliches.sti.edu.ph")) {
+    if (!email || (!email.endsWith("@novaliches.sti.edu.ph") && !email.endsWith("@novaliches.sti.edu"))) {
       return res.status(400).json({ 
         success: false, 
         message: "Please enter a valid STI email address." 

@@ -93,8 +93,8 @@ export default function EditAdminModal({ admin, onClose }) {
     
     if (formData.email.trim() === "") {
       newErrors.email = "Email is required.";
-    } else if (!formData.email.endsWith("@novaliches.sti.edu.ph")) {
-      newErrors.email = "Invalid STI email.";
+    } else if (!formData.email.endsWith("@novaliches.sti.edu.ph") && !formData.email.endsWith("@novaliches.sti.edu")) {
+      newErrors.email = "Invalid STI email. Must end with @novaliches.sti.edu.ph or @novaliches.sti.edu";
     }
     
     if (formData.employeeNumber.trim() === "") {

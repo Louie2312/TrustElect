@@ -66,7 +66,7 @@ export default function LoginForm({ onClose }) {
     setDevOtp("");
     setResendMessage("");
 
-    if (!email.endsWith("@novaliches.sti.edu.ph")) {
+    if (!email.endsWith("@novaliches.sti.edu.ph") && !email.endsWith("@novaliches.sti.edu")) {
       setError("Please enter a valid STI email address.");
       return;
     }
@@ -323,7 +323,7 @@ export default function LoginForm({ onClose }) {
   const handleForgotPassword = async () => {
     setError("");
     
-    if (!forgotEmail.endsWith("@novaliches.sti.edu.ph")) {
+    if (!forgotEmail.endsWith("@novaliches.sti.edu.ph") && !forgotEmail.endsWith("@novaliches.sti.edu")) {
       setError("Please enter a valid STI email address.");
       return;
     }
