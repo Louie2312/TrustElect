@@ -273,6 +273,13 @@ export default function ElectionDetailsPage() {
         
         setCandidateImages(imageCache);
         setElection(electionData);
+        
+        // Debug: Log the election data to check voter_count
+        console.log('Election data loaded:', {
+          voter_count: electionData.voter_count,
+          vote_count: electionData.vote_count,
+          positions: electionData.positions?.length
+        });
       } catch (err) {
         console.error('Error loading election details:', err);
         setError(err.message);
@@ -396,27 +403,8 @@ export default function ElectionDetailsPage() {
 
   const eligibilityCriteria = getEligibilityCriteria();
 
-  // Helper function to calculate accurate percentages
-  const calculateAccuratePercentage = (candidateVotes, totalVotesCast) => {
-    if (!totalVotesCast || totalVotesCast === 0) return '0.00';
-    return ((candidateVotes || 0) / totalVotesCast * 100).toFixed(2);
-  };
-
-  // Helper function to get total votes cast across all positions
-  const getTotalVotesCast = (positions) => {
-    if (!positions || positions.length === 0) return 0;
-    return positions.reduce((total, position) => {
-      return total + (position.candidates || []).reduce((posTotal, candidate) => {
-        return posTotal + (candidate.vote_count || 0);
-      }, 0);
-    }, 0);
-  };
-
   const formatResultsData = (positions) => {
     if (!positions || positions.length === 0) return [];
-
-    // Calculate total votes cast across all positions
-    const totalVotesCast = getTotalVotesCast(positions);
 
     return positions.map(position => {
       const sortedCandidates = [...(position.candidates || [])].sort((a, b) => 
@@ -427,7 +415,7 @@ export default function ElectionDetailsPage() {
         name: formatNameSimple(candidate.last_name, candidate.first_name, candidate.name),
         votes: candidate.vote_count || 0, 
         party: candidate.party || 'Independent',
-        percentage: calculateAccuratePercentage(candidate.vote_count, totalVotesCast),
+        percentage: election.voter_count ? ((candidate.vote_count || 0) / election.voter_count * 100).toFixed(2) : '0.00',
         color: CHART_COLORS[index % CHART_COLORS.length]
       }));
       
@@ -855,58 +843,68 @@ export default function ElectionDetailsPage() {
 
                   <div className="space-y-3">
                     {/* Top 3 Candidates */}
-                    {top3.map((candidate, index) => (
-                      <div key={candidate.id} className="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
-                        <div className="relative">
-                          <div className="relative w-16 h-16 mr-4">
-                            {candidate.image_url && !imageErrors[candidate.id] ? (
-                              <Image
-                                src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
-                                alt={`${candidate.first_name} ${candidate.last_name}`}
-                                fill
-                                sizes="64px"
-                                className="object-cover rounded-full"
-                                onError={() => handleImageError(candidate.id)}
-                              />
-                            ) : (
-                              <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
-                                <User className="w-8 h-8 text-gray-400" />
-                              </div>
-                            )}
-                            <div className={`absolute -top-2 -right-2 rounded-full p-1 text-xs font-bold ${
-                              index === 0 ? 'bg-blue-500 text-white' :
-                              index === 1 ? 'bg-gray-500 text-white' :
-                              'bg-gray-400 text-white'
-                            }`}>
-                              {getRankLabel(index)}
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <h4 className="font-medium text-black">
-                                {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
-                              </h4>
-                              {candidate.party && (
-                                <span className="text-sm text-black">
-                                  {candidate.party}
-                                </span>
+                    {top3.map((candidate, index) => {
+                      // Debug: Log the calculation values
+                      console.log('Ballot Details - Candidate:', {
+                        name: formatNameSimple(candidate.last_name, candidate.first_name, candidate.name),
+                        vote_count: candidate.vote_count,
+                        voter_count: election.voter_count,
+                        calculated_percentage: election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'
+                      });
+                      
+                      return (
+                        <div key={candidate.id} className="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
+                          <div className="relative">
+                            <div className="relative w-16 h-16 mr-4">
+                              {candidate.image_url && !imageErrors[candidate.id] ? (
+                                <Image
+                                  src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
+                                  alt={`${candidate.first_name} ${candidate.last_name}`}
+                                  fill
+                                  sizes="64px"
+                                  className="object-cover rounded-full"
+                                  onError={() => handleImageError(candidate.id)}
+                                />
+                              ) : (
+                                <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
+                                  <User className="w-8 h-8 text-gray-400" />
+                                </div>
                               )}
-                            </div>
-                            <div className="text-right">
-                              <div className="font-bold text-black text-lg">
-                                {Number(candidate.vote_count || 0).toLocaleString()}
+                              <div className={`absolute -top-2 -right-2 rounded-full p-1 text-xs font-bold ${
+                                index === 0 ? 'bg-blue-500 text-white' :
+                                index === 1 ? 'bg-gray-500 text-white' :
+                                'bg-gray-400 text-white'
+                              }`}>
+                                {getRankLabel(index)}
                               </div>
-                              <div className="text-sm text-gray-600">
-                                {calculateAccuratePercentage(candidate.vote_count, getTotalVotesCast(election.positions))}%
+                            </div>
+                          </div>
+                          
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <h4 className="font-medium text-black">
+                                  {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
+                                </h4>
+                                {candidate.party && (
+                                  <span className="text-sm text-black">
+                                    {candidate.party}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-right">
+                                <div className="font-bold text-black text-lg">
+                                  {Number(candidate.vote_count || 0).toLocaleString()}
+                                </div>
+                                <div className="text-sm text-gray-600">
+                                  {election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
+                                </div>
                               </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
 
                     {/* Other Candidates */}
                     {others.map(candidate => (
@@ -945,7 +943,7 @@ export default function ElectionDetailsPage() {
                                 {Number(candidate.vote_count || 0).toLocaleString()}
                               </div>
                               <div className="text-sm text-gray-600">
-                                {calculateAccuratePercentage(candidate.vote_count, getTotalVotesCast(election.positions))}%
+                                {election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
                               </div>
                             </div>
                           </div>
@@ -1087,7 +1085,7 @@ export default function ElectionDetailsPage() {
                               {Number(position.sortedCandidates[0].vote_count || 0).toLocaleString()} 
                             </span>
                             <span className="ml-1 text-blue-600">
-                              ({calculateAccuratePercentage(position.sortedCandidates[0].vote_count, getTotalVotesCast(election.positions))}% of total votes cast)
+                              ({election.voter_count ? (position.sortedCandidates[0].vote_count / election.voter_count * 100).toFixed(2) : 0}% of eligible voters)
                             </span>
                           </div>
                         </div>
@@ -1106,7 +1104,7 @@ export default function ElectionDetailsPage() {
                         <XAxis dataKey="name" />
                         <YAxis />
                         <Tooltip 
-                          formatter={(value, name) => [`${value} votes (${calculateAccuratePercentage(value, getTotalVotesCast(election.positions))}% `, 'Votes']}
+                          formatter={(value, name) => [`${value} votes (${election.voter_count ? ((value / election.voter_count) * 100).toFixed(2) : '0.00'}% `, 'Votes']}
                           labelFormatter={(name) => `${name}`}
                         />
                         <Legend />
@@ -1165,7 +1163,7 @@ export default function ElectionDetailsPage() {
                             <div className="w-48 h-2 bg-gray-200 rounded-full overflow-hidden">
                               <div 
                                 className="h-full bg-blue-500 rounded-full"
-                                style={{ width: `${calculateAccuratePercentage(candidate.vote_count, getTotalVotesCast(election.positions))}%` }}
+                                style={{ width: `${election.voter_count ? (candidate.vote_count / election.voter_count * 100).toFixed(2) : 0}%` }}
                               />
                             </div>
                             <span className="ml-3 text-black">
@@ -1321,7 +1319,7 @@ export default function ElectionDetailsPage() {
                                       {Number(candidate.vote_count || 0).toLocaleString()}
                                     </div>
                                     <div className={`${isFullScreen ? 'text-base' : 'text-sm'} text-gray-600`}>
-                                      {calculateAccuratePercentage(candidate.vote_count, getTotalVotesCast(election.positions))}%
+                                      {election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
                                     </div>
                                   </div>
                                 </div>
@@ -1329,7 +1327,7 @@ export default function ElectionDetailsPage() {
                                   <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden mt-3">
                                     <div 
                                       className={`h-full rounded-full ${index === 0 ? 'bg-blue-500' : index === 1 ? 'bg-gray-500' : 'bg-gray-400'}`}
-                                      style={{ width: `${calculateAccuratePercentage(candidate.vote_count, getTotalVotesCast(election.positions))}%` }}
+                                      style={{ width: `${election.voter_count ? (candidate.vote_count / election.voter_count * 100).toFixed(2) : 0}%` }}
                                     />
                                   </div>
                                 )}
@@ -1383,7 +1381,7 @@ export default function ElectionDetailsPage() {
                                         {Number(candidate.vote_count || 0).toLocaleString()}
                                       </div>
                                       <div className="text-sm text-gray-600">
-                                        {calculateAccuratePercentage(candidate.vote_count, getTotalVotesCast(election.positions))}%
+                                        {election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
                                       </div>
                                     </div>
                                   </div>
