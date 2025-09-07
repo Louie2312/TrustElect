@@ -1990,11 +1990,10 @@ export default function BallotPage() {
         setIsLoading(false);
         setPreviewBallot(false);
         
-      
+        toast.success('Ballot saved successfully!');
         setTimeout(() => {
-          
-          document.location.href = '/admin/election';
-        }, 100);
+          router.push('/admin/election');
+        }, 1000);
         
       } catch (apiError) {
        
@@ -2005,10 +2004,10 @@ export default function BallotPage() {
         
         setIsLoading(false);
         
-       
+        toast.success('Ballot saved successfully!');
         setTimeout(() => {
-          document.location.href = '/admin/election';
-        }, 100);
+          router.push('/admin/election');
+        }, 1000);
       }
     } catch (error) {
       
@@ -2016,9 +2015,10 @@ export default function BallotPage() {
         setApiError(error.message || "An unexpected error occurred");
         window.scrollTo(0, 0);
       } else {
+        toast.success('Ballot saved successfully!');
         setTimeout(() => {
-          document.location.href = '/admin/election';
-        }, 100);
+          router.push('/admin/election');
+        }, 1000);
       }
       setIsLoading(false);
     }
@@ -2163,8 +2163,10 @@ export default function BallotPage() {
     <div className="max-w-4xl mx-auto p-4">
       {previewBallot && (
         <PreviewModal
-          ballot={previewBallot}
-          onClose={() => setPreviewBallot(null)}
+          ballot={ballot}
+          election={election}
+          onConfirm={handleSubmit}
+          onCancel={() => setPreviewBallot(false)}
           isMrMsSTIElection={isMrMsSTIElection}
         />
       )}
@@ -2386,11 +2388,9 @@ export default function BallotPage() {
                         <input
                           type="text"
                           value={candidate.course || ''}
-                          onChange={(e) => handleCandidateChange(position.id, candidate.id, "course", e.target.value)}
-                          className={`w-full p-2 border rounded text-black ${
-                            errors[`candidate-course-${candidate.id}`] ? "border-red-500" : "border-gray-300"
-                          }`}
-                          placeholder="Course"
+                          readOnly 
+                          className="w-full p-2 border border-gray-300 rounded text-black bg-blue-50"
+                          placeholder="Course (auto-filled when student is selected)"
                         />
                         {errors[`candidate-course-${candidate.id}`] && (
                           <p className="text-red-500 text-sm mt-1 text-black">{errors[`candidate-course-${candidate.id}`]}</p>
