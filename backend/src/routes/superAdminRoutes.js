@@ -24,7 +24,8 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
-    cb(null, Date.now() + "-" + file.originalname);
+    const ext = path.extname(file.originalname);
+    cb(null, `profile_${Date.now()}${ext}`);
   },
 });
 const upload = multer({ storage });

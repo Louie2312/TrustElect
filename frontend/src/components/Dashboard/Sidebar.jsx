@@ -61,6 +61,10 @@ export default function Sidebar() {
               src={profilePic}
               alt="Profile"
               className="w-20 h-20 rounded-full mx-auto border-2 border-white hover:opacity-80"
+              onError={(e) => {
+                console.error("Sidebar image failed to load:", profilePic);
+                e.target.src = "https://via.placeholder.com/80";
+              }}
             />
           </div>
           <h3 className="mt-2 text-lg font-semibold">{superAdminName}</h3>
@@ -72,7 +76,15 @@ export default function Sidebar() {
               <button className="absolute top-2 right-2 text-gray-600 hover:text-gray-900 text-xl" onClick={() => setShowImageModal(false)}>
                 ×
               </button>
-              <img src={profilePic} alt="Profile" className="w-40 h-40 rounded-full mx-auto border-4 border-gray-300" />
+              <img
+                src={profilePic}
+                alt="Profile"
+                className="w-40 h-40 rounded-full mx-auto border-4 border-gray-300"
+                onError={(e) => {
+                  console.error("Modal image failed to load:", profilePic);
+                  e.target.src = "https://via.placeholder.com/160";
+                }}
+              />
             </div>
           </div>
         )}

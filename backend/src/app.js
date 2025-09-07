@@ -322,7 +322,34 @@ app.get("/api/healthcheck", (req, res) => {
 app.head("/api/healthcheck", (req, res) => {
   res.status(200).end();
 });
-app.use('/uploads', express.static(path.join(__dirname, '../uploads'), {
+
+// Test endpoint to check if static files are accessible
+app.get("/api/test-static", (req, res) => {
+  const fs = require('fs');
+  const path = require('path');
+  const uploadsDir = path.join(__dirname, '../uploads');
+
+  try {
+    const files = fs.readdirSync(path.join(uploadsDir, 'profiles'));
+    res.json({
+      status: "ok",
+      uploadsDir: uploadsDir,
+      profilesCount: files.length,
+      sampleFiles: files.slice(0, 5)
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+      message: error.message,
+      uploadsDir: uploadsDir
+    });
+  }
+});
+app.use('/uploads', (req, res, next) => {
+  // Log static file requests for debugging
+  console.log(`Static file request: ${req.method} ${req.originalUrl}`);
+  next();
+}, express.static(path.join(__dirname, '../uploads'), {
   setHeaders: (res, filePath) => {
     res.set('Cross-Origin-Resource-Policy', 'cross-origin');
     res.set('Access-Control-Allow-Origin', '*');

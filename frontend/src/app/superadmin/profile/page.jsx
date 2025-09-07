@@ -211,7 +211,15 @@ export default function ProfilePage() {
           <div className="text-center">
             <label className="cursor-pointer inline-block">
               <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
-              <img src={profilePic} alt="Profile" className="w-24 h-24 rounded-full mx-auto border-2 border-gray-400 hover:opacity-80" />
+              <img
+                src={profilePic}
+                alt="Profile"
+                className="w-24 h-24 rounded-full mx-auto border-2 border-gray-400 hover:opacity-80"
+                onError={(e) => {
+                  console.error("Image failed to load:", profilePic);
+                  e.target.src = "https://via.placeholder.com/100";
+                }}
+              />
             </label>
             <p className="text-sm text-gray-500 mt-2">Change profile</p>
           </div>

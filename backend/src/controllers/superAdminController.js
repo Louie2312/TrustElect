@@ -72,22 +72,6 @@ exports.loginSuperAdmin = async (req, res) => {
 };
 
 
-const uploadDir = path.join(__dirname, "../../uploads/profiles");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    cb(null, `profile_${Date.now()}${path.extname(file.originalname)}`);
-  },
-});
-
-const upload = multer({ storage });
 
 exports.uploadProfilePicture = async (req, res) => {
   try {
@@ -95,6 +79,13 @@ exports.uploadProfilePicture = async (req, res) => {
       return res.status(400).json({ message: "No file uploaded" });
     }
     const filePath = `/uploads/profiles/${req.file.filename}`;
+
+    console.log("Profile picture uploaded successfully:", {
+      filename: req.file.filename,
+      originalname: req.file.originalname,
+      size: req.file.size,
+      filePath: filePath
+    });
 
     return res.json({ success: true, filePath });
   } catch (error) {
@@ -113,6 +104,13 @@ exports.getSuperAdminProfile = async (req, res) => {
 
     const profile = superAdmin.rows[0];
     const filePath = profile.profile_picture ? `/uploads/profiles/${profile.profile_picture}` : null;
+
+    console.log("Super Admin profile retrieved:", {
+      firstName: profile.first_name,
+      lastName: profile.last_name,
+      profile_picture: profile.profile_picture,
+      constructed_filePath: filePath
+    });
 
     res.json({
       firstName: profile.first_name,
@@ -136,6 +134,13 @@ exports.updateSuperAdminProfile = async (req, res) => {
 
     const profilePicFilename = profile_picture?.includes("/uploads/profiles/") ? profile_picture.split("/uploads/profiles/")[1] : profile_picture;
 
+    console.log("Updating Super Admin profile:", {
+      firstName,
+      lastName,
+      original_profile_picture: profile_picture,
+      extracted_filename: profilePicFilename
+    });
+
     await db.query("UPDATE users SET first_name = $1, last_name = $2, profile_picture = $3 WHERE role_id = 1", [firstName, lastName, profilePicFilename]);
 
     const updatedProfile = await db.query("SELECT first_name, last_name, profile_picture FROM users WHERE role_id = 1");
@@ -145,6 +150,13 @@ exports.updateSuperAdminProfile = async (req, res) => {
     }
 
     const filePath = updatedProfile.rows[0].profile_picture ? `/uploads/profiles/${updatedProfile.rows[0].profile_picture}` : null;
+
+    console.log("Super Admin profile updated successfully:", {
+      firstName: updatedProfile.rows[0].first_name,
+      lastName: updatedProfile.rows[0].last_name,
+      stored_filename: updatedProfile.rows[0].profile_picture,
+      constructed_filePath: filePath
+    });
 
     res.json({
       firstName: updatedProfile.rows[0].first_name,
