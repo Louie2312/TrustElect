@@ -51,8 +51,11 @@ export default function ProfilePage() {
       setLastName(res.data.lastName || "");
       setEmail(res.data.email || "");
 
-      const imageUrl = res.data.profile_picture
-        ? `${res.data.profile_picture}?timestamp=${new Date().getTime()}`
+      const baseProfileUrl = res.data.profile_picture
+        ? res.data.profile_picture.split("?")[0]
+        : null;
+      const imageUrl = baseProfileUrl
+        ? `${baseProfileUrl}?timestamp=${new Date().getTime()}`
         : "https://via.placeholder.com/100";
 
       setProfilePic(imageUrl);
@@ -90,7 +93,8 @@ export default function ProfilePage() {
         return;
       }
 
-      const imageUrl = `${res.data.filePath}?timestamp=${new Date().getTime()}`;
+      const cleanPath = res.data.filePath.split("?")[0];
+      const imageUrl = `${cleanPath}?timestamp=${new Date().getTime()}`;
 
       setProfilePic(imageUrl);
       console.log("Profile Picture Updated:", imageUrl);
@@ -104,12 +108,15 @@ export default function ProfilePage() {
       const token = Cookies.get("token");
       if (!token) return;
 
+      // Ensure we only store the clean URL (without any query params/timestamps)
+      const cleanProfilePic = (profilePic || "").split("?")[0];
+
       await axios.put(
         "/api/superadmin/profile",
         {
           firstName,
           lastName,
-          profile_picture: profilePic,
+          profile_picture: cleanProfilePic,
         },
         {
           headers: { Authorization: `Bearer ${token}` },

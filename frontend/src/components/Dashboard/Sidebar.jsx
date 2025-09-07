@@ -27,8 +27,11 @@ export default function Sidebar() {
       const lastName = res.data.lastName || "Admin";
       setSuperAdminName(`${firstName} ${lastName}`);
 
-      const imageUrl = res.data.profile_picture
-        ? `${res.data.profile_picture}?timestamp=${new Date().getTime()}`
+      const baseProfileUrl = res.data.profile_picture
+        ? res.data.profile_picture.split("?")[0]
+        : null;
+      const imageUrl = baseProfileUrl
+        ? `${baseProfileUrl}?timestamp=${new Date().getTime()}`
         : "https://via.placeholder.com/80";
   
       setProfilePic(imageUrl);
