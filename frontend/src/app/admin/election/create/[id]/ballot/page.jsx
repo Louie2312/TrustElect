@@ -874,14 +874,19 @@ export default function BallotPage() {
         withCredentials: true,
       });
 
+      console.log('fetchAllStudents response:', res.data);
+
       if (res.data && res.data.students) {
         const activeStudents = res.data.students.filter((student) => student.is_active);
+        console.log('Active students loaded:', activeStudents.length, activeStudents.slice(0, 3));
         setAllStudents(activeStudents);
-      }
-    } catch (error) {
+        } else {
+          console.log('No students data in response');
+        }
+      } catch (error) {
       console.error("Error fetching students:", error);
-    }
-  };
+      }
+    };
 
   const validateField = (field, value) => {
     if (!value.trim()) return `${field} is required`;
@@ -969,6 +974,8 @@ export default function BallotPage() {
   };
 
   const fetchNameSuggestions = (searchTerm, type, posId, candId) => {
+    console.log('fetchNameSuggestions called with:', { searchTerm, type, posId, candId, allStudentsLength: allStudents.length });
+    
     if (!searchTerm || searchTerm.length < 2) {
       if (type === 'first_name') {
         setFirstNameSuggestions([]);
@@ -983,11 +990,13 @@ export default function BallotPage() {
     try {
       const matchingStudents = allStudents.filter(student => {
         if (type === 'first_name') {
-          return student.first_name.toLowerCase().includes(searchTerm.toLowerCase());
+          return student.first_name && student.first_name.toLowerCase().includes(searchTerm.toLowerCase());
         } else {
-          return student.last_name.toLowerCase().includes(searchTerm.toLowerCase());
+          return student.last_name && student.last_name.toLowerCase().includes(searchTerm.toLowerCase());
         }
       }).slice(0, 10);
+
+      console.log('Name matching students found:', matchingStudents.length, matchingStudents);
 
       if (type === 'first_name') {
         setFirstNameSuggestions(matchingStudents);
@@ -1009,6 +1018,8 @@ export default function BallotPage() {
   };
 
   const fetchStudentNumberSuggestions = (searchTerm, posId, candId) => {
+    console.log('fetchStudentNumberSuggestions called with:', { searchTerm, posId, candId, allStudentsLength: allStudents.length });
+    
     if (!searchTerm || searchTerm.length < 2) {
       setStudentNumberSuggestions([]);
       setShowStudentNumberSuggestions(false);
@@ -1017,9 +1028,11 @@ export default function BallotPage() {
     
     try {
       const matchingStudents = allStudents.filter(student =>
-        student.student_number.toLowerCase().includes(searchTerm.toLowerCase())
+        student.student_number && student.student_number.toLowerCase().includes(searchTerm.toLowerCase())
       ).slice(0, 10);
 
+      console.log('Matching students found:', matchingStudents.length, matchingStudents);
+      
       setStudentNumberSuggestions(matchingStudents);
       setShowStudentNumberSuggestions(matchingStudents.length > 0);
     } catch (error) {
@@ -2353,7 +2366,7 @@ export default function BallotPage() {
                               {studentNumberSuggestions.map((suggestion, index) => (
                                 <div
                                   key={index}
-                                  className="p-2 hover:bg-gray-100 cursor-pointer text-sm"
+                                  className="p-2 hover:bg-gray-100 cursor-pointer text-sm text-black"
                                   onClick={() => selectStudentNumberSuggestion(suggestion, position.id, candidate.id)}
                                 >
                                   {suggestion.student_number} - {suggestion.first_name} {suggestion.last_name}
@@ -2415,7 +2428,7 @@ export default function BallotPage() {
                               {firstNameSuggestions.map((suggestion, index) => (
                                 <div
                                   key={index}
-                                  className="p-2 hover:bg-gray-100 cursor-pointer text-sm"
+                                  className="p-2 hover:bg-gray-100 cursor-pointer text-sm text-black"
                                   onClick={() => selectNameSuggestion(suggestion, 'first_name', position.id, candidate.id)}
                                 >
                                   {suggestion.first_name} {suggestion.last_name} - {suggestion.student_number}
@@ -2456,7 +2469,7 @@ export default function BallotPage() {
                               {lastNameSuggestions.map((suggestion, index) => (
                                 <div
                                   key={index}
-                                  className="p-2 hover:bg-gray-100 cursor-pointer text-sm"
+                                  className="p-2 hover:bg-gray-100 cursor-pointer text-sm text-black"
                                   onClick={() => selectNameSuggestion(suggestion, 'last_name', position.id, candidate.id)}
                                 >
                                   {suggestion.first_name} {suggestion.last_name} - {suggestion.student_number}
