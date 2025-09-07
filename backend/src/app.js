@@ -345,6 +345,44 @@ app.get("/api/test-static", (req, res) => {
     });
   }
 });
+// Create a special route for profile pictures
+app.get('/uploads/profiles/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const filePath = path.join(__dirname, '../uploads/profiles', filename);
+  
+  console.log(`Profile image request: ${filename}, full path: ${filePath}`);
+  
+  // Check if file exists
+  if (!fs.existsSync(filePath)) {
+    console.log(`File not found: ${filePath}`);
+    return res.status(404).send('File not found');
+  }
+  
+  // Set appropriate headers
+  res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.set('Access-Control-Allow-Origin', '*');
+  
+  // Set content type based on file extension
+  if (filename.endsWith('.jpg') || filename.endsWith('.jpeg')) {
+    res.set('Content-Type', 'image/jpeg');
+  } else if (filename.endsWith('.png')) {
+    res.set('Content-Type', 'image/png');
+  } else if (filename.endsWith('.gif')) {
+    res.set('Content-Type', 'image/gif');
+  } else if (filename.endsWith('.webp')) {
+    res.set('Content-Type', 'image/webp');
+  }
+  
+  // Disable caching
+  res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  
+  // Send the file
+  res.sendFile(filePath);
+});
+
+// General static file serving
 app.use('/uploads', (req, res, next) => {
   // Log static file requests for debugging
   console.log(`Static file request: ${req.method} ${req.originalUrl}`);

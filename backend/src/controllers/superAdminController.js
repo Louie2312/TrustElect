@@ -78,19 +78,49 @@ exports.uploadProfilePicture = async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
     }
+    
+    // Check if file exists on disk
+    const fullPath = path.join(__dirname, "../../uploads/profiles", req.file.filename);
+    if (!fs.existsSync(fullPath)) {
+      console.error(`File not found on disk after upload: ${fullPath}`);
+      return res.status(500).json({ message: "File upload failed - file not found on disk" });
+    }
+    
+    // Set the file permissions to ensure it's readable by the web server
+    try {
+      fs.chmodSync(fullPath, 0o644);
+      console.log(`File permissions set to 644 for: ${fullPath}`);
+    } catch (permError) {
+      console.error(`Failed to set file permissions: ${permError.message}`);
+      // Continue anyway, as this might not be critical
+    }
+    
     const filePath = `/uploads/profiles/${req.file.filename}`;
+    
+    // Get the absolute URL for the frontend
+    const baseUrl = process.env.NODE_ENV === 'production'
+      ? 'https://trustelectonline.com'
+      : 'http://localhost:5000';
+    
+    const absoluteUrl = `${baseUrl}${filePath}`;
 
     console.log("Profile picture uploaded successfully:", {
       filename: req.file.filename,
       originalname: req.file.originalname,
       size: req.file.size,
-      filePath: filePath
+      filePath: filePath,
+      absoluteUrl: absoluteUrl,
+      fullDiskPath: fullPath
     });
 
-    return res.json({ success: true, filePath });
+    return res.json({
+      success: true,
+      filePath,
+      absoluteUrl
+    });
   } catch (error) {
     console.error("Error uploading file:", error);
-    return res.status(500).json({ message: "Server error", error });
+    return res.status(500).json({ message: "Server error", error: error.toString() });
   }
 };
 
@@ -104,12 +134,22 @@ exports.getSuperAdminProfile = async (req, res) => {
 
     const profile = superAdmin.rows[0];
     const filePath = profile.profile_picture ? `/uploads/profiles/${profile.profile_picture}` : null;
+    
+    // Get the absolute URL for the frontend
+    let absoluteUrl = null;
+    if (filePath) {
+      const baseUrl = process.env.NODE_ENV === 'production'
+        ? 'https://trustelectonline.com'
+        : 'http://localhost:5000';
+      absoluteUrl = `${baseUrl}${filePath}`;
+    }
 
     console.log("Super Admin profile retrieved:", {
       firstName: profile.first_name,
       lastName: profile.last_name,
       profile_picture: profile.profile_picture,
-      constructed_filePath: filePath
+      constructed_filePath: filePath,
+      absoluteUrl: absoluteUrl
     });
 
     res.json({
@@ -117,6 +157,7 @@ exports.getSuperAdminProfile = async (req, res) => {
       lastName: profile.last_name,
       email: profile.email,
       profile_picture: filePath,
+      absoluteUrl: absoluteUrl
     });
   } catch (error) {
     console.error("Error fetching Super Admin profile:", error);
@@ -150,18 +191,29 @@ exports.updateSuperAdminProfile = async (req, res) => {
     }
 
     const filePath = updatedProfile.rows[0].profile_picture ? `/uploads/profiles/${updatedProfile.rows[0].profile_picture}` : null;
+    
+    // Get the absolute URL for the frontend
+    let absoluteUrl = null;
+    if (filePath) {
+      const baseUrl = process.env.NODE_ENV === 'production'
+        ? 'https://trustelectonline.com'
+        : 'http://localhost:5000';
+      absoluteUrl = `${baseUrl}${filePath}`;
+    }
 
     console.log("Super Admin profile updated successfully:", {
       firstName: updatedProfile.rows[0].first_name,
       lastName: updatedProfile.rows[0].last_name,
       stored_filename: updatedProfile.rows[0].profile_picture,
-      constructed_filePath: filePath
+      constructed_filePath: filePath,
+      absoluteUrl: absoluteUrl
     });
 
     res.json({
       firstName: updatedProfile.rows[0].first_name,
       lastName: updatedProfile.rows[0].last_name,
       profile_picture: filePath,
+      absoluteUrl: absoluteUrl
     });
   } catch (error) {
     console.error("Error updating profile:", error);

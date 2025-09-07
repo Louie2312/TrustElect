@@ -27,6 +27,15 @@ export default function Sidebar() {
       const lastName = res.data.lastName || "Admin";
       setSuperAdminName(`${firstName} ${lastName}`);
 
+      // If the server provides an absolute URL directly, use it
+      if (res.data.absoluteUrl) {
+        const imageUrl = `${res.data.absoluteUrl}?timestamp=${new Date().getTime()}`;
+        console.log("Using server-provided absolute URL:", imageUrl);
+        setProfilePic(imageUrl);
+        return;
+      }
+      
+      // Otherwise, construct the URL from the profile_picture path
       const baseProfileUrl = res.data.profile_picture
         ? res.data.profile_picture.split("?")[0]
         : null;

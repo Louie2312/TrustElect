@@ -51,29 +51,36 @@ export default function ProfilePage() {
       setLastName(res.data.lastName || "");
       setEmail(res.data.email || "");
 
-      const baseProfileUrl = res.data.profile_picture
-        ? res.data.profile_picture.split("?")[0]
-        : null;
-      
-      // Check if the URL is already absolute (starts with http:// or https://)
-      const isAbsoluteUrl = baseProfileUrl && (baseProfileUrl.startsWith('http://') || baseProfileUrl.startsWith('https://'));
-      
-      // If it's not an absolute URL and starts with /uploads, prepend the backend URL
-      const fullBaseUrl = baseProfileUrl && !isAbsoluteUrl && baseProfileUrl.startsWith('/uploads')
-        ? `https://trustelectonline.com${baseProfileUrl}`
-        : baseProfileUrl;
-      
-      const imageUrl = fullBaseUrl
-        ? `${fullBaseUrl}?timestamp=${new Date().getTime()}`
-        : "/images/default-avatar.png";
-      
-      console.log("Profile image URL constructed:", {
-        original: res.data.profile_picture,
-        baseUrl: baseProfileUrl,
-        isAbsolute: isAbsoluteUrl,
-        fullBaseUrl: fullBaseUrl,
-        finalUrl: imageUrl
-      });
+      // If the server provides an absolute URL directly, use it
+      let imageUrl;
+      if (res.data.absoluteUrl) {
+        imageUrl = `${res.data.absoluteUrl}?timestamp=${new Date().getTime()}`;
+        console.log("Using server-provided absolute URL:", imageUrl);
+      } else {
+        const baseProfileUrl = res.data.profile_picture
+          ? res.data.profile_picture.split("?")[0]
+          : null;
+        
+        // Check if the URL is already absolute (starts with http:// or https://)
+        const isAbsoluteUrl = baseProfileUrl && (baseProfileUrl.startsWith('http://') || baseProfileUrl.startsWith('https://'));
+        
+        // If it's not an absolute URL and starts with /uploads, prepend the backend URL
+        const fullBaseUrl = baseProfileUrl && !isAbsoluteUrl && baseProfileUrl.startsWith('/uploads')
+          ? `https://trustelectonline.com${baseProfileUrl}`
+          : baseProfileUrl;
+        
+        imageUrl = fullBaseUrl
+          ? `${fullBaseUrl}?timestamp=${new Date().getTime()}`
+          : "/images/default-avatar.png";
+        
+        console.log("Profile image URL constructed:", {
+          original: res.data.profile_picture,
+          baseUrl: baseProfileUrl,
+          isAbsolute: isAbsoluteUrl,
+          fullBaseUrl: fullBaseUrl,
+          finalUrl: imageUrl
+        });
+      }
 
       setProfilePic(imageUrl);
       setLoading(false);
@@ -110,25 +117,32 @@ export default function ProfilePage() {
         return;
       }
 
-      const cleanPath = res.data.filePath.split("?")[0];
-      
-      // Check if the URL is already absolute (starts with http:// or https://)
-      const isAbsoluteUrl = cleanPath && (cleanPath.startsWith('http://') || cleanPath.startsWith('https://'));
-      
-      // If it's not an absolute URL and starts with /uploads, prepend the backend URL
-      const fullPath = cleanPath && !isAbsoluteUrl && cleanPath.startsWith('/uploads')
-        ? `https://trustelectonline.com${cleanPath}`
-        : cleanPath;
-      
-      const imageUrl = `${fullPath}?timestamp=${new Date().getTime()}`;
-      
-      console.log("Upload image URL constructed:", {
-        original: res.data.filePath,
-        cleanPath: cleanPath,
-        isAbsolute: isAbsoluteUrl,
-        fullPath: fullPath,
-        finalUrl: imageUrl
-      });
+      // Use the absolute URL if provided by the server
+      let imageUrl;
+      if (res.data.absoluteUrl) {
+        imageUrl = `${res.data.absoluteUrl}?timestamp=${new Date().getTime()}`;
+        console.log("Using server-provided absolute URL:", imageUrl);
+      } else {
+        const cleanPath = res.data.filePath.split("?")[0];
+        
+        // Check if the URL is already absolute (starts with http:// or https://)
+        const isAbsoluteUrl = cleanPath && (cleanPath.startsWith('http://') || cleanPath.startsWith('https://'));
+        
+        // If it's not an absolute URL and starts with /uploads, prepend the backend URL
+        const fullPath = cleanPath && !isAbsoluteUrl && cleanPath.startsWith('/uploads')
+          ? `https://trustelectonline.com${cleanPath}`
+          : cleanPath;
+        
+        imageUrl = `${fullPath}?timestamp=${new Date().getTime()}`;
+        
+        console.log("Upload image URL constructed:", {
+          original: res.data.filePath,
+          cleanPath: cleanPath,
+          isAbsolute: isAbsoluteUrl,
+          fullPath: fullPath,
+          finalUrl: imageUrl
+        });
+      }
 
       setProfilePic(imageUrl);
       console.log("Profile Picture Updated:", imageUrl);
