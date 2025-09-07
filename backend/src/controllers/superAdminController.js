@@ -94,7 +94,6 @@ exports.uploadProfilePicture = async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
     }
-    // Standardize to return consistent path format
     const filePath = `/uploads/profiles/${req.file.filename}`;
 
     return res.json({ success: true, filePath });
@@ -113,13 +112,7 @@ exports.getSuperAdminProfile = async (req, res) => {
     }
 
     const profile = superAdmin.rows[0];
-    // Fix: Check if profile_picture already includes the full path
-    let filePath = null;
-    if (profile.profile_picture) {
-      filePath = profile.profile_picture.startsWith('/uploads/') 
-        ? profile.profile_picture 
-        : `/uploads/profiles/${profile.profile_picture}`;
-    }
+    const filePath = profile.profile_picture ? `/uploads/profiles/${profile.profile_picture}` : null;
 
     res.json({
       firstName: profile.first_name,
