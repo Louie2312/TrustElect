@@ -105,18 +105,3 @@ async function updateElectionStatuses() {
 
 module.exports = { updateElectionStatuses };
 
-
-// Add this at the beginning of updateElectionStatuses function
-console.log(`[STATUS-UPDATE] Database timezone check: ${await checkDatabaseTimezone()}`);
-console.log(`[STATUS-UPDATE] Node.js timezone: ${process.env.TZ}`);
-
-// Add this helper function at the end of the file
-async function checkDatabaseTimezone() {
-  try {
-    const { rows } = await pool.query('SHOW timezone');
-    return rows[0].timezone;
-  } catch (error) {
-    console.error('Error checking database timezone:', error);
-    return 'Unknown';
-  }
-}
