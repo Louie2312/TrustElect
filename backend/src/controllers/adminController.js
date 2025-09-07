@@ -266,6 +266,18 @@ exports.unlockAdminAccount = async (req, res) => {
 };
 
 
+const buildAbsoluteUrl = (req, relativePath) => {
+  if (!relativePath) return null;
+  let basePath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
+  // Normalize to /api/uploads if the path starts with /uploads
+  if (basePath.startsWith('/uploads/')) {
+    basePath = `/api${basePath}`; // serve under /api/uploads as well
+  }
+  const protocol = req.protocol;
+  const host = req.get('host');
+  return `${protocol}://${host}${basePath}`;
+};
+
 exports.getAdminProfile = async (req, res) => {
   try {
 
@@ -292,7 +304,13 @@ exports.getAdminProfile = async (req, res) => {
     }
 
     const admin = result.rows[0];
-    return res.status(200).json(admin);
+    const filePath = admin.profile_picture ? `/uploads/admins/${admin.profile_picture}` : null;
+    const absoluteUrl = buildAbsoluteUrl(req, filePath);
+
+    return res.status(200).json({
+      ...admin,
+      profile_picture: absoluteUrl || null
+    });
   } catch (error) {
     console.error("Error fetching admin profile:", error);
     return res.status(500).json({ message: "Server error" });
@@ -316,8 +334,10 @@ exports.uploadAdminProfilePicture = async (req, res) => {
     const adminId = adminResult.rows[0].id;
 
     const filePath = `/uploads/admins/${req.file.filename}`;
+    const absoluteUrl = buildAbsoluteUrl(req, filePath);
+    
     const updateQuery = "UPDATE admins SET profile_picture = $1 WHERE id = $2 RETURNING *";
-    const updateResult = await pool.query(updateQuery, [filePath, adminId]);
+    const updateResult = await pool.query(updateQuery, [req.file.filename, adminId]);
 
     if (updateResult.rows.length === 0) {
       return res.status(500).json({ message: "Failed to update profile picture" });
@@ -325,7 +345,8 @@ exports.uploadAdminProfilePicture = async (req, res) => {
 
     return res.status(200).json({ 
       message: "Profile picture uploaded successfully", 
-      filePath: filePath
+      filePath: filePath,
+      url: absoluteUrl
     });
   } catch (error) {
     console.error("Error uploading profile picture:", error);

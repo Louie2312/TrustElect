@@ -49,10 +49,12 @@ export default function AdminProfilePage() {
       setEmployeeNumber(res.data.employeeNumber || "");
       setDepartment(res.data.department || "");
   
-      // Fix: Properly format the image URL to ensure Next.js rewrite works
-      const imageUrl = res.data.profile_picture
-        ? `${res.data.profile_picture.startsWith('/uploads/') ? res.data.profile_picture : `/uploads/admins/${res.data.profile_picture}`}?timestamp=${new Date().getTime()}`
-        : "https://via.placeholder.com/100";
+      // Handle both absolute and relative URLs, prevent duplicate query strings
+      const rawUrl = res.data.profile_picture || null;
+      const baseProfileUrl = rawUrl ? rawUrl.split("?")[0] : null;
+      const isAbsolute = baseProfileUrl && /^https?:\/\//i.test(baseProfileUrl);
+      const finalBase = isAbsolute ? baseProfileUrl : baseProfileUrl ? `https://trustelectonline.com${baseProfileUrl}` : null;
+      const imageUrl = finalBase ? `${finalBase}?timestamp=${new Date().getTime()}` : "https://via.placeholder.com/100";
   
       setProfilePic(imageUrl);
       setLoading(false);
@@ -99,10 +101,11 @@ export default function AdminProfilePage() {
         return;
       }
 
-      // Update profile picture state with the returned file path
-      const uploadImageUrl = res.data.filePath
-        ? `${res.data.filePath.startsWith('/uploads/') ? res.data.filePath : `/uploads/admins/${res.data.filePath}`}?timestamp=${new Date().getTime()}`
-        : "https://via.placeholder.com/100";
+      // Handle both absolute and relative URLs from upload response
+      const cleanPath = (res.data.url || res.data.filePath || "").split("?")[0];
+      const isAbsolute = /^https?:\/\//i.test(cleanPath);
+      const finalBase = isAbsolute ? cleanPath : `https://trustelectonline.com${cleanPath}`;
+      const uploadImageUrl = `${finalBase}?timestamp=${new Date().getTime()}`;
       
       setProfilePic(uploadImageUrl);
       setPreviewImage(null);

@@ -32,10 +32,12 @@ export default function Sidebar() {
       const lastName = res.data.lastName || "";
       setAdminName(`${firstName} ${lastName}`);
   
-      // Fix: Properly format the image URL to ensure Next.js rewrite works
-      const imageUrl = res.data.profile_picture
-        ? `${res.data.profile_picture.startsWith('/uploads/') ? res.data.profile_picture : `/uploads/admins/${res.data.profile_picture}`}?timestamp=${new Date().getTime()}`
-        : "https://via.placeholder.com/80";
+      // Handle both absolute and relative URLs, prevent duplicate query strings
+      const rawUrl = res.data.profile_picture || null;
+      const baseProfileUrl = rawUrl ? rawUrl.split("?")[0] : null;
+      const isAbsolute = baseProfileUrl && /^https?:\/\//i.test(baseProfileUrl);
+      const finalBase = isAbsolute ? baseProfileUrl : baseProfileUrl ? `https://trustelectonline.com${baseProfileUrl}` : null;
+      const imageUrl = finalBase ? `${finalBase}?timestamp=${new Date().getTime()}` : "https://via.placeholder.com/80";
   
       setProfilePic(imageUrl);
     } catch (error) {
