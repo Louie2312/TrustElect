@@ -15,9 +15,11 @@ const generatePassword = (lastName, employeeNumber) => {
 
 exports.registerAdmin = async (req, res) => {
   try {
+    console.log('Admin registration attempt with data:', req.body);
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('Validation errors:', errors.array());
       return res.status(400).json({ message: "Validation failed", errors: errors.array() });
     }
 
@@ -31,6 +33,8 @@ exports.registerAdmin = async (req, res) => {
       permissions 
     } = req.body;
 
+    console.log('Extracted data:', { firstName, lastName, email, employeeNumber, department });
+
     const token = req.header("Authorization")?.replace("Bearer ", "") || req.cookies?.token;
     if (!token) return res.status(401).json({ message: "Unauthorized. Token is missing." });
 
@@ -41,21 +45,31 @@ exports.registerAdmin = async (req, res) => {
     const createdBy = decoded.id || 1; 
 
     if (!email.endsWith("@novaliches.sti.edu.ph") && !email.endsWith("@novaliches.sti.edu")) {
+      console.log('Email domain validation failed for:', email);
       return res.status(400).json({ message: "Invalid email domain. Only @novaliches.sti.edu.ph or @novaliches.sti.edu emails are allowed." });
     }
 
+    console.log('Email domain validation passed for:', email);
+
     const emailExists = await checkAdminEmailExists(email);
     const employeeNumberExists = await checkEmployeeNumberExists(employeeNumber);
+
+    console.log('Email exists check:', emailExists);
+    console.log('Employee number exists check:', employeeNumberExists);
 
     if (emailExists) return res.status(400).json({ message: "Email is already registered." });
     if (employeeNumberExists) return res.status(400).json({ message: "Employee Number already exists." });
 
     const autoPassword = generatePassword(lastName, employeeNumber);
+    console.log('Generated password:', autoPassword);
 
 
     const hashedPassword = await bcrypt.hash(autoPassword, 10);
+    console.log('Password hashed successfully');
     
     const username = email;
+    console.log('About to register admin in database...');
+    
     const newAdmin = await registerAdmin(
       firstName, 
       lastName, 
@@ -66,12 +80,17 @@ exports.registerAdmin = async (req, res) => {
       department, 
       createdBy
     );
+    
+    console.log('Admin registered successfully:', newAdmin);
 
 
     if (permissions && typeof permissions === 'object') {
+      console.log('Setting admin permissions...');
       await setAdminPermissions(newAdmin.id, permissions);
+      console.log('Admin permissions set successfully');
     }
 
+    console.log('Admin registration completed successfully');
     return res.status(201).json({
       message: "Admin registered successfully!",
       generatedPassword: autoPassword, 
@@ -87,6 +106,7 @@ exports.registerAdmin = async (req, res) => {
 
   } catch (error) {
     console.error("Error Registering Admin:", error);
+    console.error("Error stack:", error.stack);
     res.status(500).json({ message: "Internal Server Error.", error: error.message });
   }
 };
