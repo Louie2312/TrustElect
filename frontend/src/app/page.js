@@ -178,13 +178,17 @@ export default function Home() {
         return null;
       }
 
-      if (url.startsWith('http://') || url.startsWith('https://')) {
-        return url;
+      // Handle both absolute and relative URLs, prevent duplicate query strings
+      const baseUrl = url.split("?")[0]; // Remove any existing query params
+      const isAbsolute = /^https?:\/\//i.test(baseUrl);
+      
+      if (isAbsolute) {
+        return baseUrl; // Return clean absolute URL
       }
 
-      const path = url.startsWith('/') ? url : `/${url}`;
-      const fullUrl = `${path}`; // same-origin path (e.g., /uploads/...)
-      return fullUrl;
+      // For relative URLs, ensure they start with /
+      const path = baseUrl.startsWith('/') ? baseUrl : `/${baseUrl}`;
+      return path; // Return clean relative path
     } catch (error) {
       console.error('Error formatting URL:', error, url);
       return null;
@@ -218,7 +222,7 @@ export default function Home() {
         <h1 className="text-2xl font-bold flex items-center">
           {landingContent.logo?.imageUrl ? (
             <Image 
-              src={formatImageUrl(landingContent.logo.imageUrl)}
+              src={`${formatImageUrl(landingContent.logo.imageUrl)}?timestamp=${new Date().getTime()}`}
               alt="Site Logo" 
               width={60}
               height={20} 
@@ -314,17 +318,19 @@ export default function Home() {
                 );
 
               } else if (heroPosterUrl) {
+                // Add cache-busting timestamp to prevent caching issues
+                const posterWithTimestamp = `${heroPosterUrl}?timestamp=${new Date().getTime()}`;
                 return (
               <div className="w-full max-w-6xl aspect-video bg-black/20 rounded-lg overflow-hidden">
                 <Image
-                  src={heroPosterUrl}
+                  src={posterWithTimestamp}
                   alt="TrustElect Platform"
                   width={1920}
                   height={1080}
                   className="w-full h-full object-cover"
                   unoptimized={true}
                   onError={(e) => {
-                  console.error("Error loading hero poster image");
+                  console.error("Error loading hero poster image:", posterWithTimestamp);
                   const container = e.currentTarget.closest('div');
                   if (container) {
                   container.innerHTML = `
@@ -365,7 +371,8 @@ export default function Home() {
 
               let imageUrl = null;
               if (feature.imageUrl) {
-                imageUrl = formatImageUrl(feature.imageUrl);
+                const formattedUrl = formatImageUrl(feature.imageUrl);
+                imageUrl = formattedUrl ? `${formattedUrl}?timestamp=${new Date().getTime()}` : null;
 
                 const isHeroImage = landingContent.hero && 
                   (feature.imageUrl === landingContent.hero.videoUrl || 
