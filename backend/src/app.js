@@ -1,4 +1,8 @@
 require("dotenv").config();
+
+// Set timezone for the entire application
+process.env.TZ = 'Asia/Manila';
+
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
