@@ -108,7 +108,6 @@ const ElectionCard = ({ election, onClick, onDeleteClick, activeTab }) => {
       const hours = parseInt(timeParts[0], 10);
       const minutes = parseInt(timeParts[1], 10);
       
-      // Remove the +1 from day
       const dateObj = new Date(year, month - 1, day, hours, minutes);
       
       if (isNaN(dateObj.getTime())) return 'Invalid date';
@@ -120,7 +119,7 @@ const ElectionCard = ({ election, onClick, onDeleteClick, activeTab }) => {
         hour: '2-digit',
         minute: '2-digit',
         hour12: true,
-        timeZone: 'Asia/Manila' // Explicitly set Manila timezone
+        timeZone: 'Asia/Manila' 
       }).format(dateObj);
     } catch (error) {
       console.error('Date parsing error:', error);
