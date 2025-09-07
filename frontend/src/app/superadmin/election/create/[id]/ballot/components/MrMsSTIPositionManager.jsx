@@ -46,12 +46,13 @@ export const useMrMsSTIPositions = () => {
         );
         if (mrMsSTIType) {
           mrMsSTITypeId = mrMsSTIType.id;
+          console.log("Found Mr/Ms STI election type ID:", mrMsSTITypeId);
         }
       }
 
-      // Try to fetch positions from API using the election type ID
+      // Try to fetch positions from maintenance API using the election type ID
       if (mrMsSTITypeId) {
-        const response = await axios.get(`/api/direct/positions?electionTypeId=${mrMsSTITypeId}`, {
+        const response = await axios.get(`/api/maintenance/positions?electionTypeId=${mrMsSTITypeId}`, {
           headers: { 
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -61,6 +62,7 @@ export const useMrMsSTIPositions = () => {
         
         if (response.data.success && response.data.data && response.data.data.length > 0) {
           const positions = response.data.data;
+          console.log("Found Mr/Ms STI positions from maintenance API:", positions);
           const positionNames = positions.map(pos => pos.name);
           positionNames.sort((a, b) => (mrMsSTIPositionOrder[a] || 999) - (mrMsSTIPositionOrder[b] || 999));
           setMrMsSTIPositions(positionNames);
@@ -69,7 +71,7 @@ export const useMrMsSTIPositions = () => {
       }
 
       // Fallback: try to get all positions and filter for Mr/Ms STI related ones
-      const response = await axios.get('/api/direct/positions', {
+      const response = await axios.get('/api/maintenance/positions', {
         headers: { 
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -81,15 +83,13 @@ export const useMrMsSTIPositions = () => {
         const allPositions = response.data.data;
         const mrMsSTIPositions = allPositions.filter(pos => 
           pos.name && (
-            pos.name.toLowerCase().includes("mr") && 
-            pos.name.toLowerCase().includes("sti")
-          ) || (
-            pos.name.toLowerCase().includes("ms") && 
-            pos.name.toLowerCase().includes("sti")
+            (pos.name.toLowerCase().includes("mr") && pos.name.toLowerCase().includes("sti")) ||
+            (pos.name.toLowerCase().includes("ms") && pos.name.toLowerCase().includes("sti"))
           )
         );
         
         if (mrMsSTIPositions.length > 0) {
+          console.log("Found Mr/Ms STI positions from all maintenance positions:", mrMsSTIPositions);
           const positionNames = mrMsSTIPositions.map(pos => pos.name);
           positionNames.sort((a, b) => (mrMsSTIPositionOrder[a] || 999) - (mrMsSTIPositionOrder[b] || 999));
           setMrMsSTIPositions(positionNames);
@@ -200,7 +200,7 @@ export const useMrMsSTIPositions = () => {
       }
 
       if (mrMsSTITypeId) {
-        const response = await axios.get(`/api/direct/positions?electionTypeId=${mrMsSTITypeId}`, {
+        const response = await axios.get(`/api/maintenance/positions?electionTypeId=${mrMsSTITypeId}`, {
           headers: { 
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -210,7 +210,7 @@ export const useMrMsSTIPositions = () => {
         
         if (response.data.success && response.data.data && response.data.data.length > 0) {
           const positions = response.data.data;
-          console.log("Found Mr/Ms STI positions from API for type ID:", positions);
+          console.log("Found Mr/Ms STI positions from maintenance API for type ID:", positions);
           const positionNames = positions.map(pos => pos.name);
           positionNames.sort((a, b) => (mrMsSTIPositionOrder[a] || 999) - (mrMsSTIPositionOrder[b] || 999));
           setMrMsSTIPositions(positionNames);
@@ -218,8 +218,8 @@ export const useMrMsSTIPositions = () => {
         }
       }
 
-      // Fallback to all positions search
-      const response = await axios.get('/api/direct/positions', {
+      // Fallback to all maintenance positions search
+      const response = await axios.get('/api/maintenance/positions', {
         headers: { 
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -238,7 +238,7 @@ export const useMrMsSTIPositions = () => {
         );
         
         if (mrMsSTIPositions.length > 0) {
-          console.log("Found Mr/Ms STI positions on reload:", mrMsSTIPositions);
+          console.log("Found Mr/Ms STI positions on reload from maintenance:", mrMsSTIPositions);
           const positionNames = mrMsSTIPositions.map(pos => pos.name);
           positionNames.sort((a, b) => (mrMsSTIPositionOrder[a] || 999) - (mrMsSTIPositionOrder[b] || 999));
           setMrMsSTIPositions(positionNames);
@@ -294,6 +294,11 @@ export const useMrMsSTIPositions = () => {
       return false;
     }
   };
+
+  // Auto-fetch positions when the hook is first used
+  useEffect(() => {
+    fetchMrMsSTIPositions();
+  }, []);
 
   return {
     mrMsSTIPositions,

@@ -708,6 +708,7 @@ export default function BallotPage() {
                    electionData.election_type.toLowerCase().includes("sti")) {
           setIsMrMsSTIElection(true);
           // Fetch Mr/Ms STI positions when this election type is detected
+          // The hook will auto-fetch, but we can also call it explicitly
           fetchMrMsSTIPositions();
         }
         
