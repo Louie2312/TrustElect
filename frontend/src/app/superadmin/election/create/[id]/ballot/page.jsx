@@ -197,10 +197,10 @@ const PreviewModal = ({ ballot, election, onConfirm, onCancel, isMrMsSTIElection
                     </div>
                     <div>
                       <p className="font-medium text-black"><span className="text-black font-bold">Full Name:</span> {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}</p>
-                      {!isMrMsSTIElection && candidate.party && <p className="text-black"><span className="text-black font-bold">Partylist:</span> {candidate.party}</p>}
+                      {(isMrMsSTIElection !== true) && candidate.party && <p className="text-black"><span className="text-black font-bold">Partylist:</span> {candidate.party}</p>}
                   
-                      {!isMrMsSTIElection && candidate.slogan && <p className="text-sm  text-black"><span className="text-black font-bold">Slogan:</span>{candidate.slogan}</p>}
-                      {!isMrMsSTIElection && candidate.platform && <p className="text-sm text-black"><span className="text-black font-bold">Description/Platform: </span> {candidate.platform}</p>}
+                      {(isMrMsSTIElection !== true) && candidate.slogan && <p className="text-sm  text-black"><span className="text-black font-bold">Slogan:</span>{candidate.slogan}</p>}
+                      {(isMrMsSTIElection !== true) && candidate.platform && <p className="text-sm text-black"><span className="text-black font-bold">Description/Platform: </span> {candidate.platform}</p>}
                     </div>
                   </div>
                 ))}
@@ -721,7 +721,7 @@ export default function BallotPage() {
             // Sort positions if it's a student council election
             if (electionData.election_type === "Student Council") {
               positions.sort((a, b) => (studentCouncilPositionOrder[a.name] || 999) - (studentCouncilPositionOrder[b.name] || 999));
-            } else if (isMrMsSTIElection) {
+            } else if (isMrMsSTIElection === true) {
               positions.sort((a, b) => (mrMsSTIPositionOrder[a.name] || 999) - (mrMsSTIPositionOrder[b.name] || 999));
             }
             
@@ -1018,7 +1018,7 @@ export default function BallotPage() {
     // Sort positions if it's a student council election and we're changing the name
     if (isStudentCouncilElection && field === "name") {
       updatedPositions.sort((a, b) => (studentCouncilPositionOrder[a.name] || 999) - (studentCouncilPositionOrder[b.name] || 999));
-    } else if (isMrMsSTIElection && field === "name") {
+    } else if (isMrMsSTIElection === true && field === "name") {
       updatedPositions.sort((a, b) => (mrMsSTIPositionOrder[a.name] || 999) - (mrMsSTIPositionOrder[b.name] || 999));
     }
     
@@ -1488,7 +1488,7 @@ export default function BallotPage() {
             ].sort((a, b) => (studentCouncilPositionOrder[a.name] || 999) - (studentCouncilPositionOrder[b.name] || 999))
           }));
         }
-      } else if (isMrMsSTIElection) {
+      } else if (isMrMsSTIElection === true) {
         const usedPositionNames = ballot.positions.map(p => p.name);
         const availablePositions = mrMsSTIPositions
           .filter(pos => !usedPositionNames.includes(pos))
@@ -1752,9 +1752,9 @@ export default function BallotPage() {
         last_name: "",
         student_number: "", // Initialize student_number
         course: "",        // Initialize course
-        party: isMrMsSTIElection ? "" : "",
-        slogan: isMrMsSTIElection ? "" : "",
-        platform: isMrMsSTIElection ? "" : "",
+        party: (isMrMsSTIElection === true) ? "" : "",
+        slogan: (isMrMsSTIElection === true) ? "" : "",
+        platform: (isMrMsSTIElection === true) ? "" : "",
         image_url: null,
         student_id: null,    // Initialize student_id
         _isNew: true
@@ -1790,7 +1790,7 @@ export default function BallotPage() {
       formData.append('lastName', candidate.last_name);
       
       // Only add campaign fields for non-Mr/Ms STI elections
-      if (!isMrMsSTIElection) {
+      if (isMrMsSTIElection !== true) {
         formData.append('party', candidate.party || '');
         formData.append('slogan', candidate.slogan || '');
         formData.append('platform', candidate.platform || '');
@@ -1828,7 +1828,7 @@ export default function BallotPage() {
         };
         
         // Only add campaign fields for non-Mr/Ms STI elections
-        if (!isMrMsSTIElection) {
+        if (isMrMsSTIElection !== true) {
           updateData.party = candidate.party;
           updateData.slogan = candidate.slogan;
           updateData.platform = candidate.platform;
@@ -1921,7 +1921,7 @@ export default function BallotPage() {
       }
     }
     
-    if (isMrMsSTIElection) {
+    if (isMrMsSTIElection === true) {
       const usedPositions = ballot.positions.map(p => p.name).filter(name => name.trim() !== "");
       const uniquePositions = new Set(usedPositions);
       
@@ -2022,7 +2022,7 @@ export default function BallotPage() {
             };
             
             // Only include campaign fields for non-Mr/Ms STI elections
-            if (!isMrMsSTIElection) {
+            if (isMrMsSTIElection !== true) {
               candidateData.party = cand.party;
               candidateData.slogan = cand.slogan;
               candidateData.platform = cand.platform;
@@ -2257,7 +2257,7 @@ export default function BallotPage() {
                     ))
                   }
                 </select>
-              ) : isMrMsSTIElection ? (
+              ) : (isMrMsSTIElection === true) ? (
                 <MrMsSTIPositionSelector
                   position={position}
                   ballot={ballot}
@@ -2525,7 +2525,7 @@ export default function BallotPage() {
                     </div>
 
                     {/* Only show campaign fields for non-Mr/Ms STI elections */}
-                    {!isMrMsSTIElection && (
+                    {(isMrMsSTIElection !== true) && (
                       <>
                         <div className="grid grid-cols-2 gap-3 mb-3">
                           <div>
