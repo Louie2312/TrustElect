@@ -970,7 +970,7 @@ export default function BallotPage() {
 
   const fetchNameSuggestions = (searchTerm, type, posId, candId) => {
     if (!searchTerm || searchTerm.length < 2) {
-      if (type === 'firstName') {
+      if (type === 'first_name') {
         setFirstNameSuggestions([]);
         setShowFirstNameSuggestions(false);
       } else {
@@ -982,14 +982,14 @@ export default function BallotPage() {
     
     try {
       const matchingStudents = allStudents.filter(student => {
-        if (type === 'firstName') {
+        if (type === 'first_name') {
           return student.first_name.toLowerCase().includes(searchTerm.toLowerCase());
         } else {
           return student.last_name.toLowerCase().includes(searchTerm.toLowerCase());
         }
       }).slice(0, 10);
 
-      if (type === 'firstName') {
+      if (type === 'first_name') {
         setFirstNameSuggestions(matchingStudents);
         setShowFirstNameSuggestions(matchingStudents.length > 0);
       } else {
@@ -998,7 +998,7 @@ export default function BallotPage() {
       }
     } catch (error) {
       console.error("Error filtering name suggestions:", error);
-      if (type === 'firstName') {
+      if (type === 'first_name') {
         setFirstNameSuggestions([]);
         setShowFirstNameSuggestions(false);
       } else {
@@ -1014,6 +1014,7 @@ export default function BallotPage() {
       setShowStudentNumberSuggestions(false);
       return;
     }
+    
     try {
       const matchingStudents = allStudents.filter(student =>
         student.student_number.toLowerCase().includes(searchTerm.toLowerCase())
@@ -1039,12 +1040,12 @@ export default function BallotPage() {
     );
 
     if (isDuplicate) {
-      setErrors(prev => ({
-        ...prev,
+        setErrors(prev => ({
+          ...prev,
         [`candidate-${candId}-duplicate`]: 'This candidate is already a candidate'
-      }));
-      return;
-    }
+        }));
+        return;
+      }
 
     const updatedPositions = ballot.positions.map(pos => ({
       ...pos,
@@ -1054,14 +1055,15 @@ export default function BallotPage() {
           first_name: student.first_name,
           last_name: student.last_name,
           student_number: student.student_number,
-          course: student.course_name
+          course: student.course_name,
+          student_id: student.id
         } : cand
       )
     }));
     
     setBallot(prev => ({ ...prev, positions: updatedPositions }));
     
-    if (type === 'firstName') {
+    if (type === 'first_name') {
       setShowFirstNameSuggestions(false);
     } else {
       setShowLastNameSuggestions(false);
@@ -2321,92 +2323,7 @@ export default function BallotPage() {
                   </div>
 
                   <div className="flex-1">
-                    <div className="grid grid-cols-2 gap-3 mb-3">
-                      <div>
-                        <label className="block text-sm font-medium text-black mb-1">
-                          First Name 
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="text"
-                            value={candidate.first_name}
-                            onChange={(e) => {
-                              handleCandidateChange(position.id, candidate.id, "first_name", e.target.value);
-                              fetchNameSuggestions(e.target.value, 'first_name');
-                            }}
-                            onFocus={() => {
-                              setActiveInput(`fn-${candidate.id}`);
-                              if (candidate.first_name) {
-                                fetchNameSuggestions(candidate.first_name, 'first_name');
-                              }
-                            }}
-                            className={`w-full p-2 border rounded text-black ${
-                              errors[`candidate-fn-${candidate.id}`] ? "border-red-500" : "border-gray-300"
-                            }`}
-                            placeholder="First name"
-                          />
-                          {showFirstNameSuggestions && activeInput === `fn-${candidate.id}` && firstNameSuggestions.length > 0 && (
-                            <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
-                              {firstNameSuggestions.map((suggestion, index) => (
-                                <div
-                                  key={index}
-                                  className="p-2 hover:bg-gray-100 cursor-pointer text-sm"
-                                  onClick={() => selectNameSuggestion(suggestion, 'first_name', position.id, candidate.id)}
-                                >
-                                  {suggestion}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        {errors[`candidate-fn-${candidate.id}`] && (
-                          <p className="text-red-500 text-sm mt-1 text-black">{errors[`candidate-fn-${candidate.id}`]}</p>
-                        )}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-black mb-1">
-                          Last Name 
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="text"
-                            value={candidate.last_name}
-                            onChange={(e) => {
-                              handleCandidateChange(position.id, candidate.id, "last_name", e.target.value);
-                              fetchNameSuggestions(e.target.value, 'last_name');
-                            }}
-                            onFocus={() => {
-                              setActiveInput(`ln-${candidate.id}`);
-                              if (candidate.last_name) {
-                                fetchNameSuggestions(candidate.last_name, 'last_name');
-                              }
-                            }}
-                            className={`w-full p-2 border rounded text-black ${
-                              errors[`candidate-ln-${candidate.id}`] ? "border-red-500" : "border-gray-300"
-                            }`}
-                            placeholder="Last name"
-                          />
-                          {showLastNameSuggestions && activeInput === `ln-${candidate.id}` && lastNameSuggestions.length > 0 && (
-                            <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
-                              {lastNameSuggestions.map((suggestion, index) => (
-                                <div
-                                  key={index}
-                                  className="p-2 hover:bg-gray-100 cursor-pointer text-sm"
-                                  onClick={() => selectNameSuggestion(suggestion, 'last_name', position.id, candidate.id)}
-                                >
-                                  {suggestion}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        {errors[`candidate-ln-${candidate.id}`] && (
-                          <p className="text-red-500 text-sm mt-1 text-black">{errors[`candidate-ln-${candidate.id}`]}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Student Number and Course - Always shown */}
+                    {/* Student Number and Course - Always shown on top */}
                     <div className="grid grid-cols-2 gap-3 mb-3">
                       <div>
                         <label className="block text-sm font-medium text-black mb-1">
@@ -2418,12 +2335,12 @@ export default function BallotPage() {
                             value={candidate.student_number || ''}
                             onChange={(e) => {
                               handleCandidateChange(position.id, candidate.id, "student_number", e.target.value);
-                              fetchStudentNumberSuggestions(e.target.value);
+                              fetchStudentNumberSuggestions(e.target.value, position.id, candidate.id);
                             }}
                             onFocus={() => {
                               setActiveInput(`sn-${candidate.id}`);
                               if (candidate.student_number) {
-                                fetchStudentNumberSuggestions(candidate.student_number);
+                                fetchStudentNumberSuggestions(candidate.student_number, position.id, candidate.id);
                               }
                             }}
                             className={`w-full p-2 border rounded text-black ${
@@ -2439,7 +2356,7 @@ export default function BallotPage() {
                                   className="p-2 hover:bg-gray-100 cursor-pointer text-sm"
                                   onClick={() => selectStudentNumberSuggestion(suggestion, position.id, candidate.id)}
                                 >
-                                  {suggestion}
+                                  {suggestion.student_number} - {suggestion.first_name} {suggestion.last_name}
                                 </div>
                               ))}
                             </div>
@@ -2464,6 +2381,92 @@ export default function BallotPage() {
                         />
                         {errors[`candidate-course-${candidate.id}`] && (
                           <p className="text-red-500 text-sm mt-1 text-black">{errors[`candidate-course-${candidate.id}`]}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* First Name and Last Name - Below student number */}
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div>
+                        <label className="block text-sm font-medium text-black mb-1">
+                          First Name 
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={candidate.first_name}
+                            onChange={(e) => {
+                              handleCandidateChange(position.id, candidate.id, "first_name", e.target.value);
+                              fetchNameSuggestions(e.target.value, 'first_name', position.id, candidate.id);
+                            }}
+                            onFocus={() => {
+                              setActiveInput(`fn-${candidate.id}`);
+                              if (candidate.first_name) {
+                                fetchNameSuggestions(candidate.first_name, 'first_name', position.id, candidate.id);
+                              }
+                            }}
+                            className={`w-full p-2 border rounded text-black ${
+                              errors[`candidate-fn-${candidate.id}`] ? "border-red-500" : "border-gray-300"
+                            }`}
+                            placeholder="First name"
+                          />
+                          {showFirstNameSuggestions && activeInput === `fn-${candidate.id}` && firstNameSuggestions.length > 0 && (
+                            <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
+                              {firstNameSuggestions.map((suggestion, index) => (
+                                <div
+                                  key={index}
+                                  className="p-2 hover:bg-gray-100 cursor-pointer text-sm"
+                                  onClick={() => selectNameSuggestion(suggestion, 'first_name', position.id, candidate.id)}
+                                >
+                                  {suggestion.first_name} {suggestion.last_name} - {suggestion.student_number}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        {errors[`candidate-fn-${candidate.id}`] && (
+                          <p className="text-red-500 text-sm mt-1 text-black">{errors[`candidate-fn-${candidate.id}`]}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-black mb-1">
+                          Last Name 
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={candidate.last_name}
+                            onChange={(e) => {
+                              handleCandidateChange(position.id, candidate.id, "last_name", e.target.value);
+                              fetchNameSuggestions(e.target.value, 'last_name', position.id, candidate.id);
+                            }}
+                            onFocus={() => {
+                              setActiveInput(`ln-${candidate.id}`);
+                              if (candidate.last_name) {
+                                fetchNameSuggestions(candidate.last_name, 'last_name', position.id, candidate.id);
+                              }
+                            }}
+                            className={`w-full p-2 border rounded text-black ${
+                              errors[`candidate-ln-${candidate.id}`] ? "border-red-500" : "border-gray-300"
+                            }`}
+                            placeholder="Last name"
+                          />
+                          {showLastNameSuggestions && activeInput === `ln-${candidate.id}` && lastNameSuggestions.length > 0 && (
+                            <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
+                              {lastNameSuggestions.map((suggestion, index) => (
+                                <div
+                                  key={index}
+                                  className="p-2 hover:bg-gray-100 cursor-pointer text-sm"
+                                  onClick={() => selectNameSuggestion(suggestion, 'last_name', position.id, candidate.id)}
+                                >
+                                  {suggestion.first_name} {suggestion.last_name} - {suggestion.student_number}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        {errors[`candidate-ln-${candidate.id}`] && (
+                          <p className="text-red-500 text-sm mt-1 text-black">{errors[`candidate-ln-${candidate.id}`]}</p>
                         )}
                       </div>
                     </div>
