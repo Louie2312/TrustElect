@@ -50,7 +50,8 @@ const upload = multer({
 storage: storage,
 fileFilter: fileFilter,
 limits: {
-  fileSize: 5 * 1024 * 1024 
+  fileSize: 2 * 1024 * 1024, // 2MB limit to match frontend
+  files: 1 // Only allow 1 file at a time
 }
 });
 
@@ -82,15 +83,51 @@ try {
 exports.uploadCandidateImage = async (req, res) => {
 try {
   if (!req.file) {
-    return res.status(400).json({ message: "No file uploaded" });
+    return res.status(400).json({ 
+      success: false,
+      message: "No file uploaded" 
+    });
+  }
+
+  // Validate file size (additional check)
+  if (req.file.size > 2 * 1024 * 1024) {
+    // Delete the uploaded file if it's too large
+    const fs = require('fs');
+    const path = require('path');
+    const filePath = path.join(__dirname, '../../uploads/candidates', req.file.filename);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+    return res.status(413).json({ 
+      success: false,
+      message: "File too large. Maximum size is 2MB." 
+    });
   }
 
   const filePath = `/uploads/candidates/${req.file.filename}`;
 
-  return res.json({ success: true, filePath });
+  return res.json({ 
+    success: true, 
+    filePath,
+    fileSize: req.file.size,
+    originalName: req.file.originalname
+  });
 } catch (error) {
   console.error("Error uploading candidate image:", error);
-  return res.status(500).json({ message: "Server error", error: error.message });
+  
+  // Handle multer errors specifically
+  if (error.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({ 
+      success: false,
+      message: "File too large. Maximum size is 2MB." 
+    });
+  }
+  
+  return res.status(500).json({ 
+    success: false,
+    message: "Server error", 
+    error: error.message 
+  });
 }
 };
 

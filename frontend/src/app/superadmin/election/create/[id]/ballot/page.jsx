@@ -916,8 +916,42 @@ export default function BallotPage() {
   const validateImageFile = (file) => {
     if (!file) return "No file selected";
     if (!file.type.match('image.*')) return "Only image files are allowed";
-    if (file.size > 2 * 1024 * 1024) return "Image must be less than 2MB";
+    if (file.size > 1.5 * 1024 * 1024) return "Image must be less than 1.5MB";
     return null;
+  };
+
+  // Image compression function
+  const compressImage = (file, maxWidth = 800, quality = 0.8) => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      img.onload = () => {
+        // Calculate new dimensions
+        let { width, height } = img;
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Draw and compress
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        canvas.toBlob(
+          (blob) => {
+            resolve(blob);
+          },
+          file.type,
+          quality
+        );
+      };
+      
+      img.src = URL.createObjectURL(file);
+    });
   };
 
   const handleBallotChange = async (e) => {
@@ -1235,77 +1269,115 @@ export default function BallotPage() {
 
   const handleImageUpload = async (posId, candId, file) => {
     try {
-     
-      if (!file || !file.type.match('image.*')) {
+      // Validate file first
+      const validationError = validateImageFile(file);
+      if (validationError) {
         setErrors(prev => ({
           ...prev,
-          [`candidate_${candId}_image`]: 'Please select a valid image file'
+          [`candidate_${candId}_image`]: validationError
         }));
         return;
       }
 
-      if (file.size > 2 * 1024 * 1024) {
-        setErrors(prev => ({
-          ...prev,
-          [`candidate_${candId}_image`]: 'Image must be less than 2MB'
-        }));
-        return;
+      // Show loading state
+      setErrors(prev => ({
+        ...prev,
+        [`candidate_${candId}_image`]: 'Compressing and uploading image...'
+      }));
+
+      // Compress image if it's larger than 1MB
+      let processedFile = file;
+      if (file.size > 1024 * 1024) { // 1MB
+        console.log('Compressing image...', file.size, 'bytes');
+        processedFile = await compressImage(file, 800, 0.7);
+        console.log('Compressed image size:', processedFile.size, 'bytes');
       }
 
-      const previewUrl = URL.createObjectURL(file);
+      // Create preview
+      const previewUrl = URL.createObjectURL(processedFile);
       setImagePreviews(prev => ({
         ...prev,
         [candId]: previewUrl
       }));
 
+      // Prepare form data
       const formData = new FormData();
-      formData.append('image', file);
+      formData.append('image', processedFile);
       
- 
-      const imageResponse = await fetchWithAuth('/api/ballots/candidates/upload-image', {
-        method: 'POST',
-        body: formData,
-        headers: {} 
-      });
-      
-      if (!imageResponse.success || !imageResponse.filePath) {
-        throw new Error('Failed to upload image');
+      // Upload with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+      try {
+        const imageResponse = await fetchWithAuth('/api/ballots/candidates/upload-image', {
+          method: 'POST',
+          body: formData,
+          headers: {},
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!imageResponse.success || !imageResponse.filePath) {
+          throw new Error('Failed to upload image');
+        }
+
+        // Update ballot with new image URL
+        setBallot(prev => ({
+          ...prev,
+          positions: prev.positions.map(pos => 
+            pos.id === posId ? {
+              ...pos,
+              candidates: pos.candidates.map(cand =>
+                cand.id === candId ? {
+                  ...cand,
+                  image_url: imageResponse.filePath
+                } : cand
+              )
+            } : pos
+          )
+        }));
+
+        // Clean up preview URL
+        URL.revokeObjectURL(previewUrl);
+
+        // Clear errors
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[`candidate_${candId}_image`];
+          return newErrors;
+        });
+
+        toast.success('Image uploaded successfully!');
+      } catch (uploadError) {
+        clearTimeout(timeoutId);
+        throw uploadError;
       }
-
-      setBallot(prev => ({
-        ...prev,
-        positions: prev.positions.map(pos => 
-          pos.id === posId ? {
-            ...pos,
-            candidates: pos.candidates.map(cand =>
-              cand.id === candId ? {
-                ...cand,
-                image_url: imageResponse.filePath
-              } : cand
-            )
-          } : pos
-        )
-      }));
-
-      URL.revokeObjectURL(previewUrl);
-
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[`candidate_${candId}_image`];
-        return newErrors;
-      });
     } catch (error) {
       console.error('Error uploading image:', error);
+      
+      let errorMessage = 'Failed to upload image';
+      if (error.name === 'AbortError') {
+        errorMessage = 'Upload timeout - please try a smaller image';
+      } else if (error.message.includes('413')) {
+        errorMessage = 'Image too large - please use a smaller image (max 1.5MB)';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
       setErrors(prev => ({
         ...prev,
-        [`candidate_${candId}_image`]: error.message || 'Failed to upload image'
+        [`candidate_${candId}_image`]: errorMessage
       }));
 
+      // Clean up preview
       setImagePreviews(prev => {
         const newPreviews = { ...prev };
         delete newPreviews[candId];
         return newPreviews;
       });
+
+      toast.error(errorMessage);
     }
   };
 
@@ -2098,7 +2170,7 @@ export default function BallotPage() {
               <div key={candidate.id} className="border rounded-lg p-4">
                 <div className="flex">
                   <div className="mr-4 relative">
-                    <label className="block w-32 h-32 rounded-lg border-2 border-dashed border-gray-300 overflow-hidden cursor-pointer hover:border-blue-500 transition-colors relative group">
+                    <label className="block w-32 h-32 rounded-lg border-2 border-dashed border-gray-300 overflow-hidden cursor-pointer hover:border-blue-500 transition-colors relative group" title="Click to upload image (max 1.5MB)">
                       {imagePreviews[candidate.id] ? (
                         <div className="w-full h-full relative">
                           <img 
@@ -2129,6 +2201,7 @@ export default function BallotPage() {
                         <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
                           <ImageIcon className="w-6 h-6 mb-2" />
                           <span className="text-xs">Upload Photo</span>
+                          <span className="text-xs text-gray-300">Max 1.5MB</span>
                         </div>
                       )}
                       <input
@@ -2138,6 +2211,9 @@ export default function BallotPage() {
                         onChange={(e) => {
                           if (e.target.files && e.target.files[0]) {
                             const file = e.target.files[0];
+                            // Show file size info
+                            const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                            console.log(`Selected file: ${file.name}, Size: ${fileSizeMB}MB`);
                             handleImageUpload(position.id, candidate.id, file);
                           }
                         }}
