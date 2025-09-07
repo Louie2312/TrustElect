@@ -197,10 +197,10 @@ const PreviewModal = ({ ballot, election, onConfirm, onCancel }) => {
                     </div>
                     <div>
                       <p className="font-medium text-black"><span className="text-black font-bold">Full Name:</span> {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}</p>
-                      {candidate.party && <p className="text-black"><span className="text-black font-bold">Partylist:</span> {candidate.party}</p>}
+                      {!isMrMsSTIElection && candidate.party && <p className="text-black"><span className="text-black font-bold">Partylist:</span> {candidate.party}</p>}
                   
-                      {candidate.slogan && <p className="text-sm  text-black"><span className="text-black font-bold">Slogan:</span>{candidate.slogan}</p>}
-                      {candidate.platform && <p className="text-sm text-black"><span className="text-black font-bold">Description/Platform: </span> {candidate.platform}</p>}
+                      {!isMrMsSTIElection && candidate.slogan && <p className="text-sm  text-black"><span className="text-black font-bold">Slogan:</span>{candidate.slogan}</p>}
+                      {!isMrMsSTIElection && candidate.platform && <p className="text-sm text-black"><span className="text-black font-bold">Description/Platform: </span> {candidate.platform}</p>}
                     </div>
                   </div>
                 ))}
@@ -1752,9 +1752,9 @@ export default function BallotPage() {
         last_name: "",
         student_number: "", // Initialize student_number
         course: "",        // Initialize course
-        party: "",
-        slogan: "",
-        platform: "",
+        party: isMrMsSTIElection ? "" : "",
+        slogan: isMrMsSTIElection ? "" : "",
+        platform: isMrMsSTIElection ? "" : "",
         image_url: null,
         student_id: null,    // Initialize student_id
         _isNew: true
@@ -1788,9 +1788,13 @@ export default function BallotPage() {
      
       formData.append('firstName', candidate.first_name);
       formData.append('lastName', candidate.last_name);
-      formData.append('party', candidate.party || '');
-      formData.append('slogan', candidate.slogan || '');
-      formData.append('platform', candidate.platform || '');
+      
+      // Only add campaign fields for non-Mr/Ms STI elections
+      if (!isMrMsSTIElection) {
+        formData.append('party', candidate.party || '');
+        formData.append('slogan', candidate.slogan || '');
+        formData.append('platform', candidate.platform || '');
+      }
       
       if (candidate._pendingImage) {
         formData.append('image', candidate._pendingImage);
@@ -1818,17 +1822,23 @@ export default function BallotPage() {
         );
       } else {
         console.log('Updating candidate without image');
+        const updateData = {
+          firstName: candidate.first_name,
+          lastName: candidate.last_name
+        };
+        
+        // Only add campaign fields for non-Mr/Ms STI elections
+        if (!isMrMsSTIElection) {
+          updateData.party = candidate.party;
+          updateData.slogan = candidate.slogan;
+          updateData.platform = candidate.platform;
+        }
+        
         response = await fetchWithAuth(
           `/candidates/${candidate.id}`,
           {
             method: 'PUT',
-            body: JSON.stringify({
-              firstName: candidate.first_name,
-              lastName: candidate.last_name,
-              party: candidate.party,
-              slogan: candidate.slogan,
-              platform: candidate.platform
-            })
+            body: JSON.stringify(updateData)
           }
         );
       }
@@ -2003,15 +2013,23 @@ export default function BallotPage() {
         positions: ballot.positions.map(pos => ({
           name: pos.name,
           max_choices: pos.max_choices,
-          candidates: pos.candidates.map(cand => ({
-            id: cand.id,
-            first_name: cand.first_name,
-            last_name: cand.last_name,
-            party: cand.party,
-            slogan: cand.slogan,
-            platform: cand.platform,
-            image_url: cand.image_url
-          }))
+          candidates: pos.candidates.map(cand => {
+            const candidateData = {
+              id: cand.id,
+              first_name: cand.first_name,
+              last_name: cand.last_name,
+              image_url: cand.image_url
+            };
+            
+            // Only include campaign fields for non-Mr/Ms STI elections
+            if (!isMrMsSTIElection) {
+              candidateData.party = cand.party;
+              candidateData.slogan = cand.slogan;
+              candidateData.platform = cand.platform;
+            }
+            
+            return candidateData;
+          })
         }))
       };
       
@@ -2505,48 +2523,53 @@ export default function BallotPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 mb-3">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Partylist
-                        </label>
-                        <div>
-                          <div 
-                            onClick={() => openPartylistModal(position.id, candidate.id)}
-                            className={`w-full p-2 border border-gray-300 rounded text-black flex justify-between items-center cursor-pointer hover:border-blue-500 ${candidate.party ? 'bg-gray-50' : ''}`}
-                          >
-                            <span className={candidate.party ? 'text-black' : 'text-gray-400'}>
-                              {candidate.party || "Select a partylist"}
-                            </span>
+                    {/* Only show campaign fields for non-Mr/Ms STI elections */}
+                    {!isMrMsSTIElection && (
+                      <>
+                        <div className="grid grid-cols-2 gap-3 mb-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Partylist
+                            </label>
+                            <div>
+                              <div 
+                                onClick={() => openPartylistModal(position.id, candidate.id)}
+                                className={`w-full p-2 border border-gray-300 rounded text-black flex justify-between items-center cursor-pointer hover:border-blue-500 ${candidate.party ? 'bg-gray-50' : ''}`}
+                              >
+                                <span className={candidate.party ? 'text-black' : 'text-gray-400'}>
+                                  {candidate.party || "Select a partylist"}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-black mb-1">
+                              Slogan
+                            </label>
+                            <input
+                              type="text"
+                              value={candidate.slogan || ''}
+                              onChange={(e) => handleCandidateChange(position.id, candidate.id, "slogan", e.target.value)}
+                              className="w-full p-2 border border-gray-300 rounded text-black"
+                              placeholder="Campaign slogan"
+                            />
                           </div>
                         </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-black mb-1">
-                          Slogan
-                        </label>
-                        <input
-                          type="text"
-                          value={candidate.slogan || ''}
-                          onChange={(e) => handleCandidateChange(position.id, candidate.id, "slogan", e.target.value)}
-                          className="w-full p-2 border border-gray-300 rounded text-black"
-                          placeholder="Campaign slogan"
-                        />
-                      </div>
-                    </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-black mb-1">
-                        Platform/Description
-                      </label>
-                      <textarea
-                        value={candidate.platform || ''}
-                        onChange={(e) => handleCandidateChange(position.id, candidate.id, "platform", e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded text-black"
-                        rows={2}
-                        placeholder="Candidate platform or bio"
-                      />
-                    </div>
+                        <div>
+                          <label className="block text-sm font-medium text-black mb-1">
+                            Platform/Description
+                          </label>
+                          <textarea
+                            value={candidate.platform || ''}
+                            onChange={(e) => handleCandidateChange(position.id, candidate.id, "platform", e.target.value)}
+                            className="w-full p-2 border border-gray-300 rounded text-black"
+                            rows={2}
+                            placeholder="Candidate platform or bio"
+                          />
+                        </div>
+                      </>
+                    )}
                     {errors[`candidate-${candidate.id}-validation`] && (
                       <p className="text-red-500 text-sm mt-1">{errors[`candidate-${candidate.id}-validation`]}</p>
                     )}
