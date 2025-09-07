@@ -186,13 +186,14 @@ export default function Home() {
         return baseUrl; // Return clean absolute URL
       }
 
-      // For relative URLs, ensure they start with /
+      // For relative URLs, convert to absolute URLs for production
       const path = baseUrl.startsWith('/') ? baseUrl : `/${baseUrl}`;
+      const absoluteUrl = `https://trustelectonline.com${path}`;
       
       // Log the URL for debugging
-      console.log('Formatting image URL:', url, '->', path);
+      console.log('Formatting image URL:', url, '->', absoluteUrl);
       
-      return path; // Return clean relative path
+      return absoluteUrl; // Return absolute URL for production
     } catch (error) {
       console.error('Error formatting URL:', error, url);
       return null;
@@ -235,6 +236,7 @@ export default function Home() {
               style={{ maxHeight: 'calc(51px - (0px * 2))' }}
               onError={(e) => {
                 console.error("Error loading logo:", landingContent.logo.imageUrl);
+                console.error("Formatted URL:", formatImageUrl(landingContent.logo.imageUrl));
                 e.currentTarget.style.display = 'none';
               }}
               onLoad={() => {
@@ -339,6 +341,7 @@ export default function Home() {
                   unoptimized={true}
                   onError={(e) => {
                   console.error("Error loading hero poster image:", posterWithTimestamp);
+                  console.error("Original URL:", heroPosterUrl);
                   const container = e.currentTarget.closest('div');
                   if (container) {
                   container.innerHTML = `

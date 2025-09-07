@@ -348,11 +348,78 @@ app.get("/api/debug/files", (req, res) => {
   }
 });
 
+// Specific route to handle image requests with better error handling
+app.get('/uploads/images/:filename', (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const imagePath = path.join(__dirname, '../uploads/images', filename);
+    
+    console.log('Requested image:', filename);
+    console.log('Full path:', imagePath);
+    console.log('File exists:', fs.existsSync(imagePath));
+    
+    if (!fs.existsSync(imagePath)) {
+      console.log('Image not found:', imagePath);
+      return res.status(404).json({ error: 'Image not found' });
+    }
+    
+    // Set appropriate content type
+    const ext = path.extname(filename).toLowerCase();
+    let contentType = 'application/octet-stream';
+    
+    if (ext === '.jpg' || ext === '.jpeg') {
+      contentType = 'image/jpeg';
+    } else if (ext === '.png') {
+      contentType = 'image/png';
+    } else if (ext === '.gif') {
+      contentType = 'image/gif';
+    } else if (ext === '.webp') {
+      contentType = 'image/webp';
+    }
+    
+    res.set('Content-Type', contentType);
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.set('Access-Control-Allow-Origin', '*');
+    
+    res.sendFile(imagePath);
+  } catch (error) {
+    console.error('Error serving image:', error);
+    res.status(500).json({ error: 'Error serving image' });
+  }
+});
+
+// Test endpoint to check if a specific image exists
+app.get('/api/test-image/:filename', (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const imagePath = path.join(__dirname, '../uploads/images', filename);
+    
+    const exists = fs.existsSync(imagePath);
+    const stats = exists ? fs.statSync(imagePath) : null;
+    
+    res.json({
+      filename,
+      exists,
+      path: imagePath,
+      size: stats ? stats.size : 0,
+      url: `/uploads/images/${filename}`,
+      absoluteUrl: `https://trustelectonline.com/uploads/images/${filename}`
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.head("/api/healthcheck", (req, res) => {
   res.status(200).end();
 });
+// Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, '../uploads'), {
   setHeaders: (res, filePath) => {
+    console.log('Serving static file:', filePath);
     res.set('Cross-Origin-Resource-Policy', 'cross-origin');
     res.set('Access-Control-Allow-Origin', '*');
 
