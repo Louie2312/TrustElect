@@ -183,17 +183,20 @@ export default function Home() {
       const isAbsolute = /^https?:\/\//i.test(baseUrl);
       
       if (isAbsolute) {
-        return baseUrl; // Return clean absolute URL
+        // Extract the path from absolute URL
+        const urlObj = new URL(baseUrl);
+        const path = urlObj.pathname;
+        console.log('Formatting absolute URL:', url, '->', path);
+        return path; // Return relative path for same-origin requests
       }
 
-      // For relative URLs, convert to absolute URLs for production
+      // For relative URLs, ensure they start with /
       const path = baseUrl.startsWith('/') ? baseUrl : `/${baseUrl}`;
-      const absoluteUrl = `https://trustelectonline.com${path}`;
       
       // Log the URL for debugging
-      console.log('Formatting image URL:', url, '->', absoluteUrl);
+      console.log('Formatting image URL:', url, '->', path);
       
-      return absoluteUrl; // Return absolute URL for production
+      return path; // Return relative path for same-origin requests
     } catch (error) {
       console.error('Error formatting URL:', error, url);
       return null;
@@ -237,7 +240,20 @@ export default function Home() {
               onError={(e) => {
                 console.error("Error loading logo:", landingContent.logo.imageUrl);
                 console.error("Formatted URL:", formatImageUrl(landingContent.logo.imageUrl));
-                e.currentTarget.style.display = 'none';
+                
+                // Try alternative URL format
+                const altUrl = landingContent.logo.imageUrl.replace('/uploads/images/', '/api/uploads/images/');
+                console.log('Trying alternative logo URL:', altUrl);
+                
+                const img = e.currentTarget;
+                img.src = `${altUrl}?timestamp=${new Date().getTime()}`;
+                img.onload = () => {
+                  console.log('Alternative logo URL worked:', altUrl);
+                };
+                img.onerror = () => {
+                  console.log('Alternative logo URL also failed, hiding logo');
+                  img.style.display = 'none';
+                };
               }}
               onLoad={() => {
                 console.log('Logo loaded successfully:', landingContent.logo.imageUrl);
@@ -340,16 +356,33 @@ export default function Home() {
                   className="w-full h-full object-cover"
                   unoptimized={true}
                   onError={(e) => {
-                  console.error("Error loading hero poster image:", posterWithTimestamp);
-                  console.error("Original URL:", heroPosterUrl);
-                  const container = e.currentTarget.closest('div');
-                  if (container) {
-                  container.innerHTML = `
-                    <div class="w-full h-full flex items-center justify-center bg-blue-700">
-                      <span class="text-xl text-white/70">Demo Video</span>
-                    </div>
-                  `;
-                }
+                    console.error("Error loading hero poster image:", posterWithTimestamp);
+                    console.error("Original URL:", heroPosterUrl);
+                    
+                    // Try alternative URL format
+                    const altUrl = heroPosterUrl.replace('/uploads/images/', '/api/uploads/images/');
+                    console.log('Trying alternative URL:', altUrl);
+                    
+                    const container = e.currentTarget.closest('div');
+                    if (container) {
+                      // Try to reload with alternative URL
+                      const img = document.createElement('img');
+                      img.src = `${altUrl}?timestamp=${new Date().getTime()}`;
+                      img.className = 'w-full h-full object-cover';
+                      img.onload = () => {
+                        console.log('Alternative URL worked:', altUrl);
+                        container.innerHTML = '';
+                        container.appendChild(img);
+                      };
+                      img.onerror = () => {
+                        console.log('Alternative URL also failed, showing fallback');
+                        container.innerHTML = `
+                          <div class="w-full h-full flex items-center justify-center bg-blue-700">
+                            <span class="text-xl text-white/70">Demo Video</span>
+                          </div>
+                        `;
+                      };
+                    }
                   }}
                   onLoad={() => {
                     console.log('Hero poster loaded successfully:', posterWithTimestamp);

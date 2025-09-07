@@ -310,6 +310,60 @@ app.use('/api/admin-permissions', adminPermissionRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/partylists', partylistRoutes);
 app.use('/api/partylist-candidates', partylistCandidateRoutes);
+// Serve static files from uploads directory - MUST come before API routes
+app.use('/uploads', express.static(path.join(__dirname, '../uploads'), {
+  setHeaders: (res, filePath) => {
+    console.log('Serving static file:', filePath);
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.set('Access-Control-Allow-Origin', '*');
+
+    if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
+      res.set('Content-Type', 'image/jpeg');
+    } else if (filePath.endsWith('.png')) {
+      res.set('Content-Type', 'image/png');
+    } else if (filePath.endsWith('.gif')) {
+      res.set('Content-Type', 'image/gif');
+    } else if (filePath.endsWith('.webp')) {
+      res.set('Content-Type', 'image/webp');
+    } else if (filePath.endsWith('.mp4')) {
+      res.set('Content-Type', 'video/mp4');
+    } else if (filePath.endsWith('.webm')) {
+      res.set('Content-Type', 'video/webm');
+    }
+
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+  }
+}));
+console.log('Static files served from:', path.join(__dirname, '../uploads'));
+
+// Also expose uploads under /api/uploads for reverse proxy setups that only route /api
+app.use('/api/uploads', express.static(path.join(__dirname, '../uploads'), {
+  setHeaders: (res, filePath) => {
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.set('Access-Control-Allow-Origin', '*');
+
+    if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
+      res.set('Content-Type', 'image/jpeg');
+    } else if (filePath.endsWith('.png')) {
+      res.set('Content-Type', 'image/png');
+    } else if (filePath.endsWith('.gif')) {
+      res.set('Content-Type', 'image/gif');
+    } else if (filePath.endsWith('.webp')) {
+      res.set('Content-Type', 'image/webp');
+    } else if (filePath.endsWith('.mp4')) {
+      res.set('Content-Type', 'video/mp4');
+    } else if (filePath.endsWith('.webm')) {
+      res.set('Content-Type', 'video/webm');
+    }
+
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+  }
+}));
+
 app.use('/api/students', studentRoutes);
 app.use('/api/studentUI', studentUIRoutes);
 app.use('/api/department-voter-reports', departmentVoterReportRoutes);
@@ -416,59 +470,6 @@ app.get('/api/test-image/:filename', (req, res) => {
 app.head("/api/healthcheck", (req, res) => {
   res.status(200).end();
 });
-// Serve static files from uploads directory
-app.use('/uploads', express.static(path.join(__dirname, '../uploads'), {
-  setHeaders: (res, filePath) => {
-    console.log('Serving static file:', filePath);
-    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
-    res.set('Access-Control-Allow-Origin', '*');
-
-    if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
-      res.set('Content-Type', 'image/jpeg');
-    } else if (filePath.endsWith('.png')) {
-      res.set('Content-Type', 'image/png');
-    } else if (filePath.endsWith('.gif')) {
-      res.set('Content-Type', 'image/gif');
-    } else if (filePath.endsWith('.webp')) {
-      res.set('Content-Type', 'image/webp');
-    } else if (filePath.endsWith('.mp4')) {
-      res.set('Content-Type', 'video/mp4');
-    } else if (filePath.endsWith('.webm')) {
-      res.set('Content-Type', 'video/webm');
-    }
-
-    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.set('Pragma', 'no-cache');
-    res.set('Expires', '0');
-  }
-}));
-console.log('Static files served from:', path.join(__dirname, '../uploads'));
-
-// Also expose uploads under /api/uploads for reverse proxy setups that only route /api
-app.use('/api/uploads', express.static(path.join(__dirname, '../uploads'), {
-  setHeaders: (res, filePath) => {
-    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
-    res.set('Access-Control-Allow-Origin', '*');
-
-    if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
-      res.set('Content-Type', 'image/jpeg');
-    } else if (filePath.endsWith('.png')) {
-      res.set('Content-Type', 'image/png');
-    } else if (filePath.endsWith('.gif')) {
-      res.set('Content-Type', 'image/gif');
-    } else if (filePath.endsWith('.webp')) {
-      res.set('Content-Type', 'image/webp');
-    } else if (filePath.endsWith('.mp4')) {
-      res.set('Content-Type', 'video/mp4');
-    } else if (filePath.endsWith('.webm')) {
-      res.set('Content-Type', 'video/webm');
-    }
-
-    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.set('Pragma', 'no-cache');
-    res.set('Expires', '0');
-  }
-}));
 
 
 app.use('/public', express.static(path.join(__dirname, '../public'), {
