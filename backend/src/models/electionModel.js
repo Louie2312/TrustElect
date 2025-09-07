@@ -1,7 +1,6 @@
 const pool = require("../config/db");
 
 const getElectionStatus = (date_from, date_to, start_time, end_time, needs_approval = false) => {
-  // Import at the top of the file if not already there
   const { DateTime } = require("luxon");
   const MANILA_TIMEZONE = "Asia/Manila";
 
@@ -15,25 +14,36 @@ const getElectionStatus = (date_from, date_to, start_time, end_time, needs_appro
   
   const now = DateTime.now().setZone(MANILA_TIMEZONE);
   
-  const start = DateTime.fromISO(date_from)
-    .setZone(MANILA_TIMEZONE)
-    .set({
-      hour: start_time ? parseInt(start_time.split(':')[0]) : 0,
-      minute: start_time ? parseInt(start_time.split(':')[1]) : 0
-    });
+  // Fix: Create DateTime objects directly in Manila timezone
+  // Parse date as YYYY-MM-DD and create in Manila timezone from the start
+  const startDate = date_from.split('-').map(Number); // [2025, 1, 15]
+  const endDate = date_to.split('-').map(Number);
+  
+  const startTimeParts = start_time.split(':').map(Number);
+  const endTimeParts = end_time.split(':').map(Number);
+  
+  const start = DateTime.fromObject({
+    year: startDate[0],
+    month: startDate[1], 
+    day: startDate[2],
+    hour: startTimeParts[0],
+    minute: startTimeParts[1],
+    second: 0
+  }, { zone: MANILA_TIMEZONE });
 
-  const end = DateTime.fromISO(date_to)
-    .setZone(MANILA_TIMEZONE)
-    .set({
-      hour: end_time ? parseInt(end_time.split(':')[0]) : 23,
-      minute: end_time ? parseInt(end_time.split(':')[1]) : 59
-    });
+  const end = DateTime.fromObject({
+    year: endDate[0],
+    month: endDate[1],
+    day: endDate[2], 
+    hour: endTimeParts[0],
+    minute: endTimeParts[1],
+    second: 0
+  }, { zone: MANILA_TIMEZONE });
   
   if (now < start) return "upcoming";
   if (now >= start && now <= end) return "ongoing";
   return "completed";
 };
-
 
 const getDisplayStatus = getElectionStatus;
 
