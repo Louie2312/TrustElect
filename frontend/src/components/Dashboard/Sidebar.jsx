@@ -7,7 +7,7 @@ import Cookies from "js-cookie";
 
 export default function Sidebar() {
   const router = useRouter();
-  const [profilePic, setProfilePic] = useState("https://via.placeholder.com/80");
+  const [profilePic, setProfilePic] = useState("/images/default-avatar.png");
   const [superAdminName, setSuperAdminName] = useState("Super Admin");
   const [showImageModal, setShowImageModal] = useState(false);
 
@@ -30,9 +30,26 @@ export default function Sidebar() {
       const baseProfileUrl = res.data.profile_picture
         ? res.data.profile_picture.split("?")[0]
         : null;
-      const imageUrl = baseProfileUrl
-        ? `${baseProfileUrl}?timestamp=${new Date().getTime()}`
-        : "https://via.placeholder.com/80";
+      
+      // Check if the URL is already absolute (starts with http:// or https://)
+      const isAbsoluteUrl = baseProfileUrl && (baseProfileUrl.startsWith('http://') || baseProfileUrl.startsWith('https://'));
+      
+      // If it's not an absolute URL and starts with /uploads, prepend the backend URL
+      const fullBaseUrl = baseProfileUrl && !isAbsoluteUrl && baseProfileUrl.startsWith('/uploads')
+        ? `https://trustelectonline.com${baseProfileUrl}`
+        : baseProfileUrl;
+      
+      const imageUrl = fullBaseUrl
+        ? `${fullBaseUrl}?timestamp=${new Date().getTime()}`
+        : "/images/default-avatar.png";
+      
+      console.log("Sidebar image URL constructed:", {
+        original: res.data.profile_picture,
+        baseUrl: baseProfileUrl,
+        isAbsolute: isAbsoluteUrl,
+        fullBaseUrl: fullBaseUrl,
+        finalUrl: imageUrl
+      });
   
       setProfilePic(imageUrl);
     } catch (error) {
@@ -63,7 +80,7 @@ export default function Sidebar() {
               className="w-20 h-20 rounded-full mx-auto border-2 border-white hover:opacity-80"
               onError={(e) => {
                 console.error("Sidebar image failed to load:", profilePic);
-                e.target.src = "https://via.placeholder.com/80";
+                e.target.src = "/images/default-avatar.png";
               }}
             />
           </div>
@@ -82,7 +99,7 @@ export default function Sidebar() {
                 className="w-40 h-40 rounded-full mx-auto border-4 border-gray-300"
                 onError={(e) => {
                   console.error("Modal image failed to load:", profilePic);
-                  e.target.src = "https://via.placeholder.com/160";
+                  e.target.src = "/images/default-avatar.png";
                 }}
               />
             </div>

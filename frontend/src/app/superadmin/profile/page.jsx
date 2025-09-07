@@ -9,7 +9,7 @@ import { toast } from "react-hot-toast";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [profilePic, setProfilePic] = useState("https://via.placeholder.com/100");
+  const [profilePic, setProfilePic] = useState("/images/default-avatar.png");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -54,9 +54,26 @@ export default function ProfilePage() {
       const baseProfileUrl = res.data.profile_picture
         ? res.data.profile_picture.split("?")[0]
         : null;
-      const imageUrl = baseProfileUrl
-        ? `${baseProfileUrl}?timestamp=${new Date().getTime()}`
-        : "https://via.placeholder.com/100";
+      
+      // Check if the URL is already absolute (starts with http:// or https://)
+      const isAbsoluteUrl = baseProfileUrl && (baseProfileUrl.startsWith('http://') || baseProfileUrl.startsWith('https://'));
+      
+      // If it's not an absolute URL and starts with /uploads, prepend the backend URL
+      const fullBaseUrl = baseProfileUrl && !isAbsoluteUrl && baseProfileUrl.startsWith('/uploads')
+        ? `https://trustelectonline.com${baseProfileUrl}`
+        : baseProfileUrl;
+      
+      const imageUrl = fullBaseUrl
+        ? `${fullBaseUrl}?timestamp=${new Date().getTime()}`
+        : "/images/default-avatar.png";
+      
+      console.log("Profile image URL constructed:", {
+        original: res.data.profile_picture,
+        baseUrl: baseProfileUrl,
+        isAbsolute: isAbsoluteUrl,
+        fullBaseUrl: fullBaseUrl,
+        finalUrl: imageUrl
+      });
 
       setProfilePic(imageUrl);
       setLoading(false);
@@ -94,7 +111,24 @@ export default function ProfilePage() {
       }
 
       const cleanPath = res.data.filePath.split("?")[0];
-      const imageUrl = `${cleanPath}?timestamp=${new Date().getTime()}`;
+      
+      // Check if the URL is already absolute (starts with http:// or https://)
+      const isAbsoluteUrl = cleanPath && (cleanPath.startsWith('http://') || cleanPath.startsWith('https://'));
+      
+      // If it's not an absolute URL and starts with /uploads, prepend the backend URL
+      const fullPath = cleanPath && !isAbsoluteUrl && cleanPath.startsWith('/uploads')
+        ? `https://trustelectonline.com${cleanPath}`
+        : cleanPath;
+      
+      const imageUrl = `${fullPath}?timestamp=${new Date().getTime()}`;
+      
+      console.log("Upload image URL constructed:", {
+        original: res.data.filePath,
+        cleanPath: cleanPath,
+        isAbsolute: isAbsoluteUrl,
+        fullPath: fullPath,
+        finalUrl: imageUrl
+      });
 
       setProfilePic(imageUrl);
       console.log("Profile Picture Updated:", imageUrl);
@@ -171,7 +205,7 @@ export default function ProfilePage() {
       if (!token) return;
       
       await axios.post(
-        "http://localhost:5000/api/superadmin/change-password",
+        "/api/superadmin/change-password",
         {
           currentPassword,
           newPassword
@@ -217,7 +251,7 @@ export default function ProfilePage() {
                 className="w-24 h-24 rounded-full mx-auto border-2 border-gray-400 hover:opacity-80"
                 onError={(e) => {
                   console.error("Image failed to load:", profilePic);
-                  e.target.src = "https://via.placeholder.com/100";
+                  e.target.src = "/images/default-avatar.png";
                 }}
               />
             </label>
