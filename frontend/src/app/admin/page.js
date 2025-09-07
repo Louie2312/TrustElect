@@ -1,10 +1,9 @@
 "use client";
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Calendar, Clock, Users, CheckCircle, XCircle, AlertCircle, Trash2, GraduationCap, BarChart, Building, ClipboardCheck, Loader2, Lock } from 'lucide-react';
+import { Calendar, Clock, Users, CheckCircle, XCircle, AlertCircle, Trash2, Lock, BarChart } from 'lucide-react';
 import Link from 'next/link';
 import Cookies from 'js-cookie';
-import PermissionDisplay from '../../components/Admin/PermissionDisplay';
 import usePermissions, { ensureUserIdFromToken } from '../../hooks/usePermissions.js';
 import axios from "axios";
 
@@ -330,20 +329,46 @@ export default function AdminDashboard() {
   const loadStats = useCallback(async () => {
     try {
       const token = Cookies.get('token');
-      const response = await fetch(`/api/elections/stats`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
       
-      if (!response.ok) {
-        throw new Error(`Failed to load stats: ${response.status}`);
+      // Load election stats and total students count in parallel
+      const [electionsResponse, studentsResponse] = await Promise.all([
+        fetch(`/api/elections/stats`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }),
+        fetch(`/api/superadmin/students/count`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+      ]);
+      
+      if (!electionsResponse.ok) {
+        throw new Error(`Failed to load election stats: ${electionsResponse.status}`);
       }
       
-      const data = await response.json();
-      setStats(data || []);
-      return data;
+      const electionsData = await electionsResponse.json();
+      let totalStudents = 0;
+      
+      // Get total students count if available
+      if (studentsResponse.ok) {
+        const studentsData = await studentsResponse.json();
+        totalStudents = studentsData.total_students || studentsData.count || 0;
+      }
+      
+      // Add total students to the stats
+      const statsData = electionsData || [];
+      if (Array.isArray(statsData)) {
+        statsData.total_students = totalStudents;
+      } else {
+        statsData.total_students = totalStudents;
+      }
+      
+      setStats(statsData);
+      return statsData;
     } catch (err) {
       console.error("Failed to load stats:", err);
       setStats([]);
@@ -679,9 +704,12 @@ export default function AdminDashboard() {
   return (
     <div style={contentStyle}>
       <div className="container mx-auto relative z-10">
-        <div className="flex flex-col lg:flex-row gap-6 mb-8">
-          <div className="lg:w-3/4">
-            <h1 className="text-3xl font-bold mb-2 text-black bg-white/80 backdrop-blur-sm p-4 rounded-lg shadow">Dashboard</h1>
+        <div className="mb-8">
+          <div className="w-full">
+            <div className="mb-8">
+              <h1 className="text-4xl font-bold text-black mb-2">Dashboard</h1>
+            
+            </div>
             
             {actionMessage && (
               <div className={`mb-4 p-4 rounded-lg shadow ${
@@ -694,52 +722,79 @@ export default function AdminDashboard() {
             )}
             
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-              <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow p-6">
-                <h3 className="font-medium text-gray-500 mb-2">Total Elections</h3>
-                <p className="text-3xl font-bold text-black">
-                  {Array.isArray(stats) 
-                    ? stats.reduce((sum, stat) => sum + parseInt(stat.count || 0), 0)
-                    : stats?.elections_count || 0}
-                </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="bg-white rounded-lg shadow-lg p-6 border-l-4 border-blue-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">Total Elections</h3>
+                    <p className="text-3xl font-bold text-gray-900 mt-2">
+                      {Array.isArray(stats) 
+                        ? stats.reduce((sum, stat) => sum + parseInt(stat.count || 0), 0)
+                        : stats?.elections_count || 0}
+                    </p>
+                  </div>
+                  <div className="bg-blue-100 p-3 rounded-full">
+                    <BarChart className="h-6 w-6 text-blue-600" />
+                  </div>
+                </div>
               </div>
-              <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow p-6">
-                <h3 className="font-medium text-gray-500 mb-2">Total Voters</h3>
-                <p className="text-3xl font-bold text-black">
-                  {Array.isArray(stats) 
-                    ? stats.reduce((sum, stat) => sum + parseInt(stat.total_voters || 0), 0).toLocaleString()
-                    : Number(stats?.voters_count || 0).toLocaleString()}
-                </p>
+              
+              <div className="bg-white rounded-lg shadow-lg p-6 border-l-4 border-green-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">Total Voters</h3>
+                    <p className="text-3xl font-bold text-gray-900 mt-2">
+                      {Array.isArray(stats) 
+                        ? Number(stats.total_students || 0).toLocaleString()
+                        : Number(stats?.total_students || stats?.voters_count || 0).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="bg-green-100 p-3 rounded-full">
+                    <Users className="h-6 w-6 text-green-600" />
+                  </div>
+                </div>
               </div>
-              <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow p-6">
-                <h3 className="font-medium text-gray-500 mb-2">Total Votes Cast</h3>
-                <p className="text-3xl font-bold text-black">
-                  {Array.isArray(stats) 
-                    ? stats.reduce((sum, stat) => sum + parseInt(stat.total_votes || 0), 0)
-                    : stats?.votes_count || 0}
-                </p>
+              
+              <div className="bg-white rounded-lg shadow-lg p-6 border-l-4 border-purple-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">Total Votes Cast</h3>
+                    <p className="text-3xl font-bold text-gray-900 mt-2">
+                      {Array.isArray(stats) 
+                        ? stats.reduce((sum, stat) => sum + parseInt(stat.total_votes || 0), 0)
+                        : stats?.votes_count || 0}
+                    </p>
+                  </div>
+                  <div className="bg-purple-100 p-3 rounded-full">
+                    <CheckCircle className="h-6 w-6 text-purple-600" />
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* Status Tabs */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow mb-6 p-1">
+            <div className="bg-white rounded-lg shadow-lg mb-6 p-1">
               <div className="flex flex-wrap">
                 {statusTabs.map(tab => (
                   <button
                     key={tab.id}
-                    className={`flex items-center justify-center px-4 py-3 font-medium text-sm transition-colors duration-200 flex-1 ${
+                    className={`flex items-center justify-center px-6 py-4 font-medium text-sm transition-all duration-200 flex-1 rounded-lg ${
                       activeTab === tab.id 
-                        ? 'bg-blue-50 text-blue-600 rounded-md' 
-                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                        ? 'bg-blue-600 text-white shadow-md' 
+                        : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
                     }`}
                     onClick={() => setActiveTab(tab.id)}
                   >
                     <div className="flex flex-col items-center">
-                      <div className="flex items-center mb-1">
+                      <div className="flex items-center mb-2">
                         {tab.icon}
                         <span className="ml-2">{tab.name}</span>
                       </div>
-                      <span className="bg-gray-100 rounded-full px-3 py-1 text-xs font-bold">
+                      <span className={`rounded-full px-3 py-1 text-xs font-bold ${
+                        activeTab === tab.id 
+                          ? 'bg-white bg-opacity-20 text-white' 
+                          : 'bg-gray-100 text-gray-700'
+                      }`}>
                         {getStatValue(tab.id, 'count')}
                       </span>
                     </div>
@@ -748,19 +803,28 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="mb-6 flex flex-wrap justify-between items-center">
-              <h2 className="text-xl font-bold text-black">
-                {activeTab === 'ongoing' && 'Ongoing Elections'}
-                {activeTab === 'upcoming' && 'Upcoming Elections'}
-                {activeTab === 'completed' && 'Completed Elections'}
-                {activeTab === 'to_approve' && 'Elections Pending Approval'}
-              </h2>
+            <div className="mb-8 flex flex-wrap justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  {activeTab === 'ongoing' && 'Ongoing Elections'}
+                  {activeTab === 'upcoming' && 'Upcoming Elections'}
+                  {activeTab === 'completed' && 'Completed Elections'}
+                  {activeTab === 'to_approve' && 'Elections Pending Approval'}
+                </h2>
+                <p className="text-gray-600 mt-1">
+                  {activeTab === 'ongoing' && 'Currently active elections'}
+                  {activeTab === 'upcoming' && 'Scheduled future elections'}
+                  {activeTab === 'completed' && 'Finished elections'}
+                  {activeTab === 'to_approve' && 'Elections waiting for approval'}
+                </p>
+              </div>
               {hasPermission('elections', 'create') && (
                 <Link 
                   href="/admin/election/create"
-                  className="inline-flex items-center px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-md hover:shadow-lg transition-all mt-2 md:mt-0"
+                  className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all duration-200 font-medium"
                 >
-                  + Create New Election
+                  <Calendar className="w-5 h-5 mr-2" />
+                  Create New Election
                 </Link>
               )}
             </div>
@@ -818,11 +882,6 @@ export default function AdminDashboard() {
             )}
           </div>
           
-          <div className="lg:w-1/4 space-y-6">
-            <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow p-6">
-              <PermissionDisplay />
-            </div>
-          </div>
         </div>
         
         <DeleteConfirmationModal 
