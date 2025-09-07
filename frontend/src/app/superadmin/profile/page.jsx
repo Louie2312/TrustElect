@@ -51,12 +51,11 @@ export default function ProfilePage() {
       setLastName(res.data.lastName || "");
       setEmail(res.data.email || "");
 
-      const baseProfileUrl = res.data.profile_picture
-        ? res.data.profile_picture.split("?")[0]
-        : null;
-      const imageUrl = baseProfileUrl
-        ? `https://trustelectonline.com${baseProfileUrl}?timestamp=${new Date().getTime()}`
-        : "https://via.placeholder.com/100";
+      const rawUrl = res.data.profile_picture || null;
+      const baseProfileUrl = rawUrl ? rawUrl.split("?")[0] : null;
+      const isAbsolute = baseProfileUrl && /^https?:\/\//i.test(baseProfileUrl);
+      const finalBase = isAbsolute ? baseProfileUrl : baseProfileUrl ? `https://trustelectonline.com${baseProfileUrl}` : null;
+      const imageUrl = finalBase ? `${finalBase}?timestamp=${new Date().getTime()}` : "https://via.placeholder.com/100";
 
       setProfilePic(imageUrl);
       setLoading(false);
@@ -93,8 +92,10 @@ export default function ProfilePage() {
         return;
       }
 
-      const cleanPath = res.data.filePath.split("?")[0];
-      const imageUrl = `https://trustelectonline.com${cleanPath}?timestamp=${new Date().getTime()}`;
+      const cleanPath = (res.data.url || res.data.filePath || "").split("?")[0];
+      const isAbsolute = /^https?:\/\//i.test(cleanPath);
+      const finalBase = isAbsolute ? cleanPath : `https://trustelectonline.com${cleanPath}`;
+      const imageUrl = `${finalBase}?timestamp=${new Date().getTime()}`;
 
       setProfilePic(imageUrl);
       console.log("Profile Picture Updated:", imageUrl);
@@ -110,13 +111,17 @@ export default function ProfilePage() {
 
       // Ensure we only store the clean URL (without any query params/timestamps)
       const cleanProfilePic = (profilePic || "").split("?")[0];
+      // Send relative path to backend when possible
+      const relativePic = cleanProfilePic.startsWith("http")
+        ? cleanProfilePic.replace(/^https?:\/\/[^/]+/, "")
+        : cleanProfilePic;
 
       await axios.put(
         "/api/superadmin/profile",
         {
           firstName,
           lastName,
-          profile_picture: cleanProfilePic,
+          profile_picture: relativePic,
         },
         {
           headers: { Authorization: `Bearer ${token}` },

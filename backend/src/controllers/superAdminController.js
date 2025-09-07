@@ -89,14 +89,23 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+const buildAbsoluteUrl = (req, relativePath) => {
+  if (!relativePath) return null;
+  const basePath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
+  const protocol = req.protocol;
+  const host = req.get('host');
+  return `${protocol}://${host}${basePath}`;
+};
+
 exports.uploadProfilePicture = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
     }
     const filePath = `/uploads/profiles/${req.file.filename}`;
+    const absoluteUrl = buildAbsoluteUrl(req, filePath);
 
-    return res.json({ success: true, filePath });
+    return res.json({ success: true, filePath, url: absoluteUrl });
   } catch (error) {
     console.error("Error uploading file:", error);
     return res.status(500).json({ message: "Server error", error });
@@ -113,12 +122,13 @@ exports.getSuperAdminProfile = async (req, res) => {
 
     const profile = superAdmin.rows[0];
     const filePath = profile.profile_picture ? `/uploads/profiles/${profile.profile_picture}` : null;
+    const absoluteUrl = buildAbsoluteUrl(req, filePath);
 
     res.json({
       firstName: profile.first_name,
       lastName: profile.last_name,
       email: profile.email,
-      profile_picture: filePath,
+      profile_picture: absoluteUrl || null,
     });
   } catch (error) {
     console.error("Error fetching Super Admin profile:", error);
@@ -134,7 +144,12 @@ exports.updateSuperAdminProfile = async (req, res) => {
       return res.status(400).json({ message: "First Name and Last Name are required." });
     }
 
-    const profilePicFilename = profile_picture?.includes("/uploads/profiles/") ? profile_picture.split("/uploads/profiles/")[1] : profile_picture;
+    const profilePicPath = (profile_picture || '').split('?')[0];
+    const profilePicFilename = profilePicPath?.includes("/uploads/profiles/")
+      ? profilePicPath.split("/uploads/profiles/")[1]
+      : profilePicPath?.startsWith('http')
+        ? profilePicPath.split('/').pop()
+        : profilePicPath;
 
     await db.query("UPDATE users SET first_name = $1, last_name = $2, profile_picture = $3 WHERE role_id = 1", [firstName, lastName, profilePicFilename]);
 
@@ -145,11 +160,12 @@ exports.updateSuperAdminProfile = async (req, res) => {
     }
 
     const filePath = updatedProfile.rows[0].profile_picture ? `/uploads/profiles/${updatedProfile.rows[0].profile_picture}` : null;
+    const absoluteUrl = buildAbsoluteUrl(req, filePath);
 
     res.json({
       firstName: updatedProfile.rows[0].first_name,
       lastName: updatedProfile.rows[0].last_name,
-      profile_picture: filePath,
+      profile_picture: absoluteUrl || null,
     });
   } catch (error) {
     console.error("Error updating profile:", error);

@@ -42,6 +42,9 @@ require('./cron/cron');
 app.use(cookieParser());
 app.use(helmet());
 
+// Trust proxy so req.protocol reflects HTTPS behind reverse proxies (e.g., Nginx)
+app.set('trust proxy', 1);
+
 
 const uploadsDir = path.join(__dirname, '../uploads');
 const candidatesDir = path.join(uploadsDir, 'candidates');
