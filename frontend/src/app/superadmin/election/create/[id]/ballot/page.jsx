@@ -5,6 +5,8 @@ import { ArrowLeft, Plus, Trash2, Upload, Image as ImageIcon, AlertTriangle, X, 
 import Cookies from "js-cookie";
 import axios from "axios";
 import { toast } from "react-hot-toast";
+import { useMrMsSTIPositions } from './components/MrMsSTIPositionManager';
+import MrMsSTIPositionSelector from './components/MrMsSTIPositionSelector';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
@@ -479,6 +481,7 @@ export default function BallotPage() {
   const [imagePreviews, setImagePreviews] = useState({});
   const [showBackConfirmation, setShowBackConfirmation] = useState(false);
   const [isStudentCouncilElection, setIsStudentCouncilElection] = useState(false);
+  const [isMrMsSTIElection, setIsMrMsSTIElection] = useState(false);
   const [studentCouncilPositions, setStudentCouncilPositions] = useState([]);
   const [partylists, setPartylists] = useState([]);
   const [partylistCandidates, setPartylistCandidates] = useState({});
@@ -492,6 +495,9 @@ export default function BallotPage() {
   const [studentNumberSuggestions, setStudentNumberSuggestions] = useState([]);
   const [showStudentNumberSuggestions, setShowStudentNumberSuggestions] = useState(false);
   const [activeInput, setActiveInput] = useState({ posId: null, candId: null, field: null });
+
+  // Mr/Ms STI positions hook
+  const { mrMsSTIPositions, fetchMrMsSTIPositions, mrMsSTIPositionOrder } = useMrMsSTIPositions();
 
   useEffect(() => {
     const fetchStudentCouncilPositions = async () => {
@@ -696,6 +702,13 @@ export default function BallotPage() {
         
         if (electionData.election_type === "Student Council") {
           setIsStudentCouncilElection(true);
+        } else if (electionData.election_type && 
+                   electionData.election_type.toLowerCase().includes("mr") && 
+                   electionData.election_type.toLowerCase().includes("ms") && 
+                   electionData.election_type.toLowerCase().includes("sti")) {
+          setIsMrMsSTIElection(true);
+          // Fetch Mr/Ms STI positions when this election type is detected
+          fetchMrMsSTIPositions();
         }
         
         // Try to fetch existing ballot
@@ -707,6 +720,8 @@ export default function BallotPage() {
             // Sort positions if it's a student council election
             if (electionData.election_type === "Student Council") {
               positions.sort((a, b) => (studentCouncilPositionOrder[a.name] || 999) - (studentCouncilPositionOrder[b.name] || 999));
+            } else if (isMrMsSTIElection) {
+              positions.sort((a, b) => (mrMsSTIPositionOrder[a.name] || 999) - (mrMsSTIPositionOrder[b.name] || 999));
             }
             
             setBallot({
@@ -738,6 +753,37 @@ export default function BallotPage() {
         
         const sortedPositions = defaultPositions.sort(
           (a, b) => (studentCouncilPositionOrder[a] || 999) - (studentCouncilPositionOrder[b] || 999)
+        );
+        
+        setBallot(prev => ({
+          ...prev,
+          positions: [{
+            id: Math.floor(Math.random() * 1000000).toString(),
+            name: sortedPositions[0],
+            max_choices: 1,
+            candidates: [{
+              id: Math.floor(Math.random() * 1000000).toString(),
+              first_name: "",
+              last_name: "",
+              student_number: "",
+              course: "",
+              party: "",
+              slogan: "",
+              platform: "",
+              image_url: null
+            }]
+          }]
+        }));
+      } else if (electionType && 
+                 electionType.toLowerCase().includes("mr") && 
+                 electionType.toLowerCase().includes("ms") && 
+                 electionType.toLowerCase().includes("sti")) {
+        const defaultPositions = [
+          "Mr. STI", "Ms. STI", "Mr. STI 1st Runner-up", "Ms. STI 1st Runner-up"
+        ];
+        
+        const sortedPositions = defaultPositions.sort(
+          (a, b) => (mrMsSTIPositionOrder[a] || 999) - (mrMsSTIPositionOrder[b] || 999)
         );
         
         setBallot(prev => ({
@@ -971,6 +1017,8 @@ export default function BallotPage() {
     // Sort positions if it's a student council election and we're changing the name
     if (isStudentCouncilElection && field === "name") {
       updatedPositions.sort((a, b) => (studentCouncilPositionOrder[a.name] || 999) - (studentCouncilPositionOrder[b.name] || 999));
+    } else if (isMrMsSTIElection && field === "name") {
+      updatedPositions.sort((a, b) => (mrMsSTIPositionOrder[a.name] || 999) - (mrMsSTIPositionOrder[b.name] || 999));
     }
     
     setBallot(prev => ({ ...prev, positions: updatedPositions }));
@@ -1439,6 +1487,48 @@ export default function BallotPage() {
             ].sort((a, b) => (studentCouncilPositionOrder[a.name] || 999) - (studentCouncilPositionOrder[b.name] || 999))
           }));
         }
+      } else if (isMrMsSTIElection) {
+        const usedPositionNames = ballot.positions.map(p => p.name);
+        const availablePositions = mrMsSTIPositions
+          .filter(pos => !usedPositionNames.includes(pos))
+          .sort((a, b) => (mrMsSTIPositionOrder[a] || 999) - (mrMsSTIPositionOrder[b] || 999));
+        
+        if (availablePositions.length === 0) {
+          setApiError("All Mr/Ms STI positions have been added.");
+          setIsLoading(false);
+          return;
+        }
+        
+        if (ballot.id) {
+          const newPosition = await createPosition(ballot.id, {
+            name: availablePositions[0],
+            max_choices: 1
+          });
+          
+          setBallot(prev => ({
+            ...prev,
+            positions: [
+              ...prev.positions,
+              {
+                ...newPosition,
+                candidates: []
+              }
+            ].sort((a, b) => (mrMsSTIPositionOrder[a.name] || 999) - (mrMsSTIPositionOrder[b.name] || 999))
+          }));
+        } else {
+          setBallot(prev => ({
+            ...prev,
+            positions: [
+              ...prev.positions,
+              {
+                id: Math.floor(Math.random() * 1000000).toString(),
+                name: availablePositions[0], 
+                max_choices: 1,
+                candidates: []
+              }
+            ].sort((a, b) => (mrMsSTIPositionOrder[a.name] || 999) - (mrMsSTIPositionOrder[b.name] || 999))
+          }));
+        }
       } else {
         if (ballot.id) {
           const newPosition = await createPosition(ballot.id, {
@@ -1820,6 +1910,15 @@ export default function BallotPage() {
       }
     }
     
+    if (isMrMsSTIElection) {
+      const usedPositions = ballot.positions.map(p => p.name).filter(name => name.trim() !== "");
+      const uniquePositions = new Set(usedPositions);
+      
+      if (uniquePositions.size !== usedPositions.length) {
+        newErrors.duplicatePositions = "Duplicate positions are not allowed in Mr/Ms STI elections";
+      }
+    }
+    
     ballot.positions.forEach((pos) => {
       if (!pos.name.trim()) {
         newErrors[`position-${pos.id}`] = "Position name is required";
@@ -2138,6 +2237,13 @@ export default function BallotPage() {
                     ))
                   }
                 </select>
+              ) : isMrMsSTIElection ? (
+                <MrMsSTIPositionSelector
+                  position={position}
+                  ballot={ballot}
+                  onPositionChange={handlePositionChange}
+                  errors={errors}
+                />
               ) : (
                 <input
                   type="text"
