@@ -5,8 +5,8 @@ import { ArrowLeft, Plus, Trash2, Upload, Image as ImageIcon, AlertTriangle, X, 
 import Cookies from "js-cookie";
 import axios from "axios";
 import { toast } from "react-hot-toast";
-import { useMrMsSTIPositions } from '../../../superadmin/election/create/[id]/ballot/components/MrMsSTIPositionManager';
-import MrMsSTIPositionSelector from '../../../superadmin/election/create/[id]/ballot/components/MrMsSTIPositionSelector';
+import { useMrMsSTIPositions } from './components/MrMsSTIPositionManager';
+import MrMsSTIPositionSelector from './components/MrMsSTIPositionSelector';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
