@@ -1169,7 +1169,7 @@ export default function ElectionDetailsPage() {
                               />
                             </div>
                             <span className="ml-3 text-black">
-                              {Number(candidate.vote_count || 0).toLocaleString()} votes ({calculateAccuratePercentage(candidate.vote_count, getTotalVotesCast(election.positions))}%)
+                              {Number(candidate.vote_count || 0).toLocaleString()} votes ({election.voter_count ? (candidate.vote_count / election.voter_count * 100).toFixed(2) : 0}%)
                             </span>
                           </div>
                         </div>
