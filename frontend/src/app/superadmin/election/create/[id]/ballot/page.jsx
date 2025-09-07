@@ -45,9 +45,13 @@ async function fetchWithAuth(url, options = {}) {
   const fullUrl = url.startsWith('/api') ? url : `${apiBase}${url}`;
   
   const defaultHeaders = {
-    "Authorization": `Bearer ${token}`,
-    "Content-Type": "application/json"
+    "Authorization": `Bearer ${token}`
   };
+  
+  // Only set Content-Type for non-FormData requests
+  if (!(options.body instanceof FormData)) {
+    defaultHeaders["Content-Type"] = "application/json";
+  }
 
   try {
     const response = await fetch(fullUrl, {
@@ -916,7 +920,7 @@ export default function BallotPage() {
   const validateImageFile = (file) => {
     if (!file) return "No file selected";
     if (!file.type.match('image.*')) return "Only image files are allowed";
-    if (file.size > 1.5 * 1024 * 1024) return "Image must be less than 1.5MB";
+    if (file.size > 5 * 1024 * 1024) return "Image must be less than 5MB";
     return null;
   };
 
@@ -1285,11 +1289,11 @@ export default function BallotPage() {
         [`candidate_${candId}_image`]: 'Compressing and uploading image...'
       }));
 
-      // Compress image if it's larger than 1MB
+      // Compress image if it's larger than 2MB
       let processedFile = file;
-      if (file.size > 1024 * 1024) { // 1MB
+      if (file.size > 2 * 1024 * 1024) { // 2MB
         console.log('Compressing image...', file.size, 'bytes');
-        processedFile = await compressImage(file, 800, 0.7);
+        processedFile = await compressImage(file, 1000, 0.8);
         console.log('Compressed image size:', processedFile.size, 'bytes');
       }
 
@@ -1303,6 +1307,12 @@ export default function BallotPage() {
       // Prepare form data
       const formData = new FormData();
       formData.append('image', processedFile);
+      
+      console.log('FormData prepared:', {
+        fileSize: processedFile.size,
+        fileName: processedFile.name || 'compressed-image',
+        fileType: processedFile.type
+      });
       
       // Upload with timeout
       const controller = new AbortController();
@@ -1318,8 +1328,10 @@ export default function BallotPage() {
         
         clearTimeout(timeoutId);
         
+        console.log('Upload response:', imageResponse);
+        
         if (!imageResponse.success || !imageResponse.filePath) {
-          throw new Error('Failed to upload image');
+          throw new Error(imageResponse.message || 'Failed to upload image');
         }
 
         // Update ballot with new image URL
@@ -1360,7 +1372,7 @@ export default function BallotPage() {
       if (error.name === 'AbortError') {
         errorMessage = 'Upload timeout - please try a smaller image';
       } else if (error.message.includes('413')) {
-        errorMessage = 'Image too large - please use a smaller image (max 1.5MB)';
+        errorMessage = 'Image too large - please use a smaller image (max 5MB)';
       } else if (error.message) {
         errorMessage = error.message;
       }
@@ -2170,7 +2182,7 @@ export default function BallotPage() {
               <div key={candidate.id} className="border rounded-lg p-4">
                 <div className="flex">
                   <div className="mr-4 relative">
-                    <label className="block w-32 h-32 rounded-lg border-2 border-dashed border-gray-300 overflow-hidden cursor-pointer hover:border-blue-500 transition-colors relative group" title="Click to upload image (max 1.5MB)">
+                    <label className="block w-32 h-32 rounded-lg border-2 border-dashed border-gray-300 overflow-hidden cursor-pointer hover:border-blue-500 transition-colors relative group" title="Click to upload image (max 5MB)">
                       {imagePreviews[candidate.id] ? (
                         <div className="w-full h-full relative">
                           <img 
@@ -2201,7 +2213,7 @@ export default function BallotPage() {
                         <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
                           <ImageIcon className="w-6 h-6 mb-2" />
                           <span className="text-xs">Upload Photo</span>
-                          <span className="text-xs text-gray-300">Max 1.5MB</span>
+                          <span className="text-xs text-gray-300">Max 5MB</span>
                         </div>
                       )}
                       <input

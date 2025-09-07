@@ -39,10 +39,22 @@ filename: (req, file, cb) => {
 });
 
 const fileFilter = (req, file, cb) => {
+console.log('File filter check:', {
+  originalname: file.originalname,
+  mimetype: file.mimetype,
+  fieldname: file.fieldname
+});
 
-if (!file.originalname.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+// Check both file extension and MIME type
+const allowedExtensions = /\.(jpg|jpeg|png|gif|webp)$/i;
+const allowedMimeTypes = /^image\/(jpeg|jpg|png|gif|webp)$/i;
+
+if (!allowedExtensions.test(file.originalname) && !allowedMimeTypes.test(file.mimetype)) {
+  console.log('File rejected:', file.originalname, file.mimetype);
   return cb(new Error('Only image files are allowed!'), false);
 }
+
+console.log('File accepted:', file.originalname);
 cb(null, true);
 };
 
@@ -50,12 +62,35 @@ const upload = multer({
 storage: storage,
 fileFilter: fileFilter,
 limits: {
-  fileSize: 2 * 1024 * 1024, // 2MB limit to match frontend
+  fileSize: 10 * 1024 * 1024, // 10MB limit
   files: 1 // Only allow 1 file at a time
 }
 });
 
-exports.uploadMiddleware = upload.single('image');
+exports.uploadMiddleware = (req, res, next) => {
+  upload.single('image')(req, res, (err) => {
+    if (err) {
+      console.error('Multer error:', err);
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({
+          success: false,
+          message: "File too large. Maximum size is 10MB."
+        });
+      }
+      if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+        return res.status(400).json({
+          success: false,
+          message: "Unexpected file field. Please use 'image' field."
+        });
+      }
+      return res.status(400).json({
+        success: false,
+        message: err.message || "File upload error"
+      });
+    }
+    next();
+  });
+};
 
 const deleteImageFile = async (imagePath) => {
 if (!imagePath) return;
@@ -82,7 +117,16 @@ try {
 
 exports.uploadCandidateImage = async (req, res) => {
 try {
+  console.log('Upload request received:', {
+    hasFile: !!req.file,
+    fileSize: req.file?.size,
+    fileName: req.file?.originalname,
+    fileType: req.file?.mimetype,
+    body: req.body
+  });
+
   if (!req.file) {
+    console.log('No file in request');
     return res.status(400).json({ 
       success: false,
       message: "No file uploaded" 
@@ -90,7 +134,7 @@ try {
   }
 
   // Validate file size (additional check)
-  if (req.file.size > 2 * 1024 * 1024) {
+  if (req.file.size > 10 * 1024 * 1024) {
     // Delete the uploaded file if it's too large
     const fs = require('fs');
     const path = require('path');
@@ -100,7 +144,7 @@ try {
     }
     return res.status(413).json({ 
       success: false,
-      message: "File too large. Maximum size is 2MB." 
+      message: "File too large. Maximum size is 10MB." 
     });
   }
 
@@ -119,7 +163,7 @@ try {
   if (error.code === 'LIMIT_FILE_SIZE') {
     return res.status(413).json({ 
       success: false,
-      message: "File too large. Maximum size is 2MB." 
+      message: "File too large. Maximum size is 10MB." 
     });
   }
   
