@@ -1,8 +1,6 @@
 const pool = require("../config/db");
 
 const getElectionStatus = (date_from, date_to, start_time, end_time, needs_approval = false) => {
-  const { DateTime } = require("luxon");
-  const MANILA_TIMEZONE = "Asia/Manila";
 
   if (needs_approval === true) {
     return 'pending';
@@ -12,38 +10,15 @@ const getElectionStatus = (date_from, date_to, start_time, end_time, needs_appro
     return 'draft';
   }
   
-  const now = DateTime.now().setZone(MANILA_TIMEZONE);
-  
-  // Fix: Create DateTime objects directly in Manila timezone
-  // Parse date as YYYY-MM-DD and create in Manila timezone from the start
-  const startDate = date_from.split('-').map(Number); // [2025, 1, 15]
-  const endDate = date_to.split('-').map(Number);
-  
-  const startTimeParts = start_time.split(':').map(Number);
-  const endTimeParts = end_time.split(':').map(Number);
-  
-  const start = DateTime.fromObject({
-    year: startDate[0],
-    month: startDate[1], 
-    day: startDate[2],
-    hour: startTimeParts[0],
-    minute: startTimeParts[1],
-    second: 0
-  }, { zone: MANILA_TIMEZONE });
-
-  const end = DateTime.fromObject({
-    year: endDate[0],
-    month: endDate[1],
-    day: endDate[2], 
-    hour: endTimeParts[0],
-    minute: endTimeParts[1],
-    second: 0
-  }, { zone: MANILA_TIMEZONE });
+  const now = new Date();
+  const start = new Date(`${date_from}T${start_time}`);
+  const end = new Date(`${date_to}T${end_time}`);
   
   if (now < start) return "upcoming";
   if (now >= start && now <= end) return "ongoing";
   return "completed";
 };
+
 
 const getDisplayStatus = getElectionStatus;
 
@@ -589,15 +564,11 @@ const getElectionWithBallot = async (electionId) => {
 async function updateElectionStatuses() {
   const client = await pool.connect();
   try {
-    const { DateTime } = require("luxon");
-    const MANILA_TIMEZONE = "Asia/Manila";
-    
     await client.query('BEGIN');
-    console.log(`[MODEL-STATUS-UPDATE] Starting at ${DateTime.now().setZone(MANILA_TIMEZONE).toISO()}`);
 
     // Get current statuses of all elections
     const { rows: currentElections } = await client.query(`
-      SELECT id, status, date_from, date_to, start_time, end_time, needs_approval, created_by FROM elections
+      SELECT id, status FROM elections
       WHERE needs_approval = FALSE 
       OR EXISTS (
         SELECT 1 FROM users u 
@@ -611,71 +582,45 @@ async function updateElectionStatuses() {
       currentStatusMap[election.id] = election.status;
     });
 
-    const now = DateTime.now().setZone(MANILA_TIMEZONE);
-    console.log(`[MODEL-STATUS-UPDATE] Current Manila time: ${now.toISO()}`);
-    
-    const statusChanges = [];
-    
-    // Process each election individually with CORRECTED timezone handling
-    for (const election of currentElections) {
-      // FIX: Use the same logic as getElectionStatus function
-      const startDate = election.date_from.split('-').map(Number);
-      const endDate = election.date_to.split('-').map(Number);
-      
-      const startTimeParts = election.start_time.split(':').map(Number);
-      const endTimeParts = election.end_time.split(':').map(Number);
-      
-      const startDateTime = DateTime.fromObject({
-        year: startDate[0],
-        month: startDate[1], 
-        day: startDate[2],
-        hour: startTimeParts[0],
-        minute: startTimeParts[1],
-        second: 0
-      }, { zone: MANILA_TIMEZONE });
+    // Update statuses for all elections that don't need approval or are created by superadmin
+    const result = await client.query(`
+      UPDATE elections
+      SET status = 
+        CASE
+          WHEN needs_approval = TRUE AND NOT EXISTS (
+            SELECT 1 FROM users u 
+            WHERE u.id = elections.created_by 
+            AND u.role_id = 1
+          ) THEN 'pending'
+          WHEN CURRENT_TIMESTAMP BETWEEN (date_from::date + start_time::time) AND (date_to::date + end_time::time) THEN 'ongoing'
+          WHEN CURRENT_TIMESTAMP < (date_from::date + start_time::time) THEN 'upcoming'
+          WHEN CURRENT_TIMESTAMP > (date_to::date + end_time::time) THEN 'completed'
+          ELSE status
+        END
+      WHERE needs_approval = FALSE 
+      OR EXISTS (
+        SELECT 1 FROM users u 
+        WHERE u.id = elections.created_by 
+        AND u.role_id = 1
+      )
+      RETURNING id, status;
+    `);
 
-      const endDateTime = DateTime.fromObject({
-        year: endDate[0],
-        month: endDate[1],
-        day: endDate[2], 
-        hour: endTimeParts[0],
-        minute: endTimeParts[1],
-        second: 0
-      }, { zone: MANILA_TIMEZONE });
-      
-      let newStatus = election.status;
-      
-      if (election.needs_approval === true && 
-          !await isSuperAdmin(election.created_by)) {
-        newStatus = 'pending';
-      } else if (now < startDateTime) {
-        newStatus = 'upcoming';
-      } else if (now >= startDateTime && now <= endDateTime) {
-        newStatus = 'ongoing';
-      } else if (now > endDateTime) {
-        newStatus = 'completed';
-      }
-      
-      if (newStatus !== election.status) {
-        // Update the election status in the database
-        await client.query(
-          `UPDATE elections SET status = $1, last_status_update = NOW() WHERE id = $2`,
-          [newStatus, election.id]
-        );
-        
+    const statusChanges = [];
+    for (const updatedElection of result.rows) {
+      const oldStatus = currentStatusMap[updatedElection.id];
+      if (oldStatus && oldStatus !== updatedElection.status) {
         statusChanges.push({
-          id: election.id,
-          oldStatus: election.status,
-          newStatus: newStatus
+          id: updatedElection.id,
+          oldStatus: oldStatus,
+          newStatus: updatedElection.status
         });
-        
-        console.log(`[MODEL-STATUS-UPDATE] Election ${election.id}: ${election.status} → ${newStatus}`);
       }
     }
     
     await client.query('COMMIT');
     return { 
-      updated: statusChanges.length,
+      updated: result.rowCount,
       statusChanges
     };
   } catch (error) {
@@ -687,17 +632,6 @@ async function updateElectionStatuses() {
   }
 }
 
-// Helper function to check if a user is a superadmin
-async function isSuperAdmin(userId) {
-  if (!userId) return false;
-  
-  const { rows } = await pool.query(
-    'SELECT 1 FROM users WHERE id = $1 AND role_id = 1',
-    [userId]
-  );
-  
-  return rows.length > 0;
-}
 const approveElection = async (electionId, superAdminId) => {
   const query = `
     UPDATE elections 

@@ -9,8 +9,6 @@ const MANILA_TIMEZONE = "Asia/Manila";
 async function updateElectionStatuses() {
   const client = await pool.connect();
   try {
-    console.log(`[STATUS-UPDATE] Starting at ${DateTime.now().setZone(MANILA_TIMEZONE).toISO()}`);
-    
     await client.query('BEGIN');
     
     const { rows: elections } = await client.query(
@@ -20,40 +18,25 @@ async function updateElectionStatuses() {
     );
 
     const now = DateTime.now().setZone(MANILA_TIMEZONE);
-    console.log(`[STATUS-UPDATE] Current Manila time: ${now.toISO()}`);
-    console.log(`[STATUS-UPDATE] Processing ${elections.length} elections`);
     
     // Track elections that transitioned to completed status
     const newlyCompletedElections = [];
-    // Track all status changes
-    const statusChanges = [];
 
     for (const election of elections) {
-      // REPLACE the existing DateTime.fromISO() logic with:
-      const startDate = election.date_from.split('-').map(Number);
-      const endDate = election.date_to.split('-').map(Number);
-      
-      const startTimeParts = election.start_time.split(':').map(Number);
-      const endTimeParts = election.end_time.split(':').map(Number);
-      
-      const startDateTime = DateTime.fromObject({
-        year: startDate[0],
-        month: startDate[1], 
-        day: startDate[2],
-        hour: startTimeParts[0],
-        minute: startTimeParts[1],
-        second: 0
-      }, { zone: MANILA_TIMEZONE });
-  
-      const endDateTime = DateTime.fromObject({
-        year: endDate[0],
-        month: endDate[1],
-        day: endDate[2], 
-        hour: endTimeParts[0],
-        minute: endTimeParts[1],
-        second: 0
-      }, { zone: MANILA_TIMEZONE });
-      
+      const startDateTime = DateTime.fromISO(election.date_from)
+        .setZone(MANILA_TIMEZONE)
+        .set({
+          hour: election.start_time ? parseInt(election.start_time.split(':')[0]) : 0,
+          minute: election.start_time ? parseInt(election.start_time.split(':')[1]) : 0
+        });
+
+      const endDateTime = DateTime.fromISO(election.date_to)
+        .setZone(MANILA_TIMEZONE)
+        .set({
+          hour: election.end_time ? parseInt(election.end_time.split(':')[0]) : 23,
+          minute: election.end_time ? parseInt(election.end_time.split(':')[1]) : 59
+        });
+
       let newStatus = election.status;
       const oldStatus = election.status;
 
@@ -66,20 +49,12 @@ async function updateElectionStatuses() {
       }
 
       if (newStatus !== oldStatus) {
-        console.log(`[STATUS-UPDATE] Election ${election.id} (${election.title}): ${oldStatus} → ${newStatus}`);
         await client.query(
           `UPDATE elections 
            SET status = $1, last_status_update = NOW() 
            WHERE id = $2`,
           [newStatus, election.id]
         );
-        
-        // Track all status changes
-        statusChanges.push({
-          id: election.id,
-          oldStatus: oldStatus,
-          newStatus: newStatus
-        });
         
         // If transitioning to completed status, track for notifications
         if (newStatus === 'completed' && oldStatus !== 'completed') {
@@ -114,20 +89,17 @@ async function updateElectionStatuses() {
       }
     }
     
-    // Return status changes information
-    return {
-      statusChanges,
-      newlyCompletedElections
-    };
-    
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('[STATUS-UPDATE] Error:', error);
+    console.error('Error updating election statuses:', error);
     throw error;
   } finally {
     client.release();
   }
 }
 
-module.exports = { updateElectionStatuses };
+// Run this more frequently to catch elections ending
+setInterval(updateElectionStatuses, 15 * 60 * 1000); // Every 15 minutes
+updateElectionStatuses(); // Run immediately on startup
 
+module.exports = { updateElectionStatuses };

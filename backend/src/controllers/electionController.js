@@ -8,6 +8,7 @@ const {
   getElectionsByStatus,
   getElectionStatistics,
   getElectionWithBallot,
+  updateElectionStatuses,
   getElectionStatus,
   createElection,
   approveElection,
@@ -15,7 +16,6 @@ const {
   getPendingApprovalElections,
   getAllElectionsWithCreator
 } = require("../models/electionModel");
-const electionStatusService = require("../services/electionStatusService");
 const pool = require("../config/db");
 const crypto = require('crypto');
 const notificationService = require('../services/notificationService');
@@ -361,19 +361,35 @@ exports.getElectionStatus = async (req, res) => {
 
 exports.updateElectionStatuses = async (req, res) => {
   try {
-    const result = await electionStatusService.updateElectionStatuses();
+      const result = await updateElectionStatuses();
 
-    res.json({
-      success: true,
-      message: "Election statuses updated successfully",
-      data: result
-    });
+      if (result.statusChanges && result.statusChanges.length > 0) {
+          const notificationPromises = result.statusChanges.map(async (change) => {
+              try {
+                  const election = await getElectionById(change.id);
+                  if (election) {
+                      return notificationService.notifyElectionStatusChange(election, change.oldStatus, change.newStatus);
+                  }
+              } catch (notifError) {
+                  console.error(`Error sending notification for election ${change.id}:`, notifError);
+                  return null;
+              }
+          });
+          
+          await Promise.allSettled(notificationPromises);
+      }
+      
+      res.status(200).json({
+          success: true,
+          message: `Updated ${result.updated} election statuses`,
+          statusChanges: result.statusChanges?.length || 0
+      });
   } catch (error) {
-    console.error("Error updating election statuses:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to update election statuses"
-    });
+      console.error('Status update error:', error);
+      res.status(500).json({
+          success: false,
+          message: 'Failed to update election statuses'
+      });
   }
 };
 
