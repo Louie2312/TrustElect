@@ -59,12 +59,12 @@ cb(null, true);
 };
 
 const upload = multer({
-storage: storage,
-fileFilter: fileFilter,
-limits: {
-  fileSize: 10 * 1024 * 1024, // 10MB limit
-  files: 1 // Only allow 1 file at a time
-}
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+    files: 1 // Only allow 1 file at a time
+  }
 });
 
 exports.uploadMiddleware = (req, res, next) => {
@@ -93,26 +93,24 @@ exports.uploadMiddleware = (req, res, next) => {
 };
 
 const deleteImageFile = async (imagePath) => {
-if (!imagePath) return;
+  if (!imagePath) return;
 
-try {
+  try {
+    let fullPath;
+    if (imagePath.startsWith('/uploads/')) {
+      fullPath = path.join(__dirname, '../..', imagePath);
+    } else {
+      fullPath = imagePath;
+    }
 
-  let fullPath;
-  if (imagePath.startsWith('/uploads/')) {
-    fullPath = path.join(__dirname, '../..', imagePath);
-  } else {
-    fullPath = imagePath;
+    if (fs.existsSync(fullPath)) {
+      await fs.promises.unlink(fullPath);
+    } else {
+      console.warn('Image file not found:', fullPath);
+    }
+  } catch (error) {
+    console.error('Error deleting image file:', error);
   }
-
-  if (fs.existsSync(fullPath)) {
-    await fs.promises.unlink(fullPath);
-
-  } else {
-    console.warn('Image file not found:', fullPath);
-  }
-} catch (error) {
-  console.error('Error deleting image file:', error);
-}
 };
 
 exports.uploadCandidateImage = async (req, res) => {
