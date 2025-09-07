@@ -9,8 +9,8 @@ import { use } from 'react';
 import Image from 'next/image';
 import { toast } from 'react-hot-toast';
 
-const API_BASE = '/api';
-const BASE_URL = '';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 function formatNameSimple(lastName, firstName, fallback) {
   const cap = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
@@ -31,20 +31,22 @@ function formatNameSimple(lastName, firstName, fallback) {
 const getImageUrl = (imageUrl) => {
   if (!imageUrl) return '/default-candidate.png';
   
-
+  // If it's already a full URL, use it as is
   if (imageUrl.startsWith('http')) {
     return imageUrl;
   }
   
-
+  // If it's a relative path starting with /uploads, make it absolute
   if (imageUrl.startsWith('/uploads')) {
     return `${BASE_URL}${imageUrl}`;
   }
 
+  // If it's just a filename, construct the full path
   if (!imageUrl.startsWith('/')) {
     return `${BASE_URL}/uploads/candidates/${imageUrl}`;
   }
 
+  // For any other relative path, prepend base URL
   return `${BASE_URL}${imageUrl}`;
 };
 
@@ -97,9 +99,10 @@ export default function VotePage({ params }) {
         response.data.positions.forEach(position => {
           position.candidates.forEach(candidate => {
             if (candidate.image_url) {
-
+              // Add cache busting to prevent stale images
               const processedUrl = getImageUrl(candidate.image_url);
-              newImageCache[candidate.id] = processedUrl;
+              const urlWithTimestamp = `${processedUrl}?timestamp=${new Date().getTime()}`;
+              newImageCache[candidate.id] = urlWithTimestamp;
             }
           });
         });
@@ -305,13 +308,33 @@ export default function VotePage({ params }) {
     }
   };
 
-  const handleImageError = (candidateId) => {
-
+  const handleImageError = (candidateId, event) => {
+    console.log("Error loading candidate image:", event.target.src);
+    
+    // Try fallback URL if not already tried
     if (!imageErrors[candidateId]) {
-      setImageErrors(prev => ({
-        ...prev,
-        [candidateId]: true
-      }));
+      const candidate = getCandidateById(candidateId);
+      if (candidate && candidate.image_url) {
+        // Try alternative URL paths
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
+        const fallbackUrl = `${baseUrl}/api/uploads/candidates/${candidate.image_url}`;
+        
+        // Update the image source to try the fallback
+        event.target.src = fallbackUrl;
+        
+        // Mark as error only if this was the fallback attempt
+        if (event.target.src.includes('/api/uploads/')) {
+          setImageErrors(prev => ({
+            ...prev,
+            [candidateId]: true
+          }));
+        }
+      } else {
+        setImageErrors(prev => ({
+          ...prev,
+          [candidateId]: true
+        }));
+      }
     }
   };
 
@@ -466,7 +489,7 @@ export default function VotePage({ params }) {
                               src={imageCache[candidate.id] || getImageUrl(candidate.image_url)}
                               alt={`${formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}`}
                               className="w-full h-full object-cover"
-                              onError={() => handleImageError(candidate.id)}
+                              onError={(e) => handleImageError(candidate.id, e)}
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
@@ -577,7 +600,7 @@ export default function VotePage({ params }) {
                                   src={imageCache[candidate.id] || getImageUrl(candidate.image_url)}
                                   alt={`${formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}`}
                                   className="w-full h-full object-cover"
-                                  onError={() => handleImageError(candidate.id)}
+                                  onError={(e) => handleImageError(candidate.id, e)}
                                 />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center">
