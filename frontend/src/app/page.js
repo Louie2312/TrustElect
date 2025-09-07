@@ -236,6 +236,7 @@ export default function Home() {
               height={20} 
               className="mr-2"
               priority
+              unoptimized={true}
               style={{ maxHeight: 'calc(51px - (0px * 2))' }}
               onError={(e) => {
                 console.error("Error loading logo:", landingContent.logo.imageUrl);
