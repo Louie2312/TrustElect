@@ -70,30 +70,34 @@ export default function ProfilePage() {
   const handleFileChange = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
-
+  
     const formData = new FormData();
     formData.append("profilePic", file);
-
+  
     try {
       const token = Cookies.get("token");
       if (!token) return;
-
+  
       const res = await axios.post("/api/superadmin/upload", formData, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
-
+  
       console.log("Upload response:", res.data);
-
+  
       if (!res.data.filePath) {
         console.error("Error: filePath is missing in response", res.data);
         return;
       }
-
+  
+      // Ensure consistent URL format with cache busting
       const imageUrl = `${res.data.filePath}?timestamp=${new Date().getTime()}`;
-
+  
       setProfilePic(imageUrl);
       console.log("Profile Picture Updated:", imageUrl);
+      
+      // Dispatch event to update sidebar
+      window.dispatchEvent(new Event("SystemAdminProfileUpdated"));
     } catch (error) {
       console.error("Error uploading file:", error);
     }

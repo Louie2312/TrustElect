@@ -59,14 +59,8 @@ router.get("/profile", verifyToken, isSuperAdmin, getSuperAdminProfile);
 
 router.put("/profile", verifyToken, isSuperAdmin, updateSuperAdminProfile);
 
-router.post("/upload", verifyToken, isSuperAdmin, upload.single("profilePic"), uploadProfilePicture, (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ message: "No file uploaded" });
-  }
-
-  const filePath = `/uploads/${req.file.filename}`;
-  res.json({ filePath: filePath }); 
-});
+// Remove the duplicate upload handler and use only the controller
+router.post("/upload", verifyToken, isSuperAdmin, upload.single("profilePic"), uploadProfilePicture);
 
 // Debug route to test superadmin notifications
 router.post('/test-notifications', verifyToken, async (req, res) => {

@@ -315,9 +315,10 @@ exports.uploadAdminProfilePicture = async (req, res) => {
 
     const adminId = adminResult.rows[0].id;
 
+    // Standardize path format
     const filePath = `/uploads/admins/${req.file.filename}`;
     const updateQuery = "UPDATE admins SET profile_picture = $1 WHERE id = $2 RETURNING *";
-    const updateResult = await pool.query(updateQuery, [filePath, adminId]);
+    const updateResult = await pool.query(updateQuery, [req.file.filename, adminId]); // Store only filename in DB
 
     if (updateResult.rows.length === 0) {
       return res.status(500).json({ message: "Failed to update profile picture" });
@@ -325,7 +326,7 @@ exports.uploadAdminProfilePicture = async (req, res) => {
 
     return res.status(200).json({ 
       message: "Profile picture uploaded successfully", 
-      filePath: filePath
+      filePath: filePath // Return full path to frontend
     });
   } catch (error) {
     console.error("Error uploading profile picture:", error);

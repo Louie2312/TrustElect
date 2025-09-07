@@ -90,19 +90,17 @@ export default function AdminProfilePage() {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
-
+  
       console.log("Upload response:", res.data);
-
+  
       if (!res.data.filePath) {
         setUploadError("Error: Missing file path in response");
         console.error("Error: filePath is missing in response", res.data);
         return;
       }
-
-      // Update profile picture state with the returned file path
-      const uploadImageUrl = res.data.filePath
-        ? `${res.data.filePath.startsWith('/uploads/') ? res.data.filePath : `/uploads/admins/${res.data.filePath}`}?timestamp=${new Date().getTime()}`
-        : "https://via.placeholder.com/100";
+  
+      // Standardize URL format with cache busting
+      const uploadImageUrl = `${res.data.filePath}?timestamp=${new Date().getTime()}`;
       
       setProfilePic(uploadImageUrl);
       setPreviewImage(null);
