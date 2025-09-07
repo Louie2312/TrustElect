@@ -7,7 +7,7 @@ import Cookies from "js-cookie";
 
 export default function Sidebar() {
   const router = useRouter();
-  const [profilePic, setProfilePic] = useState("/images/default-avatar.png");
+  const [profilePic, setProfilePic] = useState("https://via.placeholder.com/80");
   const [superAdminName, setSuperAdminName] = useState("Super Admin");
   const [showImageModal, setShowImageModal] = useState(false);
 
@@ -27,38 +27,12 @@ export default function Sidebar() {
       const lastName = res.data.lastName || "Admin";
       setSuperAdminName(`${firstName} ${lastName}`);
 
-      // If the server provides an absolute URL directly, use it
-      if (res.data.absoluteUrl) {
-        const imageUrl = `${res.data.absoluteUrl}?timestamp=${new Date().getTime()}`;
-        console.log("Using server-provided absolute URL:", imageUrl);
-        setProfilePic(imageUrl);
-        return;
-      }
-      
-      // Otherwise, construct the URL from the profile_picture path
       const baseProfileUrl = res.data.profile_picture
         ? res.data.profile_picture.split("?")[0]
         : null;
-      
-      // Check if the URL is already absolute (starts with http:// or https://)
-      const isAbsoluteUrl = baseProfileUrl && (baseProfileUrl.startsWith('http://') || baseProfileUrl.startsWith('https://'));
-      
-      // If it's not an absolute URL and starts with /uploads, prepend the backend URL
-      const fullBaseUrl = baseProfileUrl && !isAbsoluteUrl && baseProfileUrl.startsWith('/uploads')
-        ? `https://trustelectonline.com${baseProfileUrl}`
-        : baseProfileUrl;
-      
-      const imageUrl = fullBaseUrl
-        ? `${fullBaseUrl}?timestamp=${new Date().getTime()}`
-        : "/images/default-avatar.png";
-      
-      console.log("Sidebar image URL constructed:", {
-        original: res.data.profile_picture,
-        baseUrl: baseProfileUrl,
-        isAbsolute: isAbsoluteUrl,
-        fullBaseUrl: fullBaseUrl,
-        finalUrl: imageUrl
-      });
+      const imageUrl = baseProfileUrl
+        ? `https://trustelectonline.com${baseProfileUrl}?timestamp=${new Date().getTime()}`
+        : "https://via.placeholder.com/80";
   
       setProfilePic(imageUrl);
     } catch (error) {
@@ -87,10 +61,6 @@ export default function Sidebar() {
               src={profilePic}
               alt="Profile"
               className="w-20 h-20 rounded-full mx-auto border-2 border-white hover:opacity-80"
-              onError={(e) => {
-                console.error("Sidebar image failed to load:", profilePic);
-                e.target.src = "/images/default-avatar.png";
-              }}
             />
           </div>
           <h3 className="mt-2 text-lg font-semibold">{superAdminName}</h3>
@@ -102,15 +72,7 @@ export default function Sidebar() {
               <button className="absolute top-2 right-2 text-gray-600 hover:text-gray-900 text-xl" onClick={() => setShowImageModal(false)}>
                 ×
               </button>
-              <img
-                src={profilePic}
-                alt="Profile"
-                className="w-40 h-40 rounded-full mx-auto border-4 border-gray-300"
-                onError={(e) => {
-                  console.error("Modal image failed to load:", profilePic);
-                  e.target.src = "/images/default-avatar.png";
-                }}
-              />
+              <img src={profilePic} alt="Profile" className="w-40 h-40 rounded-full mx-auto border-4 border-gray-300" />
             </div>
           </div>
         )}

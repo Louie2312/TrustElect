@@ -9,7 +9,7 @@ import { toast } from "react-hot-toast";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [profilePic, setProfilePic] = useState("/images/default-avatar.png");
+  const [profilePic, setProfilePic] = useState("https://via.placeholder.com/100");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -51,36 +51,12 @@ export default function ProfilePage() {
       setLastName(res.data.lastName || "");
       setEmail(res.data.email || "");
 
-      // If the server provides an absolute URL directly, use it
-      let imageUrl;
-      if (res.data.absoluteUrl) {
-        imageUrl = `${res.data.absoluteUrl}?timestamp=${new Date().getTime()}`;
-        console.log("Using server-provided absolute URL:", imageUrl);
-      } else {
-        const baseProfileUrl = res.data.profile_picture
-          ? res.data.profile_picture.split("?")[0]
-          : null;
-        
-        // Check if the URL is already absolute (starts with http:// or https://)
-        const isAbsoluteUrl = baseProfileUrl && (baseProfileUrl.startsWith('http://') || baseProfileUrl.startsWith('https://'));
-        
-        // If it's not an absolute URL and starts with /uploads, prepend the backend URL
-        const fullBaseUrl = baseProfileUrl && !isAbsoluteUrl && baseProfileUrl.startsWith('/uploads')
-          ? `https://trustelectonline.com${baseProfileUrl}`
-          : baseProfileUrl;
-        
-        imageUrl = fullBaseUrl
-          ? `${fullBaseUrl}?timestamp=${new Date().getTime()}`
-          : "/images/default-avatar.png";
-        
-        console.log("Profile image URL constructed:", {
-          original: res.data.profile_picture,
-          baseUrl: baseProfileUrl,
-          isAbsolute: isAbsoluteUrl,
-          fullBaseUrl: fullBaseUrl,
-          finalUrl: imageUrl
-        });
-      }
+      const baseProfileUrl = res.data.profile_picture
+        ? res.data.profile_picture.split("?")[0]
+        : null;
+      const imageUrl = baseProfileUrl
+        ? `https://trustelectonline.com${baseProfileUrl}?timestamp=${new Date().getTime()}`
+        : "https://via.placeholder.com/100";
 
       setProfilePic(imageUrl);
       setLoading(false);
@@ -117,32 +93,8 @@ export default function ProfilePage() {
         return;
       }
 
-      // Use the absolute URL if provided by the server
-      let imageUrl;
-      if (res.data.absoluteUrl) {
-        imageUrl = `${res.data.absoluteUrl}?timestamp=${new Date().getTime()}`;
-        console.log("Using server-provided absolute URL:", imageUrl);
-      } else {
-        const cleanPath = res.data.filePath.split("?")[0];
-        
-        // Check if the URL is already absolute (starts with http:// or https://)
-        const isAbsoluteUrl = cleanPath && (cleanPath.startsWith('http://') || cleanPath.startsWith('https://'));
-        
-        // If it's not an absolute URL and starts with /uploads, prepend the backend URL
-        const fullPath = cleanPath && !isAbsoluteUrl && cleanPath.startsWith('/uploads')
-          ? `https://trustelectonline.com${cleanPath}`
-          : cleanPath;
-        
-        imageUrl = `${fullPath}?timestamp=${new Date().getTime()}`;
-        
-        console.log("Upload image URL constructed:", {
-          original: res.data.filePath,
-          cleanPath: cleanPath,
-          isAbsolute: isAbsoluteUrl,
-          fullPath: fullPath,
-          finalUrl: imageUrl
-        });
-      }
+      const cleanPath = res.data.filePath.split("?")[0];
+      const imageUrl = `https://trustelectonline.com${cleanPath}?timestamp=${new Date().getTime()}`;
 
       setProfilePic(imageUrl);
       console.log("Profile Picture Updated:", imageUrl);
@@ -259,15 +211,7 @@ export default function ProfilePage() {
           <div className="text-center">
             <label className="cursor-pointer inline-block">
               <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
-              <img
-                src={profilePic}
-                alt="Profile"
-                className="w-24 h-24 rounded-full mx-auto border-2 border-gray-400 hover:opacity-80"
-                onError={(e) => {
-                  console.error("Image failed to load:", profilePic);
-                  e.target.src = "/images/default-avatar.png";
-                }}
-              />
+              <img src={profilePic} alt="Profile" className="w-24 h-24 rounded-full mx-auto border-2 border-gray-400 hover:opacity-80" />
             </label>
             <p className="text-sm text-gray-500 mt-2">Change profile</p>
           </div>
