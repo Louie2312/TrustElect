@@ -425,7 +425,7 @@ export default function EditElectionPage() {
       
 
       const currentElectionResponse = await axios.get(
-        `/api/elections/${electionId}`,
+        `${API_BASE}/elections/${electionId}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -451,7 +451,7 @@ export default function EditElectionPage() {
       
       // Update election basic details
       const updateResponse = await axios.put(
-        `/elections/${electionId}`,
+        `${API_BASE}/elections/${electionId}`,
         updatePayload,
         {
           headers: {
