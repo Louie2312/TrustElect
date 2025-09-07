@@ -108,8 +108,8 @@ const ElectionCard = ({ election, onClick, onDeleteClick, activeTab }) => {
       const hours = parseInt(timeParts[0], 10);
       const minutes = parseInt(timeParts[1], 10);
       
-      // FIX: Remove the +1 from day
-      const dateObj = new Date(year, month - 1, day + 1, hours, minutes);
+      // Remove the +1 from day
+      const dateObj = new Date(year, month - 1, day, hours, minutes);
       
       if (isNaN(dateObj.getTime())) return 'Invalid date';
       
@@ -119,7 +119,8 @@ const ElectionCard = ({ election, onClick, onDeleteClick, activeTab }) => {
         year: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-        hour12: true 
+        hour12: true,
+        timeZone: 'Asia/Manila' // Explicitly set Manila timezone
       }).format(dateObj);
     } catch (error) {
       console.error('Date parsing error:', error);
@@ -376,10 +377,10 @@ export default function SuperAdminDashboard() {
       loadLiveVoteCount();
     }, 30000);
 
-    // Refresh election data every 5 minutes
+    // Refresh election data every 1 minute instead of 5 minutes
     const electionInterval = setInterval(() => {
       loadElections(activeTab);
-    }, 300000);
+    }, 60000); // 1 minute instead of 300000 (5 minutes)
 
     return () => {
       clearInterval(pendingInterval);

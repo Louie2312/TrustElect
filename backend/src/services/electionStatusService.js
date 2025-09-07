@@ -25,6 +25,8 @@ async function updateElectionStatuses() {
     
     // Track elections that transitioned to completed status
     const newlyCompletedElections = [];
+    // Track all status changes
+    const statusChanges = [];
 
     for (const election of elections) {
       const startDateTime = DateTime.fromISO(election.date_from)
@@ -61,6 +63,13 @@ async function updateElectionStatuses() {
           [newStatus, election.id]
         );
         
+        // Track all status changes
+        statusChanges.push({
+          id: election.id,
+          oldStatus: oldStatus,
+          newStatus: newStatus
+        });
+        
         // If transitioning to completed status, track for notifications
         if (newStatus === 'completed' && oldStatus !== 'completed') {
           newlyCompletedElections.push(election);
@@ -93,6 +102,12 @@ async function updateElectionStatuses() {
         }
       }
     }
+    
+    // Return status changes information
+    return {
+      statusChanges,
+      newlyCompletedElections
+    };
     
   } catch (error) {
     await client.query('ROLLBACK');

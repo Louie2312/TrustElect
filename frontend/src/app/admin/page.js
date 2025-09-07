@@ -98,33 +98,34 @@ const ElectionCard = ({ election, onClick, onDeleteClick, canDelete, activeTab }
   };
 
   const parseElectionDate = (dateStr, timeStr) => {
-    try {
-      if (!dateStr || !timeStr) return 'Date not set';
-      
-      const [year, month, day] = dateStr.split('T')[0].split('-').map(Number);
+  try {
+    if (!dateStr || !timeStr) return 'Date not set';
     
-      const timeParts = timeStr.includes(':') ? timeStr.split(':') : [timeStr, '00'];
-      const hours = parseInt(timeParts[0], 10);
-      const minutes = parseInt(timeParts[1], 10);
-      
-      // FIX: Remove the +1 from day
-      const dateObj = new Date(year, month - 1, day + 1, hours, minutes);
-      
-      if (isNaN(dateObj.getTime())) return 'Invalid date';
-      
-      return new Intl.DateTimeFormat('en-PH', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true 
-      }).format(dateObj);
-    } catch (error) {
-      console.error('Date parsing error:', error);
-      return 'Invalid date';
-    }
-  };
+    const [year, month, day] = dateStr.split('T')[0].split('-').map(Number);
+  
+    const timeParts = timeStr.includes(':') ? timeStr.split(':') : [timeStr, '00'];
+    const hours = parseInt(timeParts[0], 10);
+    const minutes = parseInt(timeParts[1], 10);
+    
+    // Remove the +1 from day
+    const dateObj = new Date(year, month - 1, day, hours, minutes);
+    
+    if (isNaN(dateObj.getTime())) return 'Invalid date';
+    
+    return new Intl.DateTimeFormat('en-PH', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: 'Asia/Manila' // Explicitly set Manila timezone
+    }).format(dateObj);
+  } catch (error) {
+    console.error('Date parsing error:', error);
+    return 'Invalid date';
+  }
+};
   
   return (
     <div className="border rounded-lg overflow-hidden hover:shadow-lg transition-all duration-200 bg-white">
@@ -421,13 +422,13 @@ export default function AdminDashboard() {
       }
     }, 30000));
     
-    // Refresh election data every 5 minutes to sync with backend status updates
+    // Refresh election data every 1 minute to sync with backend status updates
     intervals.push(setInterval(() => {
       if (isMounted) {
         console.log('[FRONTEND] Auto-refreshing election data...');
         loadElections();
       }
-    }, 300000)); // 5 minutes
+    }, 60000)); // 1 minute instead of 300000 (5 minutes)
     
     return () => {
       isMounted = false;
