@@ -396,8 +396,27 @@ export default function ElectionDetailsPage() {
 
   const eligibilityCriteria = getEligibilityCriteria();
 
+  // Helper function to calculate accurate percentages
+  const calculateAccuratePercentage = (candidateVotes, totalVotesCast) => {
+    if (!totalVotesCast || totalVotesCast === 0) return '0.00';
+    return ((candidateVotes || 0) / totalVotesCast * 100).toFixed(2);
+  };
+
+  // Helper function to get total votes cast across all positions
+  const getTotalVotesCast = (positions) => {
+    if (!positions || positions.length === 0) return 0;
+    return positions.reduce((total, position) => {
+      return total + (position.candidates || []).reduce((posTotal, candidate) => {
+        return posTotal + (candidate.vote_count || 0);
+      }, 0);
+    }, 0);
+  };
+
   const formatResultsData = (positions) => {
     if (!positions || positions.length === 0) return [];
+
+    // Calculate total votes cast across all positions
+    const totalVotesCast = getTotalVotesCast(positions);
 
     return positions.map(position => {
       const sortedCandidates = [...(position.candidates || [])].sort((a, b) => 
@@ -408,7 +427,7 @@ export default function ElectionDetailsPage() {
         name: formatNameSimple(candidate.last_name, candidate.first_name, candidate.name),
         votes: candidate.vote_count || 0, 
         party: candidate.party || 'Independent',
-        percentage: election.voter_count ? ((candidate.vote_count || 0) / election.voter_count * 100).toFixed(2) : '0.00',
+        percentage: calculateAccuratePercentage(candidate.vote_count, totalVotesCast),
         color: CHART_COLORS[index % CHART_COLORS.length]
       }));
       
@@ -881,7 +900,7 @@ export default function ElectionDetailsPage() {
                                 {Number(candidate.vote_count || 0).toLocaleString()}
                               </div>
                               <div className="text-sm text-gray-600">
-                                {election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
+                                {calculateAccuratePercentage(candidate.vote_count, getTotalVotesCast(election.positions))}%
                               </div>
                             </div>
                           </div>
@@ -926,7 +945,7 @@ export default function ElectionDetailsPage() {
                                 {Number(candidate.vote_count || 0).toLocaleString()}
                               </div>
                               <div className="text-sm text-gray-600">
-                                {election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
+                                {calculateAccuratePercentage(candidate.vote_count, getTotalVotesCast(election.positions))}%
                               </div>
                             </div>
                           </div>
@@ -1068,7 +1087,7 @@ export default function ElectionDetailsPage() {
                               {Number(position.sortedCandidates[0].vote_count || 0).toLocaleString()} 
                             </span>
                             <span className="ml-1 text-blue-600">
-                              ({election.voter_count ? (position.sortedCandidates[0].vote_count / election.voter_count * 100).toFixed(2) : 0}% of eligible voters)
+                              ({calculateAccuratePercentage(position.sortedCandidates[0].vote_count, getTotalVotesCast(election.positions))}% of total votes cast)
                             </span>
                           </div>
                         </div>
@@ -1087,7 +1106,7 @@ export default function ElectionDetailsPage() {
                         <XAxis dataKey="name" />
                         <YAxis />
                         <Tooltip 
-                          formatter={(value, name) => [`${value} votes (${election.voter_count ? ((value / election.voter_count) * 100).toFixed(2) : '0.00'}% `, 'Votes']}
+                          formatter={(value, name) => [`${value} votes (${calculateAccuratePercentage(value, getTotalVotesCast(election.positions))}% `, 'Votes']}
                           labelFormatter={(name) => `${name}`}
                         />
                         <Legend />
@@ -1146,11 +1165,11 @@ export default function ElectionDetailsPage() {
                             <div className="w-48 h-2 bg-gray-200 rounded-full overflow-hidden">
                               <div 
                                 className="h-full bg-blue-500 rounded-full"
-                                style={{ width: `${election.voter_count ? (candidate.vote_count / election.voter_count * 100).toFixed(2) : 0}%` }}
+                                style={{ width: `${calculateAccuratePercentage(candidate.vote_count, getTotalVotesCast(election.positions))}%` }}
                               />
                             </div>
                             <span className="ml-3 text-black">
-                              {Number(candidate.vote_count || 0).toLocaleString()} votes ({election.voter_count ? (candidate.vote_count / election.voter_count * 100).toFixed(2) : 0}%)
+                              {Number(candidate.vote_count || 0).toLocaleString()} votes ({calculateAccuratePercentage(candidate.vote_count, getTotalVotesCast(election.positions))}%)
                             </span>
                           </div>
                         </div>
@@ -1302,7 +1321,7 @@ export default function ElectionDetailsPage() {
                                       {Number(candidate.vote_count || 0).toLocaleString()}
                                     </div>
                                     <div className={`${isFullScreen ? 'text-base' : 'text-sm'} text-gray-600`}>
-                                      {election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
+                                      {calculateAccuratePercentage(candidate.vote_count, getTotalVotesCast(election.positions))}%
                                     </div>
                                   </div>
                                 </div>
@@ -1310,7 +1329,7 @@ export default function ElectionDetailsPage() {
                                   <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden mt-3">
                                     <div 
                                       className={`h-full rounded-full ${index === 0 ? 'bg-blue-500' : index === 1 ? 'bg-gray-500' : 'bg-gray-400'}`}
-                                      style={{ width: `${election.voter_count ? (candidate.vote_count / election.voter_count * 100).toFixed(2) : 0}%` }}
+                                      style={{ width: `${calculateAccuratePercentage(candidate.vote_count, getTotalVotesCast(election.positions))}%` }}
                                     />
                                   </div>
                                 )}
@@ -1364,7 +1383,7 @@ export default function ElectionDetailsPage() {
                                         {Number(candidate.vote_count || 0).toLocaleString()}
                                       </div>
                                       <div className="text-sm text-gray-600">
-                                        {election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
+                                        {calculateAccuratePercentage(candidate.vote_count, getTotalVotesCast(election.positions))}%
                                       </div>
                                     </div>
                                   </div>
