@@ -2169,38 +2169,19 @@ export default function BallotPage() {
         />
       )}
 
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">
-              Create Ballot for {election.title}
-            </h1>
-            <p className="text-sm text-gray-600 mt-1">
-              Election Type: {election.election_type?.name || 'Unknown'}
-            </p>
-          </div>
-          <div className="flex space-x-2">
-            <button
-              onClick={() => setShowBackConfirmation(true)}
-              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-            >
-              Back
-            </button>
-            <button
-              onClick={handlePreview}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              Preview
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={isLoading}
-              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
-            >
-              {isLoading ? 'Saving...' : 'Save Ballot'}
-            </button>
-          </div>
+      <div className="flex items-center mb-6">
+        <button 
+          onClick={() => setShowBackConfirmation(true)}
+          className="flex items-center text-blue-600 hover:text-blue-800 mr-4"
+        >
+          <ArrowLeft className="w-5 h-5 mr-1" />
+          Back
+        </button>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Create Ballot</h1>
+          <p className="text-sm text-gray-600">For election: {election.title}</p>
         </div>
+      </div>
 
       {apiError && (
         <div className={`border px-4 py-3 rounded mb-4 ${
@@ -2212,24 +2193,6 @@ export default function BallotPage() {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Ballot Description
-        </label>
-        <textarea
-          name="description"
-          value={ballot.description}
-          onChange={handleBallotChange}
-          className={`w-full p-2 border rounded text-black ${
-            errors.description ? "border-red-500" : "border-gray-300"
-          }`}
-          rows={3}
-          placeholder="Describe what this ballot is for"
-        />
-        {errors.description && (
-          <p className="text-red-500 text-sm mt-1">{errors.description}</p>
-        )}
-      </div>
 
       {/* Election Type Specific Controls */}
       {(isStudentCouncilElection || isMrMsSTIElection) && (
@@ -2237,12 +2200,6 @@ export default function BallotPage() {
           <h3 className="text-lg font-semibold text-blue-800 mb-3">
             {isStudentCouncilElection ? 'Student Council Positions' : 'Mr/Ms STI Positions'}
           </h3>
-          <p className="text-sm text-blue-600 mb-4">
-            {isStudentCouncilElection 
-              ? 'Positions are automatically loaded from the maintenance system. You can add custom positions if needed.'
-              : 'Positions are automatically loaded from the maintenance system for Mr/Ms STI elections.'
-            }
-          </p>
           {isStudentCouncilElection && (
             <button
               onClick={reloadStudentCouncilPositions}
@@ -2250,12 +2207,6 @@ export default function BallotPage() {
             >
               Reload Positions from Maintenance
             </button>
-          )}
-          {isMrMsSTIElection && (
-            <div className="text-sm text-blue-600">
-              <p>Available positions: {mrMsSTIPositions.length}</p>
-              <p>Note: For Mr/Ms STI elections, only student number, course, first name, and last name are required.</p>
-            </div>
           )}
         </div>
       )}
@@ -2603,37 +2554,14 @@ export default function BallotPage() {
       ))}
 
       <div className="flex justify-between mt-6">
-        <div className="flex gap-2">
-          <button
-            onClick={addPosition}
-            className="flex items-center bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-            disabled={isLoading}
-          >
-            <Plus className="w-4 h-4 mr-1" />
-            Add Position
-          </button>
-          {isMrMsSTIElection && (
-            <button
-              onClick={() => {
-                const newPosition = {
-                  id: `temp-${Date.now()}`,
-                  name: '',
-                  voting_type: 'single',
-                  candidates: []
-                };
-                setBallot(prev => ({
-                  ...prev,
-                  positions: [...prev.positions, newPosition]
-                }));
-              }}
-              className="flex items-center bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
-              disabled={isLoading}
-            >
-              <Plus className="w-4 h-4 mr-1" />
-              Add Mr/Ms STI Position
-            </button>
-          )}
-        </div>
+        <button
+          onClick={addPosition}
+          className="flex items-center bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          disabled={isLoading}
+        >
+          <Plus className="w-4 h-4 mr-1" />
+          Add Position
+        </button>
 
         <button
           onClick={handlePreview}
@@ -2679,7 +2607,6 @@ export default function BallotPage() {
           </div>
         </div>
       )}
-      </div>
     </div>
   );
 }
