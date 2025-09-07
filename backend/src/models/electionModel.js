@@ -589,7 +589,6 @@ const getElectionWithBallot = async (electionId) => {
 async function updateElectionStatuses() {
   const client = await pool.connect();
   try {
-    // Import Luxon DateTime at the top of the file
     const { DateTime } = require("luxon");
     const MANILA_TIMEZONE = "Asia/Manila";
     
@@ -617,21 +616,32 @@ async function updateElectionStatuses() {
     
     const statusChanges = [];
     
-    // Process each election individually with proper timezone handling
+    // Process each election individually with CORRECTED timezone handling
     for (const election of currentElections) {
-      const startDateTime = DateTime.fromISO(election.date_from)
-        .setZone(MANILA_TIMEZONE)
-        .set({
-          hour: election.start_time ? parseInt(election.start_time.split(':')[0]) : 0,
-          minute: election.start_time ? parseInt(election.start_time.split(':')[1]) : 0
-        });
+      // FIX: Use the same logic as getElectionStatus function
+      const startDate = election.date_from.split('-').map(Number);
+      const endDate = election.date_to.split('-').map(Number);
+      
+      const startTimeParts = election.start_time.split(':').map(Number);
+      const endTimeParts = election.end_time.split(':').map(Number);
+      
+      const startDateTime = DateTime.fromObject({
+        year: startDate[0],
+        month: startDate[1], 
+        day: startDate[2],
+        hour: startTimeParts[0],
+        minute: startTimeParts[1],
+        second: 0
+      }, { zone: MANILA_TIMEZONE });
 
-      const endDateTime = DateTime.fromISO(election.date_to)
-        .setZone(MANILA_TIMEZONE)
-        .set({
-          hour: election.end_time ? parseInt(election.end_time.split(':')[0]) : 23,
-          minute: election.end_time ? parseInt(election.end_time.split(':')[1]) : 59
-        });
+      const endDateTime = DateTime.fromObject({
+        year: endDate[0],
+        month: endDate[1],
+        day: endDate[2], 
+        hour: endTimeParts[0],
+        minute: endTimeParts[1],
+        second: 0
+      }, { zone: MANILA_TIMEZONE });
       
       let newStatus = election.status;
       
