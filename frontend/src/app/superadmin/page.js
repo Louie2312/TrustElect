@@ -102,17 +102,14 @@ const ElectionCard = ({ election, onClick, onDeleteClick, activeTab }) => {
     try {
       if (!dateStr || !timeStr) return 'Date not set';
       
-      // Parse the date components
       const [year, month, day] = dateStr.split('T')[0].split('-').map(Number);
     
-      // Parse the time components
       const timeParts = timeStr.includes(':') ? timeStr.split(':') : [timeStr, '00'];
       const hours = parseInt(timeParts[0], 10);
       const minutes = parseInt(timeParts[1], 10);
       
-      // Create a date string in ISO format with Manila timezone offset (+08:00)
-      const isoString = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}T${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00+08:00`;
-      const dateObj = new Date(isoString);
+      // FIX: Remove the +1 from day
+      const dateObj = new Date(year, month - 1, day + 1, hours, minutes);
       
       if (isNaN(dateObj.getTime())) return 'Invalid date';
       
