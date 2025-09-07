@@ -27,7 +27,7 @@ export default function AuditLogsPage() {
   
   const [showFilters, setShowFilters] = useState(false);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
   
   const fetchAuditLogs = async (pageNum = 1) => {
     try {
@@ -92,7 +92,7 @@ export default function AuditLogsPage() {
         params.append("start_date", monthAgo.toISOString());
       }
       
-      const res = await axios.get(`${API_URL}/api/audit-logs?${params.toString()}`, {
+      const res = await axios.get(`${API_BASE}/audit-logs?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
