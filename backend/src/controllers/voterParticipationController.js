@@ -75,16 +75,17 @@ exports.getVoterParticipation = async (req, res) => {
         const votersQuery = `
           SELECT 
             s.student_number as student_id,
-            s.first_name,
-            s.last_name,
+            COALESCE(NULLIF(TRIM(s.first_name), ''), NULLIF(TRIM(u.first_name), '')) as first_name,
+            COALESCE(NULLIF(TRIM(s.last_name), ''), NULLIF(TRIM(u.last_name), '')) as last_name,
             s.course_name as department,
             (CASE WHEN v.student_id IS NOT NULL THEN TRUE ELSE FALSE END) as has_voted,
             v.created_at as vote_date
           FROM eligible_voters ev
           JOIN students s ON ev.student_id = s.id
+          JOIN users u ON s.user_id = u.id
           LEFT JOIN votes v ON v.student_id = s.id AND v.election_id = $1
           WHERE ev.election_id = $1
-          ORDER BY s.course_name, s.last_name, s.first_name
+          ORDER BY s.course_name, COALESCE(s.last_name, u.last_name), COALESCE(s.first_name, u.first_name)
         `;
 
         const { rows: voters } = await pool.query(votersQuery, [election.id]);
@@ -104,13 +105,21 @@ exports.getVoterParticipation = async (req, res) => {
             votes_cast: parseInt(stat.votes_cast),
             turnout: parseFloat(stat.turnout)
           })),
-          voters: voters.map(voter => ({
-            student_id: voter.student_id,
-            name: `${voter.first_name || ''} ${voter.last_name || ''}`.trim(),
-            department: voter.department,
-            has_voted: Boolean(voter.has_voted),
-            vote_date: voter.vote_date
-          }))
+          voters: voters.map(voter => {
+            const firstName = (voter.first_name || '').toString();
+            const lastName = (voter.last_name || '').toString();
+            const parts = [firstName, lastName]
+              .map(p => (p || '').trim())
+              .filter(p => p && p.toLowerCase() !== 'undefined' && p.toLowerCase() !== 'null');
+            const name = parts.join(' ').trim();
+            return {
+              student_id: voter.student_id,
+              name,
+              department: voter.department,
+              has_voted: Boolean(voter.has_voted),
+              vote_date: voter.vote_date
+            };
+          })
         };
       } catch (error) {
         console.error(`Error processing election ${election.id}:`, error);
