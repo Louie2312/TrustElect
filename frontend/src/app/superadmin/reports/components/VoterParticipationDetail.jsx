@@ -67,6 +67,7 @@ export default function VoterParticipationDetail({ report, onClose, onDownload }
       department_stats: processedDepartmentStats,
       voters: (electionData.voters || []).map(voter => ({
         ...voter,
+        name: cleanName(voter.name || `${voter.first_name || ''} ${voter.last_name || ''}`),
         has_voted: Boolean(voter.has_voted),
         vote_date: voter.vote_date ? new Date(voter.vote_date) : null
       }))
@@ -115,6 +116,15 @@ export default function VoterParticipationDetail({ report, onClose, onDownload }
     return isNaN(number) ? '0.0' : number.toFixed(1);
   };
 
+  const cleanName = (raw) => {
+    const value = (raw || '').toString().trim();
+    if (!value) return '';
+    const tokens = value
+      .split(/\s+/)
+      .filter(t => t && t.toLowerCase() !== 'undefined' && t.toLowerCase() !== 'null');
+    return tokens.join(' ').trim();
+  };
+
   const COLORS = ['#0088FE', '#FF8042'];
 
   const getSelectedElectionData = () => {
@@ -161,7 +171,7 @@ export default function VoterParticipationDetail({ report, onClose, onDownload }
             electionHistory: [],
             participationRate: 0,
             current_election_voted: Boolean(voter.has_voted),
-            name: voter.name || `${voter.first_name || ''} ${voter.last_name || ''}`.trim()
+            name: cleanName(voter.name || `${voter.first_name || ''} ${voter.last_name || ''}`)
           });
         }
       });
@@ -181,21 +191,24 @@ export default function VoterParticipationDetail({ report, onClose, onDownload }
               electionHistory: [],
               participationRate: 0,
               current_election_voted: election.id === currentElectionData.id ? Boolean(voter.has_voted) : false,
-              name: voter.name || `${voter.first_name || ''} ${voter.last_name || ''}`.trim()
+              name: cleanName(voter.name || `${voter.first_name || ''} ${voter.last_name || ''}`)
             });
           }
 
           const voterData = voterMap.get(voter.student_id);
-          voterData.totalElections++;
-          if (voter.has_voted) {
-            voterData.participatedElections++;
+          const alreadyRecorded = voterData.electionHistory.some(h => h.electionId === election.id);
+          if (!alreadyRecorded) {
+            voterData.totalElections++;
+            if (voter.has_voted) {
+              voterData.participatedElections++;
+            }
+            voterData.electionHistory.push({
+              electionId: election.id,
+              electionTitle: election.title || 'Untitled Election',
+              hasVoted: Boolean(voter.has_voted),
+              voteDate: voter.vote_date
+            });
           }
-          voterData.electionHistory.push({
-            electionId: election.id,
-            electionTitle: election.title || 'Untitled Election',
-            hasVoted: Boolean(voter.has_voted),
-            voteDate: voter.vote_date
-          });
           voterData.participationRate = (voterData.participatedElections / voterData.totalElections) * 100;
         });
       }
