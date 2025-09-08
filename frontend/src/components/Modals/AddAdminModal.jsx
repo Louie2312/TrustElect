@@ -86,11 +86,24 @@ export default function AddAdminModal({ onClose }) {
   }, []);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
 
-    if (e.target.name === "lastName" || e.target.name === "employeeNumber") {
-      if (formData.lastName && formData.employeeNumber.length >= 3) {
-        setGeneratedPassword(generatePassword(formData.lastName, formData.employeeNumber));
+    let newValue = value;
+    if (name === 'employeeNumber') {
+      // numeric only
+      newValue = value.replace(/[^0-9]/g, '');
+    }
+    if (name === 'firstName' || name === 'lastName') {
+      // letters and spaces only
+      newValue = value.replace(/[^A-Za-z\s]/g, '');
+    }
+
+    const updated = { ...formData, [name]: newValue };
+    setFormData(updated);
+
+    if ((name === 'lastName' || name === 'employeeNumber')) {
+      if (updated.lastName && (updated.employeeNumber || '').length >= 3) {
+        setGeneratedPassword(generatePassword(updated.lastName, updated.employeeNumber));
       }
     }
   };
@@ -98,9 +111,11 @@ export default function AddAdminModal({ onClose }) {
   const validateInputs = () => {
     let newErrors = {};
     if (!formData.firstName.trim()) newErrors.firstName = "First Name is required.";
+    if (!/^[A-Za-z\s]+$/.test(formData.firstName.trim())) newErrors.firstName = "First Name must contain letters only.";
     if (!formData.lastName.trim()) newErrors.lastName = "Last Name is required.";
+    if (!/^[A-Za-z\s]+$/.test(formData.lastName.trim())) newErrors.lastName = "Last Name must contain letters only.";
     if (!formData.email.trim() || (!formData.email.endsWith("@novaliches.sti.edu.ph") && !formData.email.endsWith("@novaliches.sti.edu"))) newErrors.email = "Invalid STI email. Must end with @novaliches.sti.edu.ph or @novaliches.sti.edu";
-    if (!formData.employeeNumber.match(/^\d{4,}$/)) newErrors.employeeNumber = "Employee Number must be at least 4 digits.";
+    if (!formData.employeeNumber.match(/^\d{4,}$/)) newErrors.employeeNumber = "Employee Number must be numeric and at least 4 digits.";
     if (!formData.department) newErrors.department = "Select a department.";
 
     setErrors(newErrors);
@@ -244,16 +259,16 @@ export default function AddAdminModal({ onClose }) {
               <form className="space-y-3">
 
                 <label name="studentNumber" className="text-black font-bold">Employee Number:</label>
-                <input type="text" name="employeeNumber" placeholder="Employee Number" onChange={handleChange} required className="border w-full p-2 rounded text-black" />
+                <input type="text" name="employeeNumber" placeholder="Employee Number" onChange={handleChange} required className="border w-full p-2 rounded text-black" inputMode="numeric" pattern="\\d*" />
                 {errors.employeeNumber && <p className="text-red-500 text-sm">{errors.employeeNumber}</p>}
 
 
                 <label name="firstName" className="text-black font-bold">First Name:</label>
-                <input type="text" name="firstName" placeholder="First Name" onChange={handleChange} required className="border w-full p-2 rounded text-black" />
+                <input type="text" name="firstName" placeholder="First Name" onChange={handleChange} required className="border w-full p-2 rounded text-black" pattern="[A-Za-z\\s]+" />
                 {errors.firstName && <p className="text-red-500 text-sm">{errors.firstName}</p>}
 
                 <label name="lastName" className="text-black font-bold">Last Name:</label>
-                <input type="text" name="lastName" placeholder="Last Name" onChange={handleChange} required className="border w-full p-2 rounded text-black" />
+                <input type="text" name="lastName" placeholder="Last Name" onChange={handleChange} required className="border w-full p-2 rounded text-black" pattern="[A-Za-z\\s]+" />
                 {errors.lastName && <p className="text-red-500 text-sm">{errors.lastName}</p>}
 
                 <label name="email" className="text-black font-bold">Email:</label>
