@@ -479,30 +479,28 @@ export default function VoterParticipationDetail({ report, onClose, onDownload }
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={[
-                        { 
-                          name: 'Voted', 
-                          value: currentElectionData?.total_votes_cast || 0,
-                          percentage: currentElectionData?.turnout_percentage || 0,
-                          color: '#3B82F6'
-                        },
-                        { 
-                          name: 'Not Voted', 
-                          value: (currentElectionData?.total_eligible_voters || 0) - (currentElectionData?.total_votes_cast || 0),
-                          percentage: 100 - (currentElectionData?.turnout_percentage || 0),
-                          color: '#EF4444'
-                        }
-                      ]}
+                      data={(() => {
+                        const totalVotes = currentElectionData?.total_votes_cast || 0;
+                        const totalEligible = currentElectionData?.total_eligible_voters || 0;
+                        const notVoted = Math.max(0, totalEligible - totalVotes);
+                        const votedPct = totalEligible > 0 ? (totalVotes / totalEligible) * 100 : 0;
+                        const notVotedPct = 100 - votedPct;
+                        return [
+                          { name: 'Voted', value: totalVotes, percentage: votedPct, color: '#16A34A' },
+                          { name: 'Not Voted', value: notVoted, percentage: notVotedPct, color: '#DC2626' }
+                        ];
+                      })()}
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ name, percentage }) => `${name} (${percentage.toFixed(1)}%)`}
-                      outerRadius={100}
-                      fill="#8884d8"
+                      label={({ name, value, percentage }) => `${name}: ${formatNumber(value)} (${percentage.toFixed(1)}%)`}
+                      outerRadius={110}
+                      innerRadius={60}
+                      paddingAngle={2}
                       dataKey="value"
                     >
                       {({ data }) => data.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
+                        <Cell key={`cell-${index}`} fill={entry.color} stroke="#ffffff" strokeWidth={2} />
                       ))}
                     </Pie>
                     <Tooltip formatter={(value, name, props) => [

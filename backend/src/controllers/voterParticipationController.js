@@ -11,14 +11,15 @@ exports.getVoterParticipation = async (req, res) => {
         e.date_from,
         e.date_to,
         COUNT(DISTINCT ev.id) as total_eligible_voters,
-        COUNT(DISTINCT CASE WHEN ev.has_voted THEN ev.id END) as total_votes_cast,
+        COUNT(DISTINCT v.student_id) as total_votes_cast,
         CASE 
           WHEN COUNT(DISTINCT ev.id) > 0 
-          THEN ROUND(CAST((COUNT(DISTINCT CASE WHEN ev.has_voted THEN ev.id END) * 100.0 / COUNT(DISTINCT ev.id)) AS numeric), 1)
+          THEN ROUND(CAST((COUNT(DISTINCT v.student_id) * 100.0 / COUNT(DISTINCT ev.id)) AS numeric), 1)
           ELSE 0
         END as turnout_percentage
       FROM elections e
       LEFT JOIN eligible_voters ev ON e.id = ev.election_id
+      LEFT JOIN votes v ON v.election_id = e.id
       WHERE e.status IN ('active', 'completed')
       GROUP BY e.id, e.title, e.status, e.date_from, e.date_to
       ORDER BY e.date_from DESC
@@ -47,9 +48,10 @@ exports.getVoterParticipation = async (req, res) => {
             SELECT 
               s.course_name as department,
               COUNT(DISTINCT ev.id) as eligible_voters,
-              COUNT(DISTINCT CASE WHEN ev.has_voted THEN ev.id END) as votes_cast
+              COUNT(DISTINCT v.student_id) as votes_cast
             FROM eligible_voters ev
             JOIN students s ON ev.student_id = s.id
+            LEFT JOIN votes v ON v.election_id = ev.election_id AND v.student_id = s.id
             WHERE ev.election_id = $1
             GROUP BY s.course_name
           )
@@ -76,7 +78,7 @@ exports.getVoterParticipation = async (req, res) => {
             s.first_name,
             s.last_name,
             s.course_name as department,
-            ev.has_voted,
+            (CASE WHEN v.student_id IS NOT NULL THEN TRUE ELSE FALSE END) as has_voted,
             v.created_at as vote_date
           FROM eligible_voters ev
           JOIN students s ON ev.student_id = s.id
@@ -104,9 +106,9 @@ exports.getVoterParticipation = async (req, res) => {
           })),
           voters: voters.map(voter => ({
             student_id: voter.student_id,
-            name: `${voter.first_name} ${voter.last_name}`,
+            name: `${voter.first_name || ''} ${voter.last_name || ''}`.trim(),
             department: voter.department,
-            has_voted: voter.has_voted,
+            has_voted: Boolean(voter.has_voted),
             vote_date: voter.vote_date
           }))
         };
