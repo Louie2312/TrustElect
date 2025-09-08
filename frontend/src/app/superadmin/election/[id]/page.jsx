@@ -375,32 +375,18 @@ export default function ElectionDetailsPage() {
   const parseElectionDate = (dateStr, timeStr) => {
     try {
       if (!dateStr || !timeStr) return 'Date not set';
-
-      const [y, m, d] = dateStr.split('T')[0].split('-').map(Number);
-
-      let hours = 0;
-      let minutes = 0;
-      let meridiem = null;
-
-      const timeClean = String(timeStr).trim();
-      if (/am|pm/i.test(timeClean)) {
-        const match = timeClean.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-        if (match) {
-          hours = parseInt(match[1], 10);
-          minutes = parseInt(match[2], 10);
-          meridiem = match[3].toUpperCase();
-          if (meridiem === 'PM' && hours < 12) hours += 12;
-          if (meridiem === 'AM' && hours === 12) hours = 0;
-        }
-      } else {
-        const parts = timeClean.split(':');
-        hours = parseInt(parts[0] || '0', 10);
-        minutes = parseInt(parts[1] || '0', 10);
-      }
-
-      const dateObj = new Date(Date.UTC(y, (m || 1) - 1, d || 1, hours, minutes));
-
+      
+      const [year, month, day] = dateStr.split('T')[0].split('-').map(Number);
+    
+      const timeParts = timeStr.includes(':') ? timeStr.split(':') : [timeStr, '00'];
+      const hours = parseInt(timeParts[0], 10);
+      const minutes = parseInt(timeParts[1], 10);
+      
+ 
+      const dateObj = new Date(year, month - 1, day + 1, hours, minutes);
+      
       if (isNaN(dateObj.getTime())) return 'Invalid date';
+      
 
       return new Intl.DateTimeFormat('en-PH', {
         month: 'short',
@@ -408,8 +394,7 @@ export default function ElectionDetailsPage() {
         year: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-        hour12: true,
-        timeZone: 'Asia/Manila'
+        hour12: true 
       }).format(dateObj);
     } catch (error) {
       console.error('Date parsing error:', error);
