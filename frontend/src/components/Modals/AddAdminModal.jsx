@@ -29,6 +29,22 @@ export default function AddAdminModal({ onClose }) {
   const [errors, setErrors] = useState({});
   const [currentStep, setCurrentStep] = useState(1);
 
+  const handleKeyDownNumeric = (e) => {
+    const allowedKeys = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'];
+    if (allowedKeys.includes(e.key)) return;
+    if (!/^[0-9]$/.test(e.key)) {
+      e.preventDefault();
+    }
+  };
+
+  const handleKeyDownLetters = (e) => {
+    const allowedKeys = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', ' '];
+    if (allowedKeys.includes(e.key)) return;
+    if (!/^[a-zA-Z]$/.test(e.key)) {
+      e.preventDefault();
+    }
+  };
+
   useEffect(() => {
     const fetchDepartments = async () => {
       try {
@@ -259,16 +275,16 @@ export default function AddAdminModal({ onClose }) {
               <form className="space-y-3">
 
                 <label name="studentNumber" className="text-black font-bold">Employee Number:</label>
-                <input type="text" name="employeeNumber" placeholder="Employee Number" onChange={handleChange} required className="border w-full p-2 rounded text-black" inputMode="numeric" pattern="\\d*" />
+                <input type="text" name="employeeNumber" placeholder="Employee Number" value={formData.employeeNumber} onChange={handleChange} onKeyDown={handleKeyDownNumeric} required className="border w-full p-2 rounded text-black" inputMode="numeric" pattern="\\d*" />
                 {errors.employeeNumber && <p className="text-red-500 text-sm">{errors.employeeNumber}</p>}
 
 
                 <label name="firstName" className="text-black font-bold">First Name:</label>
-                <input type="text" name="firstName" placeholder="First Name" onChange={handleChange} required className="border w-full p-2 rounded text-black" pattern="[A-Za-z\\s]+" />
+                <input type="text" name="firstName" placeholder="First Name" value={formData.firstName} onChange={handleChange} onKeyDown={handleKeyDownLetters} required className="border w-full p-2 rounded text-black" pattern="[A-Za-z\\s]+" />
                 {errors.firstName && <p className="text-red-500 text-sm">{errors.firstName}</p>}
 
                 <label name="lastName" className="text-black font-bold">Last Name:</label>
-                <input type="text" name="lastName" placeholder="Last Name" onChange={handleChange} required className="border w-full p-2 rounded text-black" pattern="[A-Za-z\\s]+" />
+                <input type="text" name="lastName" placeholder="Last Name" value={formData.lastName} onChange={handleChange} onKeyDown={handleKeyDownLetters} required className="border w-full p-2 rounded text-black" pattern="[A-Za-z\\s]+" />
                 {errors.lastName && <p className="text-red-500 text-sm">{errors.lastName}</p>}
 
                 <label name="email" className="text-black font-bold">Email:</label>
