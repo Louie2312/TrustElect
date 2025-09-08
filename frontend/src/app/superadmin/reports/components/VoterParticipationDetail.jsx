@@ -37,39 +37,33 @@ export default function VoterParticipationDetail({ report, onClose, onDownload }
   const processAndSetElectionData = (electionData) => {
     if (!electionData) return;
 
-    // Process department stats with accurate vote counting
-    const processedDepartmentStats = (electionData.department_stats || []).map(stat => {
-      // Ensure all numbers are properly parsed
-      const totalStudents = Math.max(0, parseInt(stat.eligible_voters) || 0);
-      const votedCount = Math.min(totalStudents, Math.max(0, parseInt(stat.votes_cast) || 0));
-      const notVoted = totalStudents - votedCount;
-      const turnout = totalStudents > 0 ? (votedCount / totalStudents) * 100 : 0;
-
-      return {
-        department: stat.department || 'Unknown Department',
-        total_students: totalStudents,
-        voted_count: votedCount,
-        not_voted: notVoted,
-        turnout: parseFloat(turnout.toFixed(1))
-      };
-    })
-    .filter(stat => stat.department !== 'Unknown Department') // Filter out unknown departments
-    .sort((a, b) => b.turnout - a.turnout); // Sort by turnout percentage
-
-    // Calculate accurate overall totals from department data
-    const totalEligibleVoters = processedDepartmentStats.reduce((sum, dept) => sum + dept.total_students, 0);
-    const totalVotesCast = processedDepartmentStats.reduce((sum, dept) => sum + dept.voted_count, 0);
-    const overallTurnout = totalEligibleVoters > 0 
-      ? (totalVotesCast / totalEligibleVoters) * 100 
-      : 0;
+    // Normalize department stats from backend schema (eligible_voters, votes_cast, turnout)
+    const processedDepartmentStats = (electionData.department_stats || [])
+      .map(stat => {
+        const totalStudents = Math.max(0, parseInt(stat.eligible_voters) || 0);
+        const votedCount = Math.min(totalStudents, Math.max(0, parseInt(stat.votes_cast) || 0));
+        const notVoted = Math.max(0, totalStudents - votedCount);
+        const turnout = stat.turnout != null
+          ? parseFloat(stat.turnout)
+          : (totalStudents > 0 ? (votedCount / totalStudents) * 100 : 0);
+        return {
+          department: stat.department || 'Unknown Department',
+          total_students: totalStudents,
+          voted_count: votedCount,
+          not_voted: notVoted,
+          turnout: parseFloat(Number(turnout).toFixed(1))
+        };
+      })
+      .sort((a, b) => b.turnout - a.turnout);
 
     const processedElection = {
       ...electionData,
       id: electionData.id,
       title: electionData.title,
-      total_eligible_voters: totalEligibleVoters,
-      total_votes_cast: totalVotesCast,
-      turnout_percentage: parseFloat(overallTurnout.toFixed(1)),
+      // Use backend-provided rollups for accuracy
+      total_eligible_voters: parseInt(electionData.total_eligible_voters) || 0,
+      total_votes_cast: parseInt(electionData.total_votes_cast) || 0,
+      turnout_percentage: parseFloat(Number(electionData.turnout_percentage || 0).toFixed(1)),
       department_stats: processedDepartmentStats,
       voters: (electionData.voters || []).map(voter => ({
         ...voter,
@@ -138,21 +132,13 @@ export default function VoterParticipationDetail({ report, onClose, onDownload }
     
     return currentElectionData.department_stats
       .filter(stat => stat && stat.department)
-      .map(stat => {
-        const totalStudents = parseInt(stat.total_students) || 0;
-        const votedCount = parseInt(stat.voted_count) || 0;
-        const turnout = totalStudents > 0 
-          ? ((votedCount / totalStudents) * 100)
-          : 0;
-
-        return {
-          department: stat.department,
-          turnout: parseFloat(turnout.toFixed(1)),
-          totalStudents,
-          votedCount,
-          notVoted: totalStudents - votedCount
-        };
-      })
+      .map(stat => ({
+        department: stat.department,
+        turnout: parseFloat(Number(stat.turnout || 0).toFixed(1)),
+        totalStudents: parseInt(stat.total_students) || 0,
+        votedCount: parseInt(stat.voted_count) || 0,
+        notVoted: Math.max(0, (parseInt(stat.total_students) || 0) - (parseInt(stat.voted_count) || 0))
+      }))
       .sort((a, b) => b.turnout - a.turnout);
   }, [currentElectionData]);
 
@@ -174,7 +160,8 @@ export default function VoterParticipationDetail({ report, onClose, onDownload }
             participatedElections: 0,
             electionHistory: [],
             participationRate: 0,
-            current_election_voted: voter.has_voted
+            current_election_voted: Boolean(voter.has_voted),
+            name: voter.name || `${voter.first_name || ''} ${voter.last_name || ''}`.trim()
           });
         }
       });
@@ -193,7 +180,8 @@ export default function VoterParticipationDetail({ report, onClose, onDownload }
               participatedElections: 0,
               electionHistory: [],
               participationRate: 0,
-              current_election_voted: election.id === currentElectionData.id ? voter.has_voted : false
+              current_election_voted: election.id === currentElectionData.id ? Boolean(voter.has_voted) : false,
+              name: voter.name || `${voter.first_name || ''} ${voter.last_name || ''}`.trim()
             });
           }
 
@@ -218,11 +206,13 @@ export default function VoterParticipationDetail({ report, onClose, onDownload }
 
   // Filter and paginate voters with history
   const filteredAndPaginatedVoters = useMemo(() => {
-    const filtered = voterHistory.filter(voter => 
-      voter.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      voter.student_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      voter.department.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const term = (searchTerm || '').toLowerCase();
+    const filtered = voterHistory.filter(voter => {
+      const name = (voter.name || '').toLowerCase();
+      const sid = (voter.student_id || '').toLowerCase();
+      const dept = (voter.department || '').toLowerCase();
+      return name.includes(term) || sid.includes(term) || dept.includes(term);
+    });
 
     const start = (currentPage - 1) * pageSize;
     const end = start + pageSize;
@@ -280,29 +270,27 @@ export default function VoterParticipationDetail({ report, onClose, onDownload }
       title: "Voter Participation Report",
       description: "Detailed analysis of voter turnout and participation",
       summary: {
-        total_eligible_voters: selectedElectionData.total_eligible_voters,
-        total_votes_cast: selectedElectionData.total_votes_cast,
-        turnout_percentage: selectedElectionData.turnout_percentage,
-        average_participation: (voterHistory.reduce((acc, voter) => acc + voter.participationRate, 0) / voterHistory.length).toFixed(1)
+        election_title: selectedElectionData?.title || '',
+        total_eligible_voters: selectedElectionData?.total_eligible_voters || 0,
+        total_votes_cast: selectedElectionData?.total_votes_cast || 0,
+        turnout_percentage: parseFloat(Number(selectedElectionData?.turnout_percentage || 0).toFixed(1)),
+        average_participation: voterHistory.length > 0
+          ? parseFloat((voterHistory.reduce((acc, voter) => acc + (voter.participationRate || 0), 0) / voterHistory.length).toFixed(1))
+          : 0
       },
-      department_stats: departmentStats.map(stat => ({
+      department_stats: (currentElectionData?.department_stats || []).map(stat => ({
         department: stat.department,
-        turnout_percentage: stat.turnout,
-        total_students: stat.totalStudents,
-        voted_count: stat.votedCount
+        turnout_percentage: parseFloat(Number(stat.turnout || 0).toFixed(1)),
+        total_students: stat.total_students,
+        voted_count: stat.voted_count,
+        not_voted: stat.not_voted
       })),
-      voter_history: voterHistory.map(voter => ({
+      voter_history: (currentElectionData?.voters || []).map(voter => ({
         student_id: voter.student_id,
-        name: voter.name,
-        department: voter.department,
-        total_elections: voter.totalElections,
-        participated_elections: voter.participatedElections,
-        participation_rate: voter.participationRate.toFixed(1),
-        election_history: voter.electionHistory.map(history => ({
-          election_title: history.electionTitle,
-          has_voted: history.hasVoted,
-          vote_date: history.voteDate ? formatDate(history.voteDate) : null
-        }))
+        name: voter.name || '',
+        department: voter.department || '',
+        has_voted_current_election: Boolean(voter.has_voted),
+        vote_date: voter.vote_date ? formatDate(voter.vote_date) : null
       }))
     };
 
@@ -604,15 +592,15 @@ export default function VoterParticipationDetail({ report, onClose, onDownload }
                   {filteredAndPaginatedVoters.voters.map((voter, index) => (
                     <tr key={voter.student_id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                       <td className="px-4 py-2 text-sm text-black">{voter.student_id}</td>
-                      <td className="px-4 py-2 text-sm text-black">{voter.name}</td>
+                      <td className="px-4 py-2 text-sm text-black">{voter.name || ''}</td>
                       <td className="px-4 py-2 text-sm text-black">{voter.department}</td>
                       <td className="px-4 py-2 text-sm">
                         <span className={`px-2 py-1 rounded-full text-xs ${
-                          voter.has_voted 
+                          voter.current_election_voted 
                             ? 'bg-green-100 text-green-800' 
                             : 'bg-red-100 text-red-800'
                         }`}>
-                          {voter.has_voted ? 'Voted' : 'Not Voted'}
+                          {voter.current_election_voted ? 'Voted' : 'Not Voted'}
                         </span>
                       </td>
                       <td className="px-4 py-2 text-sm">
