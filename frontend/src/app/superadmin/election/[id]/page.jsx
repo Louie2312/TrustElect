@@ -375,24 +375,41 @@ export default function ElectionDetailsPage() {
   const parseElectionDate = (dateStr, timeStr) => {
     try {
       if (!dateStr || !timeStr) return 'Date not set';
-      
-      const [year, month, day] = dateStr.split('T')[0].split('-').map(Number);
-    
-      const timeParts = timeStr.includes(':') ? timeStr.split(':') : [timeStr, '00'];
-      const hours = parseInt(timeParts[0], 10);
-      const minutes = parseInt(timeParts[1], 10);
-      
-      const dateObj = new Date(year, month - 1, day, hours, minutes);
-      
+
+      const [y, m, d] = dateStr.split('T')[0].split('-').map(Number);
+
+      let hours = 0;
+      let minutes = 0;
+      let meridiem = null;
+
+      const timeClean = String(timeStr).trim();
+      if (/am|pm/i.test(timeClean)) {
+        const match = timeClean.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+        if (match) {
+          hours = parseInt(match[1], 10);
+          minutes = parseInt(match[2], 10);
+          meridiem = match[3].toUpperCase();
+          if (meridiem === 'PM' && hours < 12) hours += 12;
+          if (meridiem === 'AM' && hours === 12) hours = 0;
+        }
+      } else {
+        const parts = timeClean.split(':');
+        hours = parseInt(parts[0] || '0', 10);
+        minutes = parseInt(parts[1] || '0', 10);
+      }
+
+      const dateObj = new Date(Date.UTC(y, (m || 1) - 1, d || 1, hours, minutes));
+
       if (isNaN(dateObj.getTime())) return 'Invalid date';
-      
+
       return new Intl.DateTimeFormat('en-PH', {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-        hour12: true 
+        hour12: true,
+        timeZone: 'Asia/Manila'
       }).format(dateObj);
     } catch (error) {
       console.error('Date parsing error:', error);
@@ -862,11 +879,11 @@ export default function ElectionDetailsPage() {
                                   alt={`${candidate.first_name} ${candidate.last_name}`}
                                   fill
                                   sizes="64px"
-                                  className="object-cover rounded-full"
+                                  className="object-cover rounded-md"
                                   onError={() => handleImageError(candidate.id)}
                                 />
                               ) : (
-                                <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
+                                <div className="w-16 h-16 rounded-md bg-gray-200 flex items-center justify-center">
                                   <User className="w-8 h-8 text-gray-400" />
                                 </div>
                               )}
@@ -1276,19 +1293,19 @@ export default function ElectionDetailsPage() {
                                 ${isFullScreen && index === 0 ? 'shadow-lg bg-blue-50' : ''}`}
                             >
                               <div className={`relative ${isFullScreen ? 'mb-4' : ''}`}>
-                                <div className={`relative ${isFullScreen ? 'w-32 h-32' : 'w-16 h-16'} ${!isFullScreen ? 'mr-4' : ''}`}>
+                                <div className={`relative ${isFullScreen ? 'w-36 h-48' : 'w-16 h-20'} ${!isFullScreen ? 'mr-4' : ''}`}>
                                   {candidate.image_url && !imageErrors[candidate.id] ? (
                                     <Image
                                       src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
                                       alt={`${candidate.first_name} ${candidate.last_name}`}
                                       fill
-                                      sizes={isFullScreen ? "128px" : "64px"}
-                                      className="object-cover rounded-full"
+                                      sizes={isFullScreen ? "192px" : "80px"}
+                                      className="object-cover rounded-md"
                                       priority
                                       onError={() => handleImageError(candidate.id)}
                                     />
                                   ) : (
-                                    <div className={`${isFullScreen ? 'w-32 h-32' : 'w-16 h-16'} rounded-full bg-gray-200 flex items-center justify-center`}>
+                                    <div className={`${isFullScreen ? 'w-36 h-48' : 'w-16 h-20'} rounded-md bg-gray-200 flex items-center justify-center`}>
                                       <User className={`${isFullScreen ? 'w-16 h-16' : 'w-8 h-8'} text-gray-400`} />
                                     </div>
                                   )}
@@ -1347,18 +1364,18 @@ export default function ElectionDetailsPage() {
                                 key={candidate.id} 
                                 className={`flex items-center p-3 bg-gray-50 rounded-lg ${isFullScreen ? 'shadow-sm' : ''}`}
                               >
-                                <div className="relative w-16 h-16 mr-4">
+                                <div className="relative w-16 h-20 mr-4">
                                   {candidate.image_url && !imageErrors[candidate.id] ? (
                                     <Image
                                       src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
                                       alt={`${candidate.first_name} ${candidate.last_name}`}
                                       fill
                                       sizes="64px"
-                                      className="object-cover rounded-full"
+                                      className="object-cover rounded-md"
                                       onError={() => handleImageError(candidate.id)}
                                     />
                                   ) : (
-                                    <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
+                                    <div className="w-16 h-20 rounded-md bg-gray-200 flex items-center justify-center">
                                       <User className="w-8 h-8 text-gray-400" />
                                     </div>
                                   )}
