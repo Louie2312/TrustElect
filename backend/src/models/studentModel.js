@@ -1,5 +1,5 @@
 const pool = require("../config/db");
-const bcrypt = require("bcryptjs");
+const bcrypt = require("bcrypt");
 
 const checkStudentNumberExists = async (studentNumber) => {
   const query = "SELECT COUNT(*) FROM students WHERE student_number = $1";
@@ -265,7 +265,6 @@ const deleteStudentPermanently = async (studentId) => {
     client.release();
   }
 };
-
 
 const generateStudentPassword = (lastName, studentNumber) => {
   const lastThreeDigits = studentNumber.slice(-3);
