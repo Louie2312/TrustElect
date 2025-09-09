@@ -74,6 +74,7 @@ export default function VoterParticipationDetail({ report, onClose, onDownload }
     };
 
     console.log('Processed Election Data:', processedElection); // Debug log
+    console.log('Sample voter data:', processedElection.voters.slice(0, 3)); // Show first 3 voters for debugging
     setCurrentElectionData(processedElection);
   };
 
@@ -126,49 +127,59 @@ export default function VoterParticipationDetail({ report, onClose, onDownload }
   };
 
   const formatVoterName = (voter) => {
-    // Debug log to see what data we're getting
-    console.log('Formatting voter name for:', voter);
-    
-    // Try different combinations to get the best name
-    if (voter.name && voter.name.trim() && voter.name !== 'undefined undefined' && voter.name !== 'null null') {
+    // Try the name field first (if it exists and is not the student ID)
+    if (voter.name && 
+        voter.name.trim() && 
+        voter.name !== 'undefined undefined' && 
+        voter.name !== 'null null' && 
+        voter.name !== voter.student_id) {
       const cleanedName = cleanName(voter.name);
-      console.log('Using voter.name:', cleanedName);
-      return cleanedName;
+      if (cleanedName && cleanedName !== voter.student_id) {
+        return cleanedName;
+      }
     }
     
-    // Try first_name and last_name
+    // Try first_name and last_name combination
     const firstName = (voter.first_name || '').toString().trim();
     const lastName = (voter.last_name || '').toString().trim();
     
-    if (firstName && lastName && firstName !== 'undefined' && lastName !== 'undefined') {
-      const fullName = cleanName(`${firstName} ${lastName}`);
-      console.log('Using first+last name:', fullName);
-      return fullName;
+    // Check if we have valid names (not undefined, null, or student ID)
+    const validFirstName = firstName && 
+      firstName !== 'undefined' && 
+      firstName !== 'null' && 
+      firstName !== voter.student_id;
+      
+    const validLastName = lastName && 
+      lastName !== 'undefined' && 
+      lastName !== 'null' && 
+      lastName !== voter.student_id;
+    
+    if (validFirstName && validLastName) {
+      return cleanName(`${firstName} ${lastName}`);
     }
     
-    if (firstName && firstName !== 'undefined') {
-      console.log('Using first name only:', firstName);
+    if (validFirstName) {
       return cleanName(firstName);
     }
     
-    if (lastName && lastName !== 'undefined') {
-      console.log('Using last name only:', lastName);
+    if (validLastName) {
       return cleanName(lastName);
     }
     
     // Try other potential name fields
-    if (voter.full_name && voter.full_name.trim()) {
-      console.log('Using full_name:', voter.full_name);
+    if (voter.full_name && 
+        voter.full_name.trim() && 
+        voter.full_name !== voter.student_id) {
       return cleanName(voter.full_name);
     }
     
-    if (voter.student_name && voter.student_name.trim()) {
-      console.log('Using student_name:', voter.student_name);
+    if (voter.student_name && 
+        voter.student_name.trim() && 
+        voter.student_name !== voter.student_id) {
       return cleanName(voter.student_name);
     }
     
-    // Fallback to student ID if no name available
-    console.log('Using fallback student ID:', voter.student_id);
+    // Fallback to student ID
     return voter.student_id || 'Unknown Student';
   };
 
@@ -651,7 +662,7 @@ export default function VoterParticipationDetail({ report, onClose, onDownload }
                     <tr key={voter.student_id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                       <td className="px-4 py-2 text-sm text-black">{voter.student_id}</td>
                       <td className="px-4 py-2 text-sm text-black">
-                        {voter.name || formatVoterName(voter)}
+                        {formatVoterName(voter)}
                       </td>
                       <td className="px-4 py-2 text-sm text-black">{voter.department}</td>
                       <td className="px-4 py-2 text-sm">
