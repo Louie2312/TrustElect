@@ -67,7 +67,7 @@ export default function VoterParticipationDetail({ report, onClose, onDownload }
       department_stats: processedDepartmentStats,
       voters: (electionData.voters || []).map(voter => ({
         ...voter,
-        name: cleanName(voter.name || `${voter.first_name || ''} ${voter.last_name || ''}`),
+        name: formatVoterName(voter),
         has_voted: Boolean(voter.has_voted),
         vote_date: voter.vote_date ? new Date(voter.vote_date) : null
       }))
@@ -125,6 +125,53 @@ export default function VoterParticipationDetail({ report, onClose, onDownload }
     return tokens.join(' ').trim();
   };
 
+  const formatVoterName = (voter) => {
+    // Debug log to see what data we're getting
+    console.log('Formatting voter name for:', voter);
+    
+    // Try different combinations to get the best name
+    if (voter.name && voter.name.trim() && voter.name !== 'undefined undefined' && voter.name !== 'null null') {
+      const cleanedName = cleanName(voter.name);
+      console.log('Using voter.name:', cleanedName);
+      return cleanedName;
+    }
+    
+    // Try first_name and last_name
+    const firstName = (voter.first_name || '').toString().trim();
+    const lastName = (voter.last_name || '').toString().trim();
+    
+    if (firstName && lastName && firstName !== 'undefined' && lastName !== 'undefined') {
+      const fullName = cleanName(`${firstName} ${lastName}`);
+      console.log('Using first+last name:', fullName);
+      return fullName;
+    }
+    
+    if (firstName && firstName !== 'undefined') {
+      console.log('Using first name only:', firstName);
+      return cleanName(firstName);
+    }
+    
+    if (lastName && lastName !== 'undefined') {
+      console.log('Using last name only:', lastName);
+      return cleanName(lastName);
+    }
+    
+    // Try other potential name fields
+    if (voter.full_name && voter.full_name.trim()) {
+      console.log('Using full_name:', voter.full_name);
+      return cleanName(voter.full_name);
+    }
+    
+    if (voter.student_name && voter.student_name.trim()) {
+      console.log('Using student_name:', voter.student_name);
+      return cleanName(voter.student_name);
+    }
+    
+    // Fallback to student ID if no name available
+    console.log('Using fallback student ID:', voter.student_id);
+    return voter.student_id || 'Unknown Student';
+  };
+
   const COLORS = ['#0088FE', '#FF8042'];
 
   const getSelectedElectionData = () => {
@@ -164,15 +211,15 @@ export default function VoterParticipationDetail({ report, onClose, onDownload }
     if (Array.isArray(currentElectionData.voters)) {
       currentElectionData.voters.forEach(voter => {
         if (voter && voter.student_id) {
-          voterMap.set(voter.student_id, {
-            ...voter,
-            totalElections: 0,
-            participatedElections: 0,
-            electionHistory: [],
-            participationRate: 0,
-            current_election_voted: Boolean(voter.has_voted),
-            name: cleanName(voter.name || `${voter.first_name || ''} ${voter.last_name || ''}`)
-          });
+            voterMap.set(voter.student_id, {
+              ...voter,
+              totalElections: 0,
+              participatedElections: 0,
+              electionHistory: [],
+              participationRate: 0,
+              current_election_voted: Boolean(voter.has_voted),
+              name: formatVoterName(voter)
+            });
         }
       });
     }
@@ -191,7 +238,7 @@ export default function VoterParticipationDetail({ report, onClose, onDownload }
               electionHistory: [],
               participationRate: 0,
               current_election_voted: election.id === currentElectionData.id ? Boolean(voter.has_voted) : false,
-              name: cleanName(voter.name || `${voter.first_name || ''} ${voter.last_name || ''}`)
+              name: formatVoterName(voter)
             });
           }
 
@@ -603,7 +650,9 @@ export default function VoterParticipationDetail({ report, onClose, onDownload }
                   {filteredAndPaginatedVoters.voters.map((voter, index) => (
                     <tr key={voter.student_id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                       <td className="px-4 py-2 text-sm text-black">{voter.student_id}</td>
-                      <td className="px-4 py-2 text-sm text-black">{voter.name || ''}</td>
+                      <td className="px-4 py-2 text-sm text-black">
+                        {voter.name || formatVoterName(voter)}
+                      </td>
                       <td className="px-4 py-2 text-sm text-black">{voter.department}</td>
                       <td className="px-4 py-2 text-sm">
                         <span className={`px-2 py-1 rounded-full text-xs ${
