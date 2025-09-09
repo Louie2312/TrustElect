@@ -275,42 +275,99 @@ exports.uploadStudentsBatch = async (req, res) => {
 
     const workbook = XLSX.read(fs.readFileSync(filePath));
     const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+    
+    // Get raw data to check headers
     let jsonData = XLSX.utils.sheet_to_json(worksheet);
+    
+    // Also try parsing with header row explicitly
+    if (jsonData.length === 0) {
+      jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      console.log('First few rows (raw):', jsonData.slice(0, 3));
+      
+      if (jsonData.length < 2) {
+        return res.status(400).json({ message: 'Excel file contains no data or missing headers' });
+      }
+      
+      // Convert first row to headers and rest to data
+      const headers = jsonData[0];
+      const dataRows = jsonData.slice(1);
+      
+      jsonData = dataRows.map(row => {
+        const obj = {};
+        headers.forEach((header, index) => {
+          if (header && row[index] !== undefined) {
+            obj[header] = row[index];
+          }
+        });
+        return obj;
+      });
+    }
 
     if (jsonData.length === 0) {
       return res.status(400).json({ message: 'Excel file contains no data' });
     }
 
-    jsonData = jsonData.map(row => {
+    // Debug: Log the first few raw records to see what we're getting
+    console.log('Sample raw data from Excel:', JSON.stringify(jsonData.slice(0, 2), null, 2));
+    
+    // Debug: Show what headers we found
+    if (jsonData.length > 0) {
+      console.log('Excel headers found:', Object.keys(jsonData[0]));
+    }
+
+    jsonData = jsonData.map((row, index) => {
       const normalizedRow = {};
 
       Object.keys(row).forEach(key => {
-
-        const normalizedKey = key.toLowerCase().replace(/\s+/g, '');
+        // Normalize the key by removing spaces, underscores, and making lowercase
+        const normalizedKey = key.toString().toLowerCase().replace(/[\s_-]+/g, '').trim();
+        const originalValue = row[key];
+        
+        // Skip empty keys or null/undefined values for headers
+        if (!key || key.toString().trim() === '' || originalValue === null || originalValue === undefined) {
+          return;
+        }
       
         // Map various possible column names to our expected format
         if (normalizedKey === 'firstname' || normalizedKey === 'first' || normalizedKey === 'fname') {
-          normalizedRow.firstName = row[key];
+          normalizedRow.firstName = originalValue;
         } else if (normalizedKey === 'middlename' || normalizedKey === 'middle' || normalizedKey === 'mname') {
-          normalizedRow.middleName = row[key];
+          normalizedRow.middleName = originalValue;
         } else if (normalizedKey === 'lastname' || normalizedKey === 'last' || normalizedKey === 'lname') {
-          normalizedRow.lastName = row[key];
-        } else if (normalizedKey === 'studentnumber' || normalizedKey === 'studentno' || normalizedKey === 'idnumber' || normalizedKey === 'id') {
-          normalizedRow.studentNumber = String(row[key]); // Ensure it's a string
-        } else if (normalizedKey === 'coursename' || normalizedKey === 'course' || normalizedKey === 'program') {
-          normalizedRow.courseName = row[key];
-        } else if (normalizedKey === 'yearlevel' || normalizedKey === 'year' || normalizedKey === 'level') {
-          normalizedRow.yearLevel = row[key];
+          normalizedRow.lastName = originalValue;
+        } else if (normalizedKey === 'studentnumber' || normalizedKey === 'studentno' || normalizedKey === 'idnumber' || normalizedKey === 'id' || normalizedKey === 'number') {
+          normalizedRow.studentNumber = String(originalValue).trim();
+        } else if (normalizedKey === 'coursename' || normalizedKey === 'course' || normalizedKey === 'program' || normalizedKey === 'strand') {
+          normalizedRow.courseName = originalValue;
+        } else if (normalizedKey === 'yearlevel' || normalizedKey === 'year' || normalizedKey === 'level' || normalizedKey === 'grade') {
+          normalizedRow.yearLevel = originalValue;
         } else if (normalizedKey === 'gender' || normalizedKey === 'sex') {
-          normalizedRow.gender = row[key];
-        } else if (normalizedKey === 'birthdate' || normalizedKey === 'birthday' || normalizedKey === 'dob' || normalizedKey === 'birth') {
-          normalizedRow.birthdate = row[key];
-        } else if (normalizedKey === 'email') {
-          normalizedRow.email = row[key];
+          normalizedRow.gender = originalValue;
+        } else if (normalizedKey === 'birthdate' || normalizedKey === 'birthday' || normalizedKey === 'dob' || normalizedKey === 'birth' || normalizedKey === 'dateofbirth') {
+          normalizedRow.birthdate = originalValue;
+        } else if (normalizedKey === 'email' || normalizedKey === 'emailaddress') {
+          normalizedRow.email = originalValue;
         } else {
-          normalizedRow[key] = row[key];
+          // Direct mapping for exact matches (case-sensitive fallback)
+          if (key === 'studentNumber') normalizedRow.studentNumber = String(originalValue).trim();
+          else if (key === 'firstName') normalizedRow.firstName = originalValue;
+          else if (key === 'lastName') normalizedRow.lastName = originalValue;
+          else if (key === 'middleName') normalizedRow.middleName = originalValue;
+          else if (key === 'courseName') normalizedRow.courseName = originalValue;
+          else if (key === 'yearLevel') normalizedRow.yearLevel = originalValue;
+          else if (key === 'gender') normalizedRow.gender = originalValue;
+          else if (key === 'birthdate') normalizedRow.birthdate = originalValue;
+          else {
+            // Keep the original key for truly unmatched columns
+            normalizedRow[key] = originalValue;
+          }
         }
       });
+      
+      // Debug first few rows after normalization
+      if (index < 2) {
+        console.log(`Normalized row ${index + 1}:`, normalizedRow);
+      }
       
       return normalizedRow;
     });
@@ -318,9 +375,23 @@ exports.uploadStudentsBatch = async (req, res) => {
     const invalidRows = [];
     const validatedData = [];
     
+    // Filter out completely empty rows
+    jsonData = jsonData.filter(row => {
+      return Object.values(row).some(value => 
+        value !== null && value !== undefined && String(value).trim() !== ''
+      );
+    });
+
+    console.log(`Processing ${jsonData.length} non-empty rows`);
+
     jsonData.forEach((student, index) => {
       const missingFields = [];
       const rowNum = index + 2; 
+
+      // Debug problematic rows
+      if (index < 3) {
+        console.log(`Row ${rowNum} data:`, JSON.stringify(student, null, 2));
+      }
 
       requiredFields.forEach(field => {
         if (student[field] === undefined || student[field] === null || String(student[field]).trim() === '') {
