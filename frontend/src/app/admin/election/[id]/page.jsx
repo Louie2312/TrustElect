@@ -13,9 +13,9 @@ import Cookies from 'js-cookie';
 import Image from 'next/image';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import toast from 'react-hot-toast';
+import { BASE_URL } from '@/config';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
-const BASE_URL = '';
 
 const CHART_COLORS = [
   '#3b82f6', // blue
@@ -480,7 +480,7 @@ export default function ElectionDetailsPage() {
       const hours = parseInt(timeParts[0], 10);
       const minutes = parseInt(timeParts[1], 10);
       
-      const dateObj = new Date(year, month - 1, day, hours, minutes);
+      const dateObj = new Date(year, month - 1, day + 1, hours, minutes);
       
       if (isNaN(dateObj.getTime())) return 'Invalid date';
       
