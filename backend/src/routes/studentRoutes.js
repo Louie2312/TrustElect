@@ -94,15 +94,80 @@ router.patch("/students/:id/restore", verifyToken, restoreStudent);
 router.patch("/students/:id/unlock", verifyToken, isSuperAdmin, unlockStudentAccount);
 router.delete("/students/:id/permanent", verifyToken, permanentDeleteStudent);
 router.post("/students/reset-password", verifyToken, isSuperAdmin, resetStudentPassword);
+// Test endpoint to debug middleware issues
+router.post('/students/batch-test', (req, res) => {
+  console.log('=== BATCH TEST ENDPOINT HIT ===');
+  console.log('Headers:', req.headers);
+  console.log('Body:', req.body);
+  res.json({ message: 'Test endpoint working', body: req.body, headers: req.headers });
+});
+
+// Test endpoint with file upload only
+router.post('/students/batch-file-test', upload.single('file'), (req, res) => {
+  console.log('=== FILE UPLOAD TEST ===');
+  console.log('File:', req.file);
+  console.log('Body:', req.body);
+  res.json({ 
+    message: 'File upload test working', 
+    file: req.file ? { filename: req.file.filename, size: req.file.size } : null,
+    body: req.body 
+  });
+});
+
+// Error handling middleware specifically for batch route
+const batchErrorHandler = (err, req, res, next) => {
+  console.error('=== BATCH ROUTE ERROR ===');
+  console.error('Error:', err);
+  console.error('Stack:', err.stack);
+  
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).json({ 
+      message: 'File too large. Maximum size is 5MB.',
+      error: err.message 
+    });
+  }
+  
+  if (err.message === 'Only Excel files are allowed!') {
+    return res.status(400).json({ 
+      message: 'Invalid file type. Only Excel files (.xlsx, .xls) are allowed.',
+      error: err.message 
+    });
+  }
+  
+  res.status(500).json({ 
+    message: 'Internal server error in batch upload',
+    error: err.message 
+  });
+};
+
 router.post(
   '/students/batch',
+  (req, res, next) => {
+    console.log('=== MIDDLEWARE DEBUG ===');
+    console.log('Route hit, checking token...');
+    next();
+  },
   verifyToken,
+  (req, res, next) => {
+    console.log('Token verified, checking superadmin...');
+    next();
+  },
   isSuperAdmin,
+  (req, res, next) => {
+    console.log('SuperAdmin verified, processing upload...');
+    next();
+  },
   upload.single('file'),
+  (req, res, next) => {
+    console.log('File upload processed:', req.file ? 'File exists' : 'No file');
+    console.log('Body after upload:', req.body);
+    next();
+  },
   [
     check('createdBy', 'Super Admin ID is required').notEmpty()
   ],
-  uploadStudentsBatch
+  uploadStudentsBatch,
+  batchErrorHandler
 );
 
 router.get("/by-courses", verifyToken, getStudentsByCourses);
