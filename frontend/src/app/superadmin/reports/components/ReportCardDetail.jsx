@@ -6,15 +6,34 @@ import { generatePdfReport } from '@/utils/pdfGenerator';
 import Cookies from 'js-cookie';
 import Image from 'next/image';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
-const BASE_URL = '';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
+const BASE_URL = API_BASE;
 
 const getImageUrl = (imageUrl) => {
-  if (!imageUrl) return '/default-candidate.png';
+  if (!imageUrl) return '/images/default-avatar.png';
   if (imageUrl.startsWith('http')) return imageUrl;
-  if (imageUrl.startsWith('/uploads')) return `${BASE_URL}${imageUrl}`;
-  if (!imageUrl.startsWith('/')) return `${BASE_URL}/uploads/candidates/${imageUrl}`;
-  return `${BASE_URL}${imageUrl}`;
+  if (imageUrl.startsWith('blob:')) return imageUrl;
+  
+  // Handle different image path formats
+  let cleanImageUrl = imageUrl;
+  
+  // Remove leading slashes
+  if (cleanImageUrl.startsWith('/')) {
+    cleanImageUrl = cleanImageUrl.substring(1);
+  }
+  
+  // If it already starts with uploads, use it directly
+  if (cleanImageUrl.startsWith('uploads/')) {
+    return `${BASE_URL}/${cleanImageUrl}`;
+  }
+  
+  // If it's just a filename, assume it's in candidates folder
+  if (!cleanImageUrl.includes('/')) {
+    return `${BASE_URL}/uploads/candidates/${cleanImageUrl}`;
+  }
+  
+  // Default case
+  return `${BASE_URL}/uploads/candidates/${cleanImageUrl}`;
 };
 
 const formatNameSimple = (lastName, firstName, fallback) => {
@@ -152,36 +171,46 @@ const calculateTurnout = (votesCast, totalVoters) => {
 // Function to generate PDF for a single election
 const generateElectionDetailPdf = async (electionDetails) => {
   try {
+    if (!electionDetails) {
+      throw new Error('No election details provided');
+    }
+
+    console.log('Processing election details for PDF:', electionDetails);
+
     // Prepare data for the PDF
     const reportData = {
-      title: `${electionDetails.title} - Election Details`,
-      description: `Detailed report for ${electionDetails.title} election`,
+      title: `${electionDetails.title || 'Election'} - Election Details`,
+      description: `Detailed report for ${electionDetails.title || 'Unknown Election'} election`,
       summary: {
-        election_title: electionDetails.title,
-        election_type: electionDetails.election_type,
-        status: electionDetails.status,
-        start_date: formatDateTime(electionDetails.date_from, electionDetails.start_time),
-        end_date: formatDateTime(electionDetails.date_to, electionDetails.end_time),
-        total_eligible_voters: formatNumber(electionDetails.voter_count || 0),
-        total_votes_cast: formatNumber(electionDetails.vote_count || 0),
+        election_title: electionDetails.title || 'Unknown Election',
+        election_type: electionDetails.election_type || 'Unknown Type',
+        status: electionDetails.status || 'Unknown Status',
+        start_date: formatDateTime(electionDetails.date_from || electionDetails.start_date, electionDetails.start_time),
+        end_date: formatDateTime(electionDetails.date_to || electionDetails.end_date, electionDetails.end_time),
+        total_eligible_voters: electionDetails.voter_count || 0,
+        total_votes_cast: electionDetails.vote_count || 0,
         voter_turnout_percentage: formatPercentage(calculateTurnout(electionDetails.vote_count || 0, electionDetails.voter_count || 0))
       },
-      positions: electionDetails.positions?.map(position => ({
-        name: position.name,
+      positions: (electionDetails.positions || []).map(position => ({
+        name: position.name || 'Unknown Position',
         max_choices: position.max_choices || 1,
-        candidates: position.candidates?.map(candidate => ({
+        candidates: (position.candidates || []).map(candidate => ({
           name: formatNameSimple(candidate.last_name, candidate.first_name, candidate.name),
           party: candidate.party || 'Independent',
-          vote_count: formatNumber(candidate.vote_count || 0),
+          vote_count: candidate.vote_count || 0,
           vote_percentage: formatPercentage(electionDetails.vote_count > 0 ? 
             ((candidate.vote_count || 0) / electionDetails.vote_count * 100) : 0)
         }))
       }))
     };
 
-    // Generate the PDF using a new report type (11 for Election Detail)
-    await generatePdfReport(11, reportData);
-    return true;
+    console.log('Generated report data for PDF:', reportData);
+
+    // Generate the PDF using report type 11 for Election Detail
+    const result = await generatePdfReport(11, reportData);
+    console.log('PDF generation result:', result);
+    
+    return result;
   } catch (error) {
     console.error('Error generating election detail PDF:', error);
     throw error;
@@ -213,19 +242,26 @@ export default function ReportDetailsModal({ report, onClose, onDownload }) {
       
       const data = await response.json();
       console.log('Election details received:', data.election);
+      
+      if (!data.election) {
+        throw new Error('No election data received from server');
+      }
+      
       console.log('Date values detailed:', {
         start_date: data.election.start_date,
         start_date_type: typeof data.election.start_date,
         end_date: data.election.end_date,
         end_date_type: typeof data.election.end_date,
         start_time: data.election.start_time,
-        end_time: data.election.end_time
+        end_time: data.election.end_time,
+        date_from: data.election.date_from,
+        date_to: data.election.date_to
       });
       
       // Test the formatting functions with the received data
       console.log('Formatted dates test:', {
-        formatted_start: formatDateTime(data.election.start_date, data.election.start_time),
-        formatted_end: formatDateTime(data.election.end_date, data.election.end_time)
+        formatted_start: formatDateTime(data.election.start_date || data.election.date_from, data.election.start_time),
+        formatted_end: formatDateTime(data.election.end_date || data.election.date_to, data.election.end_time)
       });
       
       setElectionDetails(data.election);
@@ -247,45 +283,69 @@ export default function ReportDetailsModal({ report, onClose, onDownload }) {
   };
 
   const handleDownload = async () => {
+    if (!report || !report.data) {
+      console.error('No report data available');
+      return;
+    }
+
     const reportData = {
       title: "Election Summary Report",
       description: "Overview of all elections with detailed statistics and voter turnout",
       summary: {
-        total_elections: formatNumber(report.data.summary.total_elections),
-        ongoing_elections: formatNumber(report.data.summary.ongoing_elections),
-        completed_elections: formatNumber(report.data.summary.completed_elections),
-        upcoming_elections: formatNumber(report.data.summary.upcoming_elections),
-        total_eligible_voters: formatNumber(report.data.summary.total_eligible_voters),
-        total_votes_cast: formatNumber(report.data.summary.total_votes_cast),
-        voter_turnout_percentage: formatPercentage(report.data.summary.voter_turnout_percentage)
+        total_elections: report.data.summary?.total_elections || 0,
+        ongoing_elections: report.data.summary?.ongoing_elections || 0,
+        completed_elections: report.data.summary?.completed_elections || 0,
+        upcoming_elections: report.data.summary?.upcoming_elections || 0,
+        total_eligible_voters: report.data.summary?.total_eligible_voters || 0,
+        total_votes_cast: report.data.summary?.total_votes_cast || 0,
+        voter_turnout_percentage: formatPercentage(report.data.summary?.voter_turnout_percentage || 0)
       },
-      recent_elections: report.data.recent_elections.map(election => ({
-        title: election.title,
-        election_type: election.election_type,
-        status: election.status,
+      recent_elections: (report.data.recent_elections || []).map(election => ({
+        title: election.title || 'Unknown Election',
+        election_type: election.election_type || 'Unknown Type',
+        status: election.status || 'Unknown Status',
         start_date: formatDateTime(election.start_date, election.start_time),
         end_date: formatDateTime(election.end_date, election.end_time),
-        voter_count: formatNumber(election.voter_count),
-        votes_cast: formatNumber(election.votes_cast),
-        turnout_percentage: formatPercentage(election.turnout_percentage)
+        voter_count: election.voter_count || 0,
+        votes_cast: election.votes_cast || 0,
+        turnout_percentage: election.turnout_percentage || 0
       }))
     };
 
     try {
-      await generatePdfReport(1, reportData); // 1 is the report ID for Election Summary
+      console.log('Generating PDF with data:', reportData);
+      const result = await generatePdfReport(1, reportData); // 1 is the report ID for Election Summary
+      console.log('PDF generation result:', result);
+      
+      if (!result.success) {
+        console.error('PDF generation failed:', result.message);
+        alert('Failed to generate PDF: ' + result.message);
+      }
     } catch (error) {
       console.error('Error generating report:', error);
+      alert('Error generating PDF: ' + error.message);
     }
   };
 
   // Function to handle downloading individual election details
   const handleDownloadElectionDetails = async () => {
-    if (!electionDetails) return;
+    if (!electionDetails) {
+      console.error('No election details available');
+      return;
+    }
     
     try {
-      await generateElectionDetailPdf(electionDetails);
+      console.log('Generating election detail PDF with data:', electionDetails);
+      const result = await generateElectionDetailPdf(electionDetails);
+      console.log('Election detail PDF generation result:', result);
+      
+      if (result && !result.success) {
+        console.error('Election detail PDF generation failed:', result.message);
+        alert('Failed to generate PDF: ' + result.message);
+      }
     } catch (error) {
       console.error('Error generating election detail report:', error);
+      alert('Error generating election detail PDF: ' + error.message);
     }
   };
 
@@ -493,15 +553,17 @@ export default function ReportDetailsModal({ report, onClose, onDownload }) {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                           {position.candidates?.map((candidate, index) => (
                             <div key={candidate.id} className="bg-white border rounded-lg p-4 flex items-start space-x-4 hover:shadow-md transition-shadow duration-200">
-                              <div className="relative w-24 h-24 flex-shrink-0 overflow-hidden rounded-lg">
+                              <div className="relative w-24 h-24 flex-shrink-0 overflow-hidden rounded-lg bg-gray-200">
                                 <Image
                                   src={getImageUrl(candidate.image_url)}
                                   alt={formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
                                   fill
-                                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                  priority
+                                  sizes="96px"
                                   className="rounded-lg object-cover object-center"
                                   style={{ objectFit: 'cover' }}
+                                  onError={(e) => {
+                                    e.target.src = '/images/default-avatar.png';
+                                  }}
                                 />
                               </div>
                               <div className="flex-grow">

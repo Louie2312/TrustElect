@@ -138,23 +138,23 @@ const generateUserReport = (data) => {
   
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text("Summary Statistics", 14, yPos);
+  doc.text("Summary Statistics", 14, currentY);
   
-  yPos = createSummaryTable(doc, summaryData, [
+  currentY = createSummaryTable(doc, summaryData, [
     { header: "Metric", key: "metric" },
     { header: "Value", key: "value" }
-  ], yPos + 10);
+  ], currentY + 10);
   
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text("Role Distribution", 14, yPos);
+  doc.text("Role Distribution", 14, currentY);
   
   createSummaryTable(doc, data.role_distribution, [
     { header: "Role", key: "role_name" },
     { header: "Total Users", key: "total_users" },
     { header: "Active", key: "active_users" },
     { header: "Inactive", key: "inactive_users" }
-  ], yPos + 10);
+  ], currentY + 10);
   
   return doc;
 };
@@ -180,31 +180,31 @@ const generateAdminActivityReport = (data) => {
   
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text("Summary Statistics", 14, yPos);
+  doc.text("Summary Statistics", 14, currentY);
   
-  yPos = createSummaryTable(doc, summaryData, [
+  currentY = createSummaryTable(doc, summaryData, [
     { header: "Metric", key: "metric" },
     { header: "Value", key: "value" }
-  ], yPos + 10);
+  ], currentY + 10);
   
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text("Recent Activities", 14, yPos);
+  doc.text("Recent Activities", 14, currentY);
   
   createSummaryTable(doc, activitiesData, [
     { header: "Admin", key: "admin" },
     { header: "Action", key: "action" },
     { header: "Entity", key: "entity" },
     { header: "Timestamp", key: "timestamp" }
-  ], yPos + 10);
+  ], currentY + 10);
   
   return doc;
 };
 
 // Generate Election Detail Report
-const generateElectionDetailReport = async (data) => {
+const generateElectionDetailReport = (data) => {
   const doc = new jsPDF();
-  let yPos = await addHeader(doc, data.title, data.description);
+  let yPos = addHeader(doc, data.title, data.description);
   
   // Add summary section
   const summaryData = [
@@ -275,9 +275,9 @@ const generateElectionDetailReport = async (data) => {
 };
 
 // Add this new function after generateAdminActivityReport
-const generateFailedLoginReport = async (data) => {
+const generateFailedLoginReport = (data) => {
   const doc = new jsPDF();
-  let yPos = await addHeader(doc, "Failed Login Report", "Analysis of failed login attempts and account lockouts across the system.");
+  let yPos = addHeader(doc, "Failed Login Report", "Analysis of failed login attempts and account lockouts across the system.");
   
   const summaryData = [
     { metric: "Total Failed Attempts", value: formatNumber(data.summary.total_attempts) },
@@ -317,9 +317,9 @@ const generateFailedLoginReport = async (data) => {
 // Add more report generators for other report types as needed...
 
 // Generate Audit Log Report
-const generateAuditLogReport = async (data) => {
+const generateAuditLogReport = (data) => {
   const doc = new jsPDF();
-  let yPos = await addHeader(doc, "Activity Audit Log Report", "Track all system activities and user actions across the platform.");
+  let yPos = addHeader(doc, "Activity Audit Log Report", "Track all system activities and user actions across the platform.");
   
   const summaryData = [
     { metric: "Total Activities", value: formatNumber(data.summary.total_activities) },
@@ -361,9 +361,9 @@ const generateAuditLogReport = async (data) => {
 };
 
 // Generate Upcoming Elections Report
-const generateUpcomingElectionReport = async (data) => {
+const generateUpcomingElectionReport = (data) => {
   const doc = new jsPDF();
-  let yPos = await addHeader(doc, "Upcoming Elections Report", "Detailed overview of all upcoming elections including ballot information and voter eligibility.");
+  let yPos = addHeader(doc, "Upcoming Elections Report", "Detailed overview of all upcoming elections including ballot information and voter eligibility.");
   
   const summaryData = [
     { metric: "Total Upcoming", value: formatNumber(data.summary.total_upcoming) },
@@ -404,9 +404,9 @@ const generateUpcomingElectionReport = async (data) => {
 };
 
 // Generate Live Vote Count Report
-const generateLiveVoteCountReport = async (data) => {
+const generateLiveVoteCountReport = (data) => {
   const doc = new jsPDF();
-  let yPos = await addHeader(doc, "Live Vote Count Report", "Real-time monitoring of ongoing elections with live vote counts and turnout statistics.");
+  let yPos = addHeader(doc, "Live Vote Count Report", "Real-time monitoring of ongoing elections with live vote counts and turnout statistics.");
   
   const summaryData = [
     { metric: "Total Live Elections", value: formatNumber(data.summary.total_live_elections) },
@@ -450,9 +450,9 @@ const generateLiveVoteCountReport = async (data) => {
 };
 
 // Generate System Load Report
-const generateSystemLoadReport = async (data) => {
+const generateSystemLoadReport = (data) => {
   const doc = new jsPDF();
-  let yPos = await addHeader(doc, "System Load Report", "Analysis of peak usage times and system activity patterns.");
+  let yPos = addHeader(doc, "System Load Report", "Analysis of peak usage times and system activity patterns.");
   
   const summaryData = [
     { metric: "Peak Login Hour", value: data.summary.peak_login_hour },
@@ -496,9 +496,9 @@ const generateSystemLoadReport = async (data) => {
 };
 
 // Generate Voter Participation Report
-const generateVoterParticipationReport = async (data) => {
+const generateVoterParticipationReport = (data) => {
   const doc = new jsPDF();
-  let yPos = await addHeader(doc, "Voter Participation Report", "Detailed analysis of voter turnout and participation patterns.");
+  let yPos = addHeader(doc, "Voter Participation Report", "Detailed analysis of voter turnout and participation patterns.");
   
   const summaryData = [
     { metric: "Total Eligible Voters", value: formatNumber(data.summary.total_eligible_voters) },
@@ -552,9 +552,9 @@ const generateVoterParticipationReport = async (data) => {
 };
 
 // Generate Candidate List Report
-const generateCandidateListReport = async (data) => {
+const generateCandidateListReport = (data) => {
   const doc = new jsPDF();
-  let yPos = await addHeader(doc, "Candidate List Report", "Comprehensive list of all candidates per election with their course and party affiliations.");
+  let yPos = addHeader(doc, "Candidate List Report", "Comprehensive list of all candidates per election with their course and party affiliations.");
   
   // Election details
   const electionData = [
