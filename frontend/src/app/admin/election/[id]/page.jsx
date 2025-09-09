@@ -6,7 +6,7 @@ import {
   ChevronLeft, List, User, PieChart,
   AlertTriangle as ExclamationTriangle,
   Lock, Award, ArrowDown, ArrowUp, Edit, Plus, AlertCircle, X,
-  Maximize2, Minimize2
+  Maximize2, Minimize2, ChevronRight, Play, Pause
 } from 'lucide-react';
 import Link from 'next/link';
 import Cookies from 'js-cookie';
@@ -17,7 +17,6 @@ import toast from 'react-hot-toast';
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 const BASE_URL = '';
 
-// Add a color palette array at the top of the file, outside the component
 const CHART_COLORS = [
   '#3b82f6', // blue
   '#ef4444', // red
@@ -30,6 +29,22 @@ const CHART_COLORS = [
   '#6366f1', // indigo
   '#14b8a6', // teal
 ];
+
+function formatNameSimple(lastName, firstName, fallback) {
+  const cap = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
+  if ((!lastName && !firstName) && fallback) {
+    const words = fallback.trim().split(/\s+/);
+    if (words.length === 1) {
+      return cap(words[0]);
+    } else {
+      const last = cap(words[words.length - 1]);
+      const first = words.slice(0, -1).map(cap).join(' ');
+      return `${last}, ${first}`;
+    }
+  }
+  if (!lastName && !firstName) return 'No Name';
+  return `${cap(lastName)}, ${cap(firstName)}`;
+}
 
 async function fetchWithAuth(url) {
   const token = Cookies.get('token');
@@ -105,6 +120,9 @@ export default function ElectionDetailsPage() {
   const [isCurrentUserCreator, setIsCurrentUserCreator] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const partialCountingRef = useRef(null);
+  const intervalRef = useRef(null);
+  const [currentPositionIndex, setCurrentPositionIndex] = useState(0);
+  const carouselIntervalRef = useRef(null);
 
   const toggleFullScreen = async () => {
     if (!document.fullscreenElement) {
@@ -140,95 +158,98 @@ export default function ElectionDetailsPage() {
     }
   };
 
+  const fetchElectionData = async () => {
+    try {
+      const data = await fetchWithAuth(`/elections/${params.id}/details`);
+      
+      let electionData = data.election;
+     
+      if (electionData) {
+        if (data.created_by_role) {
+          electionData.created_by_role = data.created_by_role;
+        } else if (electionData.created_by && electionData.created_by.role) {
+          electionData.created_by_role = electionData.created_by.role;
+        } else {
+          electionData.created_by_role = 'admin';
+        }
+        
+        setIsCurrentUserCreator(true);
+        
+        if (electionData.ballot?.positions) {
+          electionData.positions = electionData.ballot.positions.map(pos => ({
+            id: pos.position_id || pos.id,
+            name: pos.position_name || pos.name,
+            max_choices: pos.max_choices,
+            candidates: pos.candidates || []
+          }));
+        } else if (!electionData.positions && electionData.ballot?.id) {
+          try {
+            const ballotResponse = await fetchWithAuth(`/elections/${params.id}/ballot`);
+            if (ballotResponse && ballotResponse.positions) {
+              electionData.positions = ballotResponse.positions.map(pos => ({
+                id: pos.position_id || pos.id,
+                name: pos.position_name || pos.name,
+                max_choices: pos.max_choices,
+                candidates: pos.candidates || []
+              }));
+            }
+          } catch (ballotError) {
+            console.error('Error fetching additional ballot data:', ballotError);
+          }
+        }
+        
+        if (!electionData.positions) {
+          electionData.positions = [];
+        }
+      }
+      
+      const imageCache = {};
+      if (electionData?.positions) {
+        electionData.positions.forEach(position => {
+          position.candidates?.forEach(candidate => {
+            if (candidate.image_url) {
+              const processedUrl = getImageUrl(candidate.image_url);
+              imageCache[candidate.id] = processedUrl;
+            }
+          });
+        });
+      }
+      
+      try {
+        const completeElectionData = await fetchWithAuth(`/elections/${params.id}`);
+        const eligibilityCriteriaResponse = await fetchWithAuth(`/elections/${params.id}/criteria`);
+        
+        electionData.eligibility_criteria = {
+          ...(eligibilityCriteriaResponse.criteria || {}),
+          precinctPrograms: completeElectionData.eligible_voters?.precinctPrograms || {},
+          precinct: completeElectionData.eligible_voters?.precinct || []
+        };
+      } catch (criteriaErr) {
+        console.error('Error fetching eligibility criteria:', criteriaErr);
+        electionData.eligibility_criteria = {};
+      }
+      
+      setCandidateImages(imageCache);
+      setElection(electionData);
+      
+      console.log('Election data updated:', {
+        voter_count: electionData.voter_count,
+        vote_count: electionData.vote_count,
+        positions: electionData.positions?.length
+      });
+      
+      return electionData;
+    } catch (err) {
+      console.error('Error fetching election data:', err);
+      throw err;
+    }
+  };
+
   useEffect(() => {
     const loadElectionDetails = async () => {
       try {
         setIsLoading(true);
-        const data = await fetchWithAuth(`/elections/${params.id}/details`);
-        
-        console.log('Election details response:', data);
-        
-        let electionData = data.election;
-       
-        if (electionData) {
-          // Check if creator role is specified in the response
-          if (data.created_by_role) {
-            electionData.created_by_role = data.created_by_role;
-          } else if (electionData.created_by && electionData.created_by.role) {
-            electionData.created_by_role = electionData.created_by.role;
-          } else {
-            // Default to regular admin if not specified
-            electionData.created_by_role = 'admin';
-          }
-          
-          // Set as creator by default for admin users (simpler approach)
-          setIsCurrentUserCreator(true);
-          
-          // Rest of the existing code for loading ballot positions
-          if (electionData.ballot?.positions) {
-            electionData.positions = electionData.ballot.positions.map(pos => ({
-              id: pos.position_id || pos.id,
-              name: pos.position_name || pos.name,
-              max_choices: pos.max_choices,
-              candidates: pos.candidates || []
-            }));
-          } else if (!electionData.positions && electionData.ballot?.id) {
-            try {
-              // Make an additional request to get the complete ballot with positions
-              const ballotResponse = await fetchWithAuth(`/elections/${params.id}/ballot`);
-              console.log('Additional ballot data:', ballotResponse);
-              
-              if (ballotResponse && ballotResponse.positions) {
-                electionData.positions = ballotResponse.positions.map(pos => ({
-                  id: pos.position_id || pos.id,
-                  name: pos.position_name || pos.name,
-                  max_choices: pos.max_choices,
-                  candidates: pos.candidates || []
-                }));
-              }
-            } catch (ballotError) {
-              console.error('Error fetching additional ballot data:', ballotError);
-            }
-          }
-          
-          // If there's still no positions array, initialize an empty one
-          if (!electionData.positions) {
-            electionData.positions = [];
-          }
-        }
-        
-        const imageCache = {};
-        if (electionData?.positions) {
-          electionData.positions.forEach(position => {
-            position.candidates?.forEach(candidate => {
-              if (candidate.image_url) {
-                const processedUrl = getImageUrl(candidate.image_url);
-                imageCache[candidate.id] = processedUrl;
-              }
-            });
-          });
-        }
-        
-        try {
-          // Get the complete election data which includes precinct programs
-          const completeElectionData = await fetchWithAuth(`/elections/${params.id}`);
-          
-          // Get the eligibility criteria from the /criteria endpoint
-          const eligibilityCriteriaResponse = await fetchWithAuth(`/elections/${params.id}/criteria`);
-          
-          // Merge the data from both endpoints
-          electionData.eligibility_criteria = {
-            ...(eligibilityCriteriaResponse.criteria || {}),
-            precinctPrograms: completeElectionData.eligible_voters?.precinctPrograms || {},
-            precinct: completeElectionData.eligible_voters?.precinct || []
-          };
-        } catch (criteriaErr) {
-          console.error('Error fetching eligibility criteria:', criteriaErr);
-          electionData.eligibility_criteria = {};
-        }
-        
-        setCandidateImages(imageCache);
-        setElection(electionData);
+        await fetchElectionData();
       } catch (err) {
         console.error('Error loading election details:', err);
         setError(err.message);
@@ -242,6 +263,76 @@ export default function ElectionDetailsPage() {
       loadElectionDetails();
     }
   }, [params.id]);
+
+  // Auto-refresh effect for partial counting in fullscreen
+  useEffect(() => {
+    if (isFullScreen && tab === 'partial' && election?.status === 'ongoing') {
+      console.log('Starting auto-refresh for partial counting...');
+      
+      intervalRef.current = setInterval(async () => {
+        try {
+          await fetchElectionData();
+        } catch (error) {
+          console.error('Error during auto-refresh:', error);
+        }
+      }, 1000); // Refresh every 1 second
+      
+      return () => {
+        if (intervalRef.current) {
+          console.log('Clearing auto-refresh interval...');
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+      };
+    } else {
+      if (intervalRef.current) {
+        console.log('Clearing auto-refresh interval (conditions not met)...');
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    }
+  }, [isFullScreen, tab, election?.status, params.id]);
+
+  // Position carousel effect for fullscreen
+  useEffect(() => {
+    if (isFullScreen && tab === 'partial' && election?.positions?.length > 1) {
+      console.log('Starting position carousel...');
+      
+      carouselIntervalRef.current = setInterval(() => {
+        setCurrentPositionIndex(prev => 
+          prev + 1 >= election.positions.length ? 0 : prev + 1
+        );
+      }, 10000); // Change position every 10 seconds
+      
+      return () => {
+        if (carouselIntervalRef.current) {
+          console.log('Clearing carousel interval...');
+          clearInterval(carouselIntervalRef.current);
+          carouselIntervalRef.current = null;
+        }
+      };
+    } else {
+      if (carouselIntervalRef.current) {
+        clearInterval(carouselIntervalRef.current);
+        carouselIntervalRef.current = null;
+      }
+      if (!isFullScreen) {
+        setCurrentPositionIndex(0);
+      }
+    }
+  }, [isFullScreen, tab, election?.positions?.length]);
+
+  // Cleanup intervals on component unmount
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      if (carouselIntervalRef.current) {
+        clearInterval(carouselIntervalRef.current);
+      }
+    };
+  }, []);
 
   const handleCancelElection = async () => {
     if (!confirm("Are you sure you want to cancel this election? This action cannot be undone.")) {
@@ -945,30 +1036,30 @@ export default function ElectionDetailsPage() {
           </div>
         </>
       ) : tab === 'partial' ? (
-        <div ref={partialCountingRef} className={`${isFullScreen ? 'fixed inset-0 bg-white z-50 overflow-y-auto' : ''}`}>
+        <div ref={partialCountingRef} className={`${isFullScreen ? 'fixed inset-0 bg-gray-100 z-50 overflow-y-auto' : ''}`}>
           {/* Vote Summary Section */}
-          <div className="bg-white rounded-lg shadow p-4 mb-6">
+          <div className={`bg-white rounded-lg shadow-lg ${isFullScreen ? 'sticky top-0 z-10 mx-6 mt-6 mb-8 p-8' : 'p-4 mb-6'}`}>
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-8">
+              <div className={`flex items-center ${isFullScreen ? 'space-x-16' : 'space-x-8'}`}>
                 <div className="flex items-center">
-                  <Users className="w-5 h-5 mr-2 text-gray-600" />
+                  <Users className={`${isFullScreen ? 'w-8 h-8' : 'w-5 h-5'} mr-3 text-gray-600`} />
                   <div>
-                    <div className="text-sm text-gray-500">Total Voters</div>
-                    <div className="font-bold text-black">{Number(election.voter_count || 0).toLocaleString()}</div>
+                    <div className={`${isFullScreen ? 'text-lg' : 'text-sm'} text-gray-500`}>Total Voters</div>
+                    <div className={`font-bold text-black ${isFullScreen ? 'text-2xl' : ''}`}>{Number(election.voter_count || 0).toLocaleString()}</div>
                   </div>
                 </div>
                 <div className="flex items-center">
-                  <CheckCircle className="w-5 h-5 mr-2 text-gray-600" />
+                  <CheckCircle className={`${isFullScreen ? 'w-8 h-8' : 'w-5 h-5'} mr-3 text-gray-600`} />
                   <div>
-                    <div className="text-sm text-gray-500">Votes Cast</div>
-                    <div className="font-bold text-black">{Number(election.vote_count || 0).toLocaleString()}</div>
+                    <div className={`${isFullScreen ? 'text-lg' : 'text-sm'} text-gray-500`}>Votes Cast</div>
+                    <div className={`font-bold text-black ${isFullScreen ? 'text-2xl' : ''}`}>{Number(election.vote_count || 0).toLocaleString()}</div>
                   </div>
                 </div>
                 <div className="flex items-center">
-                  <PieChart className="w-5 h-5 mr-2 text-gray-600" />
+                  <PieChart className={`${isFullScreen ? 'w-8 h-8' : 'w-5 h-5'} mr-3 text-gray-600`} />
                   <div>
-                    <div className="text-sm text-gray-500">Votes Percentage</div>
-                    <div className="font-bold text-black">
+                    <div className={`${isFullScreen ? 'text-lg' : 'text-sm'} text-gray-500`}>Turnout</div>
+                    <div className={`font-bold text-black ${isFullScreen ? 'text-2xl' : ''}`}>
                       {election.voter_count ? ((election.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
                     </div>
                   </div>
@@ -976,11 +1067,11 @@ export default function ElectionDetailsPage() {
               </div>
               <button
                 onClick={toggleFullScreen}
-                className="flex items-center px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                className={`flex items-center ${isFullScreen ? 'px-6 py-3 text-lg' : 'px-3 py-2'} bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors`}
               >
                 {isFullScreen ? (
                   <>
-                    <Minimize2 className="w-4 h-4 mr-2" />
+                    <Minimize2 className={`${isFullScreen ? 'w-6 h-6' : 'w-4 h-4'} mr-2`} />
                     Exit Full Screen
                   </>
                 ) : (
@@ -994,123 +1085,331 @@ export default function ElectionDetailsPage() {
           </div>
 
           {/* Partial Counting Results */}
-          <div className={`bg-white rounded-lg shadow p-6 ${isFullScreen ? 'mx-4' : ''}`}>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold text-black">Live Vote Counting</h2>
-              <div className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">
-                Live Updates
+          <div className={`bg-white rounded-lg shadow-lg ${isFullScreen ? 'mx-6 mb-6 p-8' : 'p-6'}`}>
+            <div className="flex justify-between items-center mb-8">
+              <div className="flex items-center gap-4">
+                <h2 className={`${isFullScreen ? 'text-4xl' : 'text-xl'} font-semibold text-black`}>
+                  {isFullScreen && election?.positions?.length > 1 ? 'Live Election Results' : 'Live Vote Counting'}
+                </h2>
+                {isFullScreen && election?.positions?.length > 1 && (
+                  <div className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-800 rounded-full">
+                    <Play className="w-4 h-4" />
+                    <span className="text-sm font-medium">Auto-rotating every 10s</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                {isFullScreen && election?.status === 'ongoing' && (
+                  <div className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-full">
+                    <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className={`${isFullScreen ? 'text-base' : 'text-sm'} font-medium`}>Live Updates</span>
+                  </div>
+                )}
+                <div className={`px-4 py-2 bg-yellow-100 text-yellow-800 rounded-full ${isFullScreen ? 'text-base' : 'text-sm'} font-medium`}>
+                  Live Results
+                </div>
               </div>
             </div>
-            {election.positions && election.positions.length > 0 ? (
-              <div className="space-y-6">
-                {election.positions.map(position => {
-                  const { top3, others } = getTop3AndOtherCandidates(position.candidates || []);
-                  
-                  return (
-                    <div key={position.id} className="border rounded-lg p-4">
-                      <h3 className="text-lg font-medium text-black mb-4">
-                        {position.name}
-                      </h3>
 
-                      <div className="space-y-3">
-                        {/* Top 3 Candidates */}
-                        {top3.map((candidate, index) => (
-                          <div key={candidate.id} className="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
-                            <div className="relative">
-                              <div className="relative w-16 h-16 mr-4">
-                                {candidate.image_url && !imageErrors[candidate.id] ? (
-                                  <Image
-                                    src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
-                                    alt={`${candidate.first_name} ${candidate.last_name}`}
-                                    fill
-                                    sizes="64px"
-                                    className="object-cover rounded-full"
-                                    onError={() => handleImageError(candidate.id)}
-                                  />
-                                ) : (
-                                  <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
-                                    <User className="w-8 h-8 text-gray-400" />
+            {election.positions && election.positions.length > 0 ? (
+              isFullScreen && election.positions.length > 1 ? (
+                // Carousel mode for fullscreen with multiple positions
+                <div className="space-y-8">
+                  {/* Position indicator */}
+                  <div className="flex justify-center items-center gap-4 mb-8">
+                    <div className="flex items-center gap-2">
+                      {election.positions.map((_, index) => (
+                        <button
+                          key={index}
+                          onClick={() => setCurrentPositionIndex(index)}
+                          className={`w-3 h-3 rounded-full transition-colors ${
+                            index === currentPositionIndex ? 'bg-blue-500' : 'bg-gray-300'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <div className="text-gray-600 text-lg">
+                      {currentPositionIndex + 1} of {election.positions.length}
+                    </div>
+                  </div>
+
+                  {/* Current position display */}
+                  {(() => {
+                    const position = election.positions[currentPositionIndex];
+                    const { top3, others } = getTop3AndOtherCandidates(position.candidates || []);
+                    
+                    return (
+                      <div className="transition-all duration-500 ease-in-out">
+                        <h3 className="text-5xl font-bold text-center text-black mb-12">
+                          {position.name}
+                        </h3>
+
+                        {/* Top 3 Candidates - Balanced display */}
+                        {top3.length > 0 && (
+                          <div className="grid grid-cols-3 gap-8 mb-10">
+                            {top3.map((candidate, index) => (
+                              <div 
+                                key={candidate.id} 
+                                className={`flex flex-col items-center text-center p-6 rounded-xl shadow-lg ${
+                                  index === 0 ? 'bg-gradient-to-b from-blue-50 to-blue-100 border-2 border-blue-300' :
+                                  index === 1 ? 'bg-gradient-to-b from-gray-50 to-gray-100 border-2 border-gray-300' :
+                                  'bg-gradient-to-b from-orange-50 to-orange-100 border-2 border-orange-300'
+                                }`}
+                              >
+                                <div className="relative mb-4">
+                                  <div className="relative w-32 h-40">
+                                    {candidate.image_url && !imageErrors[candidate.id] ? (
+                                      <Image
+                                        src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
+                                        alt={`${candidate.first_name} ${candidate.last_name}`}
+                                        fill
+                                        sizes="128px"
+                                        className="object-cover rounded-lg shadow-md"
+                                        priority
+                                        onError={() => handleImageError(candidate.id)}
+                                      />
+                                    ) : (
+                                      <div className="w-32 h-40 rounded-lg bg-gray-200 flex items-center justify-center shadow-md">
+                                        <User className="w-16 h-16 text-gray-400" />
+                                      </div>
+                                    )}
+                                    <div className={`absolute -top-3 -right-3 rounded-full p-2 text-base font-bold shadow-lg ${
+                                      index === 0 ? 'bg-blue-500 text-white' :
+                                      index === 1 ? 'bg-gray-500 text-white' :
+                                      'bg-orange-500 text-white'
+                                    }`}>
+                                      {getRankLabel(index)}
+                                    </div>
                                   </div>
-                                )}
-                                <div className={`absolute -top-2 -right-2 rounded-full p-1 text-xs font-bold ${
-                                  index === 0 ? 'bg-blue-500 text-white' :
-                                  index === 1 ? 'bg-gray-500 text-white' :
-                                  'bg-gray-400 text-white'
-                                }`}>
-                                  {getRankLabel(index)}
                                 </div>
-                              </div>
-                            </div>
-                            
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <h4 className="font-medium text-black">
-                                    {candidate.first_name} {candidate.last_name}
+                                
+                                <div className="w-full">
+                                  <h4 className="font-bold text-black text-xl mb-2">
+                                    {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
                                   </h4>
                                   {candidate.party && (
-                                    <span className="text-sm text-black">
-                                      {candidate.party}
-                                    </span>
+                                    <div className="px-3 py-1 bg-white rounded-full mb-3 shadow-sm">
+                                      <span className="text-black font-medium text-sm">{candidate.party}</span>
+                                    </div>
                                   )}
-                                </div>
-                                <div className="text-right">
-                                  <div className="font-bold text-black text-lg">
-                                    {Number(candidate.vote_count || 0).toLocaleString()}
-                                  </div>
-                                  <div className="text-sm text-gray-600">
-                                    {election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
+                                  <div className="mt-4">
+                                    <div className="font-bold text-black text-3xl mb-1">
+                                      {Number(candidate.vote_count || 0).toLocaleString()}
+                                    </div>
+                                    <div className="text-lg text-gray-600 mb-1">votes</div>
+                                    <div className="text-base text-gray-600 mb-3">
+                                      {election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
+                                    </div>
+                                    <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                                      <div 
+                                        className={`h-full rounded-full transition-all duration-1000 ${
+                                          index === 0 ? 'bg-blue-500' : index === 1 ? 'bg-gray-500' : 'bg-orange-500'
+                                        }`}
+                                        style={{ width: `${election.voter_count ? (candidate.vote_count / election.voter_count * 100).toFixed(2) : 0}%` }}
+                                      />
+                                    </div>
                                   </div>
                                 </div>
                               </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Other Candidates - Enhanced grid */}
+                        {others.length > 0 && (
+                          <div>
+                            <h4 className="font-bold text-gray-700 mb-6 text-xl text-center">Other Candidates</h4>
+                            <div className="grid grid-cols-3 gap-6">
+                              {others.map(candidate => (
+                                <div 
+                                  key={candidate.id} 
+                                  className="flex flex-col items-center p-5 bg-gray-50 rounded-xl shadow-md hover:shadow-lg transition-shadow"
+                                >
+                                  <div className="relative w-24 h-32 mb-4">
+                                    {candidate.image_url && !imageErrors[candidate.id] ? (
+                                      <Image
+                                        src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
+                                        alt={`${candidate.first_name} ${candidate.last_name}`}
+                                        fill
+                                        sizes="96px"
+                                        className="object-cover rounded-lg"
+                                        onError={() => handleImageError(candidate.id)}
+                                      />
+                                    ) : (
+                                      <div className="w-24 h-32 rounded-lg bg-gray-200 flex items-center justify-center">
+                                        <User className="w-12 h-12 text-gray-400" />
+                                      </div>
+                                    )}
+                                  </div>
+                                  
+                                  <div className="text-center w-full">
+                                    <h4 className="font-medium text-black text-base mb-2">
+                                      {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
+                                    </h4>
+                                    {candidate.party && (
+                                      <div className="text-sm text-gray-600 mb-3 px-2 py-1 bg-white rounded-full">
+                                        {candidate.party}
+                                      </div>
+                                    )}
+                                    <div className="font-bold text-black text-xl mb-1">
+                                      {Number(candidate.vote_count || 0).toLocaleString()}
+                                    </div>
+                                    <div className="text-sm text-gray-600 mb-1">votes</div>
+                                    <div className="text-sm text-gray-600">
+                                      {election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
                           </div>
-                        ))}
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : (
+                // Regular mode for non-fullscreen or single position
+                <div className="space-y-10">
+                  {election.positions.map(position => {
+                    const { top3, others } = getTop3AndOtherCandidates(position.candidates || []);
+                    
+                    return (
+                      <div key={position.id} className={`border rounded-lg p-6 ${isFullScreen ? 'shadow-lg' : ''}`}>
+                        <h3 className={`${isFullScreen ? 'text-2xl' : 'text-lg'} font-medium text-black mb-6`}>
+                          {position.name}
+                        </h3>
+
+                        {/* Top 3 Candidates */}
+                        {top3.length > 0 && (
+                          <div className={`mb-8 ${isFullScreen ? 'grid grid-cols-3 gap-6' : 'space-y-3'}`}>
+                            {top3.map((candidate, index) => (
+                              <div 
+                                key={candidate.id} 
+                                className={`${isFullScreen ? 'flex flex-col items-center text-center p-6' : 'flex items-center p-3'} 
+                                  bg-gray-50 rounded-lg border ${index === 0 ? 'border-blue-300' : index === 1 ? 'border-gray-300' : 'border-gray-200'} 
+                                  ${isFullScreen && index === 0 ? 'shadow-lg bg-blue-50' : ''}`}
+                              >
+                                <div className={`relative ${isFullScreen ? 'mb-4' : ''}`}>
+                                  <div className={`relative ${isFullScreen ? 'w-36 h-48' : 'w-16 h-20'} ${!isFullScreen ? 'mr-4' : ''}`}>
+                                    {candidate.image_url && !imageErrors[candidate.id] ? (
+                                      <Image
+                                        src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
+                                        alt={`${candidate.first_name} ${candidate.last_name}`}
+                                        fill
+                                        sizes={isFullScreen ? "192px" : "80px"}
+                                        className="object-cover rounded-md"
+                                        priority
+                                        onError={() => handleImageError(candidate.id)}
+                                      />
+                                    ) : (
+                                      <div className={`${isFullScreen ? 'w-36 h-48' : 'w-16 h-20'} rounded-md bg-gray-200 flex items-center justify-center`}>
+                                        <User className={`${isFullScreen ? 'w-16 h-16' : 'w-8 h-8'} text-gray-400`} />
+                                      </div>
+                                    )}
+                                    <div className={`absolute -top-2 -right-2 rounded-full p-1.5 text-xs font-bold ${
+                                      index === 0 ? 'bg-blue-500 text-white' :
+                                      index === 1 ? 'bg-gray-500 text-white' :
+                                      'bg-gray-400 text-white'
+                                    } ${isFullScreen ? 'text-base p-2' : ''}`}>
+                                      {getRankLabel(index)}
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                <div className={`${isFullScreen ? 'w-full' : 'flex-1'}`}>
+                                  <div className={`${isFullScreen ? '' : 'flex items-center justify-between'}`}>
+                                    <div>
+                                      <h4 className={`font-medium text-black ${isFullScreen ? 'text-xl mb-2' : ''}`}>
+                                        {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
+                                      </h4>
+                                      {candidate.party && (
+                                        <span className={`${isFullScreen ? 'block px-3 py-1 bg-gray-100 rounded-full mb-3' : 'text-sm'} text-black`}>
+                                          {candidate.party}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className={`${isFullScreen ? 'mt-4' : 'text-right'}`}>
+                                      <div className={`font-bold text-black ${isFullScreen ? 'text-3xl' : 'text-lg'}`}>
+                                        {Number(candidate.vote_count || 0).toLocaleString()}
+                                      </div>
+                                      <div className={`${isFullScreen ? 'text-base' : 'text-sm'} text-gray-600`}>
+                                        votes
+                                      </div>
+                                      <div className={`${isFullScreen ? 'text-base' : 'text-sm'} text-gray-600`}>
+                                        {election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {isFullScreen && (
+                                    <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden mt-3">
+                                      <div 
+                                        className={`h-full rounded-full ${index === 0 ? 'bg-blue-500' : index === 1 ? 'bg-gray-500' : 'bg-gray-400'}`}
+                                        style={{ width: `${election.voter_count ? (candidate.vote_count / election.voter_count * 100).toFixed(2) : 0}%` }}
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
 
                         {/* Other Candidates */}
-                        {others.map(candidate => (
-                          <div key={candidate.id} className="flex items-center p-3 bg-gray-50 rounded-lg">
-                            <div className="relative w-16 h-16 mr-4">
-                              {candidate.image_url && !imageErrors[candidate.id] ? (
-                                <Image
-                                  src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
-                                  alt={`${candidate.first_name} ${candidate.last_name}`}
-                                  fill
-                                  sizes="64px"
-                                  className="object-cover rounded-full"
-                                  onError={() => handleImageError(candidate.id)}
-                                />
-                              ) : (
-                                <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
-                                  <User className="w-8 h-8 text-gray-400" />
-                                </div>
-                              )}
-                            </div>
-                            
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <h4 className="font-medium text-black">
-                                    {candidate.first_name} {candidate.last_name}
-                                  </h4>
-                                  {candidate.party && (
-                                    <span className="text-sm text-black">
-                                      {candidate.party}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="text-right">
-                                  <div className="font-bold text-black text-lg">
-                                    {Number(candidate.vote_count || 0).toLocaleString()}
+                        {others.length > 0 && (
+                          <div>
+                            <h4 className={`font-medium text-gray-700 mb-3 ${isFullScreen ? 'text-xl' : ''}`}>Other Candidates</h4>
+                            <div className={`${isFullScreen ? 'grid grid-cols-2 md:grid-cols-3 gap-4' : 'space-y-3'}`}>
+                              {others.map(candidate => (
+                                <div 
+                                  key={candidate.id} 
+                                  className={`flex items-center p-3 bg-gray-50 rounded-lg ${isFullScreen ? 'shadow-sm' : ''}`}
+                                >
+                                  <div className="relative w-16 h-20 mr-4">
+                                    {candidate.image_url && !imageErrors[candidate.id] ? (
+                                      <Image
+                                        src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
+                                        alt={`${candidate.first_name} ${candidate.last_name}`}
+                                        fill
+                                        sizes="64px"
+                                        className="object-cover rounded-md"
+                                        onError={() => handleImageError(candidate.id)}
+                                      />
+                                    ) : (
+                                      <div className="w-16 h-20 rounded-md bg-gray-200 flex items-center justify-center">
+                                        <User className="w-8 h-8 text-gray-400" />
+                                      </div>
+                                    )}
                                   </div>
-                                  <div className="text-sm text-gray-600">
-                                    {election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
+                                  
+                                  <div className="flex-1">
+                                    <div className="flex items-center justify-between">
+                                      <div>
+                                        <h4 className={`font-medium text-black ${isFullScreen ? 'text-lg' : ''}`}>
+                                          {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
+                                        </h4>
+                                        {candidate.party && (
+                                          <span className="text-sm text-black">
+                                            {candidate.party}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="text-right">
+                                        <div className={`font-bold text-black ${isFullScreen ? 'text-xl' : 'text-lg'}`}>
+                                          {Number(candidate.vote_count || 0).toLocaleString()}
+                                        </div>
+                                        <div className="text-sm text-gray-600">votes</div>
+                                        <div className="text-sm text-gray-600">
+                                          {election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
+                                        </div>
+                                      </div>
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
+                              ))}
                             </div>
                           </div>
-                        ))}
+                        )}
 
                         {position.candidates && position.candidates.length === 0 && (
                           <div className="text-center py-4 text-gray-500">
@@ -1118,10 +1417,10 @@ export default function ElectionDetailsPage() {
                           </div>
                         )}
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )
             ) : (
               <div className="text-center py-8 text-gray-500">
                 No positions available
