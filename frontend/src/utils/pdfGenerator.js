@@ -62,6 +62,52 @@ const addHeader = (doc, title, description) => {
   return 85; // Return the Y position after the header
 };
 
+// Add footer function with horizontal line, report title, and page number
+const addFooter = (doc, reportTitle) => {
+  const pageHeight = doc.internal.pageSize.height;
+  const pageWidth = doc.internal.pageSize.width;
+  const footerY = pageHeight - 20; // Position footer 20 units from bottom
+  
+  // Add horizontal line
+  doc.setLineWidth(0.5);
+  doc.setDrawColor(128, 128, 128); // Grey color
+  doc.line(14, footerY - 5, pageWidth - 14, footerY - 5);
+  
+  // Add report title on the left
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text(reportTitle || 'TrustElect Report', 14, footerY);
+  
+  // Add page number on the right
+  const pageNumber = doc.internal.getCurrentPageInfo().pageNumber;
+  const totalPages = doc.internal.getNumberOfPages();
+  const pageText = `Page ${pageNumber} of ${totalPages}`;
+  
+  // Calculate text width to right-align it
+  const textWidth = doc.getTextWidth(pageText);
+  doc.text(pageText, pageWidth - 14 - textWidth, footerY);
+  
+  return footerY - 10; // Return Y position above footer
+};
+
+// Override the internal addPage method to automatically add footer
+const originalAddPage = jsPDF.prototype.addPage;
+jsPDF.prototype.addPage = function() {
+  originalAddPage.call(this);
+  // Add footer to new page
+  addFooter(this, this._reportTitle || 'TrustElect Report');
+  return this;
+};
+
+// Override the internal addPage method for autoTable to add footer
+const originalAutoTableAddPage = autoTable.prototype.addPage;
+autoTable.prototype.addPage = function() {
+  originalAutoTableAddPage.call(this);
+  // Add footer to new page created by autoTable
+  addFooter(this.doc, this.doc._reportTitle || 'TrustElect Report');
+  return this;
+};
+
 // Helper function to create a summary table
 const createSummaryTable = (doc, data, columns, startY) => {
   // Use the imported autoTable function directly
@@ -88,6 +134,7 @@ const createSummaryTable = (doc, data, columns, startY) => {
 // Generate Election Report - Fixed yPos variable
 const generateElectionReport = (data) => {
   const doc = new jsPDF();
+  doc._reportTitle = 'Election Summary Report'; // Set report title for footer
   
   let currentY = addHeader(doc, 'Election Summary Report', 'Overview of all elections with detailed statistics and voter turnout.');
   
@@ -121,12 +168,16 @@ const generateElectionReport = (data) => {
     { header: "End Date", key: "end_date" }
   ], currentY + 10);
   
+  // Add footer to the first page
+  addFooter(doc, 'Election Summary Report');
+  
   return doc;
 };
 
 // Generate User Report
 const generateUserReport = (data) => {
   const doc = new jsPDF();
+  doc._reportTitle = 'User Management Report';
   
   let currentY = addHeader(doc, 'User Management Report', 'Comprehensive overview of all registered users and their roles.');
   
@@ -156,12 +207,16 @@ const generateUserReport = (data) => {
     { header: "Inactive", key: "inactive_users" }
   ], currentY + 10);
   
+  // Add footer to the first page
+  addFooter(doc, 'User Management Report');
+  
   return doc;
 };
 
 // Generate Admin Activity Report
 const generateAdminActivityReport = (data) => {
   const doc = new jsPDF();
+  doc._reportTitle = 'Admin Activity Report';
   
   let currentY = addHeader(doc, 'Admin Activity Report', 'Summary of administrative actions and system activities.');
   
@@ -198,12 +253,17 @@ const generateAdminActivityReport = (data) => {
     { header: "Timestamp", key: "timestamp" }
   ], currentY + 10);
   
+  // Add footer to the first page
+  addFooter(doc, 'Admin Activity Report');
+  
   return doc;
 };
 
 // Generate Election Detail Report
 const generateElectionDetailReport = (data) => {
   const doc = new jsPDF();
+  doc._reportTitle = data.title || 'Election Detail Report';
+  
   let yPos = addHeader(doc, data.title, data.description);
   
   // Add summary section
@@ -271,12 +331,17 @@ const generateElectionDetailReport = (data) => {
     });
   }
   
+  // Add footer to all pages
+  addFooter(doc, data.title || 'Election Detail Report');
+  
   return doc;
 };
 
 // Add this new function after generateAdminActivityReport
 const generateFailedLoginReport = (data) => {
   const doc = new jsPDF();
+  doc._reportTitle = 'Failed Login Report';
+  
   let yPos = addHeader(doc, "Failed Login Report", "Analysis of failed login attempts and account lockouts across the system.");
   
   const summaryData = [
@@ -311,6 +376,9 @@ const generateFailedLoginReport = (data) => {
     { header: "Status", key: "status" }
   ], yPos + 10);
   
+  // Add footer to the first page
+  addFooter(doc, 'Failed Login Report');
+  
   return doc;
 };
 
@@ -319,6 +387,8 @@ const generateFailedLoginReport = (data) => {
 // Generate Audit Log Report
 const generateAuditLogReport = (data) => {
   const doc = new jsPDF();
+  doc._reportTitle = 'Activity Audit Log Report';
+  
   let yPos = addHeader(doc, "Activity Audit Log Report", "Track all system activities and user actions across the platform.");
   
   const summaryData = [
@@ -357,12 +427,17 @@ const generateAuditLogReport = (data) => {
     { header: "Timestamp", key: "timestamp" }
   ], yPos + 10);
   
+  // Add footer to the first page
+  addFooter(doc, 'Activity Audit Log Report');
+  
   return doc;
 };
 
 // Generate Upcoming Elections Report
 const generateUpcomingElectionReport = (data) => {
   const doc = new jsPDF();
+  doc._reportTitle = 'Upcoming Elections Report';
+  
   let yPos = addHeader(doc, "Upcoming Elections Report", "Detailed overview of all upcoming elections including ballot information and voter eligibility.");
   
   const summaryData = [
@@ -400,12 +475,17 @@ const generateUpcomingElectionReport = (data) => {
     { header: "Expected Voters", key: "voters" }
   ], yPos + 10);
   
+  // Add footer to the first page
+  addFooter(doc, 'Upcoming Elections Report');
+  
   return doc;
 };
 
 // Generate Live Vote Count Report
 const generateLiveVoteCountReport = (data) => {
   const doc = new jsPDF();
+  doc._reportTitle = 'Live Vote Count Report';
+  
   let yPos = addHeader(doc, "Live Vote Count Report", "Real-time monitoring of ongoing elections with live vote counts and turnout statistics.");
   
   const summaryData = [
@@ -446,12 +526,17 @@ const generateLiveVoteCountReport = (data) => {
     { header: "Time Remaining", key: "remaining" }
   ], yPos + 10);
   
+  // Add footer to the first page
+  addFooter(doc, 'Live Vote Count Report');
+  
   return doc;
 };
 
 // Generate System Load Report
 const generateSystemLoadReport = (data) => {
   const doc = new jsPDF();
+  doc._reportTitle = 'System Load Report';
+  
   let yPos = addHeader(doc, "System Load Report", "Analysis of peak usage times and system activity patterns.");
   
   const summaryData = [
@@ -492,12 +577,17 @@ const generateSystemLoadReport = (data) => {
     { header: "Average", key: "average" }
   ], yPos + 10);
   
+  // Add footer to the first page
+  addFooter(doc, 'System Load Report');
+  
   return doc;
 };
 
 // Generate Voter Participation Report
 const generateVoterParticipationReport = (data) => {
   const doc = new jsPDF();
+  doc._reportTitle = 'Voter Participation Report';
+  
   let yPos = addHeader(doc, "Voter Participation Report", "Detailed analysis of voter turnout and participation patterns.");
   
   const summaryData = [
@@ -548,12 +638,17 @@ const generateVoterParticipationReport = (data) => {
     ], yPos + 10);
   }
   
+  // Add footer to the first page
+  addFooter(doc, 'Voter Participation Report');
+  
   return doc;
 };
 
 // Generate Candidate List Report
 const generateCandidateListReport = (data) => {
   const doc = new jsPDF();
+  doc._reportTitle = 'Candidate List Report';
+  
   let yPos = addHeader(doc, "Candidate List Report", "Comprehensive list of all candidates per election with their course and party affiliations.");
   
   // Election details
@@ -601,6 +696,9 @@ const generateCandidateListReport = (data) => {
       { header: "Votes", key: "votes" }
     ], yPos) + 20;
   });
+  
+  // Add footer to all pages
+  addFooter(doc, 'Candidate List Report');
   
   return doc;
 };
