@@ -1,6 +1,6 @@
 const bcrypt = require("bcryptjs");
 const { validationResult } = require("express-validator");
-const { checkStudentNumberExists, registerStudent, getAllStudents, getStudentById, updateStudent, softDeleteStudent, restoreStudent, resetStudentPassword, deleteStudentPermanently, unlockStudentAccount, processBatchStudents, changePassword } = require("../models/studentModel");
+const { checkStudentNumberExists, registerStudent, getAllStudents, getStudentById, updateStudent, softDeleteStudent, restoreStudent, resetStudentPassword, deleteStudentPermanently, bulkDeleteStudentsByCourse, bulkDeleteArchivedStudentsByCourse, unlockStudentAccount, processBatchStudents, changePassword } = require("../models/studentModel");
 const XLSX = require('xlsx');
 const fs = require('fs');
 const path = require('path');
@@ -966,6 +966,108 @@ exports.changePassword = async (req, res) => {
     res.status(500).json({ 
       message: "Error changing password",
       error: error.message 
+    });
+  }
+};
+
+// Bulk delete students by course (archive)
+exports.bulkDeleteStudentsByCourse = async (req, res) => {
+  try {
+    const { courseName } = req.body;
+
+    if (!courseName) {
+      return res.status(400).json({
+        success: false,
+        message: "Course name is required"
+      });
+    }
+
+    const result = await bulkDeleteStudentsByCourse(courseName, false);
+
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      deletedCount: result.deletedCount,
+      students: result.students
+    });
+  } catch (error) {
+    console.error("Error in bulkDeleteStudentsByCourse controller:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error archiving students by course",
+      error: error.message
+    });
+  }
+};
+
+// Bulk permanent delete students by course
+exports.bulkPermanentDeleteStudentsByCourse = async (req, res) => {
+  try {
+    const { courseName } = req.body;
+
+    if (!courseName) {
+      return res.status(400).json({
+        success: false,
+        message: "Course name is required"
+      });
+    }
+
+    const result = await bulkDeleteStudentsByCourse(courseName, true);
+
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      deletedCount: result.deletedCount,
+      students: result.students
+    });
+  } catch (error) {
+    console.error("Error in bulkPermanentDeleteStudentsByCourse controller:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error permanently deleting students by course",
+      error: error.message
+    });
+  }
+};
+
+// Bulk permanent delete archived students by course
+exports.bulkDeleteArchivedStudentsByCourse = async (req, res) => {
+  try {
+    const { courseName } = req.body;
+
+    if (!courseName) {
+      return res.status(400).json({
+        success: false,
+        message: "Course name is required"
+      });
+    }
+
+    const result = await bulkDeleteArchivedStudentsByCourse(courseName);
+
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      deletedCount: result.deletedCount,
+      students: result.students
+    });
+  } catch (error) {
+    console.error("Error in bulkDeleteArchivedStudentsByCourse controller:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error permanently deleting archived students by course",
+      error: error.message
     });
   }
 };

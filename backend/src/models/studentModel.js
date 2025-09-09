@@ -266,6 +266,119 @@ const deleteStudentPermanently = async (studentId) => {
   }
 };
 
+const bulkDeleteStudentsByCourse = async (courseName, isPermanent = false) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // Get students by course
+    const studentsQuery = `
+      SELECT s.id, s.user_id, s.first_name, s.last_name, s.student_number
+      FROM students s
+      WHERE s.course_name = $1 ${isPermanent ? '' : 'AND s.is_active = true'}
+    `;
+    const studentsResult = await client.query(studentsQuery, [courseName]);
+    
+    if (studentsResult.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return { success: false, message: "No students found for this course" };
+    }
+
+    const studentIds = studentsResult.rows.map(s => s.id);
+    const userIds = studentsResult.rows.map(s => s.user_id);
+
+    if (isPermanent) {
+      // Permanent deletion - remove from database completely
+      await client.query(
+        "DELETE FROM students WHERE course_name = $1",
+        [courseName]
+      );
+      
+      // Delete associated users
+      if (userIds.length > 0) {
+        const userPlaceholders = userIds.map((_, index) => `$${index + 1}`).join(',');
+        await client.query(
+          `DELETE FROM users WHERE id IN (${userPlaceholders})`,
+          userIds
+        );
+      }
+    } else {
+      // Soft delete - mark as inactive
+      await client.query(
+        "UPDATE students SET is_active = false WHERE course_name = $1 AND is_active = true",
+        [courseName]
+      );
+    }
+
+    await client.query("COMMIT");
+    
+    return {
+      success: true,
+      deletedCount: studentsResult.rows.length,
+      students: studentsResult.rows,
+      message: `${studentsResult.rows.length} students ${isPermanent ? 'permanently deleted' : 'archived'} from ${courseName}`
+    };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Error in bulk delete students by course:", error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+const bulkDeleteArchivedStudentsByCourse = async (courseName) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // Get archived students by course
+    const studentsQuery = `
+      SELECT s.id, s.user_id, s.first_name, s.last_name, s.student_number
+      FROM students s
+      WHERE s.course_name = $1 AND s.is_active = false
+    `;
+    const studentsResult = await client.query(studentsQuery, [courseName]);
+    
+    if (studentsResult.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return { success: false, message: "No archived students found for this course" };
+    }
+
+    const userIds = studentsResult.rows.map(s => s.user_id);
+
+    // Permanent deletion from database
+    await client.query(
+      "DELETE FROM students WHERE course_name = $1 AND is_active = false",
+      [courseName]
+    );
+    
+    // Delete associated users
+    if (userIds.length > 0) {
+      const userPlaceholders = userIds.map((_, index) => `$${index + 1}`).join(',');
+      await client.query(
+        `DELETE FROM users WHERE id IN (${userPlaceholders})`,
+        userIds
+      );
+    }
+
+    await client.query("COMMIT");
+    
+    return {
+      success: true,
+      deletedCount: studentsResult.rows.length,
+      students: studentsResult.rows,
+      message: `${studentsResult.rows.length} archived students permanently deleted from ${courseName}`
+    };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Error in bulk delete archived students by course:", error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
 const generateStudentPassword = (lastName, studentNumber) => {
   const lastThreeDigits = studentNumber.slice(-3);
   const specialCharacter = "!";
@@ -499,6 +612,8 @@ module.exports = {
   restoreStudent,
   resetStudentPassword,
   deleteStudentPermanently,
+  bulkDeleteStudentsByCourse,
+  bulkDeleteArchivedStudentsByCourse,
   unlockStudentAccount,
   processBatchStudents,
   changePassword
