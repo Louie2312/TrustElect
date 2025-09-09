@@ -261,12 +261,15 @@ exports.unlockStudentAccount = async (req, res) => {
 exports.uploadStudentsBatch = async (req, res) => {
   try {
     console.log('=== BATCH UPLOAD DEBUG START ===');
+    console.log('Environment:', process.env.NODE_ENV || 'development');
+    console.log('XLSX library version:', XLSX.version);
     console.log('Request body:', req.body);
     console.log('File info:', req.file ? { 
       filename: req.file.filename, 
       originalname: req.file.originalname,
       size: req.file.size,
-      path: req.file.path 
+      path: req.file.path,
+      mimetype: req.file.mimetype
     } : 'No file');
     
     // Check for validation errors first
@@ -294,34 +297,110 @@ exports.uploadStudentsBatch = async (req, res) => {
       throw new Error('Uploaded file not found');
     }
 
-    const workbook = XLSX.read(fs.readFileSync(filePath));
-    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+    const fileBuffer = fs.readFileSync(filePath);
+    console.log('File size:', fileBuffer.length, 'bytes');
+    console.log('File stats:', fs.statSync(filePath));
     
-    // Get raw data to check headers
-    let jsonData = XLSX.utils.sheet_to_json(worksheet);
+    // Check if file is a valid Excel file by checking the header
+    const fileHeader = fileBuffer.slice(0, 8);
+    console.log('File header (hex):', fileHeader.toString('hex'));
+    console.log('File header (string):', fileHeader.toString('ascii').replace(/[^\x20-\x7E]/g, '.'));
     
-    // Also try parsing with header row explicitly
-    if (jsonData.length === 0) {
-      jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-      console.log('First few rows (raw):', jsonData.slice(0, 3));
+    // Try multiple parsing strategies
+    let workbook, worksheet, jsonData = [];
+    
+    try {
+      // Strategy 1: Default parsing
+      workbook = XLSX.read(fileBuffer, { type: 'buffer' });
+      worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+      console.log('Strategy 1 (default) - Found', jsonData.length, 'rows');
       
-      if (jsonData.length < 2) {
-        return res.status(400).json({ message: 'Excel file contains no data or missing headers' });
+      if (jsonData.length === 0) {
+        throw new Error('No data found with default strategy');
       }
+    } catch (error) {
+      console.log('Strategy 1 failed:', error.message);
       
-      // Convert first row to headers and rest to data
-      const headers = jsonData[0];
-      const dataRows = jsonData.slice(1);
-      
-      jsonData = dataRows.map(row => {
-        const obj = {};
-        headers.forEach((header, index) => {
-          if (header && row[index] !== undefined) {
-            obj[header] = row[index];
-          }
+      try {
+        // Strategy 2: Raw array parsing then convert to objects
+        const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+        console.log('Strategy 2 (raw) - Found', rawData.length, 'rows');
+        console.log('First 3 raw rows:', rawData.slice(0, 3));
+        
+        if (rawData.length < 2) {
+          throw new Error('Not enough data rows');
+        }
+        
+        // Use first row as headers
+        const headers = rawData[0].map(h => h ? h.toString().trim() : '');
+        const dataRows = rawData.slice(1);
+        
+        console.log('Headers found:', headers);
+        
+        jsonData = dataRows.map((row, index) => {
+          const obj = {};
+          headers.forEach((header, colIndex) => {
+            if (header && row[colIndex] !== undefined && row[colIndex] !== null) {
+              obj[header] = row[colIndex];
+            }
+          });
+          return obj;
         });
-        return obj;
-      });
+        
+        console.log('Strategy 2 converted', jsonData.length, 'data objects');
+      } catch (error2) {
+        console.log('Strategy 2 failed:', error2.message);
+        
+        try {
+          // Strategy 3: Different reading options
+          workbook = XLSX.read(fileBuffer, { 
+            type: 'buffer',
+            cellDates: true,
+            cellNF: false,
+            cellText: false
+          });
+          worksheet = workbook.Sheets[workbook.SheetNames[0]];
+          jsonData = XLSX.utils.sheet_to_json(worksheet, { 
+            header: 'A',
+            defval: '',
+            blankrows: false
+          });
+          console.log('Strategy 3 (alternative) - Found', jsonData.length, 'rows');
+        } catch (error3) {
+          console.log('Strategy 3 failed:', error3.message);
+          
+          // Strategy 4: Try reading as CSV if Excel parsing completely fails
+          try {
+            console.log('Strategy 4: Attempting CSV parsing as last resort...');
+            const fileContent = fs.readFileSync(filePath, 'utf8');
+            const lines = fileContent.split('\n').filter(line => line.trim());
+            
+            if (lines.length < 2) {
+              throw new Error('Not enough lines in file');
+            }
+            
+            const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+            console.log('CSV headers:', headers);
+            
+            jsonData = lines.slice(1).map(line => {
+              const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+              const obj = {};
+              headers.forEach((header, index) => {
+                if (header && values[index]) {
+                  obj[header] = values[index];
+                }
+              });
+              return obj;
+            });
+            
+            console.log('Strategy 4 (CSV) - Found', jsonData.length, 'rows');
+          } catch (error4) {
+            console.log('Strategy 4 failed:', error4.message);
+            throw new Error(`All parsing strategies failed. Original errors: Excel(${error.message}), Raw(${error2.message}), Alt(${error3.message}), CSV(${error4.message})`);
+          }
+        }
+      }
     }
 
     if (jsonData.length === 0) {
@@ -336,58 +415,102 @@ exports.uploadStudentsBatch = async (req, res) => {
       console.log('Excel headers found:', Object.keys(jsonData[0]));
     }
 
+    console.log('Raw data sample (first 2 rows):', jsonData.slice(0, 2).map(row => {
+      return Object.keys(row).reduce((acc, key) => {
+        acc[key] = row[key];
+        return acc;
+      }, {});
+    }));
+
+    // Enhanced column mapping with better production handling
     jsonData = jsonData.map((row, index) => {
       const normalizedRow = {};
+      let mappedFields = [];
 
       Object.keys(row).forEach(key => {
-        // Normalize the key by removing spaces, underscores, and making lowercase
-        const normalizedKey = key.toString().toLowerCase().replace(/[\s_-]+/g, '').trim();
-        const originalValue = row[key];
+        // Clean up the key
+        const originalKey = key.toString();
+        const normalizedKey = originalKey.toLowerCase().replace(/[\s_-]+/g, '').trim();
+        let originalValue = row[key];
         
-        // Skip empty keys or null/undefined values for headers
-        if (!key || key.toString().trim() === '' || originalValue === null || originalValue === undefined) {
+        // Handle different value types that might come from Excel
+        if (originalValue !== null && originalValue !== undefined) {
+          originalValue = originalValue.toString().trim();
+        }
+        
+        // Skip completely empty keys or values
+        if (!originalKey || originalKey.trim() === '' || !originalValue) {
           return;
         }
       
-        // Map various possible column names to our expected format
-        if (normalizedKey === 'firstname' || normalizedKey === 'first' || normalizedKey === 'fname') {
+        // Enhanced mapping with more variations
+        let mapped = false;
+        
+        // First Name mapping
+        if (!mapped && (normalizedKey === 'firstname' || normalizedKey === 'first' || normalizedKey === 'fname' || originalKey === 'firstName')) {
           normalizedRow.firstName = originalValue;
-        } else if (normalizedKey === 'middlename' || normalizedKey === 'middle' || normalizedKey === 'mname') {
+          mappedFields.push(`${originalKey} -> firstName`);
+          mapped = true;
+        }
+        // Middle Name mapping  
+        else if (!mapped && (normalizedKey === 'middlename' || normalizedKey === 'middle' || normalizedKey === 'mname' || originalKey === 'middleName')) {
           normalizedRow.middleName = originalValue;
-        } else if (normalizedKey === 'lastname' || normalizedKey === 'last' || normalizedKey === 'lname') {
+          mappedFields.push(`${originalKey} -> middleName`);
+          mapped = true;
+        }
+        // Last Name mapping
+        else if (!mapped && (normalizedKey === 'lastname' || normalizedKey === 'last' || normalizedKey === 'lname' || originalKey === 'lastName')) {
           normalizedRow.lastName = originalValue;
-        } else if (normalizedKey === 'studentnumber' || normalizedKey === 'studentno' || normalizedKey === 'idnumber' || normalizedKey === 'id' || normalizedKey === 'number') {
-          normalizedRow.studentNumber = String(originalValue).trim();
-        } else if (normalizedKey === 'coursename' || normalizedKey === 'course' || normalizedKey === 'program' || normalizedKey === 'strand') {
+          mappedFields.push(`${originalKey} -> lastName`);
+          mapped = true;
+        }
+        // Student Number mapping
+        else if (!mapped && (normalizedKey === 'studentnumber' || normalizedKey === 'studentno' || normalizedKey === 'idnumber' || normalizedKey === 'id' || normalizedKey === 'number' || originalKey === 'studentNumber')) {
+          normalizedRow.studentNumber = originalValue;
+          mappedFields.push(`${originalKey} -> studentNumber`);
+          mapped = true;
+        }
+        // Course Name mapping
+        else if (!mapped && (normalizedKey === 'coursename' || normalizedKey === 'course' || normalizedKey === 'program' || normalizedKey === 'strand' || originalKey === 'courseName')) {
           normalizedRow.courseName = originalValue;
-        } else if (normalizedKey === 'yearlevel' || normalizedKey === 'year' || normalizedKey === 'level' || normalizedKey === 'grade') {
+          mappedFields.push(`${originalKey} -> courseName`);
+          mapped = true;
+        }
+        // Year Level mapping
+        else if (!mapped && (normalizedKey === 'yearlevel' || normalizedKey === 'year' || normalizedKey === 'level' || normalizedKey === 'grade' || originalKey === 'yearLevel')) {
           normalizedRow.yearLevel = originalValue;
-        } else if (normalizedKey === 'gender' || normalizedKey === 'sex') {
+          mappedFields.push(`${originalKey} -> yearLevel`);
+          mapped = true;
+        }
+        // Gender mapping
+        else if (!mapped && (normalizedKey === 'gender' || normalizedKey === 'sex')) {
           normalizedRow.gender = originalValue;
-        } else if (normalizedKey === 'birthdate' || normalizedKey === 'birthday' || normalizedKey === 'dob' || normalizedKey === 'birth' || normalizedKey === 'dateofbirth') {
+          mappedFields.push(`${originalKey} -> gender`);
+          mapped = true;
+        }
+        // Birthdate mapping
+        else if (!mapped && (normalizedKey === 'birthdate' || normalizedKey === 'birthday' || normalizedKey === 'dob' || normalizedKey === 'birth' || normalizedKey === 'dateofbirth')) {
           normalizedRow.birthdate = originalValue;
-        } else if (normalizedKey === 'email' || normalizedKey === 'emailaddress') {
+          mappedFields.push(`${originalKey} -> birthdate`);
+          mapped = true;
+        }
+        // Email mapping
+        else if (!mapped && (normalizedKey === 'email' || normalizedKey === 'emailaddress')) {
           normalizedRow.email = originalValue;
-        } else {
-          // Direct mapping for exact matches (case-sensitive fallback)
-          if (key === 'studentNumber') normalizedRow.studentNumber = String(originalValue).trim();
-          else if (key === 'firstName') normalizedRow.firstName = originalValue;
-          else if (key === 'lastName') normalizedRow.lastName = originalValue;
-          else if (key === 'middleName') normalizedRow.middleName = originalValue;
-          else if (key === 'courseName') normalizedRow.courseName = originalValue;
-          else if (key === 'yearLevel') normalizedRow.yearLevel = originalValue;
-          else if (key === 'gender') normalizedRow.gender = originalValue;
-          else if (key === 'birthdate') normalizedRow.birthdate = originalValue;
-          else {
-            // Keep the original key for truly unmatched columns
-            normalizedRow[key] = originalValue;
-          }
+          mappedFields.push(`${originalKey} -> email`);
+          mapped = true;
+        }
+        
+        // If not mapped, keep original for debugging
+        if (!mapped) {
+          normalizedRow[originalKey] = originalValue;
         }
       });
       
-      // Debug first few rows after normalization
-      if (index < 2) {
-        console.log(`Normalized row ${index + 1}:`, normalizedRow);
+      // Debug mapping for first few rows
+      if (index < 3) {
+        console.log(`Row ${index + 1} mappings:`, mappedFields);
+        console.log(`Row ${index + 1} result:`, normalizedRow);
       }
       
       return normalizedRow;

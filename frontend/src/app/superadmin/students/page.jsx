@@ -140,19 +140,44 @@ export default function ManageStudents() {
       setSelectedFile(null); 
     } catch (error) {
       console.error('Batch upload error:', error);
+      console.error('Error response:', error.response);
       setUploadStatus('error');
 
+      // Enhanced error reporting for debugging
+      let errorDetails = {
+        message: 'Upload failed',
+        errors: [],
+        debugInfo: {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          responseData: error.response?.data,
+          requestConfig: {
+            url: error.config?.url,
+            method: error.config?.method,
+            headers: error.config?.headers
+          }
+        }
+      };
+
       if (error.response?.data) {
-        setBatchResults({
-          message: error.response.data.message || 'Upload failed',
-          errors: error.response.data.errors || []
-        });
+        errorDetails.message = error.response.data.message || 'Upload failed';
+        errorDetails.errors = error.response.data.errors || [];
+        
+        // If it's an "Internal Server Error", provide more details
+        if (error.response.status === 500) {
+          errorDetails.message = 'Server error during upload. Check server logs for details.';
+          errorDetails.errors = [{
+            error: 'Internal server error - check console logs for more details'
+          }];
+        }
       } else {
-        setBatchResults({
-          message: error.message || 'Upload failed',
-          error: error.message
-        });
+        errorDetails.message = error.message || 'Upload failed';
+        errorDetails.errors = [{
+          error: error.message || 'Unknown error'
+        }];
       }
+
+      setBatchResults(errorDetails);
     }
   };
 
