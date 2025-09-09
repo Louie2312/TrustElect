@@ -1381,36 +1381,36 @@ export default function ElectionDetailsPage() {
                           {position.name}
                         </h3>
 
-                        {/* Top 3 Candidates - Large display */}
+                        {/* Top 3 Candidates - Balanced display */}
                         {top3.length > 0 && (
-                          <div className="grid grid-cols-3 gap-12 mb-12">
+                          <div className="grid grid-cols-3 gap-8 mb-10">
                             {top3.map((candidate, index) => (
                               <div 
                                 key={candidate.id} 
-                                className={`flex flex-col items-center text-center p-8 rounded-2xl shadow-xl ${
+                                className={`flex flex-col items-center text-center p-6 rounded-xl shadow-lg ${
                                   index === 0 ? 'bg-gradient-to-b from-blue-50 to-blue-100 border-2 border-blue-300' :
                                   index === 1 ? 'bg-gradient-to-b from-gray-50 to-gray-100 border-2 border-gray-300' :
                                   'bg-gradient-to-b from-orange-50 to-orange-100 border-2 border-orange-300'
                                 }`}
                               >
-                                <div className="relative mb-6">
-                                  <div className="relative w-48 h-64">
+                                <div className="relative mb-4">
+                                  <div className="relative w-32 h-40">
                                     {candidate.image_url && !imageErrors[candidate.id] ? (
                                       <Image
                                         src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
                                         alt={`${candidate.first_name} ${candidate.last_name}`}
                                         fill
-                                        sizes="256px"
-                                        className="object-cover rounded-xl shadow-lg"
+                                        sizes="128px"
+                                        className="object-cover rounded-lg shadow-md"
                                         priority
                                         onError={() => handleImageError(candidate.id)}
                                       />
                                     ) : (
-                                      <div className="w-48 h-64 rounded-xl bg-gray-200 flex items-center justify-center shadow-lg">
-                                        <User className="w-24 h-24 text-gray-400" />
+                                      <div className="w-32 h-40 rounded-lg bg-gray-200 flex items-center justify-center shadow-md">
+                                        <User className="w-16 h-16 text-gray-400" />
                                       </div>
                                     )}
-                                    <div className={`absolute -top-4 -right-4 rounded-full p-3 text-lg font-bold shadow-lg ${
+                                    <div className={`absolute -top-3 -right-3 rounded-full p-2 text-base font-bold shadow-lg ${
                                       index === 0 ? 'bg-blue-500 text-white' :
                                       index === 1 ? 'bg-gray-500 text-white' :
                                       'bg-orange-500 text-white'
@@ -1421,23 +1421,23 @@ export default function ElectionDetailsPage() {
                                 </div>
                                 
                                 <div className="w-full">
-                                  <h4 className="font-bold text-black text-2xl mb-3">
+                                  <h4 className="font-bold text-black text-xl mb-2">
                                     {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
                                   </h4>
                                   {candidate.party && (
-                                    <div className="px-4 py-2 bg-white rounded-full mb-4 shadow-sm">
-                                      <span className="text-black font-medium">{candidate.party}</span>
+                                    <div className="px-3 py-1 bg-white rounded-full mb-3 shadow-sm">
+                                      <span className="text-black font-medium text-sm">{candidate.party}</span>
                                     </div>
                                   )}
-                                  <div className="mt-6">
-                                    <div className="font-bold text-black text-4xl mb-2">
+                                  <div className="mt-4">
+                                    <div className="font-bold text-black text-3xl mb-1">
                                       {Number(candidate.vote_count || 0).toLocaleString()}
                                     </div>
-                                    <div className="text-xl text-gray-600 mb-2">votes</div>
-                                    <div className="text-lg text-gray-600 mb-4">
+                                    <div className="text-lg text-gray-600 mb-1">votes</div>
+                                    <div className="text-base text-gray-600 mb-3">
                                       {election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
                                     </div>
-                                    <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden">
+                                    <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
                                       <div 
                                         className={`h-full rounded-full transition-all duration-1000 ${
                                           index === 0 ? 'bg-blue-500' : index === 1 ? 'bg-gray-500' : 'bg-orange-500'
@@ -1452,45 +1452,47 @@ export default function ElectionDetailsPage() {
                           </div>
                         )}
 
-                        {/* Other Candidates - Compact grid */}
+                        {/* Other Candidates - Enhanced grid */}
                         {others.length > 0 && (
                           <div>
-                            <h4 className="font-bold text-gray-700 mb-6 text-2xl text-center">Other Candidates</h4>
-                            <div className="grid grid-cols-4 gap-6">
+                            <h4 className="font-bold text-gray-700 mb-6 text-xl text-center">Other Candidates</h4>
+                            <div className="grid grid-cols-3 gap-6">
                               {others.map(candidate => (
                                 <div 
                                   key={candidate.id} 
-                                  className="flex flex-col items-center p-4 bg-gray-50 rounded-xl shadow-md"
+                                  className="flex flex-col items-center p-5 bg-gray-50 rounded-xl shadow-md hover:shadow-lg transition-shadow"
                                 >
-                                  <div className="relative w-20 h-24 mb-3">
+                                  <div className="relative w-24 h-32 mb-4">
                                     {candidate.image_url && !imageErrors[candidate.id] ? (
                                       <Image
                                         src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
                                         alt={`${candidate.first_name} ${candidate.last_name}`}
                                         fill
-                                        sizes="80px"
+                                        sizes="96px"
                                         className="object-cover rounded-lg"
                                         onError={() => handleImageError(candidate.id)}
                                       />
                                     ) : (
-                                      <div className="w-20 h-24 rounded-lg bg-gray-200 flex items-center justify-center">
-                                        <User className="w-10 h-10 text-gray-400" />
+                                      <div className="w-24 h-32 rounded-lg bg-gray-200 flex items-center justify-center">
+                                        <User className="w-12 h-12 text-gray-400" />
                                       </div>
                                     )}
                                   </div>
                                   
                                   <div className="text-center w-full">
-                                    <h4 className="font-medium text-black text-sm mb-1">
+                                    <h4 className="font-medium text-black text-base mb-2">
                                       {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
                                     </h4>
                                     {candidate.party && (
-                                      <div className="text-xs text-gray-600 mb-2">{candidate.party}</div>
+                                      <div className="text-sm text-gray-600 mb-3 px-2 py-1 bg-white rounded-full">
+                                        {candidate.party}
+                                      </div>
                                     )}
-                                    <div className="font-bold text-black text-lg">
+                                    <div className="font-bold text-black text-xl mb-1">
                                       {Number(candidate.vote_count || 0).toLocaleString()}
                                     </div>
-                                    <div className="text-xs text-gray-600">votes</div>
-                                    <div className="text-xs text-gray-600">
+                                    <div className="text-sm text-gray-600 mb-1">votes</div>
+                                    <div className="text-sm text-gray-600">
                                       {election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
                                     </div>
                                   </div>
