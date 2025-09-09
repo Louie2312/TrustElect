@@ -42,10 +42,6 @@ export default function ManageStudents() {
   const [batchResults, setBatchResults] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
 
-  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
-  const [bulkDeleteCourse, setBulkDeleteCourse] = useState("");
-  const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
-
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
@@ -140,44 +136,19 @@ export default function ManageStudents() {
       setSelectedFile(null); 
     } catch (error) {
       console.error('Batch upload error:', error);
-      console.error('Error response:', error.response);
       setUploadStatus('error');
 
-      // Enhanced error reporting for debugging
-      let errorDetails = {
-        message: 'Upload failed',
-        errors: [],
-        debugInfo: {
-          status: error.response?.status,
-          statusText: error.response?.statusText,
-          responseData: error.response?.data,
-          requestConfig: {
-            url: error.config?.url,
-            method: error.config?.method,
-            headers: error.config?.headers
-          }
-        }
-      };
-
       if (error.response?.data) {
-        errorDetails.message = error.response.data.message || 'Upload failed';
-        errorDetails.errors = error.response.data.errors || [];
-        
-        // If it's an "Internal Server Error", provide more details
-        if (error.response.status === 500) {
-          errorDetails.message = 'Server error during upload. Check server logs for details.';
-          errorDetails.errors = [{
-            error: 'Internal server error - check console logs for more details'
-          }];
-        }
+        setBatchResults({
+          message: error.response.data.message || 'Upload failed',
+          errors: error.response.data.errors || []
+        });
       } else {
-        errorDetails.message = error.message || 'Upload failed';
-        errorDetails.errors = [{
-          error: error.message || 'Unknown error'
-        }];
+        setBatchResults({
+          message: error.message || 'Upload failed',
+          error: error.message
+        });
       }
-
-      setBatchResults(errorDetails);
     }
   };
 
@@ -302,50 +273,6 @@ export default function ManageStudents() {
     setSelectedFile(null);
     setUploadStatus(null);
     setBatchResults(null);
-  };
-
-  const handleBulkDeleteByCourse = async () => {
-    if (!bulkDeleteCourse) {
-      alert("Please select a course/program to delete.");
-      return;
-    }
-
-    const courseStudentCount = students.filter(student => student.course_name === bulkDeleteCourse).length;
-    
-    if (courseStudentCount === 0) {
-      alert("No active students found in this course/program.");
-      return;
-    }
-
-    const confirmMessage = `Are you sure you want to ARCHIVE all ${courseStudentCount} students from ${bulkDeleteCourse}?\n\nThis action will move them to the archived section.`;
-    
-    if (!confirm(confirmMessage)) return;
-
-    try {
-      setBulkDeleteLoading(true);
-      const token = Cookies.get("token");
-      
-      const response = await axios.post("/api/superadmin/students/bulk-delete-by-course", {
-        courseName: bulkDeleteCourse
-      }, {
-        headers: { Authorization: `Bearer ${token}` },
-        withCredentials: true,
-      });
-
-      if (response.data.success) {
-        alert(`Successfully archived ${response.data.deletedCount} students from ${bulkDeleteCourse}.`);
-        setShowBulkDeleteModal(false);
-        setBulkDeleteCourse("");
-        fetchStudents(); // Refresh the list
-      } else {
-        alert(response.data.message || "Failed to archive students.");
-      }
-    } catch (error) {
-      console.error("Error bulk deleting students:", error);
-      alert(error.response?.data?.message || "Failed to archive students by course.");
-    } finally {
-      setBulkDeleteLoading(false);
-    }
   };
 
   const calculateStats = () => {
@@ -569,13 +496,6 @@ export default function ManageStudents() {
           className="bg-green-600 text-white px-4 py-2 rounded"
         >
           Batch Upload
-        </button>
-
-        <button 
-          onClick={() => setShowBulkDeleteModal(true)} 
-          className="bg-red-600 text-white px-4 py-2 rounded"
-        >
-          Bulk Archive by Course
         </button>
         
         <button onClick={() => router.push("/superadmin/students/archive")} className="bg-gray-600 text-white px-4 py-2 rounded">
@@ -828,68 +748,6 @@ export default function ManageStudents() {
                 className="bg-gray-500 text-white px-4 py-2 rounded"
               >
                 Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Bulk Delete Modal */}
-      {showBulkDeleteModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-xl">
-            <h2 className="text-xl font-bold mb-4 text-black">Bulk Archive Students by Course</h2>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-black mb-2">
-                Select Course/Program to Archive:
-              </label>
-              <select 
-                value={bulkDeleteCourse} 
-                onChange={(e) => setBulkDeleteCourse(e.target.value)}
-                className="w-full border p-2 rounded text-black"
-              >
-                <option value="">-- Select Course/Program --</option>
-                {courses.map((course) => {
-                  const studentCount = students.filter(student => student.course_name === course).length;
-                  return (
-                    <option key={course} value={course}>
-                      {course} ({studentCount} students)
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-
-            {bulkDeleteCourse && (
-              <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
-                <p className="text-sm text-yellow-800">
-                  <strong>Warning:</strong> This will archive all students from {bulkDeleteCourse}. 
-                  They can be restored from the archived section.
-                </p>
-                <p className="text-sm text-yellow-800 mt-1">
-                  Students to be archived: {students.filter(student => student.course_name === bulkDeleteCourse).length}
-                </p>
-              </div>
-            )}
-
-            <div className="flex justify-end gap-2">
-              <button 
-                onClick={() => {
-                  setShowBulkDeleteModal(false);
-                  setBulkDeleteCourse("");
-                }} 
-                className="bg-gray-500 text-white px-4 py-2 rounded"
-                disabled={bulkDeleteLoading}
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleBulkDeleteByCourse}
-                className="bg-red-600 text-white px-4 py-2 rounded"
-                disabled={bulkDeleteLoading || !bulkDeleteCourse}
-              >
-                {bulkDeleteLoading ? "Archiving..." : "Archive Students"}
               </button>
             </div>
           </div>

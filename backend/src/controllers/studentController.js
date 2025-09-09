@@ -1,6 +1,6 @@
-const bcrypt = require("bcryptjs");
-// const { validationResult } = require("express-validator"); // Removed - using route validation instead
-const { checkStudentNumberExists, registerStudent, getAllStudents, getStudentById, updateStudent, softDeleteStudent, restoreStudent, resetStudentPassword, deleteStudentPermanently, bulkDeleteStudentsByCourse, bulkDeleteArchivedStudentsByCourse, unlockStudentAccount, processBatchStudents, changePassword } = require("../models/studentModel");
+const bcrypt = require("bcrypt");
+const { validationResult } = require("express-validator");
+const { checkStudentNumberExists, registerStudent, getAllStudents, getStudentById, updateStudent, softDeleteStudent, restoreStudent, resetStudentPassword, deleteStudentPermanently, unlockStudentAccount, processBatchStudents, changePassword } = require("../models/studentModel");
 const XLSX = require('xlsx');
 const fs = require('fs');
 const path = require('path');
@@ -260,27 +260,10 @@ exports.unlockStudentAccount = async (req, res) => {
 
 exports.uploadStudentsBatch = async (req, res) => {
   try {
-    console.log('=== BATCH UPLOAD DEBUG START ===');
-    console.log('Environment:', process.env.NODE_ENV || 'development');
-    console.log('XLSX library version:', XLSX.version);
-    console.log('Request body:', req.body);
-    console.log('File info:', req.file ? { 
-      filename: req.file.filename, 
-      originalname: req.file.originalname,
-      size: req.file.size,
-      path: req.file.path,
-      mimetype: req.file.mimetype
-    } : 'No file');
-    
-    // Basic request validation (express-validator removed, using route validation)
-    console.log('Controller reached - basic validation passed');
-    
     if (!req.file) {
-      console.log('ERROR: No file uploaded');
       return res.status(400).json({ message: 'No file uploaded' });
     }
     if (!req.body.createdBy) {
-      console.log('ERROR: No createdBy in request body');
       return res.status(400).json({ message: 'Super Admin ID is required' });
     }
 
@@ -290,221 +273,44 @@ exports.uploadStudentsBatch = async (req, res) => {
       throw new Error('Uploaded file not found');
     }
 
-    const fileBuffer = fs.readFileSync(filePath);
-    console.log('File size:', fileBuffer.length, 'bytes');
-    console.log('File stats:', fs.statSync(filePath));
-    
-    // Check if file is a valid Excel file by checking the header
-    const fileHeader = fileBuffer.slice(0, 8);
-    console.log('File header (hex):', fileHeader.toString('hex'));
-    console.log('File header (string):', fileHeader.toString('ascii').replace(/[^\x20-\x7E]/g, '.'));
-    
-    // Try multiple parsing strategies
-    let workbook, worksheet, jsonData = [];
-    
-    try {
-      // Strategy 1: Default parsing
-      workbook = XLSX.read(fileBuffer, { type: 'buffer' });
-      worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
-      console.log('Strategy 1 (default) - Found', jsonData.length, 'rows');
-      
-      if (jsonData.length === 0) {
-        throw new Error('No data found with default strategy');
-      }
-    } catch (error) {
-      console.log('Strategy 1 failed:', error.message);
-      
-      try {
-        // Strategy 2: Raw array parsing then convert to objects
-        const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
-        console.log('Strategy 2 (raw) - Found', rawData.length, 'rows');
-        console.log('First 3 raw rows:', rawData.slice(0, 3));
-        
-        if (rawData.length < 2) {
-          throw new Error('Not enough data rows');
-        }
-        
-        // Use first row as headers
-        const headers = rawData[0].map(h => h ? h.toString().trim() : '');
-        const dataRows = rawData.slice(1);
-        
-        console.log('Headers found:', headers);
-        
-        jsonData = dataRows.map((row, index) => {
-          const obj = {};
-          headers.forEach((header, colIndex) => {
-            if (header && row[colIndex] !== undefined && row[colIndex] !== null) {
-              obj[header] = row[colIndex];
-            }
-          });
-          return obj;
-        });
-        
-        console.log('Strategy 2 converted', jsonData.length, 'data objects');
-      } catch (error2) {
-        console.log('Strategy 2 failed:', error2.message);
-        
-        try {
-          // Strategy 3: Different reading options
-          workbook = XLSX.read(fileBuffer, { 
-            type: 'buffer',
-            cellDates: true,
-            cellNF: false,
-            cellText: false
-          });
-          worksheet = workbook.Sheets[workbook.SheetNames[0]];
-          jsonData = XLSX.utils.sheet_to_json(worksheet, { 
-            header: 'A',
-            defval: '',
-            blankrows: false
-          });
-          console.log('Strategy 3 (alternative) - Found', jsonData.length, 'rows');
-        } catch (error3) {
-          console.log('Strategy 3 failed:', error3.message);
-          
-          // Strategy 4: Try reading as CSV if Excel parsing completely fails
-          try {
-            console.log('Strategy 4: Attempting CSV parsing as last resort...');
-            const fileContent = fs.readFileSync(filePath, 'utf8');
-            const lines = fileContent.split('\n').filter(line => line.trim());
-            
-            if (lines.length < 2) {
-              throw new Error('Not enough lines in file');
-            }
-            
-            const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-            console.log('CSV headers:', headers);
-            
-            jsonData = lines.slice(1).map(line => {
-              const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
-              const obj = {};
-              headers.forEach((header, index) => {
-                if (header && values[index]) {
-                  obj[header] = values[index];
-                }
-              });
-              return obj;
-            });
-            
-            console.log('Strategy 4 (CSV) - Found', jsonData.length, 'rows');
-          } catch (error4) {
-            console.log('Strategy 4 failed:', error4.message);
-            throw new Error(`All parsing strategies failed. Original errors: Excel(${error.message}), Raw(${error2.message}), Alt(${error3.message}), CSV(${error4.message})`);
-          }
-        }
-      }
-    }
+    const workbook = XLSX.read(fs.readFileSync(filePath));
+    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+    let jsonData = XLSX.utils.sheet_to_json(worksheet);
 
     if (jsonData.length === 0) {
       return res.status(400).json({ message: 'Excel file contains no data' });
     }
 
-    // Debug: Log the first few raw records to see what we're getting
-    console.log('Sample raw data from Excel:', JSON.stringify(jsonData.slice(0, 2), null, 2));
-    
-    // Debug: Show what headers we found
-    if (jsonData.length > 0) {
-      console.log('Excel headers found:', Object.keys(jsonData[0]));
-    }
-
-    console.log('Raw data sample (first 2 rows):', jsonData.slice(0, 2).map(row => {
-      return Object.keys(row).reduce((acc, key) => {
-        acc[key] = row[key];
-        return acc;
-      }, {});
-    }));
-
-    // Enhanced column mapping with better production handling
-    jsonData = jsonData.map((row, index) => {
+    jsonData = jsonData.map(row => {
       const normalizedRow = {};
-      let mappedFields = [];
 
       Object.keys(row).forEach(key => {
-        // Clean up the key
-        const originalKey = key.toString();
-        const normalizedKey = originalKey.toLowerCase().replace(/[\s_-]+/g, '').trim();
-        let originalValue = row[key];
-        
-        // Handle different value types that might come from Excel
-        if (originalValue !== null && originalValue !== undefined) {
-          originalValue = originalValue.toString().trim();
-        }
-        
-        // Skip completely empty keys or values
-        if (!originalKey || originalKey.trim() === '' || !originalValue) {
-          return;
-        }
+
+        const normalizedKey = key.toLowerCase().replace(/\s+/g, '');
       
-        // Enhanced mapping with more variations
-        let mapped = false;
-        
-        // First Name mapping
-        if (!mapped && (normalizedKey === 'firstname' || normalizedKey === 'first' || normalizedKey === 'fname' || originalKey === 'firstName')) {
-          normalizedRow.firstName = originalValue;
-          mappedFields.push(`${originalKey} -> firstName`);
-          mapped = true;
-        }
-        // Middle Name mapping  
-        else if (!mapped && (normalizedKey === 'middlename' || normalizedKey === 'middle' || normalizedKey === 'mname' || originalKey === 'middleName')) {
-          normalizedRow.middleName = originalValue;
-          mappedFields.push(`${originalKey} -> middleName`);
-          mapped = true;
-        }
-        // Last Name mapping
-        else if (!mapped && (normalizedKey === 'lastname' || normalizedKey === 'last' || normalizedKey === 'lname' || originalKey === 'lastName')) {
-          normalizedRow.lastName = originalValue;
-          mappedFields.push(`${originalKey} -> lastName`);
-          mapped = true;
-        }
-        // Student Number mapping
-        else if (!mapped && (normalizedKey === 'studentnumber' || normalizedKey === 'studentno' || normalizedKey === 'idnumber' || normalizedKey === 'id' || normalizedKey === 'number' || originalKey === 'studentNumber')) {
-          normalizedRow.studentNumber = originalValue;
-          mappedFields.push(`${originalKey} -> studentNumber`);
-          mapped = true;
-        }
-        // Course Name mapping
-        else if (!mapped && (normalizedKey === 'coursename' || normalizedKey === 'course' || normalizedKey === 'program' || normalizedKey === 'strand' || originalKey === 'courseName')) {
-          normalizedRow.courseName = originalValue;
-          mappedFields.push(`${originalKey} -> courseName`);
-          mapped = true;
-        }
-        // Year Level mapping
-        else if (!mapped && (normalizedKey === 'yearlevel' || normalizedKey === 'year' || normalizedKey === 'level' || normalizedKey === 'grade' || originalKey === 'yearLevel')) {
-          normalizedRow.yearLevel = originalValue;
-          mappedFields.push(`${originalKey} -> yearLevel`);
-          mapped = true;
-        }
-        // Gender mapping
-        else if (!mapped && (normalizedKey === 'gender' || normalizedKey === 'sex')) {
-          normalizedRow.gender = originalValue;
-          mappedFields.push(`${originalKey} -> gender`);
-          mapped = true;
-        }
-        // Birthdate mapping
-        else if (!mapped && (normalizedKey === 'birthdate' || normalizedKey === 'birthday' || normalizedKey === 'dob' || normalizedKey === 'birth' || normalizedKey === 'dateofbirth')) {
-          normalizedRow.birthdate = originalValue;
-          mappedFields.push(`${originalKey} -> birthdate`);
-          mapped = true;
-        }
-        // Email mapping
-        else if (!mapped && (normalizedKey === 'email' || normalizedKey === 'emailaddress')) {
-          normalizedRow.email = originalValue;
-          mappedFields.push(`${originalKey} -> email`);
-          mapped = true;
-        }
-        
-        // If not mapped, keep original for debugging
-        if (!mapped) {
-          normalizedRow[originalKey] = originalValue;
+        // Map various possible column names to our expected format
+        if (normalizedKey === 'firstname' || normalizedKey === 'first' || normalizedKey === 'fname') {
+          normalizedRow.firstName = row[key];
+        } else if (normalizedKey === 'middlename' || normalizedKey === 'middle' || normalizedKey === 'mname') {
+          normalizedRow.middleName = row[key];
+        } else if (normalizedKey === 'lastname' || normalizedKey === 'last' || normalizedKey === 'lname') {
+          normalizedRow.lastName = row[key];
+        } else if (normalizedKey === 'studentnumber' || normalizedKey === 'studentno' || normalizedKey === 'idnumber' || normalizedKey === 'id') {
+          normalizedRow.studentNumber = String(row[key]); // Ensure it's a string
+        } else if (normalizedKey === 'coursename' || normalizedKey === 'course' || normalizedKey === 'program') {
+          normalizedRow.courseName = row[key];
+        } else if (normalizedKey === 'yearlevel' || normalizedKey === 'year' || normalizedKey === 'level') {
+          normalizedRow.yearLevel = row[key];
+        } else if (normalizedKey === 'gender' || normalizedKey === 'sex') {
+          normalizedRow.gender = row[key];
+        } else if (normalizedKey === 'birthdate' || normalizedKey === 'birthday' || normalizedKey === 'dob' || normalizedKey === 'birth') {
+          normalizedRow.birthdate = row[key];
+        } else if (normalizedKey === 'email') {
+          normalizedRow.email = row[key];
+        } else {
+          normalizedRow[key] = row[key];
         }
       });
-      
-      // Debug mapping for first few rows
-      if (index < 3) {
-        console.log(`Row ${index + 1} mappings:`, mappedFields);
-        console.log(`Row ${index + 1} result:`, normalizedRow);
-      }
       
       return normalizedRow;
     });
@@ -512,23 +318,9 @@ exports.uploadStudentsBatch = async (req, res) => {
     const invalidRows = [];
     const validatedData = [];
     
-    // Filter out completely empty rows
-    jsonData = jsonData.filter(row => {
-      return Object.values(row).some(value => 
-        value !== null && value !== undefined && String(value).trim() !== ''
-      );
-    });
-
-    console.log(`Processing ${jsonData.length} non-empty rows`);
-
     jsonData.forEach((student, index) => {
       const missingFields = [];
       const rowNum = index + 2; 
-
-      // Debug problematic rows
-      if (index < 3) {
-        console.log(`Row ${rowNum} data:`, JSON.stringify(student, null, 2));
-      }
 
       requiredFields.forEach(field => {
         if (student[field] === undefined || student[field] === null || String(student[field]).trim() === '') {
@@ -724,32 +516,11 @@ exports.uploadStudentsBatch = async (req, res) => {
       errors: allErrors
     });
   } catch (error) {
-    console.error('=== BATCH UPLOAD ERROR ===');
-    console.error('Error details:', error);
-    console.error('Stack trace:', error.stack);
-    
-    // Provide more specific error messages
-    let errorMessage = 'Error processing batch upload';
-    let statusCode = 500;
-    
-    if (error.message.includes('No file uploaded')) {
-      errorMessage = 'No file was uploaded. Please select an Excel file.';
-      statusCode = 400;
-    } else if (error.message.includes('Super Admin ID')) {
-      errorMessage = 'Authentication error. Please log in again.';
-      statusCode = 401;
-    } else if (error.message.includes('Excel file contains no data')) {
-      errorMessage = 'The Excel file appears to be empty or corrupted.';
-      statusCode = 400;
-    } else if (error.message.includes('Uploaded file not found')) {
-      errorMessage = 'File upload failed. Please try again.';
-      statusCode = 400;
-    }
-    
-    res.status(statusCode).json({ 
-      message: errorMessage,
+    console.error('Error processing batch upload:', error);
+    res.status(500).json({ 
+      message: 'Error processing batch upload',
       error: error.message,
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      stack: error.stack 
     });
   }
 };
@@ -919,11 +690,7 @@ exports.getStudentProfile = async (req, res) => {
 
       const profile = result.rows[0];
       if (profile.profile_picture) {
-        // Return absolute URL for production, relative for development
-        const baseUrl = process.env.NODE_ENV === 'production' 
-          ? (req.protocol + '://' + req.get('host'))
-          : '';
-        profile.profile_picture = `${baseUrl}/uploads/profiles/${profile.profile_picture}`;
+        profile.profile_picture = `/uploads/profiles/${profile.profile_picture}`;
       }
 
       return res.status(200).json(profile);
@@ -978,11 +745,7 @@ exports.uploadProfilePicture = async (req, res) => {
         WHERE id = $2
       `, [req.file.filename, actualStudentId]);
       
-      // Return absolute URL for production, relative for development
-      const baseUrl = process.env.NODE_ENV === 'production' 
-        ? (req.protocol + '://' + req.get('host'))
-        : '';
-      const filePath = `${baseUrl}/uploads/profiles/${req.file.filename}`;
+      const filePath = `/uploads/profiles/${req.file.filename}`;
       
       return res.json({ success: true, filePath });
     } catch (err) {
@@ -1195,108 +958,6 @@ exports.changePassword = async (req, res) => {
     res.status(500).json({ 
       message: "Error changing password",
       error: error.message 
-    });
-  }
-};
-
-// Bulk delete students by course (archive)
-exports.bulkDeleteStudentsByCourse = async (req, res) => {
-  try {
-    const { courseName } = req.body;
-
-    if (!courseName) {
-      return res.status(400).json({
-        success: false,
-        message: "Course name is required"
-      });
-    }
-
-    const result = await bulkDeleteStudentsByCourse(courseName, false);
-
-    if (!result.success) {
-      return res.status(404).json(result);
-    }
-
-    res.status(200).json({
-      success: true,
-      message: result.message,
-      deletedCount: result.deletedCount,
-      students: result.students
-    });
-  } catch (error) {
-    console.error("Error in bulkDeleteStudentsByCourse controller:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error archiving students by course",
-      error: error.message
-    });
-  }
-};
-
-// Bulk permanent delete students by course
-exports.bulkPermanentDeleteStudentsByCourse = async (req, res) => {
-  try {
-    const { courseName } = req.body;
-
-    if (!courseName) {
-      return res.status(400).json({
-        success: false,
-        message: "Course name is required"
-      });
-    }
-
-    const result = await bulkDeleteStudentsByCourse(courseName, true);
-
-    if (!result.success) {
-      return res.status(404).json(result);
-    }
-
-    res.status(200).json({
-      success: true,
-      message: result.message,
-      deletedCount: result.deletedCount,
-      students: result.students
-    });
-  } catch (error) {
-    console.error("Error in bulkPermanentDeleteStudentsByCourse controller:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error permanently deleting students by course",
-      error: error.message
-    });
-  }
-};
-
-// Bulk permanent delete archived students by course
-exports.bulkDeleteArchivedStudentsByCourse = async (req, res) => {
-  try {
-    const { courseName } = req.body;
-
-    if (!courseName) {
-      return res.status(400).json({
-        success: false,
-        message: "Course name is required"
-      });
-    }
-
-    const result = await bulkDeleteArchivedStudentsByCourse(courseName);
-
-    if (!result.success) {
-      return res.status(404).json(result);
-    }
-
-    res.status(200).json({
-      success: true,
-      message: result.message,
-      deletedCount: result.deletedCount,
-      students: result.students
-    });
-  } catch (error) {
-    console.error("Error in bulkDeleteArchivedStudentsByCourse controller:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error permanently deleting archived students by course",
-      error: error.message
     });
   }
 };

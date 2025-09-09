@@ -90,7 +90,8 @@ const allowRoles = (...roles) => {
     });
     
     if (!roleMatch) {
-      return res.status(403).json({ 
+     
+    return res.status(403).json({ 
         message: `Access Denied. Only ${roles.join(", ")} allowed.`,
         currentRole: req.user?.normalizedRole || req.user?.role || 'No role'
       });
