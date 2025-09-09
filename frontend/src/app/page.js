@@ -570,7 +570,7 @@ export default function Home() {
                 
                 <div className="bg-blue-100 p-6 rounded-lg md:col-span-2">
                   <h4 className="font-bold text-blue-900 mb-2">John Robert Soriano</h4>
-                  <p className="text-blue-700 font-semibold mb-2">Adviser: IT Instructor</p>
+                  <p className="text-blue-700 font-semibold mb-2">Adviser:</p>
                   <p className="text-gray-700">Provides expert technical guidance and oversight to uphold industry standards.</p>
                 </div>
               </div>
