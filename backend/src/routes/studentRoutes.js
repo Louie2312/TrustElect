@@ -100,7 +100,7 @@ router.post(
   isSuperAdmin,
   upload.single('file'),
   [
-    check('createdBy', 'Super Admin ID is required').isInt()
+    check('createdBy', 'Super Admin ID is required').notEmpty()
   ],
   uploadStudentsBatch
 );

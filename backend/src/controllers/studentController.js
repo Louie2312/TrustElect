@@ -260,10 +260,31 @@ exports.unlockStudentAccount = async (req, res) => {
 
 exports.uploadStudentsBatch = async (req, res) => {
   try {
+    console.log('=== BATCH UPLOAD DEBUG START ===');
+    console.log('Request body:', req.body);
+    console.log('File info:', req.file ? { 
+      filename: req.file.filename, 
+      originalname: req.file.originalname,
+      size: req.file.size,
+      path: req.file.path 
+    } : 'No file');
+    
+    // Check for validation errors first
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      console.log('Validation errors:', errors.array());
+      return res.status(400).json({
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+    
     if (!req.file) {
+      console.log('ERROR: No file uploaded');
       return res.status(400).json({ message: 'No file uploaded' });
     }
     if (!req.body.createdBy) {
+      console.log('ERROR: No createdBy in request body');
       return res.status(400).json({ message: 'Super Admin ID is required' });
     }
 
@@ -587,11 +608,32 @@ exports.uploadStudentsBatch = async (req, res) => {
       errors: allErrors
     });
   } catch (error) {
-    console.error('Error processing batch upload:', error);
-    res.status(500).json({ 
-      message: 'Error processing batch upload',
+    console.error('=== BATCH UPLOAD ERROR ===');
+    console.error('Error details:', error);
+    console.error('Stack trace:', error.stack);
+    
+    // Provide more specific error messages
+    let errorMessage = 'Error processing batch upload';
+    let statusCode = 500;
+    
+    if (error.message.includes('No file uploaded')) {
+      errorMessage = 'No file was uploaded. Please select an Excel file.';
+      statusCode = 400;
+    } else if (error.message.includes('Super Admin ID')) {
+      errorMessage = 'Authentication error. Please log in again.';
+      statusCode = 401;
+    } else if (error.message.includes('Excel file contains no data')) {
+      errorMessage = 'The Excel file appears to be empty or corrupted.';
+      statusCode = 400;
+    } else if (error.message.includes('Uploaded file not found')) {
+      errorMessage = 'File upload failed. Please try again.';
+      statusCode = 400;
+    }
+    
+    res.status(statusCode).json({ 
+      message: errorMessage,
       error: error.message,
-      stack: error.stack 
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };
