@@ -120,6 +120,7 @@ export default function ElectionDetailsPage() {
   const [isSystemAdminCreator, setIsSystemAdminCreator] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const partialCountingRef = useRef(null);
+  const intervalRef = useRef(null);
 
   const toggleFullScreen = async () => {
     if (!document.fullscreenElement) {
@@ -155,131 +156,129 @@ export default function ElectionDetailsPage() {
     }
   };
 
+  const fetchElectionData = async () => {
+    try {
+      const data = await fetchWithAuth(`/elections/${params.id}/details`);
+      
+      let electionData = data.election;
+
+      if (electionData && electionData.created_by) {
+        try {
+          let isSysAdmin = false;
+
+          if (typeof electionData.created_by === 'object') {
+            const creatorId = electionData.created_by.id || '';
+            if (creatorId === 1 || creatorId === '1') {
+              isSysAdmin = true;
+            }
+          } else if (electionData.created_by === 1 || electionData.created_by === '1') {
+            isSysAdmin = true;
+            
+            try {
+              electionData.created_by_name = "System Administrator";
+              electionData.created_by_role = "SuperAdmin";
+            } catch (creatorFetchError) {
+              console.error('Error setting creator details:', creatorFetchError);
+              electionData.created_by_name = "System Administrator";
+            }
+          } else if (typeof electionData.created_by === 'number' || typeof electionData.created_by === 'string') {
+            electionData.created_by_name = "";  
+            electionData.created_by_role = "Admin";
+          }
+
+          if (typeof electionData.created_by === 'object' && electionData.created_by.role) {
+            const creatorRole = electionData.created_by.role.toLowerCase();
+
+            const isSysAdminByRole = 
+              creatorRole.includes('superadmin') || 
+              creatorRole.includes('system_admin') || 
+              creatorRole.includes('systemadmin') ||
+              creatorRole.includes('super');
+            
+            if (isSysAdminByRole) {
+              isSysAdmin = true;
+            }
+                 
+          } else if (electionData.created_by_role) {
+            const creatorRole = electionData.created_by_role.toLowerCase();
+            
+            const isSysAdminByRole = 
+              creatorRole.includes('superadmin') || 
+              creatorRole.includes('system_admin') || 
+              creatorRole.includes('systemadmin') ||
+              creatorRole.includes('super');
+              
+            if (isSysAdminByRole) {
+              isSysAdmin = true;
+            }
+          }
+
+          setIsSystemAdminCreator(isSysAdmin);
+
+        } catch (error) {
+          console.error('Error checking creator:', error);
+          setIsSystemAdminCreator(false);
+        }
+      } else {
+        setIsSystemAdminCreator(false);
+      }
+
+      if (electionData?.ballot?.positions && !electionData.positions) {
+        electionData.positions = electionData.ballot.positions.map(pos => ({
+          id: pos.position_id || pos.id,
+          name: pos.position_name || pos.name,
+          max_choices: pos.max_choices,
+          candidates: pos.candidates
+        }));
+      }
+      
+      const imageCache = {};
+      if (electionData?.positions) {
+        electionData.positions.forEach(position => {
+          position.candidates?.forEach(candidate => {
+            if (candidate.image_url) {
+              const processedUrl = getImageUrl(candidate.image_url);
+              imageCache[candidate.id] = processedUrl;
+            }
+          });
+        });
+      }
+      
+      try {
+        const completeElectionData = await fetchWithAuth(`/elections/${params.id}`);
+        const eligibilityCriteriaResponse = await fetchWithAuth(`/elections/${params.id}/criteria`);
+        
+        electionData.eligibility_criteria = {
+          ...(eligibilityCriteriaResponse.criteria || {}),
+          precinctPrograms: completeElectionData.eligible_voters?.precinctPrograms || {},
+          precinct: completeElectionData.eligible_voters?.precinct || []
+        };
+      } catch (criteriaErr) {
+        console.error('Error fetching eligibility criteria:', criteriaErr);
+        electionData.eligibility_criteria = {};
+      }
+      
+      setCandidateImages(imageCache);
+      setElection(electionData);
+      
+      console.log('Election data updated:', {
+        voter_count: electionData.voter_count,
+        vote_count: electionData.vote_count,
+        positions: electionData.positions?.length
+      });
+      
+      return electionData;
+    } catch (err) {
+      console.error('Error fetching election data:', err);
+      throw err;
+    }
+  };
+
   useEffect(() => {
     const loadElectionDetails = async () => {
       try {
         setIsLoading(true);
-        const data = await fetchWithAuth(`/elections/${params.id}/details`);
-        
-        let electionData = data.election;
-
-        if (electionData && electionData.created_by) {
-          try {
-            let isSysAdmin = false;
-
-            if (typeof electionData.created_by === 'object') {
-              const creatorId = electionData.created_by.id || '';
-              if (creatorId === 1 || creatorId === '1') {
-            
-                isSysAdmin = true;
-              }
-            } else if (electionData.created_by === 1 || electionData.created_by === '1') {
-            
-              isSysAdmin = true;
-              
-              try {
-
-                electionData.created_by_name = "System Administrator";
-                electionData.created_by_role = "SuperAdmin";
-              } catch (creatorFetchError) {
-                console.error('Error setting creator details:', creatorFetchError);
-                electionData.created_by_name = "System Administrator";
-              }
-            } else if (typeof electionData.created_by === 'number' || typeof electionData.created_by === 'string') {
-
-              electionData.created_by_name = "";  
-              electionData.created_by_role = "Admin";
-            }
-
-            if (typeof electionData.created_by === 'object' && electionData.created_by.role) {
-              const creatorRole = electionData.created_by.role.toLowerCase();
-
-              const isSysAdminByRole = 
-                creatorRole.includes('superadmin') || 
-                creatorRole.includes('system_admin') || 
-                creatorRole.includes('systemadmin') ||
-                creatorRole.includes('super');
-              
-              if (isSysAdminByRole) {
-                isSysAdmin = true;
-              }
-                   
-            } else if (electionData.created_by_role) {
-
-              const creatorRole = electionData.created_by_role.toLowerCase();
-              
-              const isSysAdminByRole = 
-                creatorRole.includes('superadmin') || 
-                creatorRole.includes('system_admin') || 
-                creatorRole.includes('systemadmin') ||
-                creatorRole.includes('super');
-                
-              if (isSysAdminByRole) {
-                isSysAdmin = true;
-              }
-
-            }
-
-            setIsSystemAdminCreator(isSysAdmin);
-
-          } catch (error) {
-            console.error('Error checking creator:', error);
-
-            setIsSystemAdminCreator(false);
-          }
-        } else {
-
-          setIsSystemAdminCreator(false);
-        }
-
-        if (electionData?.ballot?.positions && !electionData.positions) {
-          electionData.positions = electionData.ballot.positions.map(pos => ({
-            id: pos.position_id || pos.id,
-            name: pos.position_name || pos.name,
-            max_choices: pos.max_choices,
-            candidates: pos.candidates
-          }));
-        }
-        
-        const imageCache = {};
-        if (electionData?.positions) {
-          electionData.positions.forEach(position => {
-            position.candidates?.forEach(candidate => {
-              if (candidate.image_url) {
-                const processedUrl = getImageUrl(candidate.image_url);
-                imageCache[candidate.id] = processedUrl;
-              }
-            });
-          });
-        }
-        
-        try {
-          // Get the complete election data which includes precinct programs
-          const completeElectionData = await fetchWithAuth(`/elections/${params.id}`);
-          
-          // Get the eligibility criteria from the /criteria endpoint
-          const eligibilityCriteriaResponse = await fetchWithAuth(`/elections/${params.id}/criteria`);
-          
-          // Merge the data from both endpoints
-          electionData.eligibility_criteria = {
-            ...(eligibilityCriteriaResponse.criteria || {}),
-            precinctPrograms: completeElectionData.eligible_voters?.precinctPrograms || {},
-            precinct: completeElectionData.eligible_voters?.precinct || []
-          };
-        } catch (criteriaErr) {
-          console.error('Error fetching eligibility criteria:', criteriaErr);
-          electionData.eligibility_criteria = {};
-        }
-        
-        setCandidateImages(imageCache);
-        setElection(electionData);
-        
-        // Debug: Log the election data to check voter_count
-        console.log('Election data loaded:', {
-          voter_count: electionData.voter_count,
-          vote_count: electionData.vote_count,
-          positions: electionData.positions?.length
-        });
+        await fetchElectionData();
       } catch (err) {
         console.error('Error loading election details:', err);
         setError(err.message);
@@ -292,6 +291,46 @@ export default function ElectionDetailsPage() {
       loadElectionDetails();
     }
   }, [params.id]);
+
+  // Auto-refresh effect for partial counting in fullscreen
+  useEffect(() => {
+    // Only start interval if we're in fullscreen and on partial counting tab
+    if (isFullScreen && activeTab === 'partial' && election?.status === 'ongoing') {
+      console.log('Starting auto-refresh for partial counting...');
+      
+      intervalRef.current = setInterval(async () => {
+        try {
+          await fetchElectionData();
+        } catch (error) {
+          console.error('Error during auto-refresh:', error);
+        }
+      }, 1000); // Refresh every 1 second
+      
+      return () => {
+        if (intervalRef.current) {
+          console.log('Clearing auto-refresh interval...');
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+      };
+    } else {
+      // Clear interval when conditions are not met
+      if (intervalRef.current) {
+        console.log('Clearing auto-refresh interval (conditions not met)...');
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    }
+  }, [isFullScreen, activeTab, election?.status, params.id]);
+
+  // Cleanup interval on component unmount
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
 
   if (isLoading) {
     return (
@@ -1251,8 +1290,16 @@ export default function ElectionDetailsPage() {
           <div className={`bg-white rounded-lg shadow p-6 ${isFullScreen ? 'mx-auto max-w-7xl' : ''}`}>
             <div className="flex justify-between items-center mb-6">
               <h2 className={`${isFullScreen ? 'text-3xl' : 'text-xl'} font-semibold text-black`}>Partial Vote Counting</h2>
-              <div className={`px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full ${isFullScreen ? 'text-base' : 'text-sm'}`}>
-                Partial Updates
+              <div className="flex items-center gap-3">
+                {isFullScreen && election?.status === 'ongoing' && (
+                  <div className="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    Auto-updating (1s)
+                  </div>
+                )}
+                <div className={`px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full ${isFullScreen ? 'text-base' : 'text-sm'}`}>
+                  Partial Updates
+                </div>
               </div>
             </div>
 
