@@ -1,6 +1,6 @@
 const express = require("express");
 const { check } = require("express-validator");
-const { registerStudent, getAllStudents, getStudentById, editStudent, deleteStudent, restoreStudent, resetStudentPassword, permanentDeleteStudent, unlockStudentAccount, uploadStudentsBatch, getStudentElections, getStudentProfile, uploadProfilePicture, getAvailableCriteria, getStudentsByCourses, validateStudentByNumber, searchStudents, changePassword } = require("../controllers/studentController");
+const { registerStudent, getAllStudents, getStudentById, editStudent, deleteStudent, restoreStudent, resetStudentPassword, permanentDeleteStudent, unlockStudentAccount, uploadStudentsBatch, getStudentElections, getStudentProfile, uploadProfilePicture, getAvailableCriteria, getStudentsByCourses, validateStudentByNumber, searchStudents, changePassword, bulkDeleteStudentsByCourse, bulkPermanentDeleteStudentsByCourse, bulkDeleteArchivedStudentsByCourse } = require("../controllers/studentController");
 const { verifyToken, isStudent, isSuperAdmin, allowRoles } = require("../middlewares/authMiddleware");
 const router = express.Router();
 const upload = require('../middlewares/uploadMiddleware');
@@ -71,7 +71,7 @@ router.post(
     check("lastName", "Last Name is required").not().isEmpty(),
     check("email", "Valid email is required")
       .isEmail()
-      .matches(/^[a-zA-Z0-9._%+-]+@novaliches\.sti\.edu\.ph$/),
+      .matches(/^[a-zA-Z0-9._%+-]+@novaliches\.sti\.edu(\.ph)?$/),
     check("studentNumber", "Student Number must be 11 digits and start with '02000'")
       .matches(/^02000[0-9]{6}$/),
     check("courseName", "Course name is required unless Course ID is provided")
@@ -100,7 +100,7 @@ router.post(
   isSuperAdmin,
   upload.single('file'),
   [
-    check('createdBy', 'Super Admin ID is required').isInt()
+    check('createdBy', 'Super Admin ID is required').notEmpty()
   ],
   uploadStudentsBatch
 );
@@ -141,5 +141,10 @@ router.delete(
 );
 
 router.post("/students/change-password", verifyToken, isStudent, changePassword);
+
+// Bulk delete routes
+router.post("/students/bulk-delete-by-course", verifyToken, isSuperAdmin, bulkDeleteStudentsByCourse);
+router.post("/students/bulk-permanent-delete-by-course", verifyToken, isSuperAdmin, bulkPermanentDeleteStudentsByCourse);
+router.post("/students/bulk-delete-archived-by-course", verifyToken, isSuperAdmin, bulkDeleteArchivedStudentsByCourse);
 
 module.exports = router;
