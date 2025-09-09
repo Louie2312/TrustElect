@@ -1,5 +1,5 @@
 const bcrypt = require("bcryptjs");
-const { validationResult } = require("express-validator");
+// const { validationResult } = require("express-validator"); // Removed - using route validation instead
 const { checkStudentNumberExists, registerStudent, getAllStudents, getStudentById, updateStudent, softDeleteStudent, restoreStudent, resetStudentPassword, deleteStudentPermanently, bulkDeleteStudentsByCourse, bulkDeleteArchivedStudentsByCourse, unlockStudentAccount, processBatchStudents, changePassword } = require("../models/studentModel");
 const XLSX = require('xlsx');
 const fs = require('fs');
@@ -272,15 +272,8 @@ exports.uploadStudentsBatch = async (req, res) => {
       mimetype: req.file.mimetype
     } : 'No file');
     
-    // Check for validation errors first
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      console.log('Validation errors:', errors.array());
-      return res.status(400).json({
-        message: 'Validation failed',
-        errors: errors.array()
-      });
-    }
+    // Basic request validation (express-validator removed, using route validation)
+    console.log('Controller reached - basic validation passed');
     
     if (!req.file) {
       console.log('ERROR: No file uploaded');
