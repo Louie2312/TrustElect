@@ -602,6 +602,16 @@ export default function ManageStudents() {
           <div className="bg-white p-6 rounded-lg w-full max-w-2xl">
             <h2 className="text-xl font-bold mb-4 text-black">Batch Upload Students</h2>
             
+            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded">
+              <h3 className="font-bold text-blue-800 mb-2">Excel File Requirements:</h3>
+              <ul className="text-sm text-blue-700 space-y-1">
+                <li>• <strong>Required columns:</strong> First Name, Last Name, Student Number, Course Name, Year Level, Gender</li>
+                <li>• <strong>Student Number format:</strong> Must be 11 digits starting with "02000" (e.g., 02000123456)</li>
+                <li>• <strong>Year Level:</strong> 1st Year, 2nd Year, 3rd Year, 4th Year, Grade 11, or Grade 12</li>
+                <li>• <strong>Gender:</strong> Male or Female</li>
+                <li>• <strong>Optional columns:</strong> Middle Name, Email, Birthdate</li>
+              </ul>
+            </div>
             
             <div 
               {...getRootProps()} 
@@ -664,6 +674,21 @@ export default function ManageStudents() {
                 <p className="text-black">Success: {batchResults.success}</p>
                 <p className="text-black">Failed: {batchResults.failed}</p>
                 
+                {batchResults.debug && (
+                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded">
+                    <h4 className="font-bold text-blue-800">Debug Information:</h4>
+                    <p className="text-sm text-blue-700">
+                      <strong>Detected columns:</strong> {batchResults.debug.detectedColumns?.join(', ') || 'None'}
+                    </p>
+                    <p className="text-sm text-blue-700">
+                      <strong>Mapped fields:</strong> {Object.entries(batchResults.debug.mappedColumns || {})
+                        .filter(([key, value]) => value)
+                        .map(([key]) => key)
+                        .join(', ') || 'None'}
+                    </p>
+                  </div>
+                )}
+                
                 {batchResults.failed > 0 && (
                   <div className="mt-2">
                     <h4 className="font-bold">Errors:</h4>
@@ -702,6 +727,24 @@ export default function ManageStudents() {
               <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded">
                 <h3 className="font-bold text-red-800">Upload Failed</h3>
                 <p className="text-red-700">{batchResults?.message || 'An error occurred during upload'}</p>
+                
+                {batchResults?.debug && (
+                  <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                    <h4 className="font-bold text-yellow-800">Debug Information:</h4>
+                    <p className="text-sm text-yellow-700">
+                      <strong>Detected columns:</strong> {batchResults.debug.detectedColumns?.join(', ') || 'None'}
+                    </p>
+                    <p className="text-sm text-yellow-700">
+                      <strong>Mapped fields:</strong> {Object.entries(batchResults.debug.mappedColumns || {})
+                        .filter(([key, value]) => value)
+                        .map(([key]) => key)
+                        .join(', ') || 'None'}
+                    </p>
+                    <p className="text-sm text-yellow-700 mt-2">
+                      <strong>Expected columns:</strong> First Name, Last Name, Student Number, Course Name, Year Level, Gender
+                    </p>
+                  </div>
+                )}
                 
                 {batchResults?.errors && batchResults.errors.length > 0 && (
                   <div className="mt-2">

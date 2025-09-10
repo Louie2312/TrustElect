@@ -281,37 +281,69 @@ exports.uploadStudentsBatch = async (req, res) => {
       return res.status(400).json({ message: 'Excel file contains no data' });
     }
 
-    jsonData = jsonData.map(row => {
+    // Log the raw Excel data for debugging (only in development)
+    if (process.env.NODE_ENV === 'production') {
+      console.log('Raw Excel data (first 3 rows):', JSON.stringify(jsonData.slice(0, 3), null, 2));
+      console.log('Available columns:', Object.keys(jsonData[0] || {}));
+    }
+
+    jsonData = jsonData.map((row, index) => {
       const normalizedRow = {};
 
       Object.keys(row).forEach(key => {
+        // More comprehensive column name normalization
+        const normalizedKey = key.toLowerCase()
+          .replace(/\s+/g, '')           // Remove all spaces
+          .replace(/[_-]/g, '')          // Remove underscores and hyphens
+          .replace(/\./g, '')            // Remove dots
+          .trim();
 
-        const normalizedKey = key.toLowerCase().replace(/\s+/g, '');
+        // Debug logging (only in development)
+        if (process.env.NODE_ENV === 'production') {
+          console.log(`Row ${index + 2}: Processing column "${key}" -> normalized: "${normalizedKey}" -> value: "${row[key]}"`);
+        }
       
         // Map various possible column names to our expected format
-        if (normalizedKey === 'firstname' || normalizedKey === 'first' || normalizedKey === 'fname') {
+        if (normalizedKey === 'firstname' || normalizedKey === 'first' || normalizedKey === 'fname' || 
+            normalizedKey === 'givenname' || normalizedKey === 'given' || normalizedKey === 'firstname') {
           normalizedRow.firstName = row[key];
-        } else if (normalizedKey === 'middlename' || normalizedKey === 'middle' || normalizedKey === 'mname') {
+        } else if (normalizedKey === 'middlename' || normalizedKey === 'middle' || normalizedKey === 'mname' || 
+                   normalizedKey === 'mi' || normalizedKey === 'middleinitial') {
           normalizedRow.middleName = row[key];
-        } else if (normalizedKey === 'lastname' || normalizedKey === 'last' || normalizedKey === 'lname') {
+        } else if (normalizedKey === 'lastname' || normalizedKey === 'last' || normalizedKey === 'lname' || 
+                   normalizedKey === 'surname' || normalizedKey === 'familyname' || normalizedKey === 'family') {
           normalizedRow.lastName = row[key];
-        } else if (normalizedKey === 'studentnumber' || normalizedKey === 'studentno' || normalizedKey === 'idnumber' || normalizedKey === 'id') {
+        } else if (normalizedKey === 'studentnumber' || normalizedKey === 'studentno' || normalizedKey === 'idnumber' || 
+                   normalizedKey === 'id' || normalizedKey === 'studentid' || normalizedKey === 'student_id' ||
+                   normalizedKey === 'studentno' || normalizedKey === 'student_num' || normalizedKey === 'studentnum') {
           normalizedRow.studentNumber = String(row[key]); // Ensure it's a string
-        } else if (normalizedKey === 'coursename' || normalizedKey === 'course' || normalizedKey === 'program') {
+        } else if (normalizedKey === 'coursename' || normalizedKey === 'course' || normalizedKey === 'program' || 
+                   normalizedKey === 'programname' || normalizedKey === 'degree' || normalizedKey === 'major' ||
+                   normalizedKey === 'course_name' || normalizedKey === 'program_name') {
           normalizedRow.courseName = row[key];
-        } else if (normalizedKey === 'yearlevel' || normalizedKey === 'year' || normalizedKey === 'level') {
+        } else if (normalizedKey === 'yearlevel' || normalizedKey === 'year' || normalizedKey === 'level' || 
+                   normalizedKey === 'yearlevel' || normalizedKey === 'grade' || normalizedKey === 'class' ||
+                   normalizedKey === 'year_level' || normalizedKey === 'academicyear' || normalizedKey === 'academicyearlevel') {
           normalizedRow.yearLevel = row[key];
-        } else if (normalizedKey === 'gender' || normalizedKey === 'sex') {
+        } else if (normalizedKey === 'gender' || normalizedKey === 'sex' || normalizedKey === 'g' ||
+                   normalizedKey === 'male' || normalizedKey === 'female') {
           normalizedRow.gender = row[key];
-        } else if (normalizedKey === 'birthdate' || normalizedKey === 'birthday' || normalizedKey === 'dob' || normalizedKey === 'birth') {
+        } else if (normalizedKey === 'birthdate' || normalizedKey === 'birthday' || normalizedKey === 'dob' || 
+                   normalizedKey === 'birth' || normalizedKey === 'dateofbirth' || normalizedKey === 'birth_date') {
           normalizedRow.birthdate = row[key];
-        } else if (normalizedKey === 'email') {
+        } else if (normalizedKey === 'email' || normalizedKey === 'emailaddress' || normalizedKey === 'e_mail' ||
+                   normalizedKey === 'email_addr' || normalizedKey === 'mail') {
           normalizedRow.email = row[key];
         } else {
+          // Keep original column for debugging
           normalizedRow[key] = row[key];
         }
       });
       
+      // Debug logging (only in development)
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Row ${index + 2} normalized:`, normalizedRow);
+      }
       return normalizedRow;
     });
     const requiredFields = ['firstName', 'lastName', 'studentNumber', 'courseName', 'yearLevel', 'gender'];
@@ -329,12 +361,16 @@ exports.uploadStudentsBatch = async (req, res) => {
       });
       
       if (missingFields.length > 0) {     
-       invalidRows.push({
+        // Provide more detailed error information
+        const availableColumns = Object.keys(student).filter(key => student[key] !== undefined && student[key] !== null && String(student[key]).trim() !== '');
+        const errorMessage = `Missing required fields: ${missingFields.join(', ')}. Available columns: ${availableColumns.join(', ')}`;
+        
+        invalidRows.push({
           row: rowNum,
           studentNumber: student.studentNumber || 'Unknown',
           firstName: student.firstName || 'Unknown',
           lastName: student.lastName || 'Unknown',
-          error: `Missing required fields: ${missingFields.join(', ')}`
+          error: errorMessage
         });
       } else {
       
@@ -508,12 +544,28 @@ exports.uploadStudentsBatch = async (req, res) => {
       allErrors.push(...result.errors);
     }
 
+    // Get detected columns for debugging
+    const detectedColumns = jsonData.length > 0 ? Object.keys(jsonData[0]) : [];
+    const mappedColumns = {
+      firstName: jsonData.some(row => row.firstName !== undefined),
+      lastName: jsonData.some(row => row.lastName !== undefined),
+      studentNumber: jsonData.some(row => row.studentNumber !== undefined),
+      courseName: jsonData.some(row => row.courseName !== undefined),
+      yearLevel: jsonData.some(row => row.yearLevel !== undefined),
+      gender: jsonData.some(row => row.gender !== undefined)
+    };
+
     res.status(200).json({
       message: 'Batch upload processed',
       total: jsonData.length,
       success: result.success,
       failed: invalidRows.length + result.failed,
-      errors: allErrors
+      errors: allErrors,
+      debug: {
+        detectedColumns: detectedColumns,
+        mappedColumns: mappedColumns,
+        sampleData: jsonData.slice(0, 2) 
+      }
     });
   } catch (error) {
     console.error('Error processing batch upload:', error);
