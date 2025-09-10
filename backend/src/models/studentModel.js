@@ -380,9 +380,11 @@ const bulkDeleteArchivedStudentsByCourse = async (courseName) => {
 };
 
 const generateStudentPassword = (lastName, studentNumber) => {
+  // Format lastName to proper case (Title Case)
+  const formattedLastName = lastName.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
   const lastThreeDigits = studentNumber.slice(-3);
   const specialCharacter = "!";
-  return `${lastName}${lastThreeDigits}${specialCharacter}`;
+  return `${formattedLastName}${lastThreeDigits}${specialCharacter}`;
 }
 
 const processBatchStudents = async (students, createdBy) => {

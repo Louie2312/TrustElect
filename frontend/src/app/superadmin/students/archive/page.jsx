@@ -19,6 +19,20 @@ export default function ArchivedStudents() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [courses, setCourses] = useState([]);
 
+  // Utility function to format names properly (Title Case)
+  const formatName = (name) => {
+    if (!name) return '';
+    return name.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  // Utility function to format full name display
+  const formatFullName = (lastName, firstName, middleName) => {
+    const formattedLastName = formatName(lastName);
+    const formattedFirstName = formatName(firstName);
+    const formattedMiddleName = middleName ? formatName(middleName) : '';
+    
+    return `${formattedLastName}, ${formattedFirstName}${formattedMiddleName ? ` ${formattedMiddleName}` : ''}`;
+  };
   
   const fetchArchivedStudents = async () => {
     try {
@@ -157,7 +171,7 @@ export default function ArchivedStudents() {
         <tbody>
           {students.map((student) => (
             <tr key={student.id} className="text-center border-b">
-              <td className="p-3">{`${student.first_name} ${student.last_name}`}</td>
+              <td className="p-3">{formatFullName(student.last_name, student.first_name, student.middle_name)}</td>
               <td className="p-3"><button onClick={() => restoreStudent(student.id)} className="bg-green-500 text-white px-3 py-1 rounded">Restore</button></td>
               <td className="p-3"><button onClick={() => confirmPermanentDelete(student.id)} className="bg-red-700 text-white px-3 py-1 rounded">Permanently Delete</button></td>
             </tr>

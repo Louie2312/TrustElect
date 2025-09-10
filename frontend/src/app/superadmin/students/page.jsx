@@ -186,7 +186,7 @@ export default function ManageStudents() {
     if (searchQuery.trim() !== "") {
       filtered = filtered.filter(
         (student) =>
-          `${student.first_name} ${student.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          formatFullName(student.last_name, student.first_name, student.middle_name).toLowerCase().includes(searchQuery.toLowerCase()) ||
           student.student_number.includes(searchQuery)
       );
     }
@@ -279,6 +279,21 @@ export default function ManageStudents() {
     setSelectedFile(null);
     setUploadStatus(null);
     setBatchResults(null);
+  };
+
+  // Utility function to format names properly (Title Case)
+  const formatName = (name) => {
+    if (!name) return '';
+    return name.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  // Utility function to format full name display
+  const formatFullName = (lastName, firstName, middleName) => {
+    const formattedLastName = formatName(lastName);
+    const formattedFirstName = formatName(firstName);
+    const formattedMiddleName = middleName ? formatName(middleName) : '';
+    
+    return `${formattedLastName}, ${formattedFirstName}${formattedMiddleName ? ` ${formattedMiddleName}` : ''}`;
   };
 
   // Batch delete functions
@@ -603,7 +618,7 @@ export default function ManageStudents() {
             ) : filteredStudents.length > 0 ? (
               filteredStudents.map((student) => (
                 <tr key={student.id} className="text-center border-b">
-                  <td className="p-3">{`${student.last_name}, ${student.first_name} ${student.middle_name || ''}`}</td>
+                  <td className="p-3">{formatFullName(student.last_name, student.first_name, student.middle_name)}</td>
                   <td className="p-3">{student.email}</td>
                   <td className="p-3">{student.student_number}</td>
                   <td className="p-3">{student.course_name}</td>
@@ -767,7 +782,7 @@ export default function ManageStudents() {
                             <tr key={index} className="border-b border-gray-100">
                               <td className="px-2 py-1">{error.row || 'N/A'}</td>
                               <td className="px-2 py-1">
-                                {error.lastName}, {error.firstName} {error.middleName || ''} 
+                                {formatFullName(error.lastName || '', error.firstName || '', error.middleName || '')}
                                 <div className="text-xs text-gray-500">{error.studentNumber}</div>
                               </td>
                               <td className="px-2 py-1 text-red-600">{error.error}</td>
@@ -824,7 +839,7 @@ export default function ManageStudents() {
                             <tr key={index} className="border-b border-red-50">
                               <td className="px-2 py-1">{error.row || 'N/A'}</td>
                               <td className="px-2 py-1">
-                                {error.lastName}, {error.firstName} {error.middleName || ''} 
+                                {formatFullName(error.lastName || '', error.firstName || '', error.middleName || '')}
                                 <div className="text-xs text-gray-500">{error.studentNumber}</div>
                               </td>
                               <td className="px-2 py-1 text-red-600">{error.error}</td>
