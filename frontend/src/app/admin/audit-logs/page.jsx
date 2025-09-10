@@ -98,7 +98,7 @@ export default function AuditLogsPage() {
         params.append("start_date", monthAgo.toISOString());
       }
       
-      const res = await axios.get(`${API_URL}/api/audit-logs?${params.toString()}`, {
+      const res = await axios.get(`${API_URL}/audit-logs?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
