@@ -297,6 +297,7 @@ app.use("/api/reports/live-vote-count", electionReportRoutes);
 app.use("/api/reports", systemLoadRoutes);  // Changed from /api/reports/system-load
 app.use("/api/reports", voterParticipationRoutes);  // Changed from /api/reports/voter-participation
 app.use("/api/reports", votingTimeRoutes);  // Added voting time routes
+app.use("/api/reports", departmentVoterReportRoutes);  // Added department voter report routes
 app.use("/api/reports/candidate-list", candidateListReportRoutes);
 app.use("/api/reports/admin-activity", adminActivityRoutes);  // Updated path for admin activity routes
 app.use("/api", studentRoutes);
