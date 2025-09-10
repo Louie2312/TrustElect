@@ -115,35 +115,37 @@ export default function AdminDepartmentsPage() {
         return acc;
       }, []);
 
-      // If we don't have enough admin data, try to fetch from superadmin endpoint
-      if (adminsArray.length === 0 || (adminsArray.length === 1 && adminsArray[0].id === profileRes.data.id)) {
-        try {
-          const superAdminRes = await axios.get("/api/superadmin/admins", {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-            withCredentials: true
-          });
-          
-          const superAdminAdmins = superAdminRes.data.admins || superAdminRes.data || [];
-          const filteredSuperAdmins = superAdminAdmins.filter(admin => 
-            admin.is_active && 
-            !(admin.role_id === 1 || (admin.department === "Administration" && !admin.employee_number))
-          );
-          
-          // Merge with existing data
-          adminsArray = [...adminsArray, ...filteredSuperAdmins].filter((admin, index, self) =>
-            index === self.findIndex((a) => a.id === admin.id)
-          );
-        } catch (superAdminError) {
-          console.warn("Could not fetch from superadmin endpoint:", superAdminError.message);
-        }
-      } else {
-        // Merge the arrays, removing duplicates
-        adminsArray = [...adminsArray, ...departmentAdmins].filter((admin, index, self) =>
+      // Try to get additional admin data from available endpoints
+      try {
+        // Try admin-specific endpoint first
+        const adminRes = await axios.get("/api/admin/admins", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          withCredentials: true
+        });
+        
+        const adminAdmins = adminRes.data.admins || adminRes.data || [];
+        const filteredAdminAdmins = adminAdmins.filter(admin => 
+          admin.is_active && 
+          !(admin.role_id === 1 || (admin.department === "Administration" && !admin.employee_number))
+        );
+        
+        // Merge with existing data
+        adminsArray = [...adminsArray, ...filteredAdminAdmins].filter((admin, index, self) =>
           index === self.findIndex((a) => a.id === admin.id)
         );
+      } catch (adminError) {
+        console.warn("Could not fetch from admin endpoint:", adminError.message);
+        
+        // If admin endpoint fails, try to get data from departments
+        if (departments && departments.length > 0) {
+          // Merge the arrays, removing duplicates
+          adminsArray = [...adminsArray, ...departmentAdmins].filter((admin, index, self) =>
+            index === self.findIndex((a) => a.id === admin.id)
+          );
+        }
       }
       
       // Enhance admin data with department information
@@ -151,6 +153,19 @@ export default function AdminDepartmentsPage() {
         ...admin,
         department: admin.department || ''
       }));
+      
+      // If we still don't have enough admin data, create a basic entry from the current admin's profile
+      if (enhancedAdmins.length === 0 && profileRes.data) {
+        enhancedAdmins.push({
+          id: profileRes.data.id,
+          first_name: profileRes.data.first_name || '',
+          last_name: profileRes.data.last_name || '',
+          email: profileRes.data.email || '',
+          department: profileRes.data.department || '',
+          is_active: true,
+          role_id: 2
+        });
+      }
       
       console.log("Enhanced admins:", enhancedAdmins);
       console.log("Total admins found:", enhancedAdmins.length);
@@ -370,6 +385,13 @@ export default function AdminDepartmentsPage() {
       toast.error("You don't have permission to manage department admins");
       return;
     }
+    
+    // Check if we have any admins to manage
+    if (admins.length === 0) {
+      toast.error("No admins available to manage. You may not have permission to view other admins.");
+      return;
+    }
+    
     setSelectedDepartment(department);
     setShowAssignModal(true);
   };
@@ -771,8 +793,8 @@ function AssignAdminModal({ department, admins: initialAdmins, onClose, onSucces
         let success = false;
 
         try {
-          // First try the superadmin endpoint since it has all admins
-          const res = await axios.get("/api/superadmin/admins", {
+          // Try admin-specific endpoint first
+          const res = await axios.get("/api/admin/admins", {
             headers: {
               Authorization: `Bearer ${token}`,
               'Content-Type': 'application/json'
@@ -784,11 +806,11 @@ function AssignAdminModal({ department, admins: initialAdmins, onClose, onSucces
           adminsArray = res.data.admins || res.data || [];
           success = true;
         } catch (firstError) {
-          console.warn("Error on superadmin endpoint, trying fallback:", firstError.message);
+          console.warn("Error on admin endpoint, trying fallback:", firstError.message);
           
           try {
-            // Try the regular admins endpoint as fallback
-            const res = await axios.get("/api/admins", {
+            // Try to get admin profile as fallback
+            const profileRes = await axios.get("/api/admin/profile", {
               headers: {
                 Authorization: `Bearer ${token}`,
                 'Content-Type': 'application/json'
@@ -796,12 +818,26 @@ function AssignAdminModal({ department, admins: initialAdmins, onClose, onSucces
               withCredentials: true
             });
             
-            console.log("Admins Response:", res.data);
-            adminsArray = res.data.admins || res.data || [];
-            success = true;
+            console.log("Admin profile response:", profileRes.data);
+            
+            // Create a basic admin array from profile
+            if (profileRes.data && profileRes.data.id) {
+              adminsArray = [{
+                id: profileRes.data.id,
+                first_name: profileRes.data.first_name || '',
+                last_name: profileRes.data.last_name || '',
+                email: profileRes.data.email || '',
+                department: profileRes.data.department || '',
+                is_active: true,
+                role_id: 2
+              }];
+              success = true;
+            } else {
+              throw new Error("No admin profile data found");
+            }
           } catch (secondError) {
-            console.error("Error on admins endpoint:", secondError.message);
-            throw new Error("Failed to fetch admins after trying all endpoints");
+            console.error("Error on profile endpoint:", secondError.message);
+            throw new Error("Failed to fetch admin data after trying all endpoints");
           }
         }
 
@@ -877,7 +913,7 @@ function AssignAdminModal({ department, admins: initialAdmins, onClose, onSucces
         }
         
         return axios.put(
-          `/api/superadmin/admins/${adminId}`,
+          `/api/admin/admins/${adminId}`,
           { 
             department: currentDepartments.join(', '),
             first_name: admin.first_name,
@@ -906,7 +942,7 @@ function AssignAdminModal({ department, admins: initialAdmins, onClose, onSucces
         const updatedDepartments = departments.filter(d => d !== department.department_name);
         
         return axios.put(
-          `/api/superadmin/admins/${admin.id}`,
+          `/api/admin/admins/${admin.id}`,
           { 
             department: updatedDepartments.join(', '),
             first_name: admin.first_name,
@@ -987,9 +1023,12 @@ function AssignAdminModal({ department, admins: initialAdmins, onClose, onSucces
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-amber-600">
-                No available admins. Please create admins in Admin Management first.
-              </p>
+              <div className="text-sm text-amber-600">
+                <p>No available admins found.</p>
+                <p className="mt-1 text-xs text-gray-500">
+                  This might be due to permission restrictions. Only admins you have access to will be shown.
+                </p>
+              </div>
             )}
           </div>
 
