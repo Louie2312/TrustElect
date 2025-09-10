@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Cookies from 'js-cookie';
 import { Download } from 'lucide-react';
-import { generateReport } from '@/utils/reportGenerator';
+import { generatePdfReport } from '@/utils/pdfGenerator';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -29,7 +29,7 @@ const DepartmentVoterReport = () => {
     try {
       setLoading(true);
       const token = Cookies.get('token');
-      const response = await axios.get(`${API_BASE}/department-voter-reports/department-voter`, {
+      const response = await axios.get(`${API_BASE}/reports/department-voter`, {
         headers: { Authorization: `Bearer ${token}` },
         params: {
           page,
@@ -93,7 +93,7 @@ const DepartmentVoterReport = () => {
         }))
       };
 
-      await generateReport(11, reportData); // 11 is the report ID for Department Voter Report
+      await generatePdfReport(11, reportData); // 11 is the report ID for Department Voter Report
     } catch (error) {
       console.error('Error downloading report:', error);
     }

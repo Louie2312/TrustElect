@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Download, Search, X } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '@/context/AuthContext';
-import { generateReport } from '@/utils/reportGenerator';
+import { generatePdfReport } from '@/utils/pdfGenerator';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 

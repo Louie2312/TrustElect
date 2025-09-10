@@ -5,7 +5,7 @@ import axios from 'axios';
 import { format } from 'date-fns';
 import { useAuth } from '@/context/AuthContext';
 import { Download } from 'lucide-react';
-import { generateReport } from '@/utils/reportGenerator';
+import { generatePdfReport } from '@/utils/pdfGenerator';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 

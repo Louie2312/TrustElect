@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import Cookies from 'js-cookie';
 import Image from 'next/image';
 import { Download } from 'lucide-react';
-import { generateReport } from '@/utils/reportGenerator';
+import { generatePdfReport } from '@/utils/pdfGenerator';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 

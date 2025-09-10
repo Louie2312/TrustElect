@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Download, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import axios from 'axios';
 import Cookies from 'js-cookie';
-import { generateReport } from '@/utils/reportGenerator';
+import { generatePdfReport } from '@/utils/pdfGenerator';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 

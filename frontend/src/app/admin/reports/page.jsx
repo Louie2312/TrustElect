@@ -209,36 +209,60 @@ export default function AdminReportsPage() {
     switch (report?.id) {
       case 1:
         return (
-          <ReportDetailsModal
-            report={report}
-            onClose={() => setSelectedReport(null)}
-            onDownload={() => {
-              downloadReport(report.id);
-              setSelectedReport(null);
-            }}
-          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col">
+              <div className="flex justify-between items-center p-6 border-b">
+                <h2 className="text-2xl font-bold text-gray-800">{report.title}</h2>
+                <button 
+                  onClick={() => setSelectedReport(null)} 
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="p-6 flex-grow overflow-y-auto">
+                <DepartmentVoterReport />
+              </div>
+            </div>
+          </div>
         );
       case 2:
         return (
-          <ReportDetailsModal
-            report={report}
-            onClose={() => setSelectedReport(null)}
-            onDownload={() => {
-              downloadReport(report.id);
-              setSelectedReport(null);
-            }}
-          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col">
+              <div className="flex justify-between items-center p-6 border-b">
+                <h2 className="text-2xl font-bold text-gray-800">{report.title}</h2>
+                <button 
+                  onClick={() => setSelectedReport(null)} 
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="p-6 flex-grow overflow-y-auto">
+                <ElectionResultReport />
+              </div>
+            </div>
+          </div>
         );
       case 3:
         return (
-          <ReportDetailsModal
-            report={report}
-            onClose={() => setSelectedReport(null)}
-            onDownload={() => {
-              downloadReport(report.id);
-              setSelectedReport(null);
-            }}
-          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col">
+              <div className="flex justify-between items-center p-6 border-b">
+                <h2 className="text-2xl font-bold text-gray-800">{report.title}</h2>
+                <button 
+                  onClick={() => setSelectedReport(null)} 
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="p-6 flex-grow overflow-y-auto">
+                <VotingTimeReport />
+              </div>
+            </div>
+          </div>
         );
       case 4:
         return (
@@ -253,36 +277,60 @@ export default function AdminReportsPage() {
         );
       case 5:
         return (
-          <ReportDetailsModal
-            report={report}
-            onClose={() => setSelectedReport(null)}
-            onDownload={() => {
-              downloadReport(report.id);
-              setSelectedReport(null);
-            }}
-          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col">
+              <div className="flex justify-between items-center p-6 border-b">
+                <h2 className="text-2xl font-bold text-gray-800">{report.title}</h2>
+                <button 
+                  onClick={() => setSelectedReport(null)} 
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="p-6 flex-grow overflow-y-auto">
+                <VoterParticipationReport />
+              </div>
+            </div>
+          </div>
         );
       case 6:
         return (
-          <ReportDetailsModal
-            report={report}
-            onClose={() => setSelectedReport(null)}
-            onDownload={() => {
-              downloadReport(report.id);
-              setSelectedReport(null);
-            }}
-          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col">
+              <div className="flex justify-between items-center p-6 border-b">
+                <h2 className="text-2xl font-bold text-gray-800">{report.title}</h2>
+                <button 
+                  onClick={() => setSelectedReport(null)} 
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="p-6 flex-grow overflow-y-auto">
+                <CandidateListReport />
+              </div>
+            </div>
+          </div>
         );
       case 7:
         return (
-          <ReportDetailsModal
-            report={report}
-            onClose={() => setSelectedReport(null)}
-            onDownload={() => {
-              downloadReport(report.id);
-              setSelectedReport(null);
-            }}
-          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col">
+              <div className="flex justify-between items-center p-6 border-b">
+                <h2 className="text-2xl font-bold text-gray-800">{report.title}</h2>
+                <button 
+                  onClick={() => setSelectedReport(null)} 
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="p-6 flex-grow overflow-y-auto">
+                <AdminActivityReport />
+              </div>
+            </div>
+          </div>
         );
       default:
         return null;
