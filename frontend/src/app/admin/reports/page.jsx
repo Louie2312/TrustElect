@@ -209,8 +209,8 @@ export default function AdminReportsPage() {
     switch (report?.id) {
       case 1:
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col border border-gray-200">
               <div className="flex justify-between items-center p-6 border-b">
                 <h2 className="text-2xl font-bold text-gray-800">{report.title}</h2>
                 <button 
@@ -228,8 +228,8 @@ export default function AdminReportsPage() {
         );
       case 2:
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col border border-gray-200">
               <div className="flex justify-between items-center p-6 border-b">
                 <h2 className="text-2xl font-bold text-gray-800">{report.title}</h2>
                 <button 
@@ -247,8 +247,8 @@ export default function AdminReportsPage() {
         );
       case 3:
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col border border-gray-200">
               <div className="flex justify-between items-center p-6 border-b">
                 <h2 className="text-2xl font-bold text-gray-800">{report.title}</h2>
                 <button 
@@ -277,8 +277,8 @@ export default function AdminReportsPage() {
         );
       case 5:
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col border border-gray-200">
               <div className="flex justify-between items-center p-6 border-b">
                 <h2 className="text-2xl font-bold text-gray-800">{report.title}</h2>
                 <button 
@@ -296,8 +296,8 @@ export default function AdminReportsPage() {
         );
       case 6:
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col border border-gray-200">
               <div className="flex justify-between items-center p-6 border-b">
                 <h2 className="text-2xl font-bold text-gray-800">{report.title}</h2>
                 <button 
@@ -315,8 +315,8 @@ export default function AdminReportsPage() {
         );
       case 7:
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col border border-gray-200">
               <div className="flex justify-between items-center p-6 border-b">
                 <h2 className="text-2xl font-bold text-gray-800">{report.title}</h2>
                 <button 
