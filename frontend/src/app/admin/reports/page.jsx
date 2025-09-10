@@ -1,27 +1,31 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Search, Filter } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import axios from "axios";
+import Cookies from "js-cookie";
+import { Download, Filter, Search } from "lucide-react";
+import ReportCard from "./components/ReportCard";
+import ReportDetailsModal from "./components/ReportDetailsModal";
+import ReportFilterModal from "./components/ReportFilterModal";
 import DepartmentVoterReport from "./components/DepartmentVoterReport";
 import ElectionResultReport from "./components/ElectionResultReport";
-import ReportCard from "./components/ReportCard";
-import ReportFilterModal from "./components/ReportFilterModal";
 import VotingTimeReport from "./components/VotingTimeReport";
 import ElectionSummaryReport from "./components/ElectionSummaryReport";
 import VoterParticipationReport from "./components/VoterParticipationReport";
 import CandidateListReport from "./components/CandidateListReport";
 import AdminActivityReport from "./components/AdminActivityReport";
-import Cookies from "js-cookie";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 export default function AdminReportsPage() {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [selectedReport, setSelectedReport] = useState(null);
   const [showFilterModal, setShowFilterModal] = useState(false);
+  const [reportData, setReportData] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState({
-    reportType: "All",
-    dateRange: { start: null, end: null }
+    reportType: "All"
   });
 
   const staticReports = [
@@ -29,106 +33,250 @@ export default function AdminReportsPage() {
       id: 1,
       title: "Department Voter Report",
       type: "Voters",
-      icon: "users"
+      icon: "users",
+      description: "Detailed report of voters organized by department and course"
     },
     {
       id: 2,
       title: "Election Result Report",
       type: "Results",
-      icon: "election"
+      icon: "election",
+      description: "Comprehensive results and statistics for completed elections"
     },
     {
       id: 3,
       title: "Voting Time Report",
       type: "Activity",
-      icon: "votes"
+      icon: "votes",
+      description: "Analysis of voting patterns and time-based participation"
     },
     {
       id: 4,
       title: "Election Summary Report",
       type: "Summary",
-      icon: "election"
+      icon: "election",
+      description: "Overview of all elections with detailed statistics and voter turnout"
     },
     {
       id: 5,
       title: "Voter Participation Report",
       type: "Participation",
-      icon: "participation"
+      icon: "participation",
+      description: "Detailed analysis of voter participation rates and trends"
     },
     {
       id: 6,
       title: "Candidate List Report",
       type: "Candidates",
-      icon: "users"
+      icon: "users",
+      description: "Complete list of candidates with their details and affiliations"
     },
     {
       id: 7,
       title: "Admin Activity Report",
       type: "Activity",
-      icon: "audit"
+      icon: "audit",
+      description: "Tracking of administrative actions and system changes"
     }
   ];
 
-  const handleViewReport = (report) => {
-    setSelectedReport(report);
+  const formatNumber = (num) => {
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   };
 
-  const handleDownloadReport = async (report) => {
+  const fetchReportData = async (reportId) => {
     try {
-      const downloadEndpoints = {
-        1: '/eports/download/department-voter',
-        2: '/reports/download/election-result',
-        3: '/reports/download/voting-time',
-        4: '/reports/download/election-summary',
-        5: '/reports/download/voter-participation',
-        6: '/reports/download/candidate-list',
-        7: '/reports/download/admin-activity' 
-      };
+      setLoading(true);
+      setError(""); 
+      const token = Cookies.get("token");
+      
+      let endpoint;
+      let transformedData;
 
-      const endpoint = downloadEndpoints[report.id];
-      if (!endpoint) return;
+      switch(reportId) {
+        case 1: 
+          endpoint = '/reports/admin/department-voter';
+          const departmentResponse = await axios.get(`${API_BASE}${endpoint}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          transformedData = departmentResponse.data;
+          break;
 
-      const token = Cookies.get('token');
-      const response = await fetch(`${API_BASE}${endpoint}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+        case 2: 
+          endpoint = '/reports/admin/election-result';
+          const resultResponse = await axios.get(`${API_BASE}${endpoint}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          transformedData = resultResponse.data;
+          break;
 
-      if (!response.ok) {
-        throw new Error('Failed to download report');
+        case 3: 
+          endpoint = '/reports/admin/voting-time';
+          const timeResponse = await axios.get(`${API_BASE}${endpoint}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          transformedData = timeResponse.data;
+          break;
+
+        case 4: 
+          endpoint = '/reports/admin/summary';
+          const summaryResponse = await axios.get(`${API_BASE}${endpoint}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          transformedData = summaryResponse.data;
+          break;
+
+        case 5: 
+          endpoint = '/reports/admin/voter-participation';
+          const participationResponse = await axios.get(`${API_BASE}${endpoint}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          transformedData = participationResponse.data;
+          break;
+
+        case 6: 
+          endpoint = '/reports/admin/candidate-list';
+          const candidateResponse = await axios.get(`${API_BASE}${endpoint}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          transformedData = candidateResponse.data;
+          break;
+
+        case 7: 
+          endpoint = '/reports/admin/admin-activity';
+          const activityResponse = await axios.get(`${API_BASE}${endpoint}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          transformedData = activityResponse.data;
+          break;
+
+        default:
+          throw new Error('Report type not implemented');
       }
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${report.title.toLowerCase().replace(/\s+/g, '-')}.docx`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      console.log('Transformed data:', transformedData);
+      setReportData(transformedData);
+      return transformedData;
     } catch (error) {
-      console.error('Error downloading report:', error);
+      console.error("Error fetching report data:", error);
+      setError(error.message || "Failed to fetch report data");
+      return null;
+    } finally {
+      setLoading(false);
     }
   };
 
-  const renderSelectedReport = () => {
-    switch (selectedReport?.id) {
+  const handleViewReport = async (report) => {
+    const data = await fetchReportData(report.id);
+    if (data) {
+      setSelectedReport({ ...report, data });
+    }
+  };
+
+  const downloadReport = async (reportId) => {
+    try {
+      const token = Cookies.get("token");
+      const data = await fetchReportData(reportId);
+      
+      if (!data) {
+        throw new Error('No data available for download');
+      }
+
+      const jsonString = JSON.stringify(data, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `report-${reportId}-${new Date().toISOString()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error("Error downloading report:", error);
+      setError("Failed to download report.");
+    }
+  };
+
+  const renderReportDetail = (report) => {
+    switch (report?.id) {
       case 1:
-        return <DepartmentVoterReport />;
+        return (
+          <ReportDetailsModal
+            report={report}
+            onClose={() => setSelectedReport(null)}
+            onDownload={() => {
+              downloadReport(report.id);
+              setSelectedReport(null);
+            }}
+          />
+        );
       case 2:
-        return <ElectionResultReport />;
+        return (
+          <ReportDetailsModal
+            report={report}
+            onClose={() => setSelectedReport(null)}
+            onDownload={() => {
+              downloadReport(report.id);
+              setSelectedReport(null);
+            }}
+          />
+        );
       case 3:
-        return <VotingTimeReport />;
+        return (
+          <ReportDetailsModal
+            report={report}
+            onClose={() => setSelectedReport(null)}
+            onDownload={() => {
+              downloadReport(report.id);
+              setSelectedReport(null);
+            }}
+          />
+        );
       case 4:
-        return <ElectionSummaryReport />;
+        return (
+          <ReportDetailsModal
+            report={report}
+            onClose={() => setSelectedReport(null)}
+            onDownload={() => {
+              downloadReport(report.id);
+              setSelectedReport(null);
+            }}
+          />
+        );
       case 5:
-        return <VoterParticipationReport />;
+        return (
+          <ReportDetailsModal
+            report={report}
+            onClose={() => setSelectedReport(null)}
+            onDownload={() => {
+              downloadReport(report.id);
+              setSelectedReport(null);
+            }}
+          />
+        );
       case 6:
-        return <CandidateListReport />;
+        return (
+          <ReportDetailsModal
+            report={report}
+            onClose={() => setSelectedReport(null)}
+            onDownload={() => {
+              downloadReport(report.id);
+              setSelectedReport(null);
+            }}
+          />
+        );
       case 7:
-        return <AdminActivityReport />;
+        return (
+          <ReportDetailsModal
+            report={report}
+            onClose={() => setSelectedReport(null)}
+            onDownload={() => {
+              downloadReport(report.id);
+              setSelectedReport(null);
+            }}
+          />
+        );
       default:
         return null;
     }
@@ -160,81 +308,66 @@ export default function AdminReportsPage() {
   };
 
   return (
-    <div className="min-h-screen p-6">
-      <div className="bg-white bg-opacity-90 rounded-lg shadow-lg p-6 backdrop-blur-sm">
-        <div className="border-b border-gray-200 pb-4 mb-6">
-          <h1 className="text-2xl font-bold text-[#01579B]">Reports</h1>
-        </div>
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-6 text-black">Reports Module</h1>
+      
+      {loading && <p>Loading reports...</p>}
+      {error && <p className="text-red-500">{error}</p>}
 
-        {!selectedReport ? (
-          <>
-            <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
-              <div className="relative w-full md:w-1/3">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
-                  <input
-                    type="text"
-                    placeholder="Search reports by title, description, or type..."
-                    value={searchTerm}
-                    onChange={handleSearch}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#01579B] focus:border-transparent text-gray-700 bg-white"
-                  />
-                </div>
-              </div>
-              
-              <div className="flex gap-4">
-                <button
-                  onClick={() => setShowFilterModal(true)}
-                  className="flex items-center justify-center px-4 py-2 bg-[#01579B] text-white rounded-md hover:bg-[#01416E] transition-colors duration-200 shadow-sm"
-                >
-                  <Filter className="w-5 h-5 mr-2" />
-                  Filters
-                  {filters.reportType !== "All" && (
-                    <span className="ml-2 bg-white text-[#01579B] rounded-full w-5 h-5 flex items-center justify-center text-xs">
-                      ✓
-                    </span>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {filteredReports.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                No reports found matching your criteria
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredReports.map((report) => (
-                  <ReportCard
-                    key={report.id}
-                    report={report}
-                    onView={() => handleViewReport(report)}
-                    onDownload={() => handleDownloadReport(report)}
-                  />
-                ))}
-              </div>
-            )}
-          </>
-        ) : (
-          <>
-            <button
-              onClick={() => setSelectedReport(null)}
-              className="mb-6 text-[#01579B] hover:text-[#01416E] font-medium"
-            >
-              ← Back to Reports
-            </button>
-            {renderSelectedReport()}
-          </>
-        )}
-
-        {showFilterModal && (
-          <ReportFilterModal
-            filters={filters}
-            onApply={handleFilterApply}
-            onClose={() => setShowFilterModal(false)}
+      <div className="flex flex-col md:flex-row justify-between mb-6 gap-4">
+        <div className="relative w-full md:w-1/3">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search reports by title, description, or type..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="border p-2 pl-10 rounded w-full text-black placeholder-black/60"
           />
-        )}
+        </div>
+        
+        <div className="flex gap-4">
+          <button
+            onClick={() => setShowFilterModal(true)}
+            className="flex items-center text-white bg-[#01579B] px-4 py-2 rounded hover:bg-[#01416E]"
+          >
+            <Filter className="w-5 h-5 mr-2" />
+            Filters
+            {filters.reportType !== "All" && (
+              <span className="ml-2 bg-white text-[#01579B] rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                ✓
+              </span>
+            )}
+          </button>
+        </div>
       </div>
+
+      {filteredReports.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          No reports found matching your criteria
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredReports.map((report) => (
+            <ReportCard
+              key={report.id}
+              report={report}
+              onView={() => handleViewReport(report)}
+              onDownload={() => downloadReport(report.id)}
+            />
+          ))}
+        </div>
+      )}
+
+      {selectedReport && renderReportDetail(selectedReport)}
+
+      {showFilterModal && (
+        <ReportFilterModal
+          filters={filters}
+          onApply={handleFilterApply}
+          onClose={() => setShowFilterModal(false)}
+        />
+      )}
     </div>
   );
 }
