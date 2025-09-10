@@ -101,7 +101,7 @@ export default function VoterParticipationReport() {
         }))
       };
 
-      await generateReport(8, reportData); // 8 is the report ID for Voter Participation Report
+      await generatePdfReport(8, reportData); // 8 is the report ID for Voter Participation Report
     } catch (error) {
       console.error('Error downloading report:', error);
     }

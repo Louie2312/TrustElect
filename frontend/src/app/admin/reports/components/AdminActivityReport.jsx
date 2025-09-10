@@ -29,7 +29,7 @@ const AdminActivityReport = () => {
           headers: { Authorization: `Bearer ${token}` },
           params: {
             timeframe: selectedTimeframe,
-            action: selectedAction,
+            action: selectedAction !== 'all' ? selectedAction : undefined,
             page: currentPage,
             limit: 100,
             sort_by: 'created_at',
@@ -49,13 +49,25 @@ const AdminActivityReport = () => {
       }
 
       setData({
-        activities: activitiesResponse.data.data.activities,
-        summary: activitiesResponse.data.data.summary,
-        pagination: activitiesResponse.data.data.pagination
+        activities: activitiesResponse.data.data?.activities || [],
+        summary: summaryResponse.data.data || {},
+        pagination: activitiesResponse.data.data?.pagination || { totalPages: 1, currentPage: 1 }
       });
     } catch (error) {
       console.error('Error fetching admin activity data:', error);
       setError(error.message || 'Failed to fetch admin activity data');
+      
+      // Set fallback data to prevent complete failure
+      setData({
+        activities: [],
+        summary: {
+          total_activities: 0,
+          active_admins: 0,
+          activities_today: 0,
+          most_common_action: 'N/A'
+        },
+        pagination: { totalPages: 1, currentPage: 1 }
+      });
     } finally {
       setLoading(false);
     }

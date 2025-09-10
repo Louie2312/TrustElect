@@ -8,6 +8,33 @@ import { generatePdfReport } from '@/utils/pdfGenerator';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
+const getImageUrl = (imageUrl) => {
+  if (!imageUrl) return '/images/default-avatar.png';
+  if (imageUrl.startsWith('http')) return imageUrl;
+  if (imageUrl.startsWith('blob:')) return imageUrl;
+  
+  // Handle different image path formats
+  let cleanImageUrl = imageUrl;
+  
+  // Remove leading slashes
+  if (cleanImageUrl.startsWith('/')) {
+    cleanImageUrl = cleanImageUrl.substring(1);
+  }
+  
+  // If it already starts with uploads, use it directly
+  if (cleanImageUrl.startsWith('uploads/')) {
+    return `${API_BASE}/${cleanImageUrl}`;
+  }
+  
+  // If it's just a filename, assume it's in candidates folder
+  if (!cleanImageUrl.includes('/')) {
+    return `${API_BASE}/uploads/candidates/${cleanImageUrl}`;
+  }
+  
+  // Default case
+  return `${API_BASE}/uploads/candidates/${cleanImageUrl}`;
+};
+
 export default function CandidateListReport() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -98,7 +125,7 @@ export default function CandidateListReport() {
       };
 
       console.log('Download data:', downloadData); // Debug log
-      await generateReport(9, downloadData); // 9 is the report ID for Candidate List
+      await generatePdfReport(9, downloadData); // 9 is the report ID for Candidate List
     } catch (error) {
       console.error('Error downloading report:', error);
     }
@@ -226,13 +253,14 @@ export default function CandidateListReport() {
               <div className="divide-y">
                 {position.candidates.map((candidate) => (
                   <div key={candidate.id} className="p-4 flex items-center gap-4">
-                    {candidate.image_url && (
-                      <img
-                        src={candidate.image_url}
-                        alt={`${candidate.first_name} ${candidate.last_name}`}
-                        className="w-16 h-16 object-cover rounded-md"
-                      />
-                    )}
+                    <img
+                      src={getImageUrl(candidate.image_url)}
+                      alt={`${candidate.first_name} ${candidate.last_name}`}
+                      className="w-16 h-16 object-cover rounded-md"
+                      onError={(e) => {
+                        e.target.src = '/images/default-avatar.png';
+                      }}
+                    />
                     <div className="flex-1">
                       <h4 className="font-semibold text-gray-900">
                         {candidate.first_name} {candidate.last_name}

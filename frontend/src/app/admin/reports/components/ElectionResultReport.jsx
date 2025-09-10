@@ -8,6 +8,33 @@ import { generatePdfReport } from '@/utils/pdfGenerator';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
+const getImageUrl = (imageUrl) => {
+  if (!imageUrl) return '/images/default-avatar.png';
+  if (imageUrl.startsWith('http')) return imageUrl;
+  if (imageUrl.startsWith('blob:')) return imageUrl;
+  
+  // Handle different image path formats
+  let cleanImageUrl = imageUrl;
+  
+  // Remove leading slashes
+  if (cleanImageUrl.startsWith('/')) {
+    cleanImageUrl = cleanImageUrl.substring(1);
+  }
+  
+  // If it already starts with uploads, use it directly
+  if (cleanImageUrl.startsWith('uploads/')) {
+    return `${API_BASE}/${cleanImageUrl}`;
+  }
+  
+  // If it's just a filename, assume it's in candidates folder
+  if (!cleanImageUrl.includes('/')) {
+    return `${API_BASE}/uploads/candidates/${cleanImageUrl}`;
+  }
+  
+  // Default case
+  return `${API_BASE}/uploads/candidates/${cleanImageUrl}`;
+};
+
 const ElectionResultReport = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -148,7 +175,7 @@ const ElectionResultReport = () => {
         }))
       };
 
-      await generateReport(13, reportData); // 13 is the report ID for Election Result Report
+      await generatePdfReport(13, reportData); // 13 is the report ID for Election Result Report
     } catch (error) {
       console.error('Error downloading report:', error);
     }
@@ -244,16 +271,17 @@ const ElectionResultReport = () => {
                   <TableCell className="text-black">{result.position}</TableCell>
                   <TableCell className="text-black">
                     <div className="flex items-center gap-2">
-                      {result.image_url && (
-                        <div className="relative w-8 h-8 rounded-full overflow-hidden">
-                          <Image
-                            src={result.image_url}
-                            alt={result.candidate_name}
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
-                      )}
+                      <div className="relative w-8 h-8 rounded-full overflow-hidden">
+                        <Image
+                          src={getImageUrl(result.image_url)}
+                          alt={result.candidate_name}
+                          fill
+                          className="object-cover"
+                          onError={(e) => {
+                            e.target.src = '/images/default-avatar.png';
+                          }}
+                        />
+                      </div>
                       {result.candidate_name}
                     </div>
                   </TableCell>
