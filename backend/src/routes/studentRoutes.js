@@ -1,6 +1,6 @@
 const express = require("express");
 const { check } = require("express-validator");
-const { registerStudent, getAllStudents, getStudentById, editStudent, deleteStudent, restoreStudent, resetStudentPassword, permanentDeleteStudent, unlockStudentAccount, uploadStudentsBatch, getStudentElections, getStudentProfile, uploadProfilePicture, getAvailableCriteria, getStudentsByCourses, validateStudentByNumber, searchStudents, changePassword, bulkDeleteStudentsByCourse, bulkPermanentDeleteStudentsByCourse, bulkDeleteArchivedStudentsByCourse } = require("../controllers/studentController");
+const { registerStudent, getAllStudents, getStudentById, editStudent, deleteStudent, restoreStudent, resetStudentPassword, permanentDeleteStudent, unlockStudentAccount, uploadStudentsBatch, getStudentElections, getStudentProfile, uploadProfilePicture, getAvailableCriteria, getStudentsByCourses, validateStudentByNumber, searchStudents, changePassword, bulkDeleteStudentsByCourse, bulkPermanentDeleteStudentsByCourse, bulkDeleteArchivedStudentsByCourse, deleteAllStudents, permanentDeleteAllStudents } = require("../controllers/studentController");
 const { verifyToken, isStudent, isSuperAdmin, allowRoles } = require("../middlewares/authMiddleware");
 const router = express.Router();
 const upload = require('../middlewares/uploadMiddleware');
@@ -146,5 +146,9 @@ router.post("/students/change-password", verifyToken, isStudent, changePassword)
 router.post("/students/bulk-delete-by-course", verifyToken, isSuperAdmin, bulkDeleteStudentsByCourse);
 router.post("/students/bulk-permanent-delete-by-course", verifyToken, isSuperAdmin, bulkPermanentDeleteStudentsByCourse);
 router.post("/students/bulk-delete-archived-by-course", verifyToken, isSuperAdmin, bulkDeleteArchivedStudentsByCourse);
+
+// Delete all students routes
+router.post("/students/delete-all", verifyToken, isSuperAdmin, deleteAllStudents);
+router.post("/students/permanent-delete-all", verifyToken, isSuperAdmin, permanentDeleteAllStudents);
 
 module.exports = router;

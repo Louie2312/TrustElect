@@ -48,6 +48,11 @@ export default function ManageStudents() {
   const [deleteType, setDeleteType] = useState("archive"); // "archive" or "permanent"
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Delete all students states
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+  const [deleteAllType, setDeleteAllType] = useState("archive"); // "archive" or "permanent"
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
@@ -340,6 +345,41 @@ export default function ManageStudents() {
     }
   };
 
+  // Delete all students function
+  const handleDeleteAllStudents = async () => {
+    const confirmMessage = deleteAllType === "archive" 
+      ? `Are you sure you want to archive ALL ${students.length} students? This action cannot be undone.`
+      : `Are you sure you want to PERMANENTLY DELETE ALL ${students.length} students? This action cannot be undone and will remove all data permanently.`;
+
+    if (!confirm(confirmMessage)) return;
+
+    setIsDeletingAll(true);
+    try {
+      const token = Cookies.get("token");
+      const endpoint = deleteAllType === "archive" 
+        ? "/api/superadmin/students/delete-all"
+        : "/api/superadmin/students/permanent-delete-all";
+
+      const response = await axios.post(endpoint, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
+      });
+
+      if (response.data.success) {
+        alert(response.data.message);
+        setShowDeleteAllModal(false);
+        fetchStudents(); // Refresh the student list
+      } else {
+        alert(response.data.message || "Failed to delete all students.");
+      }
+    } catch (error) {
+      console.error("Error in delete all students:", error);
+      alert(error.response?.data?.message || "Failed to delete all students.");
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
+
   const calculateStats = () => {
     const courseStats = {};
     courses.forEach(course => {
@@ -581,6 +621,26 @@ export default function ManageStudents() {
           className="bg-red-600 text-white px-4 py-2 rounded"
         >
           Batch Delete by Course
+        </button>
+
+        <button 
+          onClick={() => {
+            setDeleteAllType("archive");
+            setShowDeleteAllModal(true);
+          }} 
+          className="bg-orange-500 text-white px-4 py-2 rounded"
+        >
+          Archive All Students
+        </button>
+
+        <button 
+          onClick={() => {
+            setDeleteAllType("permanent");
+            setShowDeleteAllModal(true);
+          }} 
+          className="bg-red-700 text-white px-4 py-2 rounded"
+        >
+          Delete All Students
         </button>
         
         <button onClick={() => router.push("/superadmin/students/archive")} className="bg-gray-600 text-white px-4 py-2 rounded">
@@ -935,6 +995,53 @@ export default function ManageStudents() {
                 disabled={isDeleting || !selectedCourseForDelete}
               >
                 {isDeleting ? "Processing..." : (deleteType === "archive" ? "Archive All" : "Delete All")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete All Students Modal */}
+      {showDeleteAllModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4 text-black">
+              {deleteAllType === "archive" ? "Archive All Students" : "Delete All Students"}
+            </h2>
+            
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
+              <p className="text-sm text-red-700">
+                <strong>Danger:</strong> This will {deleteAllType === "archive" ? "archive" : "permanently delete"} ALL {students.length} students in the system. 
+                {deleteAllType === "permanent" && " This action cannot be undone and will remove all data permanently!"}
+              </p>
+            </div>
+
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
+              <p className="text-sm text-blue-700">
+                <strong>Students to be affected:</strong> {students.length} total students
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button 
+                onClick={() => {
+                  setShowDeleteAllModal(false);
+                }} 
+                className="bg-gray-500 text-white px-4 py-2 rounded"
+                disabled={isDeletingAll}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleDeleteAllStudents}
+                className={`px-4 py-2 rounded text-white ${
+                  deleteAllType === "archive" 
+                    ? "bg-orange-500 hover:bg-orange-600" 
+                    : "bg-red-700 hover:bg-red-800"
+                }`}
+                disabled={isDeletingAll}
+              >
+                {isDeletingAll ? "Processing..." : (deleteAllType === "archive" ? "Archive All" : "Delete All")}
               </button>
             </div>
           </div>

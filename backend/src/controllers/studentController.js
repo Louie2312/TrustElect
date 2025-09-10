@@ -1,6 +1,6 @@
 const bcrypt = require("bcryptjs");
 const { validationResult } = require("express-validator");
-const { checkStudentNumberExists, registerStudent, getAllStudents, getStudentById, updateStudent, softDeleteStudent, restoreStudent, resetStudentPassword,bulkDeleteArchivedStudentsByCourse, bulkDeleteStudentsByCourse,deleteStudentPermanently, unlockStudentAccount, processBatchStudents, changePassword } = require("../models/studentModel");
+const { checkStudentNumberExists, registerStudent, getAllStudents, getStudentById, updateStudent, softDeleteStudent, restoreStudent, resetStudentPassword,bulkDeleteArchivedStudentsByCourse, bulkDeleteStudentsByCourse,deleteStudentPermanently, deleteAllStudents, unlockStudentAccount, processBatchStudents, changePassword } = require("../models/studentModel");
 const XLSX = require('xlsx');
 const fs = require('fs');
 const path = require('path');
@@ -1184,6 +1184,56 @@ exports.bulkDeleteArchivedStudentsByCourse = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error permanently deleting archived students by course",
+      error: error.message
+    });
+  }
+};
+
+// Delete all students (archive)
+exports.deleteAllStudents = async (req, res) => {
+  try {
+    const result = await deleteAllStudents(false); // false = archive (soft delete)
+
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      deletedCount: result.deletedCount,
+      students: result.students
+    });
+  } catch (error) {
+    console.error("Error in deleteAllStudents controller:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error archiving all students",
+      error: error.message
+    });
+  }
+};
+
+// Permanently delete all students
+exports.permanentDeleteAllStudents = async (req, res) => {
+  try {
+    const result = await deleteAllStudents(true); // true = permanent delete
+
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      deletedCount: result.deletedCount,
+      students: result.students
+    });
+  } catch (error) {
+    console.error("Error in permanentDeleteAllStudents controller:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error permanently deleting all students",
       error: error.message
     });
   }

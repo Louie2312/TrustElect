@@ -349,7 +349,7 @@ const bulkDeleteArchivedStudentsByCourse = async (courseName) => {
 
     // Permanent deletion from database
     await client.query(
-      "DELETE FROM students WHERE course_name = $1 AND is_active = false",
+      "DELETE FROM students WHERE course_name = $1 AND s.is_active = false",
       [courseName]
     );
     
@@ -373,6 +373,60 @@ const bulkDeleteArchivedStudentsByCourse = async (courseName) => {
   } catch (error) {
     await client.query("ROLLBACK");
     console.error("Error in bulk delete archived students by course:", error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+const deleteAllStudents = async (isPermanent = false) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // Get all students
+    const studentsQuery = `
+      SELECT s.id, s.user_id, s.first_name, s.last_name, s.student_number, s.course_name
+      FROM students s
+      ${isPermanent ? '' : 'WHERE s.is_active = true'}
+    `;
+    const studentsResult = await client.query(studentsQuery);
+    
+    if (studentsResult.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return { success: false, message: "No students found to delete" };
+    }
+
+    const userIds = studentsResult.rows.map(s => s.user_id);
+
+    if (isPermanent) {
+      // Permanent deletion - remove from database completely
+      await client.query("DELETE FROM students");
+      
+      // Delete associated users
+      if (userIds.length > 0) {
+        const userPlaceholders = userIds.map((_, index) => `$${index + 1}`).join(',');
+        await client.query(
+          `DELETE FROM users WHERE id IN (${userPlaceholders})`,
+          userIds
+        );
+      }
+    } else {
+      // Soft delete - mark all as inactive
+      await client.query("UPDATE students SET is_active = false WHERE is_active = true");
+    }
+
+    await client.query("COMMIT");
+    
+    return {
+      success: true,
+      deletedCount: studentsResult.rows.length,
+      students: studentsResult.rows,
+      message: `${studentsResult.rows.length} students ${isPermanent ? 'permanently deleted' : 'archived'}`
+    };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Error in delete all students:", error);
     throw error;
   } finally {
     client.release();
@@ -616,6 +670,7 @@ module.exports = {
   deleteStudentPermanently,
   bulkDeleteStudentsByCourse,
   bulkDeleteArchivedStudentsByCourse,
+  deleteAllStudents,
   unlockStudentAccount,
   processBatchStudents,
   changePassword

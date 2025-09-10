@@ -19,6 +19,10 @@ export default function ArchivedStudents() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [courses, setCourses] = useState([]);
 
+  // Delete all archived students states
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
+
   // Utility function to format names properly (Title Case)
   const formatName = (name) => {
     if (!name) return '';
@@ -135,6 +139,35 @@ export default function ArchivedStudents() {
     }
   };
 
+  // Delete all archived students function
+  const handleDeleteAllArchivedStudents = async () => {
+    const confirmMessage = `Are you sure you want to PERMANENTLY DELETE ALL ${students.length} archived students? This action cannot be undone and will remove all data permanently.`;
+
+    if (!confirm(confirmMessage)) return;
+
+    setIsDeletingAll(true);
+    try {
+      const token = Cookies.get("token");
+      const response = await axios.post("/api/superadmin/students/permanent-delete-all", {}, {
+        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
+      });
+
+      if (response.data.success) {
+        alert(response.data.message);
+        setShowDeleteAllModal(false);
+        fetchArchivedStudents(); // Refresh the student list
+      } else {
+        alert(response.data.message || "Failed to delete all archived students.");
+      }
+    } catch (error) {
+      console.error("Error in delete all archived students:", error);
+      alert(error.response?.data?.message || "Failed to delete all archived students.");
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
+
 
   useEffect(() => {
     fetchArchivedStudents();
@@ -154,6 +187,13 @@ export default function ArchivedStudents() {
           className="bg-red-600 text-white px-4 py-2 rounded"
         >
           Batch Delete by Course
+        </button>
+
+        <button 
+          onClick={() => setShowDeleteAllModal(true)} 
+          className="bg-red-700 text-white px-4 py-2 rounded"
+        >
+          Delete All Archived
         </button>
       </div>
 
@@ -248,6 +288,47 @@ export default function ArchivedStudents() {
                 disabled={isDeleting || !selectedCourseForDelete}
               >
                 {isDeleting ? "Deleting..." : "Delete All"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete All Archived Students Modal */}
+      {showDeleteAllModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4 text-black">Delete All Archived Students</h2>
+            
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
+              <p className="text-sm text-red-700">
+                <strong>Danger:</strong> This will PERMANENTLY DELETE ALL {students.length} archived students. 
+                This action cannot be undone and will remove all data permanently!
+              </p>
+            </div>
+
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
+              <p className="text-sm text-blue-700">
+                <strong>Archived students to be deleted:</strong> {students.length} total archived students
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button 
+                onClick={() => {
+                  setShowDeleteAllModal(false);
+                }} 
+                className="bg-gray-500 text-white px-4 py-2 rounded"
+                disabled={isDeletingAll}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleDeleteAllArchivedStudents}
+                className="bg-red-700 hover:bg-red-800 text-white px-4 py-2 rounded"
+                disabled={isDeletingAll}
+              >
+                {isDeletingAll ? "Deleting..." : "Delete All"}
               </button>
             </div>
           </div>
