@@ -8,8 +8,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import usePermissions from "@/hooks/usePermissions";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
-
 export default function AdminDepartmentsPage() {
   const router = useRouter();
   const [departments, setDepartments] = useState([]);
@@ -74,7 +72,7 @@ export default function AdminDepartmentsPage() {
       }
 
       // Get the current admin's profile first
-      const profileRes = await axios.get(`${API_BASE}/admin/profile`, {
+      const profileRes = await axios.get("/api/admin/profile", {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -99,7 +97,7 @@ export default function AdminDepartmentsPage() {
       }
 
       // Try to get department admins from the departments data
-      const departmentAdmins = departments.reduce((acc, dept) => {
+      const departmentAdmins = (departments || []).reduce((acc, dept) => {
         if (dept.admin_id && dept.admin_name) {
           // Only add if not already in the array
           if (!acc.some(admin => admin.id === dept.admin_id)) {
@@ -117,10 +115,36 @@ export default function AdminDepartmentsPage() {
         return acc;
       }, []);
 
-      // Merge the arrays, removing duplicates
-      adminsArray = [...adminsArray, ...departmentAdmins].filter((admin, index, self) =>
-        index === self.findIndex((a) => a.id === admin.id)
-      );
+      // If we don't have enough admin data, try to fetch from superadmin endpoint
+      if (adminsArray.length === 0 || (adminsArray.length === 1 && adminsArray[0].id === profileRes.data.id)) {
+        try {
+          const superAdminRes = await axios.get("/api/superadmin/admins", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            withCredentials: true
+          });
+          
+          const superAdminAdmins = superAdminRes.data.admins || superAdminRes.data || [];
+          const filteredSuperAdmins = superAdminAdmins.filter(admin => 
+            admin.is_active && 
+            !(admin.role_id === 1 || (admin.department === "Administration" && !admin.employee_number))
+          );
+          
+          // Merge with existing data
+          adminsArray = [...adminsArray, ...filteredSuperAdmins].filter((admin, index, self) =>
+            index === self.findIndex((a) => a.id === admin.id)
+          );
+        } catch (superAdminError) {
+          console.warn("Could not fetch from superadmin endpoint:", superAdminError.message);
+        }
+      } else {
+        // Merge the arrays, removing duplicates
+        adminsArray = [...adminsArray, ...departmentAdmins].filter((admin, index, self) =>
+          index === self.findIndex((a) => a.id === admin.id)
+        );
+      }
       
       // Enhance admin data with department information
       const enhancedAdmins = adminsArray.map(admin => ({
@@ -129,6 +153,10 @@ export default function AdminDepartmentsPage() {
       }));
       
       console.log("Enhanced admins:", enhancedAdmins);
+      console.log("Total admins found:", enhancedAdmins.length);
+      enhancedAdmins.forEach(admin => {
+        console.log(`Admin: ${admin.first_name} ${admin.last_name}, Department: ${admin.department}`);
+      });
       setAdmins(enhancedAdmins);
     } catch (error) {
       console.error("Error fetching admins:", error);
@@ -466,7 +494,11 @@ export default function AdminDepartmentsPage() {
               {filteredDepartments.map((department) => {
                 const departmentAdmins = admins.filter(admin => {
                   const departments = admin.department ? admin.department.split(',').map(d => d.trim()) : [];
-                  return departments.includes(department.department_name);
+                  const isAssigned = departments.includes(department.department_name);
+                  if (isAssigned) {
+                    console.log(`Admin ${admin.first_name} ${admin.last_name} is assigned to ${department.department_name}`);
+                  }
+                  return isAssigned;
                 });
                 
                 return (
