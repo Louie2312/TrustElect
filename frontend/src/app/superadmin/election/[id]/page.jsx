@@ -1383,31 +1383,31 @@ export default function ElectionDetailsPage() {
 
                         {/* Top 3 Candidates - Balanced display */}
                         {top3.length > 0 && (
-                          <div className="grid grid-cols-3 gap-8 mb-10">
+                          <div className="grid grid-cols-3 gap-12 mb-10">
                             {top3.map((candidate, index) => (
                               <div 
                                 key={candidate.id} 
-                                className={`flex flex-col items-center text-center p-6 rounded-xl shadow-lg ${
+                                className={`flex flex-col items-center text-center p-8 rounded-xl shadow-lg ${
                                   index === 0 ? 'bg-gradient-to-b from-blue-50 to-blue-100 border-2 border-blue-300' :
                                   index === 1 ? 'bg-gradient-to-b from-gray-50 to-gray-100 border-2 border-gray-300' :
                                   'bg-gradient-to-b from-orange-50 to-orange-100 border-2 border-orange-300'
                                 }`}
                               >
-                                <div className="relative mb-4">
-                                  <div className="relative w-32 h-40">
+                                <div className="relative mb-6">
+                                  <div className="relative w-40 h-48">
                                     {candidate.image_url && !imageErrors[candidate.id] ? (
                                       <Image
                                         src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
                                         alt={`${candidate.first_name} ${candidate.last_name}`}
                                         fill
-                                        sizes="128px"
+                                        sizes="160px"
                                         className="object-cover rounded-lg shadow-md"
                                         priority
                                         onError={() => handleImageError(candidate.id)}
                                       />
                                     ) : (
-                                      <div className="w-32 h-40 rounded-lg bg-gray-200 flex items-center justify-center shadow-md">
-                                        <User className="w-16 h-16 text-gray-400" />
+                                      <div className="w-40 h-48 rounded-lg bg-gray-200 flex items-center justify-center shadow-md">
+                                        <User className="w-20 h-20 text-gray-400" />
                                       </div>
                                     )}
                                     <div className={`absolute -top-3 -right-3 rounded-full p-2 text-base font-bold shadow-lg ${
@@ -1455,26 +1455,26 @@ export default function ElectionDetailsPage() {
                         {/* Other Candidates - Enhanced grid */}
                         {others.length > 0 && (
                           <div>
-                            <h4 className="font-bold text-gray-700 mb-6 text-xl text-center">Other Candidates</h4>
-                            <div className="grid grid-cols-3 gap-6">
+                            <h4 className="font-bold text-gray-700 mb-8 text-xl text-center">Other Candidates</h4>
+                            <div className="grid grid-cols-3 gap-8">
                               {others.map(candidate => (
                                 <div 
                                   key={candidate.id} 
-                                  className="flex flex-col items-center p-5 bg-gray-50 rounded-xl shadow-md hover:shadow-lg transition-shadow"
+                                  className="flex flex-col items-center p-6 bg-gray-50 rounded-xl shadow-md hover:shadow-lg transition-shadow"
                                 >
-                                  <div className="relative w-24 h-32 mb-4">
+                                  <div className="relative w-28 h-36 mb-4">
                                     {candidate.image_url && !imageErrors[candidate.id] ? (
                                       <Image
                                         src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
                                         alt={`${candidate.first_name} ${candidate.last_name}`}
                                         fill
-                                        sizes="96px"
+                                        sizes="112px"
                                         className="object-cover rounded-lg"
                                         onError={() => handleImageError(candidate.id)}
                                       />
                                     ) : (
-                                      <div className="w-24 h-32 rounded-lg bg-gray-200 flex items-center justify-center">
-                                        <User className="w-12 h-12 text-gray-400" />
+                                      <div className="w-28 h-36 rounded-lg bg-gray-200 flex items-center justify-center">
+                                        <User className="w-14 h-14 text-gray-400" />
                                       </div>
                                     )}
                                   </div>
@@ -1519,29 +1519,29 @@ export default function ElectionDetailsPage() {
 
                         {/* Top 3 Candidates */}
                         {top3.length > 0 && (
-                          <div className={`mb-8 ${isFullScreen ? 'grid grid-cols-3 gap-6' : 'space-y-3'}`}>
+                          <div className={`mb-8 ${isFullScreen ? 'grid grid-cols-3 gap-8' : 'space-y-3'}`}>
                             {top3.map((candidate, index) => (
                               <div 
                                 key={candidate.id} 
-                                className={`${isFullScreen ? 'flex flex-col items-center text-center p-6' : 'flex items-center p-3'} 
+                                className={`${isFullScreen ? 'flex flex-col items-center text-center p-8' : 'flex items-center p-3'} 
                                   bg-gray-50 rounded-lg border ${index === 0 ? 'border-blue-300' : index === 1 ? 'border-gray-300' : 'border-gray-200'} 
                                   ${isFullScreen && index === 0 ? 'shadow-lg bg-blue-50' : ''}`}
                               >
-                                <div className={`relative ${isFullScreen ? 'mb-4' : ''}`}>
-                                  <div className={`relative ${isFullScreen ? 'w-36 h-48' : 'w-16 h-20'} ${!isFullScreen ? 'mr-4' : ''}`}>
+                                <div className={`relative ${isFullScreen ? 'mb-6' : ''}`}>
+                                  <div className={`relative ${isFullScreen ? 'w-40 h-48' : 'w-16 h-20'} ${!isFullScreen ? 'mr-4' : ''}`}>
                                     {candidate.image_url && !imageErrors[candidate.id] ? (
                                       <Image
                                         src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
                                         alt={`${candidate.first_name} ${candidate.last_name}`}
                                         fill
-                                        sizes={isFullScreen ? "192px" : "80px"}
+                                        sizes={isFullScreen ? "160px" : "80px"}
                                         className="object-cover rounded-md"
                                         priority
                                         onError={() => handleImageError(candidate.id)}
                                       />
                                     ) : (
-                                      <div className={`${isFullScreen ? 'w-36 h-48' : 'w-16 h-20'} rounded-md bg-gray-200 flex items-center justify-center`}>
-                                        <User className={`${isFullScreen ? 'w-16 h-16' : 'w-8 h-8'} text-gray-400`} />
+                                      <div className={`${isFullScreen ? 'w-40 h-48' : 'w-16 h-20'} rounded-md bg-gray-200 flex items-center justify-center`}>
+                                        <User className={`${isFullScreen ? 'w-20 h-20' : 'w-8 h-8'} text-gray-400`} />
                                       </div>
                                     )}
                                     <div className={`absolute -top-2 -right-2 rounded-full p-1.5 text-xs font-bold ${
@@ -1595,26 +1595,26 @@ export default function ElectionDetailsPage() {
                         {/* Other Candidates */}
                         {others.length > 0 && (
                           <div>
-                            <h4 className={`font-medium text-gray-700 mb-3 ${isFullScreen ? 'text-xl' : ''}`}>Other Candidates</h4>
-                            <div className={`${isFullScreen ? 'grid grid-cols-2 md:grid-cols-3 gap-4' : 'space-y-3'}`}>
+                            <h4 className={`font-medium text-gray-700 mb-4 ${isFullScreen ? 'text-xl' : ''}`}>Other Candidates</h4>
+                            <div className={`${isFullScreen ? 'grid grid-cols-2 md:grid-cols-3 gap-6' : 'space-y-3'}`}>
                               {others.map(candidate => (
                                 <div 
                                   key={candidate.id} 
-                                  className={`flex items-center p-3 bg-gray-50 rounded-lg ${isFullScreen ? 'shadow-sm' : ''}`}
+                                  className={`flex items-center p-4 bg-gray-50 rounded-lg ${isFullScreen ? 'shadow-sm' : ''}`}
                                 >
-                                  <div className="relative w-16 h-20 mr-4">
+                                  <div className="relative w-20 h-24 mr-4">
                                     {candidate.image_url && !imageErrors[candidate.id] ? (
                                       <Image
                                         src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
                                         alt={`${candidate.first_name} ${candidate.last_name}`}
                                         fill
-                                        sizes="64px"
+                                        sizes="80px"
                                         className="object-cover rounded-md"
                                         onError={() => handleImageError(candidate.id)}
                                       />
                                     ) : (
-                                      <div className="w-16 h-20 rounded-md bg-gray-200 flex items-center justify-center">
-                                        <User className="w-8 h-8 text-gray-400" />
+                                      <div className="w-20 h-24 rounded-md bg-gray-200 flex items-center justify-center">
+                                        <User className="w-10 h-10 text-gray-400" />
                                       </div>
                                     )}
                                   </div>
