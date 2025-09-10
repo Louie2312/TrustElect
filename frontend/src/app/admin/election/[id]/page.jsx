@@ -959,34 +959,75 @@ export default function ElectionDetailsPage() {
                 <div key={position.id} className="mb-8 border-b pb-6">
                   <h3 className="text-lg font-medium text-black mb-4">{position.name}</h3>
                   {/* Winner banner (for completed elections) */}
-                  {election.status === 'completed' && position.candidates && position.candidates.length > 0 && (
-                    <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4 shadow-sm">
-                      <h4 className="text-sm font-medium text-blue-800 mb-2 flex items-center">
-                        <Award className="w-4 h-4 mr-1 text-blue-600" />
-                        Winner for {position.name}
-                      </h4>
-                      <div className="flex items-center">
-                        <div className="relative w-16 h-16 mr-4">
-                          {/* Winner image logic here if available */}
-                        </div>
-                        <div>
-                          <h4 className="font-bold text-black text-lg">
-                            {/* Winner name here */}
-                          </h4>
-                          {/* Winner party and votes here */}
+                  {election.status === 'completed' && position.candidates && position.candidates.length > 0 && (() => {
+                    const winner = position.candidates.reduce((prev, current) => 
+                      (prev.vote_count || 0) > (current.vote_count || 0) ? prev : current
+                    );
+                    return (
+                      <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4 shadow-sm">
+                        <h4 className="text-sm font-medium text-blue-800 mb-2 flex items-center">
+                          <Award className="w-4 h-4 mr-1 text-blue-600" />
+                          Winner for {position.name}
+                        </h4>
+                        <div className="flex items-center">
+                          <div className="relative w-16 h-16 mr-4">
+                            {winner.image_url && !imageErrors[winner.id] ? (
+                              <Image
+                                src={candidateImages[winner.id] || getImageUrl(winner.image_url)}
+                                alt={`${winner.first_name} ${winner.last_name}`}
+                                fill
+                                sizes="64px"
+                                className="object-cover rounded-lg"
+                                onError={() => handleImageError(winner.id)}
+                              />
+                            ) : (
+                              <div className="w-16 h-16 rounded-lg bg-gray-200 flex items-center justify-center">
+                                <User className="w-8 h-8 text-gray-400" />
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-black text-lg">
+                              {formatNameSimple(winner.last_name, winner.first_name, winner.name)}
+                            </h4>
+                            {winner.party && (
+                              <p className="text-sm text-gray-600 mb-1">{winner.party}</p>
+                            )}
+                            <p className="text-sm text-gray-600">
+                              {Number(winner.vote_count || 0).toLocaleString()} votes ({election.voter_count ? ((winner.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%)
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                   {/* Candidates sorted by votes */}
                   <div className="space-y-3">
                     {position.candidates && position.candidates.length > 0 ? (
-                      position.candidates.map((candidate, index) => (
+                      position.candidates
+                        .sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0))
+                        .map((candidate, index) => (
                         <div key={candidate.id} className={`flex items-center p-3 rounded-lg ${index === 0 && election.status === 'completed' ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'}`}>
+                          <div className="relative w-12 h-12 mr-4 flex-shrink-0">
+                            {candidate.image_url && !imageErrors[candidate.id] ? (
+                              <Image
+                                src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
+                                alt={`${candidate.first_name} ${candidate.last_name}`}
+                                fill
+                                sizes="48px"
+                                className="object-cover rounded-lg"
+                                onError={() => handleImageError(candidate.id)}
+                              />
+                            ) : (
+                              <div className="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center">
+                                <User className="w-6 h-6 text-gray-400" />
+                              </div>
+                            )}
+                          </div>
                           <div className="flex-1">
                             <div className="flex items-center">
                               <h4 className="font-medium text-black">
-                                {candidate.first_name} {candidate.last_name}
+                                {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
                               </h4>
                               {candidate.party && (
                                 <span className="ml-2 px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
@@ -998,11 +1039,11 @@ export default function ElectionDetailsPage() {
                               <div className="w-48 h-2 bg-gray-200 rounded-full overflow-hidden">
                                 <div 
                                   className="h-full bg-blue-500 rounded-full"
-                                  style={{ width: `${candidate.percentage || 0}%` }}
+                                  style={{ width: `${election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : 0}%` }}
                                 />
                               </div>
                               <span className="ml-3 text-black">
-                                {Number(candidate.vote_count || 0).toLocaleString()} votes ({candidate.percentage || 0}%)
+                                {Number(candidate.vote_count || 0).toLocaleString()} votes ({election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%)
                               </span>
                             </div>
                           </div>
