@@ -275,17 +275,85 @@ exports.uploadStudentsBatch = async (req, res) => {
 
     const workbook = XLSX.read(fs.readFileSync(filePath));
     const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-    let jsonData = XLSX.utils.sheet_to_json(worksheet);
-
+    
+    // Try to detect the actual header row by looking for meaningful column names
+    let jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }); // Get raw data as arrays
+    
     if (jsonData.length === 0) {
       return res.status(400).json({ message: 'Excel file contains no data' });
     }
 
-    // Log the raw Excel data for debugging (only in development)
-    if (process.env.NODE_ENV === 'production') {
-      console.log('Raw Excel data (first 3 rows):', JSON.stringify(jsonData.slice(0, 3), null, 2));
-      console.log('Available columns:', Object.keys(jsonData[0] || {}));
+    // Find the header row by looking for common student data column names
+    let headerRowIndex = 0;
+    let bestHeaderRow = 0;
+    let maxMatches = 0;
+    
+    for (let i = 0; i < Math.min(jsonData.length, 10); i++) { // Check first 10 rows
+      const row = jsonData[i];
+      if (!row || row.length === 0) continue;
+      
+      const rowText = row.join(' ').toLowerCase();
+      const matches = [
+        'first', 'last', 'name', 'student', 'number', 'course', 'year', 'level', 'gender'
+      ].filter(keyword => rowText.includes(keyword)).length;
+      
+      if (matches > maxMatches) {
+        maxMatches = matches;
+        bestHeaderRow = i;
+      }
     }
+    
+    headerRowIndex = bestHeaderRow;
+    
+    // If no good header row found, try to use the first row and clean it up
+    if (maxMatches === 0) {
+      console.log('No clear header row found, using first row and attempting to clean up');
+      headerRowIndex = 0;
+    }
+    
+    // Extract headers from the best row
+    const headers = jsonData[headerRowIndex] || [];
+    
+    // Clean up headers - remove empty ones and normalize
+    const cleanHeaders = headers.map((header, index) => {
+      if (!header || String(header).trim() === '' || String(header).startsWith('_EMPTY')) {
+        return `Column_${index + 1}`; // Give empty columns a generic name
+      }
+      return String(header).trim();
+    });
+    
+    // Convert to JSON format using the cleaned headers
+    const dataRows = jsonData.slice(headerRowIndex + 1);
+    jsonData = dataRows.map(row => {
+      const obj = {};
+      cleanHeaders.forEach((header, index) => {
+        obj[header] = row[index] || '';
+      });
+      return obj;
+    }).filter(row => {
+      // Filter out completely empty rows
+      return Object.values(row).some(value => value && String(value).trim() !== '');
+    });
+    
+    // If we still have no data after processing, return an error
+    if (jsonData.length === 0) {
+      return res.status(400).json({ 
+        message: 'No valid data found in Excel file. Please check that your file has proper column headers and data.',
+        debug: {
+          originalHeaders: headers,
+          cleanedHeaders: cleanHeaders,
+          headerRowIndex: headerRowIndex,
+          totalRows: dataRows.length
+        }
+      });
+    }
+
+    // Log the raw Excel data for debugging
+    console.log('Raw Excel data (first 3 rows):', JSON.stringify(jsonData.slice(0, 3), null, 2));
+    console.log('Available columns:', Object.keys(jsonData[0] || {}));
+    console.log('Header row index:', headerRowIndex);
+    console.log('Original headers:', headers);
+    console.log('Cleaned headers:', cleanHeaders);
 
     jsonData = jsonData.map((row, index) => {
       const normalizedRow = {};
@@ -304,35 +372,31 @@ exports.uploadStudentsBatch = async (req, res) => {
         }
       
         // Map various possible column names to our expected format
-        if (normalizedKey === 'firstname' || normalizedKey === 'first' || normalizedKey === 'fname' || 
-            normalizedKey === 'givenname' || normalizedKey === 'given' || normalizedKey === 'firstname') {
+        // Use more flexible matching that looks for keywords within the column name
+        if (normalizedKey.includes('first') && normalizedKey.includes('name')) {
           normalizedRow.firstName = row[key];
-        } else if (normalizedKey === 'middlename' || normalizedKey === 'middle' || normalizedKey === 'mname' || 
-                   normalizedKey === 'mi' || normalizedKey === 'middleinitial') {
+        } else if (normalizedKey.includes('middle') && normalizedKey.includes('name')) {
           normalizedRow.middleName = row[key];
-        } else if (normalizedKey === 'lastname' || normalizedKey === 'last' || normalizedKey === 'lname' || 
-                   normalizedKey === 'surname' || normalizedKey === 'familyname' || normalizedKey === 'family') {
+        } else if ((normalizedKey.includes('last') && normalizedKey.includes('name')) || 
+                   normalizedKey.includes('surname') || normalizedKey.includes('family')) {
           normalizedRow.lastName = row[key];
-        } else if (normalizedKey === 'studentnumber' || normalizedKey === 'studentno' || normalizedKey === 'idnumber' || 
-                   normalizedKey === 'id' || normalizedKey === 'studentid' || normalizedKey === 'student_id' ||
-                   normalizedKey === 'studentno' || normalizedKey === 'student_num' || normalizedKey === 'studentnum') {
+        } else if ((normalizedKey.includes('student') && normalizedKey.includes('number')) ||
+                   (normalizedKey.includes('student') && normalizedKey.includes('id')) ||
+                   normalizedKey.includes('studentno') || normalizedKey.includes('studentnum') ||
+                   (normalizedKey.includes('id') && !normalizedKey.includes('email'))) {
           normalizedRow.studentNumber = String(row[key]); // Ensure it's a string
-        } else if (normalizedKey === 'coursename' || normalizedKey === 'course' || normalizedKey === 'program' || 
-                   normalizedKey === 'programname' || normalizedKey === 'degree' || normalizedKey === 'major' ||
-                   normalizedKey === 'course_name' || normalizedKey === 'program_name') {
+        } else if (normalizedKey.includes('course') || normalizedKey.includes('program') || 
+                   normalizedKey.includes('degree') || normalizedKey.includes('major')) {
           normalizedRow.courseName = row[key];
-        } else if (normalizedKey === 'yearlevel' || normalizedKey === 'year' || normalizedKey === 'level' || 
-                   normalizedKey === 'yearlevel' || normalizedKey === 'grade' || normalizedKey === 'class' ||
-                   normalizedKey === 'year_level' || normalizedKey === 'academicyear' || normalizedKey === 'academicyearlevel') {
+        } else if ((normalizedKey.includes('year') && normalizedKey.includes('level')) ||
+                   normalizedKey.includes('grade') || normalizedKey.includes('class') ||
+                   normalizedKey.includes('academicyear')) {
           normalizedRow.yearLevel = row[key];
-        } else if (normalizedKey === 'gender' || normalizedKey === 'sex' || normalizedKey === 'g' ||
-                   normalizedKey === 'male' || normalizedKey === 'female') {
+        } else if (normalizedKey.includes('gender') || normalizedKey.includes('sex')) {
           normalizedRow.gender = row[key];
-        } else if (normalizedKey === 'birthdate' || normalizedKey === 'birthday' || normalizedKey === 'dob' || 
-                   normalizedKey === 'birth' || normalizedKey === 'dateofbirth' || normalizedKey === 'birth_date') {
+        } else if (normalizedKey.includes('birth') || normalizedKey.includes('dob')) {
           normalizedRow.birthdate = row[key];
-        } else if (normalizedKey === 'email' || normalizedKey === 'emailaddress' || normalizedKey === 'e_mail' ||
-                   normalizedKey === 'email_addr' || normalizedKey === 'mail') {
+        } else if (normalizedKey.includes('email') || normalizedKey.includes('mail')) {
           normalizedRow.email = row[key];
         } else {
           // Keep original column for debugging

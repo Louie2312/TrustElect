@@ -602,7 +602,22 @@ export default function ManageStudents() {
           <div className="bg-white p-6 rounded-lg w-full max-w-2xl">
             <h2 className="text-xl font-bold mb-4 text-black">Batch Upload Students</h2>
             
-        
+            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded">
+              <h3 className="font-bold text-blue-800 mb-2">Excel File Requirements:</h3>
+              <ul className="text-sm text-blue-700 space-y-1">
+                <li>• <strong>Required columns:</strong> First Name, Last Name, Student Number, Course Name, Year Level, Gender</li>
+                <li>• <strong>Student Number format:</strong> Must be 11 digits starting with "02000" (e.g., 02000123456)</li>
+                <li>• <strong>Year Level:</strong> 1st Year, 2nd Year, 3rd Year, 4th Year, Grade 11, or Grade 12</li>
+                <li>• <strong>Gender:</strong> Male or Female</li>
+                <li>• <strong>Optional columns:</strong> Middle Name, Email, Birthdate</li>
+              </ul>
+              <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded">
+                <p className="text-xs text-yellow-700">
+                  <strong>Note:</strong> If you're getting "_EMPTY" column errors, your Excel file may have empty column headers. 
+                  Make sure your first row contains proper column names like "First Name", "Last Name", etc.
+                </p>
+              </div>
+            </div>
             
             <div 
               {...getRootProps()} 
