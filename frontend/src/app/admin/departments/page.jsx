@@ -8,6 +8,8 @@ import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import usePermissions from "@/hooks/usePermissions";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
+
 export default function AdminDepartmentsPage() {
   const router = useRouter();
   const [departments, setDepartments] = useState([]);
@@ -123,8 +125,7 @@ export default function AdminDepartmentsPage() {
       // Enhance admin data with department information
       const enhancedAdmins = adminsArray.map(admin => ({
         ...admin,
-        department: admin.department || '',
-        departments: admin.department ? admin.department.split(',').map(d => d.trim()) : []
+        department: admin.department || ''
       }));
       
       console.log("Enhanced admins:", enhancedAdmins);
@@ -464,8 +465,8 @@ export default function AdminDepartmentsPage() {
             <tbody className="divide-y divide-gray-200">
               {filteredDepartments.map((department) => {
                 const departmentAdmins = admins.filter(admin => {
-                  const adminDepartments = admin.departments || [];
-                  return adminDepartments.includes(department.department_name);
+                  const departments = admin.department ? admin.department.split(',').map(d => d.trim()) : [];
+                  return departments.includes(department.department_name);
                 });
                 
                 return (
@@ -497,9 +498,10 @@ export default function AdminDepartmentsPage() {
                                   <span className="text-gray-500 text-xs">
                                     {admin.email}
                                   </span>
-                                  {admin.departments && admin.departments.length > 1 && (
+                                  {admin.department && admin.department.split(',').length > 1 && (
                                     <span className="text-xs text-blue-600">
-                                      Also in: {admin.departments
+                                      Also in: {admin.department.split(',')
+                                        .map(d => d.trim())
                                         .filter(d => d !== department.department_name)
                                         .join(', ')}
                                     </span>
@@ -937,7 +939,7 @@ function AssignAdminModal({ department, admins: initialAdmins, onClose, onSucces
                     <div>
                       <span className="font-medium">{admin.first_name} {admin.last_name}</span>
                       <span className="text-gray-500 text-sm block">{admin.email}</span>
-                      {admin.department && admin.department !== department.department_name && (
+                      {admin.department && !admin.department.split(',').map(d => d.trim()).includes(department.department_name) && (
                         <span className="text-amber-600 text-xs">
                           Currently assigned to: {admin.department}
                         </span>
