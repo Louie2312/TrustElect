@@ -63,18 +63,12 @@ export default function StudentProfilePage() {
       setCourseName(res.data.courseName || "");
       setYearLevel(res.data.yearLevel || "");
 
-      // Format image URL properly
-      let imageUrl = "https://via.placeholder.com/100";
-      if (res.data.profile_picture) {
-        // If it's already a full URL, use it as is
-        if (res.data.profile_picture.startsWith('http')) {
-          imageUrl = `${res.data.profile_picture}?timestamp=${new Date().getTime()}`;
-        } else {
-          // If it's a relative path, make it absolute
-          const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
-          imageUrl = `${baseUrl}${res.data.profile_picture}?timestamp=${new Date().getTime()}`;
-        }
-      }
+      // Handle both absolute and relative URLs, prevent duplicate query strings
+      const rawUrl = res.data.profile_picture || null;
+      const baseProfileUrl = rawUrl ? rawUrl.split("?")[0] : null;
+      const isAbsolute = baseProfileUrl && /^https?:\/\//i.test(baseProfileUrl);
+      const finalBase = isAbsolute ? baseProfileUrl : baseProfileUrl ? `https://trustelectonline.com${baseProfileUrl}` : null;
+      const imageUrl = finalBase ? `${finalBase}?timestamp=${new Date().getTime()}` : "https://via.placeholder.com/100";
 
       setProfilePic(imageUrl);
       setLoading(false);
@@ -123,24 +117,17 @@ export default function StudentProfilePage() {
         return;
       }
 
-      // Format the uploaded image URL properly
-      let imageUrl = "https://via.placeholder.com/100";
-      if (res.data.filePath) {
-        // If it's already a full URL, use it as is
-        if (res.data.filePath.startsWith('http')) {
-          imageUrl = `${res.data.filePath}?timestamp=${new Date().getTime()}`;
-        } else {
-          // If it's a relative path, make it absolute
-          const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
-          imageUrl = `${baseUrl}${res.data.filePath}?timestamp=${new Date().getTime()}`;
-        }
-      }
-
-      setProfilePic(imageUrl);
+      // Handle both absolute and relative URLs from upload response
+      const cleanPath = (res.data.url || res.data.filePath || "").split("?")[0];
+      const isAbsolute = /^https?:\/\//i.test(cleanPath);
+      const finalBase = isAbsolute ? cleanPath : `https://trustelectonline.com${cleanPath}`;
+      const uploadImageUrl = `${finalBase}?timestamp=${new Date().getTime()}`;
+      
+      setProfilePic(uploadImageUrl);
       setPreviewImage(null);
       setSelectedFile(null);
       setUploadSuccess(true);
-      console.log("Profile Picture Updated:", imageUrl);
+      console.log("Profile Picture Updated:", uploadImageUrl);
       
       // Trigger profile update event for sidebar
       window.dispatchEvent(new Event("profileUpdated"));
@@ -256,15 +243,6 @@ export default function StudentProfilePage() {
                 src={previewImage || profilePic} 
                 alt="Profile" 
                 className="w-32 h-32 rounded-full mx-auto border-2 border-gray-300 object-cover"
-                onError={(e) => {
-                  console.log("Error loading profile image:", e.target.src);
-                  // Try fallback URL
-                  if (!e.target.src.includes('via.placeholder.com')) {
-                    const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
-                    const fallbackUrl = `${baseUrl}/api/uploads/profiles/${profilePic.split('/').pop()}`;
-                    e.target.src = fallbackUrl;
-                  }
-                }}
               />
               
               {!previewImage && (

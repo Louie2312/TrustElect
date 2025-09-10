@@ -21,29 +21,25 @@ export default function Sidebar() {
         withCredentials: true,
       });
   
-      console.log("Sidebar updated profile:", res.data);
+      console.log("Sidebar updated student profile:", res.data);
   
       // Update Sidebar Name
       const firstName = res.data.firstName || "";
       const lastName = res.data.lastName || "";
       setStudentName(`${firstName} ${lastName}`);
   
-      // Format image URL properly
-      let imageUrl = "https://via.placeholder.com/80";
-      if (res.data.profile_picture) {
-        // If it's already a full URL, use it as is
-        if (res.data.profile_picture.startsWith('http')) {
-          imageUrl = `${res.data.profile_picture}?timestamp=${new Date().getTime()}`;
-        } else {
-          // If it's a relative path, make it absolute
-          const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
-          imageUrl = `${baseUrl}${res.data.profile_picture}?timestamp=${new Date().getTime()}`;
-        }
-      }
+      // Handle both absolute and relative URLs, prevent duplicate query strings
+      const rawUrl = res.data.profile_picture || null;
+      const baseProfileUrl = rawUrl ? rawUrl.split("?")[0] : null;
+      const isAbsolute = baseProfileUrl && /^https?:\/\//i.test(baseProfileUrl);
+      const finalBase = isAbsolute ? baseProfileUrl : baseProfileUrl ? `https://trustelectonline.com${baseProfileUrl}` : null;
+      const imageUrl = finalBase ? `${finalBase}?timestamp=${new Date().getTime()}` : "https://via.placeholder.com/80";
 
       setProfilePic(imageUrl);
     } catch (error) {
-      console.error("Error fetching profile:", error);
+      console.error("Error fetching student profile:", error);
+      // Set fallback image on error
+      setProfilePic("https://via.placeholder.com/80");
     }
   };
   
@@ -67,16 +63,7 @@ export default function Sidebar() {
             <img
               src={profilePic}
               alt="Profile"
-              className="w-20 h-20 rounded-full mx-auto border-2 border-white hover:opacity-80"
-              onError={(e) => {
-                console.log("Error loading sidebar profile image:", e.target.src);
-                // Try fallback URL
-                if (!e.target.src.includes('via.placeholder.com')) {
-                  const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
-                  const fallbackUrl = `${baseUrl}/api/uploads/profiles/${profilePic.split('/').pop()}`;
-                  e.target.src = fallbackUrl;
-                }
-              }}
+              className="w-20 h-20 rounded-full mx-auto border-2 border-white hover:opacity-80 object-cover"
             />
           </div>
           <h3 className="mt-2 text-lg font-semibold">{studentName}</h3>
@@ -91,16 +78,7 @@ export default function Sidebar() {
               <img 
                 src={profilePic} 
                 alt="Profile" 
-                className="w-40 h-40 rounded-full mx-auto border-4 border-gray-300"
-                onError={(e) => {
-                  console.log("Error loading modal profile image:", e.target.src);
-                  // Try fallback URL
-                  if (!e.target.src.includes('via.placeholder.com')) {
-                    const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
-                    const fallbackUrl = `${baseUrl}/api/uploads/profiles/${profilePic.split('/').pop()}`;
-                    e.target.src = fallbackUrl;
-                  }
-                }}
+                className="w-40 h-40 rounded-full mx-auto border-4 border-gray-300 object-cover"
               />
             </div>
           </div>
