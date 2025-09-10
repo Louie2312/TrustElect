@@ -127,6 +127,7 @@ export default function AdminReportsPage() {
           const summaryResponse = await axios.get(`${API_BASE}${endpoint}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
+          console.log('Election Summary Response:', summaryResponse.data);
           transformedData = summaryResponse.data;
           break;
 
@@ -266,14 +267,22 @@ export default function AdminReportsPage() {
         );
       case 4:
         return (
-          <ReportDetailsModal
-            report={report}
-            onClose={() => setSelectedReport(null)}
-            onDownload={() => {
-              downloadReport(report.id);
-              setSelectedReport(null);
-            }}
-          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col border border-gray-200">
+              <div className="flex justify-between items-center p-6 border-b">
+                <h2 className="text-2xl font-bold text-gray-800">{report.title}</h2>
+                <button 
+                  onClick={() => setSelectedReport(null)} 
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="p-6 flex-grow overflow-y-auto">
+                <ElectionSummaryReport />
+              </div>
+            </div>
+          </div>
         );
       case 5:
         return (

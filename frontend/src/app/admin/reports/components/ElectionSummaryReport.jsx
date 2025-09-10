@@ -73,6 +73,7 @@ export default function ElectionSummaryReport() {
       });
 
       if (response.data.success) {
+        console.log('Election Summary Data:', response.data.data);
         setSummaryData(response.data.data);
       } else {
         throw new Error(response.data.message || 'Failed to fetch election summary data');
@@ -223,6 +224,14 @@ export default function ElectionSummaryReport() {
     return (
       <div className="text-red-500 text-center p-4">
         {error}
+      </div>
+    );
+  }
+
+  if (!summaryData) {
+    return (
+      <div className="text-center p-8">
+        <p className="text-gray-500">No election data available</p>
       </div>
     );
   }
