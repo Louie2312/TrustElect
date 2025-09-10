@@ -6,6 +6,17 @@ const fs = require('fs');
 const path = require('path');
 const pool = require("../config/db");
 
+const buildAbsoluteUrl = (req, relativePath) => {
+  if (!relativePath) return null;
+  let basePath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
+  // Normalize to /api/uploads if the path starts with /uploads
+  if (basePath.startsWith('/uploads/')) {
+    basePath = `/api${basePath}`; // serve under /api/uploads as well
+  }
+  const protocol = req.protocol;
+  const host = req.get('host');
+  return `${protocol}://${host}${basePath}`;
+};
 
 const generateStudentPassword = (lastName, studentNumber) => {
   // Format lastName to proper case (Title Case)
@@ -807,15 +818,13 @@ exports.getStudentProfile = async (req, res) => {
       }
 
       const profile = result.rows[0];
-      if (profile.profile_picture) {
-        // Return absolute URL for production, relative for development
-        const baseUrl = process.env.NODE_ENV === 'production' 
-          ? (req.protocol + '://' + req.get('host'))
-          : '';
-        profile.profile_picture = `${baseUrl}/uploads/profiles/${profile.profile_picture}`;
-      }
+      const filePath = profile.profile_picture ? `/uploads/profiles/${profile.profile_picture}` : null;
+      const absoluteUrl = buildAbsoluteUrl(req, filePath);
 
-      return res.status(200).json(profile);
+      return res.status(200).json({
+        ...profile,
+        profile_picture: absoluteUrl || null
+      });
       
     } catch (err) {
       console.error("Database error in getStudentProfile:", err);
@@ -867,13 +876,14 @@ exports.uploadProfilePicture = async (req, res) => {
         WHERE id = $2
       `, [req.file.filename, actualStudentId]);
       
-      // Return absolute URL for production, relative for development
-      const baseUrl = process.env.NODE_ENV === 'production' 
-        ? (req.protocol + '://' + req.get('host'))
-        : '';
-      const filePath = `${baseUrl}/uploads/profiles/${req.file.filename}`;
+      const filePath = `/uploads/profiles/${req.file.filename}`;
+      const absoluteUrl = buildAbsoluteUrl(req, filePath);
       
-      return res.json({ success: true, filePath });
+      return res.json({ 
+        success: true, 
+        filePath: filePath,
+        url: absoluteUrl
+      });
     } catch (err) {
       console.error("Database error in uploadProfilePicture:", err);
       return res.status(500).json({ message: "Database error: " + err.message });

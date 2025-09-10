@@ -445,6 +445,49 @@ app.get('/uploads/images/:filename', (req, res) => {
   }
 });
 
+// Specific route to handle profile image requests
+app.get('/uploads/profiles/:filename', (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const imagePath = path.join(__dirname, '../uploads/profiles', filename);
+    
+    console.log('Requested profile image:', filename);
+    console.log('Full path:', imagePath);
+    console.log('File exists:', fs.existsSync(imagePath));
+    
+    if (!fs.existsSync(imagePath)) {
+      console.log('Profile image not found:', imagePath);
+      return res.status(404).json({ error: 'Profile image not found' });
+    }
+    
+    // Set appropriate content type
+    const ext = path.extname(filename).toLowerCase();
+    let contentType = 'application/octet-stream';
+    
+    if (ext === '.jpg' || ext === '.jpeg') {
+      contentType = 'image/jpeg';
+    } else if (ext === '.png') {
+      contentType = 'image/png';
+    } else if (ext === '.gif') {
+      contentType = 'image/gif';
+    } else if (ext === '.webp') {
+      contentType = 'image/webp';
+    }
+    
+    res.set('Content-Type', contentType);
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.set('Access-Control-Allow-Origin', '*');
+    
+    res.sendFile(imagePath);
+  } catch (error) {
+    console.error('Error serving profile image:', error);
+    res.status(500).json({ error: 'Error serving profile image' });
+  }
+});
+
 // Test endpoint to check if a specific image exists
 app.get('/api/test-image/:filename', (req, res) => {
   try {
