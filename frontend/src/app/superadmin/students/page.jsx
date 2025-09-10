@@ -42,6 +42,12 @@ export default function ManageStudents() {
   const [batchResults, setBatchResults] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
 
+  // Batch delete states
+  const [showBatchDeleteModal, setShowBatchDeleteModal] = useState(false);
+  const [selectedCourseForDelete, setSelectedCourseForDelete] = useState("");
+  const [deleteType, setDeleteType] = useState("archive"); // "archive" or "permanent"
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
@@ -275,6 +281,50 @@ export default function ManageStudents() {
     setBatchResults(null);
   };
 
+  // Batch delete functions
+  const handleBatchDelete = async () => {
+    if (!selectedCourseForDelete) {
+      alert("Please select a course to delete students from.");
+      return;
+    }
+
+    const confirmMessage = deleteType === "archive" 
+      ? `Are you sure you want to archive ALL students from ${selectedCourseForDelete}? This action cannot be undone.`
+      : `Are you sure you want to PERMANENTLY DELETE ALL students from ${selectedCourseForDelete}? This action cannot be undone and will remove all data permanently.`;
+
+    if (!confirm(confirmMessage)) return;
+
+    setIsDeleting(true);
+    try {
+      const token = Cookies.get("token");
+      const endpoint = deleteType === "archive" 
+        ? "/api/superadmin/students/bulk-delete-by-course"
+        : "/api/superadmin/students/bulk-permanent-delete-by-course";
+
+      const response = await axios.post(endpoint, 
+        { courseName: selectedCourseForDelete },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          withCredentials: true,
+        }
+      );
+
+      if (response.data.success) {
+        alert(response.data.message);
+        setShowBatchDeleteModal(false);
+        setSelectedCourseForDelete("");
+        fetchStudents(); // Refresh the student list
+      } else {
+        alert(response.data.message || "Failed to delete students.");
+      }
+    } catch (error) {
+      console.error("Error in batch delete:", error);
+      alert(error.response?.data?.message || "Failed to delete students.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const calculateStats = () => {
     const courseStats = {};
     courses.forEach(course => {
@@ -497,6 +547,26 @@ export default function ManageStudents() {
         >
           Batch Upload
         </button>
+
+        <button 
+          onClick={() => {
+            setDeleteType("archive");
+            setShowBatchDeleteModal(true);
+          }} 
+          className="bg-orange-600 text-white px-4 py-2 rounded"
+        >
+          Batch Archive by Course
+        </button>
+
+        <button 
+          onClick={() => {
+            setDeleteType("permanent");
+            setShowBatchDeleteModal(true);
+          }} 
+          className="bg-red-600 text-white px-4 py-2 rounded"
+        >
+          Batch Delete by Course
+        </button>
         
         <button onClick={() => router.push("/superadmin/students/archive")} className="bg-gray-600 text-white px-4 py-2 rounded">
           Archived
@@ -602,7 +672,8 @@ export default function ManageStudents() {
           <div className="bg-white p-6 rounded-lg w-full max-w-2xl">
             <h2 className="text-xl font-bold mb-4 text-black">Batch Upload Students</h2>
             
-           
+            
+            
             <div 
               {...getRootProps()} 
               className={`border-2 border-dashed p-8 text-center cursor-pointer ${
@@ -781,6 +852,74 @@ export default function ManageStudents() {
                 className="bg-gray-500 text-white px-4 py-2 rounded"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Delete Modal */}
+      {showBatchDeleteModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4 text-black">
+              {deleteType === "archive" ? "Batch Archive Students" : "Batch Delete Students"}
+            </h2>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Select Course:
+              </label>
+              <select 
+                value={selectedCourseForDelete} 
+                onChange={(e) => setSelectedCourseForDelete(e.target.value)}
+                className="w-full border p-2 rounded text-black"
+              >
+                <option value="">Select a course...</option>
+                {courses.map((course) => (
+                  <option key={course} value={course}>
+                    {course}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+              <p className="text-sm text-yellow-700">
+                <strong>Warning:</strong> This will {deleteType === "archive" ? "archive" : "permanently delete"} ALL students from the selected course. 
+                {deleteType === "permanent" && " This action cannot be undone!"}
+              </p>
+            </div>
+
+            {selectedCourseForDelete && (
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
+                <p className="text-sm text-blue-700">
+                  <strong>Students to be affected:</strong> {students.filter(student => student.course_name === selectedCourseForDelete).length} students from {selectedCourseForDelete}
+                </p>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <button 
+                onClick={() => {
+                  setShowBatchDeleteModal(false);
+                  setSelectedCourseForDelete("");
+                }} 
+                className="bg-gray-500 text-white px-4 py-2 rounded"
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleBatchDelete}
+                className={`px-4 py-2 rounded text-white ${
+                  deleteType === "archive" 
+                    ? "bg-orange-600 hover:bg-orange-700" 
+                    : "bg-red-600 hover:bg-red-700"
+                }`}
+                disabled={isDeleting || !selectedCourseForDelete}
+              >
+                {isDeleting ? "Processing..." : (deleteType === "archive" ? "Archive All" : "Delete All")}
               </button>
             </div>
           </div>
