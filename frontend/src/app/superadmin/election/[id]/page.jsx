@@ -1481,11 +1481,8 @@ export default function ElectionDetailsPage() {
                                     </div>
                                   )}
                                   <div className="mt-4">
-                                    <div className="font-bold text-black text-3xl mb-1">
-                                      {Number(candidate.vote_count || 0).toLocaleString()}
-                                    </div>
                                     <div className="text-lg text-black mb-3">
-                                      Votes ({election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%)
+                                      {Number(candidate.vote_count || 0).toLocaleString()} Votes ({election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%)
                                     </div>
                                     <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
                                       <div 
@@ -1538,11 +1535,8 @@ export default function ElectionDetailsPage() {
                                         {candidate.party}
                                       </div>
                                     )}
-                                    <div className="font-bold text-black text-xl mb-1">
-                                      {Number(candidate.vote_count || 0).toLocaleString()}
-                                    </div>
                                     <div className="text-sm text-black">
-                                      Votes ({election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%)
+                                      {Number(candidate.vote_count || 0).toLocaleString()} Votes ({election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%)
                                     </div>
                                   </div>
                                 </div>
@@ -1616,11 +1610,8 @@ export default function ElectionDetailsPage() {
                                       )}
                                     </div>
                                     <div className={`${isFullScreen ? 'mt-4' : 'text-right'}`}>
-                                      <div className={`font-bold text-black ${isFullScreen ? 'text-3xl' : 'text-lg'}`}>
-                                        {Number(candidate.vote_count || 0).toLocaleString()}
-                                      </div>
                                       <div className={`${isFullScreen ? 'text-base' : 'text-sm'} text-black`}>
-                                        Votes ({election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%)
+                                        {Number(candidate.vote_count || 0).toLocaleString()} Votes ({election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%)
                                       </div>
                                     </div>
                                   </div>
@@ -1678,11 +1669,8 @@ export default function ElectionDetailsPage() {
                                         )}
                                       </div>
                                       <div className="text-right">
-                                        <div className={`font-bold text-black ${isFullScreen ? 'text-xl' : 'text-lg'}`}>
-                                          {Number(candidate.vote_count || 0).toLocaleString()}
-                                        </div>
                                         <div className="text-sm text-black">
-                                          Votes ({election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%)
+                                          {Number(candidate.vote_count || 0).toLocaleString()} Votes ({election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%)
                                         </div>
                                       </div>
                                     </div>
