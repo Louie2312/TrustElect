@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from 'react';
-import { Download, X, Clock, Users, Activity, BarChart2 } from "lucide-react";
+import { Download, X, Clock, Users, Activity, BarChart2, RefreshCw, AlertTriangle } from "lucide-react";
 import { generatePdfReport } from '@/utils/pdfGenerator';
+import toast from 'react-hot-toast';
 import {
   BarChart,
   Bar,
@@ -17,6 +18,8 @@ import {
 
 export default function SystemLoadDetail({ report, onClose, onDownload }) {
   const [selectedTimeframe, setSelectedTimeframe] = useState('24h');
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   const formatNumber = (num) => {
     if (num === undefined || num === null || isNaN(num)) return '0';
@@ -194,6 +197,34 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
     }
   };
 
+  const handleResetData = async () => {
+    setIsResetting(true);
+    try {
+      const response = await fetch('/api/reports/system-load/reset', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${document.cookie.split('token=')[1]?.split(';')[0]}`
+        }
+      });
+
+      if (response.ok) {
+        toast.success('System load data has been reset successfully!');
+        setShowResetConfirm(false);
+        // Refresh the page to show updated data
+        window.location.reload();
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.message || 'Failed to reset system load data');
+      }
+    } catch (error) {
+      console.error('Error resetting system load data:', error);
+      toast.error('Failed to reset system load data. Please try again.');
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden">
@@ -215,6 +246,14 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
                   </option>
                 ))}
               </select>
+              <button 
+                onClick={() => setShowResetConfirm(true)}
+                className="flex items-center gap-2 px-3 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors text-sm font-medium"
+                title="Reset system load data for fresh testing"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Reset Data
+              </button>
               <button onClick={onClose} className="text-black hover:text-gray-700">
                 <X className="w-6 h-6" />
               </button>
@@ -408,6 +447,64 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
           </div>
         </div>
       </div>
+
+      {/* Reset Confirmation Modal */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-red-100 rounded-full">
+                  <AlertTriangle className="w-6 h-6 text-red-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-black">Reset System Load Data</h3>
+              </div>
+              
+              <div className="mb-6">
+                <p className="text-gray-700 mb-3">
+                  Are you sure you want to reset all system load data? This action will:
+                </p>
+                <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                  <li>Clear all login activity records</li>
+                  <li>Clear all voting activity records</li>
+                  <li>Reset peak hour calculations</li>
+                  <li>Start fresh data collection for tomorrow's testing</li>
+                </ul>
+                <p className="text-red-600 font-medium mt-3">
+                  ⚠️ This action cannot be undone!
+                </p>
+              </div>
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowResetConfirm(false)}
+                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                  disabled={isResetting}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleResetData}
+                  disabled={isResetting}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isResetting ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Resetting...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-4 h-4" />
+                      Reset Data
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
