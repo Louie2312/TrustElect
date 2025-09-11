@@ -196,7 +196,11 @@ const PreviewModal = ({ ballot, election, onConfirm, onCancel, isMrMsSTIElection
                       )}
                     </div>
                     <div>
-                      <p className="font-medium text-black"><span className="text-black font-bold">Full Name:</span> {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}</p>
+                      {isMrMsSTIElection === true && candidateTypes[candidate.id] === 'group' ? (
+                        <p className="font-medium text-black"><span className="text-black font-bold">Group/Band Name:</span> {candidate.first_name}</p>
+                      ) : (
+                        <p className="font-medium text-black"><span className="text-black font-bold">Full Name:</span> {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}</p>
+                      )}
                       {(isMrMsSTIElection !== true) && candidate.party && <p className="text-black"><span className="text-black font-bold">Partylist:</span> {candidate.party}</p>}
                   
                       {(isMrMsSTIElection !== true) && candidate.slogan && <p className="text-sm  text-black"><span className="text-black font-bold">Slogan:</span>{candidate.slogan}</p>}
@@ -495,6 +499,7 @@ export default function BallotPage() {
   const [studentNumberSuggestions, setStudentNumberSuggestions] = useState([]);
   const [showStudentNumberSuggestions, setShowStudentNumberSuggestions] = useState(false);
   const [activeInput, setActiveInput] = useState({ posId: null, candId: null, field: null });
+  const [candidateTypes, setCandidateTypes] = useState({}); // Track candidate type for each candidate
 
   // Mr/Ms STI positions hook
   const { mrMsSTIPositions, fetchMrMsSTIPositions, mrMsSTIPositionOrder } = useMrMsSTIPositions();
@@ -1203,6 +1208,29 @@ export default function BallotPage() {
     });
   };
 
+  const handleCandidateTypeChange = (posId, candId, candidateType) => {
+    setCandidateTypes(prev => ({
+      ...prev,
+      [candId]: candidateType
+    }));
+
+    // Clear student-specific fields when switching to group
+    if (candidateType === 'group') {
+      const updatedPositions = ballot.positions.map(pos => ({
+        ...pos,
+        candidates: pos.candidates.map(cand => 
+          cand.id === candId ? { 
+            ...cand, 
+            student_number: '', 
+            course: '', 
+            student_id: null 
+          } : cand
+        )
+      }));
+      setBallot(prev => ({ ...prev, positions: updatedPositions }));
+    }
+  };
+
   const handleCandidateChange = async (posId, candId, field, value) => {
     if (field === "party") {
       return;
@@ -1636,9 +1664,33 @@ export default function BallotPage() {
     allCandidates.forEach((cand) => {
       const candidateErrors = {};
       let isCurrentCandidateInvalid = false;
+      const candidateType = candidateTypes[cand.id] || 'individual';
 
-      // Prioritize student number for validation and uniqueness
-      if (cand.student_number) {
+      // For Mr/Ms STI elections, check if this is a group candidate
+      if (isMrMsSTIElection === true && candidateType === 'group') {
+        // Group validation - only require name
+        if (!cand.first_name.trim()) {
+          candidateErrors[`candidate-fn-${cand.id}`] = "Group name is required";
+          isCurrentCandidateInvalid = true;
+        }
+        
+        // Check for duplicate group names
+        if (cand.first_name.trim()) {
+          const groupName = cand.first_name.toLowerCase();
+          const duplicateCount = allCandidates.filter(otherCand => 
+            otherCand.id !== cand.id && 
+            candidateTypes[otherCand.id] === 'group' &&
+            otherCand.first_name.toLowerCase() === groupName
+          ).length;
+
+          if (duplicateCount > 0) {
+            candidateErrors[`candidate-${cand.id}-duplicate`] = 'This group name is already used.';
+            isCurrentCandidateInvalid = true;
+          }
+        }
+      } else {
+        // Individual student validation - prioritize student number for validation and uniqueness
+        if (cand.student_number) {
         const studentMatch = allStudents.find(student =>
           student.student_number === cand.student_number
         );
@@ -1702,6 +1754,7 @@ export default function BallotPage() {
           }
         }
       }
+      }
 
       // Update errors for the current candidate
       if (isCurrentCandidateInvalid) {
@@ -1759,6 +1812,14 @@ export default function BallotPage() {
         student_id: null,    // Initialize student_id
         _isNew: true
       };
+
+      // Set default candidate type for Mr/Ms STI elections
+      if (isMrMsSTIElection === true) {
+        setCandidateTypes(prev => ({
+          ...prev,
+          [newCandidate.id]: 'individual' // Default to individual student
+        }));
+      }
   
       setBallot(prev => ({
         ...prev,
@@ -1780,14 +1841,31 @@ export default function BallotPage() {
       setIsLoading(true);
       setApiError(null);
   
-      if (!candidate.first_name || !candidate.last_name) {
-        throw new Error("First name and last name are required");
+      const candidateType = candidateTypes[candidate.id] || 'individual';
+      
+      // Validate based on candidate type
+      if (isMrMsSTIElection === true && candidateType === 'group') {
+        if (!candidate.first_name) {
+          throw new Error("Group name is required");
+        }
+      } else {
+        if (!candidate.first_name || !candidate.last_name) {
+          throw new Error("First name and last name are required");
+        }
       }
   
       const formData = new FormData();
      
-      formData.append('firstName', candidate.first_name);
-      formData.append('lastName', candidate.last_name);
+      // For group candidates in Mr/Ms STI elections, only use first_name as the group name
+      if (isMrMsSTIElection === true && candidateType === 'group') {
+        formData.append('firstName', candidate.first_name);
+        formData.append('lastName', ''); // Empty for groups
+        formData.append('candidateType', 'group');
+      } else {
+        formData.append('firstName', candidate.first_name);
+        formData.append('lastName', candidate.last_name);
+        formData.append('candidateType', 'individual');
+      }
       
       // Only add campaign fields for non-Mr/Ms STI elections
       if (isMrMsSTIElection !== true) {
@@ -1940,11 +2018,19 @@ export default function BallotPage() {
       }
       
       pos.candidates.forEach((cand) => {
-        if (!cand.first_name.trim()) {
-          newErrors[`candidate-fn-${cand.id}`] = "First name is required";
-        }
-        if (!cand.last_name.trim()) {
-          newErrors[`candidate-ln-${cand.id}`] = "Last name is required";
+        const candidateType = candidateTypes[cand.id] || 'individual';
+        
+        if (isMrMsSTIElection === true && candidateType === 'group') {
+          if (!cand.first_name.trim()) {
+            newErrors[`candidate-fn-${cand.id}`] = "Group name is required";
+          }
+        } else {
+          if (!cand.first_name.trim()) {
+            newErrors[`candidate-fn-${cand.id}`] = "First name is required";
+          }
+          if (!cand.last_name.trim()) {
+            newErrors[`candidate-ln-${cand.id}`] = "Last name is required";
+          }
         }
       });
     });
@@ -2364,12 +2450,68 @@ export default function BallotPage() {
                   </div>
 
                   <div className="flex-1">
-                    <div className="grid grid-cols-2 gap-3 mb-3">
-                      <div>
-                        <label className="block text-sm font-medium text-black mb-1">
-                          Student Number
+                    {/* Candidate Type Selector for Mr/Ms STI elections */}
+                    {isMrMsSTIElection === true && (
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-black mb-2">
+                          Candidate Type
                         </label>
-                        <div className="relative">
+                        <div className="flex gap-4">
+                          <label className="flex items-center">
+                            <input
+                              type="radio"
+                              name={`candidate-type-${candidate.id}`}
+                              value="individual"
+                              checked={(candidateTypes[candidate.id] || 'individual') === 'individual'}
+                              onChange={(e) => handleCandidateTypeChange(position.id, candidate.id, e.target.value)}
+                              className="mr-2"
+                            />
+                            <span className="text-sm text-black">Individual Student</span>
+                          </label>
+                          <label className="flex items-center">
+                            <input
+                              type="radio"
+                              name={`candidate-type-${candidate.id}`}
+                              value="group"
+                              checked={candidateTypes[candidate.id] === 'group'}
+                              onChange={(e) => handleCandidateTypeChange(position.id, candidate.id, e.target.value)}
+                              className="mr-2"
+                            />
+                            <span className="text-sm text-black">Group/Band</span>
+                          </label>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Conditional form fields based on candidate type */}
+                    {isMrMsSTIElection === true && candidateTypes[candidate.id] === 'group' ? (
+                      /* Group/Band form - only name field */
+                      <div className="mb-3">
+                        <label className="block text-sm font-medium text-black mb-1">
+                          Group/Band Name
+                        </label>
+                        <input
+                          type="text"
+                          value={candidate.first_name}
+                          onChange={(e) => handleCandidateChange(position.id, candidate.id, "first_name", e.target.value)}
+                          className={`w-full p-2 border rounded text-black ${
+                            errors[`candidate-fn-${candidate.id}`] ? "border-red-500" : "border-gray-300"
+                          }`}
+                          placeholder="Enter group or band name"
+                        />
+                        {errors[`candidate-fn-${candidate.id}`] && (
+                          <p className="text-red-500 text-sm mt-1 text-black">{errors[`candidate-fn-${candidate.id}`]}</p>
+                        )}
+                      </div>
+                    ) : (
+                      /* Individual student form - full fields */
+                      <>
+                        <div className="grid grid-cols-2 gap-3 mb-3">
+                        <div>
+                          <label className="block text-sm font-medium text-black mb-1">
+                            Student Number
+                          </label>
+                          <div className="relative">
                           <input
                             type="text"
                             value={candidate.student_number || ''}
@@ -2523,6 +2665,8 @@ export default function BallotPage() {
                         )}
                       </div>
                     </div>
+                        </>
+                    )}
 
                     {/* Only show campaign fields for non-Mr/Ms STI elections */}
                     {(isMrMsSTIElection !== true) && (
