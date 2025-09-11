@@ -370,12 +370,24 @@ app.use('/api/studentUI', studentUIRoutes);
 app.use('/api/department-voter-reports', departmentVoterReportRoutes);
 
 
+// Import performance monitoring
+const { performanceMonitor, healthCheck, getMetrics } = require('./middlewares/performanceMonitor');
+
+// Add performance monitoring to all routes
+app.use(performanceMonitor);
+
 app.get("/api/healthcheck", (req, res) => {
   res.status(200).json({
     status: "ok",
     timestamp: new Date().toISOString()
   });
 });
+
+// Enhanced health check endpoint
+app.get("/api/health", healthCheck);
+
+// Performance metrics endpoint
+app.get("/api/metrics", getMetrics);
 
 // Debug endpoint to check uploaded files
 app.get("/api/debug/files", (req, res) => {

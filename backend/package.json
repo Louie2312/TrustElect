@@ -7,7 +7,10 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "sync-courses": "node src/scripts/syncCourses.js",
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "optimize-db": "node src/scripts/add-performance-indexes.js",
+    "health-check": "curl -f http://localhost:5000/api/health || exit 1",
+    "performance-test": "node src/scripts/performance-test.js"
   },
   "keywords": [],
   "author": "",
