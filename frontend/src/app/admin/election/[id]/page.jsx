@@ -1055,18 +1055,18 @@ export default function ElectionDetailsPage() {
                         .sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0))
                         .map((candidate, index) => (
                         <div key={candidate.id} className={`flex items-center p-3 rounded-lg ${index === 0 && election.status === 'completed' ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'}`}>
-                          <div className="relative w-32 h-40 mr-4 flex-shrink-0">
+                          <div className="relative w-16 h-20 mr-4 flex-shrink-0">
                             {candidate.image_url && !imageErrors[candidate.id] ? (
                               <Image
                                 src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
                                 alt={`${candidate.first_name} ${candidate.last_name}`}
                                 fill
-                                sizes="128px"
+                                sizes="64px"
                                 className="object-cover rounded-lg"
                                 onError={() => handleImageError(candidate.id)}
                               />
                             ) : (
-                              <div className="w-32 h-40 rounded-lg bg-gray-200 flex items-center justify-center">
+                              <div className="w-16 h-20 rounded-lg bg-gray-200 flex items-center justify-center">
                                 <User className="w-8 h-8 text-gray-400" />
                               </div>
                             )}
@@ -1443,19 +1443,19 @@ export default function ElectionDetailsPage() {
                                   key={candidate.id} 
                                   className={`${isFullScreen ? 'flex flex-col items-center p-3 bg-gray-50 rounded-lg shadow-md hover:shadow-lg transition-shadow max-w-48' : 'flex items-center p-6 bg-gray-50 rounded-xl'}`}
                                 >
-                                  <div className={`relative ${isFullScreen ? 'w-32 h-40 mb-3' : 'w-32 h-40 mr-6'}`}>
+                                  <div className={`relative ${isFullScreen ? 'w-32 h-40 mb-3' : 'w-40 h-48 mr-6'}`}>
                                     {candidate.image_url && !imageErrors[candidate.id] ? (
                                       <Image
                                         src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
                                         alt={`${candidate.first_name} ${candidate.last_name}`}
                                         fill
-                                        sizes="128px"
+                                        sizes={isFullScreen ? "128px" : "160px"}
                                         className="object-cover rounded-lg"
                                         onError={() => handleImageError(candidate.id)}
                                       />
                                     ) : (
-                                      <div className="w-32 h-40 rounded-lg bg-gray-200 flex items-center justify-center">
-                                        <User className="w-16 h-16 text-gray-400" />
+                                      <div className={`${isFullScreen ? 'w-32 h-40' : 'w-40 h-48'} rounded-lg bg-gray-200 flex items-center justify-center`}>
+                                        <User className={`${isFullScreen ? 'w-16 h-16' : 'w-20 h-20'} text-gray-400`} />
                                       </div>
                                     )}
                                   </div>
