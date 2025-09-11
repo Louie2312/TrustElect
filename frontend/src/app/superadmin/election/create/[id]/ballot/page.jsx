@@ -1722,38 +1722,60 @@ export default function BallotPage() {
           candidateErrors[`candidate-fn-${cand.id}`] = "First name is required";
           isCurrentCandidateInvalid = true;
         }
-        if (!cand.last_name.trim()) {
+        
+        // Only require last name for individual students, not for groups
+        if (candidateType !== 'group' && !cand.last_name.trim()) {
           candidateErrors[`candidate-ln-${cand.id}`] = "Last name is required";
           isCurrentCandidateInvalid = true;
         }
 
-        if (cand.first_name.trim() && cand.last_name.trim()) {
-          const fullName = `${cand.first_name.toLowerCase()} ${cand.last_name.toLowerCase()}`;
-          
-          // Check for name-based duplicates (only if no student_number is set for either)
-          if (seenFullNames.has(fullName) ||
-              allCandidates.some(otherCand =>
-                otherCand.id !== cand.id &&
-                !otherCand.student_number && // Ensure other candidate also has no student_number
-                otherCand.first_name.toLowerCase() === cand.first_name.toLowerCase() &&
-                otherCand.last_name.toLowerCase() === cand.last_name.toLowerCase()
-              )) {
-            candidateErrors[`candidate-${cand.id}-duplicate`] = 'This candidate (by name) is already a candidate.';
-            isCurrentCandidateInvalid = true;
-          }
-          seenFullNames.add(fullName);
-
-          const studentExists = allStudents.some(student =>
-            student.first_name.toLowerCase() === cand.first_name.toLowerCase() &&
-            student.last_name.toLowerCase() === cand.last_name.toLowerCase()
-          );
-
-          if (!studentExists) {
-            candidateErrors[`candidate-${cand.id}-validation`] = 'Student not found in registered students list.';
-            isCurrentCandidateInvalid = true;
+        if (cand.first_name.trim()) {
+          // For group candidates, only check first name for duplicates
+          if (candidateType === 'group') {
+            const groupName = cand.first_name.toLowerCase();
+            if (seenFullNames.has(groupName) ||
+                allCandidates.some(otherCand =>
+                  otherCand.id !== cand.id &&
+                  candidateTypes[otherCand.id] === 'group' &&
+                  otherCand.first_name.toLowerCase() === groupName
+                )) {
+              candidateErrors[`candidate-${cand.id}-duplicate`] = 'This group name is already used.';
+              isCurrentCandidateInvalid = true;
+            }
+            seenFullNames.add(groupName);
+          } else if (cand.last_name.trim()) {
+            // For individual students, check both first and last name
+            const fullName = `${cand.first_name.toLowerCase()} ${cand.last_name.toLowerCase()}`;
+            
+            // Check for name-based duplicates (only if no student_number is set for either)
+            if (seenFullNames.has(fullName) ||
+                allCandidates.some(otherCand =>
+                  otherCand.id !== cand.id &&
+                  !otherCand.student_number && // Ensure other candidate also has no student_number
+                  candidateTypes[otherCand.id] !== 'group' && // Don't compare with group candidates
+                  otherCand.first_name.toLowerCase() === cand.first_name.toLowerCase() &&
+                  otherCand.last_name.toLowerCase() === cand.last_name.toLowerCase()
+                )) {
+              candidateErrors[`candidate-${cand.id}-duplicate`] = 'This candidate (by name) is already a candidate.';
+              isCurrentCandidateInvalid = true;
+            }
+            seenFullNames.add(fullName);
           }
         }
-      }
+
+          // Only check student existence for individual students, not for groups
+          if (candidateType !== 'group') {
+            const studentExists = allStudents.some(student =>
+              student.first_name.toLowerCase() === cand.first_name.toLowerCase() &&
+              student.last_name.toLowerCase() === cand.last_name.toLowerCase()
+            );
+
+            if (!studentExists) {
+              candidateErrors[`candidate-${cand.id}-validation`] = 'Student not found in registered students list.';
+              isCurrentCandidateInvalid = true;
+            }
+          }
+        }
       }
 
       // Update errors for the current candidate
@@ -1783,11 +1805,29 @@ export default function BallotPage() {
       
       // Check if there are any candidates with empty names or student numbers
       const hasEmptyCandidates = allExistingCandidates.some(
-        cand => (!cand.first_name.trim() || !cand.last_name.trim()) && !cand.student_number.trim()
+        cand => {
+          const candidateType = candidateTypes[cand.id] || 'individual';
+          
+          // For group candidates, only check if first_name (group name) is empty
+          if (isMrMsSTIElection === true && candidateType === 'group') {
+            return !cand.first_name.trim();
+          }
+          
+          // For individual students, check both names or student number
+          return (!cand.first_name.trim() || !cand.last_name.trim()) && !cand.student_number.trim();
+        }
       );
       
       if (hasEmptyCandidates) {
-        setApiError("Please fill in all candidate names or student numbers before adding a new one.");
+        const hasGroupCandidates = allExistingCandidates.some(cand => 
+          isMrMsSTIElection === true && (candidateTypes[cand.id] || 'individual') === 'group'
+        );
+        
+        if (hasGroupCandidates) {
+          setApiError("Please fill in all candidate names (for groups) or student information (for individuals) before adding a new one.");
+        } else {
+          setApiError("Please fill in all candidate names or student numbers before adding a new one.");
+        }
         setIsLoading(false);
         return;
       }
