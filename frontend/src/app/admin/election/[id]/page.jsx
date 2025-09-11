@@ -1306,14 +1306,14 @@ export default function ElectionDetailsPage() {
                         {/* Other Candidates - Compact grid */}
                         {others.length > 0 && (
                           <div>
-                            <h4 className="font-bold text-gray-700 mb-6 text-2xl text-center">Other Candidates</h4>
-                            <div className="grid grid-cols-4 gap-6">
+                            <h4 className="font-bold text-black mb-6 text-2xl text-center">Other Candidates</h4>
+                            <div className="grid grid-cols-5 gap-4">
                               {others.map(candidate => (
                                 <div 
                                   key={candidate.id} 
-                                  className="flex flex-col items-center p-4 bg-gray-50 rounded-xl shadow-md hover:shadow-lg transition-shadow"
+                                  className="flex flex-col items-center p-3 bg-gray-50 rounded-lg shadow-md hover:shadow-lg transition-shadow max-w-48"
                                 >
-                                  <div className="relative w-32 h-40 mb-4">
+                                  <div className="relative w-32 h-40 mb-3">
                                     {candidate.image_url && !imageErrors[candidate.id] ? (
                                       <Image
                                         src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
@@ -1331,15 +1331,15 @@ export default function ElectionDetailsPage() {
                                   </div>
                                   
                                   <div className="text-center w-full">
-                                    <h4 className="font-medium text-black text-lg mb-2">
+                                    <h4 className="font-medium text-black text-base mb-1 line-clamp-2">
                                       {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
                                     </h4>
                                     {candidate.party && (
-                                      <div className="text-sm text-gray-600 mb-2 px-2 py-1 bg-white rounded-full">
+                                      <div className="text-xs text-black mb-1 px-2 py-1 bg-white rounded-full">
                                         {candidate.party}
                                       </div>
                                     )}
-                                    <div className="text-base text-black font-semibold">
+                                    <div className="text-sm text-black font-semibold">
                                       {Number(candidate.vote_count || 0).toLocaleString()} Votes ({election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%)
                                     </div>
                                   </div>
