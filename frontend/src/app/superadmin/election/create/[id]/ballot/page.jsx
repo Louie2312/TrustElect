@@ -196,7 +196,18 @@ const PreviewModal = ({ ballot, election, onConfirm, onCancel, isMrMsSTIElection
                       )}
                     </div>
                     <div>
-                      {isMrMsSTIElection === true && isGroupCandidate(candidate) ? (
+                      {(() => {
+                        try {
+                          const isGroup = isMrMsSTIElection === true && (
+                            (candidateTypes && candidateTypes[candidate.id] === 'group') || 
+                            (candidate.first_name && !candidate.last_name)
+                          );
+                          return isGroup;
+                        } catch (error) {
+                          console.warn('Error checking candidate type:', error);
+                          return false;
+                        }
+                      })() ? (
                         <p className="font-medium text-black"><span className="text-black font-bold">Group/Band Name:</span> {candidate.first_name}</p>
                       ) : (
                         <p className="font-medium text-black"><span className="text-black font-bold">Full Name:</span> {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}</p>
@@ -499,38 +510,36 @@ export default function BallotPage() {
   const [studentNumberSuggestions, setStudentNumberSuggestions] = useState([]);
   const [showStudentNumberSuggestions, setShowStudentNumberSuggestions] = useState(false);
   const [activeInput, setActiveInput] = useState({ posId: null, candId: null, field: null });
-  const [candidateTypes, setCandidateTypes] = useState({}); // Track candidate type for each candidate
+  const [candidateTypes, setCandidateTypes] = useState(() => {
+    // Initialize with empty object to ensure it's always defined
+    try {
+      return {};
+    } catch (error) {
+      console.warn('Error initializing candidateTypes:', error);
+      return {};
+    }
+  }); // Track candidate type for each candidate
   
   // Safety check to ensure candidateTypes is always defined
   const safeCandidateTypes = candidateTypes || {};
   
   // Helper function to get candidate type safely
   const getCandidateType = (candidateId) => {
-    try {
-      return candidateTypes[candidateId] || 'individual';
-    } catch (error) {
-      console.warn('Error getting candidate type:', error);
-      return 'individual';
-    }
+    if (!candidateId) return 'individual';
+    if (!candidateTypes || typeof candidateTypes !== 'object') return 'individual';
+    return candidateTypes[candidateId] || 'individual';
   };
   
-  // Fallback validation that doesn't depend on candidate types
-  const isGroupCandidate = (candidate) => {
-    try {
-      // If it's a Mr/Ms STI election and has no last name but has first name, likely a group
-      if (isMrMsSTIElection === true && candidate.first_name && !candidate.last_name) {
-        return true;
-      }
-      // Otherwise check the candidate type
-      return getCandidateType(candidate.id) === 'group';
-    } catch (error) {
-      console.warn('Error checking if group candidate:', error);
-      return false;
-    }
-  };
 
   // Mr/Ms STI positions hook
   const { mrMsSTIPositions, fetchMrMsSTIPositions, mrMsSTIPositionOrder } = useMrMsSTIPositions();
+
+  // Ensure candidateTypes is always properly initialized
+  useEffect(() => {
+    if (!candidateTypes || typeof candidateTypes !== 'object') {
+      setCandidateTypes({});
+    }
+  }, []);
 
   useEffect(() => {
     const fetchStudentCouncilPositions = async () => {
@@ -1249,10 +1258,17 @@ export default function BallotPage() {
   };
 
   const handleCandidateTypeChange = (posId, candId, candidateType) => {
-    setCandidateTypes(prev => ({
-      ...prev,
-      [candId]: candidateType
-    }));
+    try {
+      setCandidateTypes(prev => {
+        const currentTypes = prev || {};
+        return {
+          ...currentTypes,
+          [candId]: candidateType
+        };
+      });
+    } catch (error) {
+      console.warn('Error updating candidate type:', error);
+    }
 
     // Clear student-specific fields when switching to group
     if (candidateType === 'group') {
@@ -2333,6 +2349,16 @@ export default function BallotPage() {
 
   // Error boundary for rendering
   try {
+    // Ensure all critical state is properly initialized
+    if (!ballot || !ballot.positions) {
+      return (
+        <div className="max-w-4xl mx-auto p-4">
+          <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
+            <p>Loading ballot data...</p>
+          </div>
+        </div>
+      );
+    }
 
   return (
     <div className="max-w-4xl mx-auto p-4">
@@ -2545,7 +2571,14 @@ export default function BallotPage() {
                               type="radio"
                               name={`candidate-type-${candidate.id}`}
                               value="individual"
-                              checked={getCandidateType(candidate.id) === 'individual'}
+                              checked={(() => {
+                                try {
+                                  return !candidateTypes || candidateTypes[candidate.id] !== 'group';
+                                } catch (error) {
+                                  console.warn('Error checking candidate type:', error);
+                                  return true;
+                                }
+                              })()}
                               onChange={(e) => handleCandidateTypeChange(position.id, candidate.id, e.target.value)}
                               className="mr-2"
                             />
@@ -2556,7 +2589,14 @@ export default function BallotPage() {
                               type="radio"
                               name={`candidate-type-${candidate.id}`}
                               value="group"
-                              checked={getCandidateType(candidate.id) === 'group'}
+                              checked={(() => {
+                                try {
+                                  return candidateTypes && candidateTypes[candidate.id] === 'group';
+                                } catch (error) {
+                                  console.warn('Error checking candidate type:', error);
+                                  return false;
+                                }
+                              })()}
                               onChange={(e) => handleCandidateTypeChange(position.id, candidate.id, e.target.value)}
                               className="mr-2"
                             />
@@ -2567,7 +2607,18 @@ export default function BallotPage() {
                     )}
 
                     {/* Conditional form fields based on candidate type */}
-                    {isMrMsSTIElection === true && isGroupCandidate(candidate) ? (
+                    {(() => {
+                      try {
+                        const isGroup = isMrMsSTIElection === true && (
+                          (candidateTypes && candidateTypes[candidate.id] === 'group') || 
+                          (candidate.first_name && !candidate.last_name)
+                        );
+                        return isGroup;
+                      } catch (error) {
+                        console.warn('Error checking candidate type:', error);
+                        return false;
+                      }
+                    })() ? (
                       /* Group/Band form - only name field */
                       <div className="mb-3">
                         <label className="block text-sm font-medium text-black mb-1">
