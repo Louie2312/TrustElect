@@ -20,6 +20,7 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
   const [selectedTimeframe, setSelectedTimeframe] = useState('24h');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [isDataReset, setIsDataReset] = useState(false);
 
   const formatNumber = (num) => {
     if (num === undefined || num === null || isNaN(num)) return '0';
@@ -133,8 +134,8 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
   ];
 
   // Process data based on selected timeframe
-  const processedLoginData = filterDataByTimeframe(validateData(report.data.login_activity || []), selectedTimeframe);
-  const processedVotingData = filterDataByTimeframe(validateData(report.data.voting_activity || []), selectedTimeframe);
+  const processedLoginData = isDataReset ? [] : filterDataByTimeframe(validateData(report.data.login_activity || []), selectedTimeframe);
+  const processedVotingData = isDataReset ? [] : filterDataByTimeframe(validateData(report.data.voting_activity || []), selectedTimeframe);
   
   // Find peak hours from processed data
   const loginPeak = findPeakHour(processedLoginData);
@@ -211,8 +212,14 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
       if (response.ok) {
         toast.success('System load data has been reset successfully!');
         setShowResetConfirm(false);
-        // Refresh the page to show updated data
-        window.location.reload();
+        
+        // Set data reset flag to show empty state immediately
+        setIsDataReset(true);
+        
+        // Refresh the page to show updated data after a short delay
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
       } else {
         const errorData = await response.json();
         toast.error(errorData.message || 'Failed to reset system load data');
@@ -226,9 +233,9 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden">
-        <div className="p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="p-6 overflow-y-auto flex-1">
           <div className="flex justify-between items-start mb-6">
             <div>
               <h2 className="text-2xl font-bold text-black">System Load Report</h2>
@@ -259,6 +266,21 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
               </button>
             </div>
           </div>
+
+          {/* Empty State Message */}
+          {isDataReset && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 rounded-full">
+                  <RefreshCw className="w-5 h-5 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-green-800">Data Reset Successfully!</h3>
+                  <p className="text-green-700">All system load data has been cleared. Fresh data collection will begin for tomorrow's testing.</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -317,7 +339,19 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
           <div className="space-y-6">
             {/* Login Activity Chart */}
             <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-              <div className="flex items-center justify-between mb-6">
+              {isDataReset ? (
+                <div className="h-[350px] flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="p-4 bg-gray-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                      <BarChart2 className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-600 mb-2">No Login Data Available</h3>
+                    <p className="text-gray-500">Data has been reset. New login activity will be tracked during testing.</p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl text-black font-bold">Login Activity</h3>
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
@@ -373,11 +407,25 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
+                </>
+              )}
             </div>
 
             {/* Voting Activity Chart */}
             <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-              <div className="flex items-center justify-between mb-6">
+              {isDataReset ? (
+                <div className="h-[350px] flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="p-4 bg-gray-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                      <Activity className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-600 mb-2">No Voting Data Available</h3>
+                    <p className="text-gray-500">Data has been reset. New voting activity will be tracked during testing.</p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl text-black font-bold">Voting Activity</h3>
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <div className="w-3 h-3 bg-green-500 rounded-full"></div>
@@ -433,6 +481,8 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
+                </>
+              )}
             </div>
           </div>
 
