@@ -7,7 +7,7 @@ import {
   AlertTriangle as ExclamationTriangle,
   Lock, Award, ArrowDown, ArrowUp, PieChart,
   AlertCircle, XCircle, Check, X, Maximize2, Minimize2,
-  ChevronRight, Play, Pause
+  ChevronRight, Play, Pause, Timer
 } from 'lucide-react';
 import Link from 'next/link';
 import Cookies from 'js-cookie';
@@ -124,6 +124,7 @@ export default function ElectionDetailsPage() {
   const intervalRef = useRef(null);
   const [currentPositionIndex, setCurrentPositionIndex] = useState(0);
   const carouselIntervalRef = useRef(null);
+  const [timeRemaining, setTimeRemaining] = useState(null);
 
   const toggleFullScreen = async () => {
     if (!document.fullscreenElement) {
@@ -138,6 +139,35 @@ export default function ElectionDetailsPage() {
         await document.exitFullscreen();
         setIsFullScreen(false);
       }
+    }
+  };
+
+  const calculateTimeRemaining = () => {
+    if (!election || election.status !== 'ongoing' || !election.date_to) {
+      setTimeRemaining(null);
+      return;
+    }
+
+    const now = new Date();
+    const endTime = new Date(election.date_to);
+    const timeDiff = endTime - now;
+
+    if (timeDiff <= 0) {
+      setTimeRemaining('Election ended');
+      return;
+    }
+
+    const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
+
+    if (days > 0) {
+      setTimeRemaining(`${days}d ${hours}h ${minutes}m`);
+    } else if (hours > 0) {
+      setTimeRemaining(`${hours}h ${minutes}m ${seconds}s`);
+    } else {
+      setTimeRemaining(`${minutes}m ${seconds}s`);
     }
   };
 
@@ -354,6 +384,15 @@ export default function ElectionDetailsPage() {
       }
     }
   }, [isFullScreen, activeTab, election?.positions?.length]);
+
+  // Update time remaining every second for ongoing elections
+  useEffect(() => {
+    if (election && election.status === 'ongoing') {
+      calculateTimeRemaining();
+      const interval = setInterval(calculateTimeRemaining, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [election]);
 
   // Cleanup intervals on component unmount
   useEffect(() => {
@@ -1301,23 +1340,27 @@ export default function ElectionDetailsPage() {
                     </div>
                   </div>
                 </div>
-              </div>
-              <button
-                onClick={toggleFullScreen}
-                className={`flex items-center ${isFullScreen ? 'px-6 py-3 text-lg' : 'px-3 py-2'} bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors`}
-              >
-                {isFullScreen ? (
-                  <>
-                    <Minimize2 className={`${isFullScreen ? 'w-6 h-6' : 'w-4 h-4'} mr-2`} />
-                    Exit Full Screen
-                  </>
-                ) : (
-                  <>
-                    <Maximize2 className="w-4 h-4 mr-2" />
-                    Full Screen
-                  </>
+                {timeRemaining && (
+                  <div className="flex items-center">
+                    <Timer className={`${isFullScreen ? 'w-8 h-8' : 'w-5 h-5'} mr-3 text-gray-600`} />
+                    <div>
+                      <div className={`${isFullScreen ? 'text-lg' : 'text-sm'} text-gray-500`}>Time Remaining</div>
+                      <div className={`font-bold text-black ${isFullScreen ? 'text-2xl' : ''}`}>
+                        {timeRemaining}
+                      </div>
+                    </div>
+                  </div>
                 )}
-              </button>
+              </div>
+              {!isFullScreen && (
+                <button
+                  onClick={toggleFullScreen}
+                  className="flex items-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Maximize2 className="w-4 h-4 mr-2" />
+                  Full Screen
+                </button>
+              )}
             </div>
           </div>
 
