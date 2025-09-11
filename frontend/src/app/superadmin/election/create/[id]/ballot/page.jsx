@@ -196,7 +196,7 @@ const PreviewModal = ({ ballot, election, onConfirm, onCancel, isMrMsSTIElection
                       )}
                     </div>
                     <div>
-                      {isMrMsSTIElection === true && safeCandidateTypes[candidate.id] === 'group' ? (
+                      {isMrMsSTIElection === true && isGroupCandidate(candidate) ? (
                         <p className="font-medium text-black"><span className="text-black font-bold">Group/Band Name:</span> {candidate.first_name}</p>
                       ) : (
                         <p className="font-medium text-black"><span className="text-black font-bold">Full Name:</span> {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}</p>
@@ -503,6 +503,31 @@ export default function BallotPage() {
   
   // Safety check to ensure candidateTypes is always defined
   const safeCandidateTypes = candidateTypes || {};
+  
+  // Helper function to get candidate type safely
+  const getCandidateType = (candidateId) => {
+    try {
+      return candidateTypes[candidateId] || 'individual';
+    } catch (error) {
+      console.warn('Error getting candidate type:', error);
+      return 'individual';
+    }
+  };
+  
+  // Fallback validation that doesn't depend on candidate types
+  const isGroupCandidate = (candidate) => {
+    try {
+      // If it's a Mr/Ms STI election and has no last name but has first name, likely a group
+      if (isMrMsSTIElection === true && candidate.first_name && !candidate.last_name) {
+        return true;
+      }
+      // Otherwise check the candidate type
+      return getCandidateType(candidate.id) === 'group';
+    } catch (error) {
+      console.warn('Error checking if group candidate:', error);
+      return false;
+    }
+  };
 
   // Mr/Ms STI positions hook
   const { mrMsSTIPositions, fetchMrMsSTIPositions, mrMsSTIPositionOrder } = useMrMsSTIPositions();
@@ -1668,7 +1693,7 @@ export default function BallotPage() {
     }
   };
 
-  const validateAllCandidates = (candidateTypesParam = candidateTypes) => {
+  const validateAllCandidates = () => {
     let hasInvalidCandidates = false;
     const newErrors = { ...errors }; // Start with existing errors
 
@@ -1679,7 +1704,7 @@ export default function BallotPage() {
     allCandidates.forEach((cand) => {
       const candidateErrors = {};
       let isCurrentCandidateInvalid = false;
-      const candidateType = candidateTypesParam[cand.id] || 'individual';
+      const candidateType = getCandidateType(cand.id);
 
       // For Mr/Ms STI elections, check if this is a group candidate
       if (isMrMsSTIElection === true && candidateType === 'group') {
@@ -1694,7 +1719,7 @@ export default function BallotPage() {
           const groupName = cand.first_name.toLowerCase();
           const duplicateCount = allCandidates.filter(otherCand => 
             otherCand.id !== cand.id && 
-            candidateTypesParam[otherCand.id] === 'group' &&
+            getCandidateType(otherCand.id) === 'group' &&
             otherCand.first_name.toLowerCase() === groupName
           ).length;
 
@@ -1751,7 +1776,7 @@ export default function BallotPage() {
             if (seenFullNames.has(groupName) ||
                 allCandidates.some(otherCand =>
                   otherCand.id !== cand.id &&
-                  candidateTypesParam[otherCand.id] === 'group' &&
+                  getCandidateType(otherCand.id) === 'group' &&
                   otherCand.first_name.toLowerCase() === groupName
                 )) {
               candidateErrors[`candidate-${cand.id}-duplicate`] = 'This group name is already used.';
@@ -1767,7 +1792,7 @@ export default function BallotPage() {
                 allCandidates.some(otherCand =>
                   otherCand.id !== cand.id &&
                   !otherCand.student_number && // Ensure other candidate also has no student_number
-                  candidateTypesParam[otherCand.id] !== 'group' && // Don't compare with group candidates
+                  getCandidateType(otherCand.id) !== 'group' && // Don't compare with group candidates
                   otherCand.first_name.toLowerCase() === cand.first_name.toLowerCase() &&
                   otherCand.last_name.toLowerCase() === cand.last_name.toLowerCase()
                 )) {
@@ -1821,7 +1846,7 @@ export default function BallotPage() {
       // Check if there are any candidates with empty names or student numbers
       const hasEmptyCandidates = allExistingCandidates.some(
         cand => {
-          const candidateType = safeCandidateTypes[cand.id] || 'individual';
+          const candidateType = getCandidateType(cand.id) || 'individual';
           
           // For group candidates, only check if first_name (group name) is empty
           if (isMrMsSTIElection === true && candidateType === 'group') {
@@ -1835,7 +1860,7 @@ export default function BallotPage() {
       
       if (hasEmptyCandidates) {
         const hasGroupCandidates = allExistingCandidates.some(cand => 
-          isMrMsSTIElection === true && (safeCandidateTypes[cand.id] || 'individual') === 'group'
+          isMrMsSTIElection === true && (getCandidateType(cand.id) || 'individual') === 'group'
         );
         
         if (hasGroupCandidates) {
@@ -1896,7 +1921,7 @@ export default function BallotPage() {
       setIsLoading(true);
       setApiError(null);
   
-      const candidateType = safeCandidateTypes[candidate.id] || 'individual';
+      const candidateType = getCandidateType(candidate.id) || 'individual';
       
       // Validate based on candidate type
       if (isMrMsSTIElection === true && candidateType === 'group') {
@@ -2073,7 +2098,7 @@ export default function BallotPage() {
       }
       
       pos.candidates.forEach((cand) => {
-        const candidateType = safeCandidateTypes[cand.id] || 'individual';
+        const candidateType = getCandidateType(cand.id) || 'individual';
         
         if (isMrMsSTIElection === true && candidateType === 'group') {
           if (!cand.first_name.trim()) {
@@ -2306,6 +2331,9 @@ export default function BallotPage() {
     );
   }
 
+  // Error boundary for rendering
+  try {
+
   return (
     <div className="max-w-4xl mx-auto p-4">
       {previewBallot && (
@@ -2517,7 +2545,7 @@ export default function BallotPage() {
                               type="radio"
                               name={`candidate-type-${candidate.id}`}
                               value="individual"
-                              checked={(safeCandidateTypes[candidate.id] || 'individual') === 'individual'}
+                              checked={getCandidateType(candidate.id) === 'individual'}
                               onChange={(e) => handleCandidateTypeChange(position.id, candidate.id, e.target.value)}
                               className="mr-2"
                             />
@@ -2528,7 +2556,7 @@ export default function BallotPage() {
                               type="radio"
                               name={`candidate-type-${candidate.id}`}
                               value="group"
-                              checked={safeCandidateTypes[candidate.id] === 'group'}
+                              checked={getCandidateType(candidate.id) === 'group'}
                               onChange={(e) => handleCandidateTypeChange(position.id, candidate.id, e.target.value)}
                               className="mr-2"
                             />
@@ -2539,7 +2567,7 @@ export default function BallotPage() {
                     )}
 
                     {/* Conditional form fields based on candidate type */}
-                    {isMrMsSTIElection === true && safeCandidateTypes[candidate.id] === 'group' ? (
+                    {isMrMsSTIElection === true && isGroupCandidate(candidate) ? (
                       /* Group/Band form - only name field */
                       <div className="mb-3">
                         <label className="block text-sm font-medium text-black mb-1">
@@ -2858,4 +2886,22 @@ export default function BallotPage() {
       )}
     </div>
   );
+  } catch (error) {
+    console.error('Error rendering ballot component:', error);
+    return (
+      <div className="max-w-4xl mx-auto p-4">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <h2 className="text-lg font-bold mb-2">Application Error</h2>
+          <p>There was an error loading the ballot page. Please refresh the page and try again.</p>
+          <p className="text-sm mt-2">Error: {error.message}</p>
+        </div>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
+          Refresh Page
+        </button>
+      </div>
+    );
+  }
 }
