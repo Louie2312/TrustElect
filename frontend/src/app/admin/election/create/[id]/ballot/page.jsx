@@ -2486,73 +2486,13 @@ export default function BallotPage() {
                   </div>
 
                   <div className="flex-1">
-                    {/* Student Number and Course - Always shown on top */}
-                    <div className="grid grid-cols-2 gap-3 mb-3">
-                      <div>
-                        <label className="block text-sm font-medium text-black mb-1">
-                          Student Number
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="text"
-                            value={candidate.student_number || ''}
-                            onChange={(e) => {
-                              handleCandidateChange(position.id, candidate.id, "student_number", e.target.value);
-                              fetchStudentNumberSuggestions(e.target.value, position.id, candidate.id);
-                            }}
-                            onFocus={() => {
-                              setActiveInput(`sn-${candidate.id}`);
-                              if (candidate.student_number) {
-                                fetchStudentNumberSuggestions(candidate.student_number, position.id, candidate.id);
-                              }
-                            }}
-                            className={`w-full p-2 border rounded text-black ${
-                              errors[`candidate-sn-${candidate.id}`] ? "border-red-500" : "border-gray-300"
-                            }`}
-                            placeholder="Student number"
-                          />
-                          {showStudentNumberSuggestions && activeInput === `sn-${candidate.id}` && studentNumberSuggestions.length > 0 && (
-                            <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
-                              {studentNumberSuggestions.map((suggestion, index) => (
-                                <div
-                                  key={index}
-                                  className="p-2 hover:bg-gray-100 cursor-pointer text-sm text-black"
-                                  onClick={() => selectStudentNumberSuggestion(suggestion, position.id, candidate.id)}
-                                >
-                                  {suggestion.student_number} - {suggestion.first_name} {suggestion.last_name}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        {errors[`candidate-sn-${candidate.id}`] && (
-                          <p className="text-red-500 text-sm mt-1 text-black">{errors[`candidate-sn-${candidate.id}`]}</p>
-                        )}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-black mb-1">
-                          Course
-                        </label>
-                        <input
-                          type="text"
-                          value={candidate.course || ''}
-                          readOnly 
-                          className="w-full p-2 border border-gray-300 rounded text-black bg-blue-50"
-                          placeholder="Course"
-                        />
-                        {errors[`candidate-course-${candidate.id}`] && (
-                          <p className="text-red-500 text-sm mt-1 text-black">{errors[`candidate-course-${candidate.id}`]}</p>
-                        )}
-                      </div>
-                    </div>
-
                     {/* Candidate Type Selection - Only for Mr/Ms STI elections */}
                     {isMrMsSTIElection === true && (
-                      <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                        <label className="block text-sm font-medium text-blue-800 mb-2">
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-black mb-2">
                           Candidate Type
                         </label>
-                        <div className="flex space-x-4">
+                        <div className="flex gap-4">
                           <label className="flex items-center">
                             <input
                               type="radio"
@@ -2627,6 +2567,66 @@ export default function BallotPage() {
                     ) : (
                       /* Individual Student form - full fields */
                       <>
+                    {/* Student Number and Course - Only for individual students */}
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div>
+                        <label className="block text-sm font-medium text-black mb-1">
+                          Student Number
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={candidate.student_number || ''}
+                            onChange={(e) => {
+                              handleCandidateChange(position.id, candidate.id, "student_number", e.target.value);
+                              fetchStudentNumberSuggestions(e.target.value, position.id, candidate.id);
+                            }}
+                            onFocus={() => {
+                              setActiveInput(`sn-${candidate.id}`);
+                              if (candidate.student_number) {
+                                fetchStudentNumberSuggestions(candidate.student_number, position.id, candidate.id);
+                              }
+                            }}
+                            className={`w-full p-2 border rounded text-black ${
+                              errors[`candidate-sn-${candidate.id}`] ? "border-red-500" : "border-gray-300"
+                            }`}
+                            placeholder="Student number"
+                          />
+                          {showStudentNumberSuggestions && activeInput === `sn-${candidate.id}` && studentNumberSuggestions.length > 0 && (
+                            <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
+                              {studentNumberSuggestions.map((suggestion, index) => (
+                                <div
+                                  key={index}
+                                  className="p-2 hover:bg-gray-100 cursor-pointer text-sm text-black"
+                                  onClick={() => selectStudentNumberSuggestion(suggestion, position.id, candidate.id)}
+                                >
+                                  {suggestion.student_number} - {suggestion.first_name} {suggestion.last_name}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        {errors[`candidate-sn-${candidate.id}`] && (
+                          <p className="text-red-500 text-sm mt-1 text-black">{errors[`candidate-sn-${candidate.id}`]}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-black mb-1">
+                          Course
+                        </label>
+                        <input
+                          type="text"
+                          value={candidate.course || ''}
+                          readOnly 
+                          className="w-full p-2 border border-gray-300 rounded text-black bg-blue-50"
+                          placeholder="Course"
+                        />
+                        {errors[`candidate-course-${candidate.id}`] && (
+                          <p className="text-red-500 text-sm mt-1 text-black">{errors[`candidate-course-${candidate.id}`]}</p>
+                        )}
+                      </div>
+                    </div>
+
                     {/* First Name and Last Name - Below student number */}
                     <div className="grid grid-cols-2 gap-3 mb-3">
                       <div>
