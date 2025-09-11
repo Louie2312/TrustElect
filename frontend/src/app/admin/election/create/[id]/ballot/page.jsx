@@ -205,10 +205,8 @@ const PreviewModal = ({ ballot, election, onConfirm, onCancel, isMrMsSTIElection
                     <div>
                       {(() => {
                         try {
-                          const isGroup = isMrMsSTIElection === true && (
-                            (candidateTypes && candidateTypes[candidate.id] === 'group') || 
-                            (candidate.first_name && !candidate.last_name)
-                          );
+                          const isGroup = isMrMsSTIElection === true && 
+                            candidateTypes && candidateTypes[candidate.id] === 'group';
                           return isGroup;
                         } catch (error) {
                           console.warn('Error checking candidate type:', error);
@@ -1659,9 +1657,17 @@ export default function BallotPage() {
       const allExistingCandidates = ballot.positions.flatMap(pos => pos.candidates);
       
       // Check if there are any candidates with empty names or student numbers
-      const hasEmptyCandidates = allExistingCandidates.some(
-        cand => (!cand.first_name.trim() || !cand.last_name.trim()) && !cand.student_number.trim()
-      );
+      const hasEmptyCandidates = allExistingCandidates.some(cand => {
+        const candidateType = getCandidateType(cand.id);
+        
+        // For group candidates, only check first_name
+        if (isMrMsSTIElection === true && candidateType === 'group') {
+          return !cand.first_name.trim();
+        }
+        
+        // For individual candidates, check both names or student number
+        return (!cand.first_name.trim() || !cand.last_name.trim()) && !cand.student_number.trim();
+      });
       
       if (hasEmptyCandidates) {
         setApiError("Please fill in all candidate names or student numbers before adding a new one.");
@@ -2385,12 +2391,10 @@ export default function BallotPage() {
               </label>
               {isMrMsSTIElection ? (
                 <MrMsSTIPositionSelector
-                  value={position.name}
-                  onChange={(value) => handlePositionChange(position.id, "name", value)}
-                  usedPositions={ballot.positions
-                    .filter(p => p.id !== position.id)
-                    .map(p => p.name)
-                  }
+                  position={position}
+                  ballot={ballot}
+                  onPositionChange={handlePositionChange}
+                  errors={errors}
                 />
               ) : (
                 <input
@@ -2486,6 +2490,7 @@ export default function BallotPage() {
                   </div>
 
                   <div className="flex-1">
+
                     {/* Candidate Type Selection - Only for Mr/Ms STI elections */}
                     {isMrMsSTIElection === true && (
                       <div className="mb-4">
@@ -2536,10 +2541,8 @@ export default function BallotPage() {
                     {/* Conditional form fields based on candidate type */}
                     {(() => {
                       try {
-                        const isGroup = isMrMsSTIElection === true && (
-                          (candidateTypes && candidateTypes[candidate.id] === 'group') || 
-                          (candidate.first_name && !candidate.last_name)
-                        );
+                        const isGroup = isMrMsSTIElection === true && 
+                          candidateTypes && candidateTypes[candidate.id] === 'group';
                         return isGroup;
                       } catch (error) {
                         console.warn('Error checking candidate type:', error);
