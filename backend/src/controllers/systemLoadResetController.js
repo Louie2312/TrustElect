@@ -11,29 +11,62 @@ exports.resetSystemLoadData = async (req, res) => {
   try {
     await client.query('BEGIN');
     
-    // Clear system load data tables
     console.log('🔄 Resetting system load data...');
     
-    // Clear login activity data
-    await client.query('DELETE FROM system_load_logs WHERE activity_type = $1', ['login']);
-    console.log('✅ Cleared login activity data');
+    // Check if system_load_logs table exists first
+    const tableExists = await client.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'system_load_logs'
+      );
+    `);
     
-    // Clear voting activity data  
-    await client.query('DELETE FROM system_load_logs WHERE activity_type = $1', ['voting']);
-    console.log('✅ Cleared voting activity data');
+    if (tableExists.rows[0].exists) {
+      // Clear login activity data
+      await client.query('DELETE FROM system_load_logs WHERE activity_type = $1', ['login']);
+      console.log('✅ Cleared login activity data');
+      
+      // Clear voting activity data  
+      await client.query('DELETE FROM system_load_logs WHERE activity_type = $1', ['voting']);
+      console.log('✅ Cleared voting activity data');
+      
+      // Clear all system load logs
+      await client.query('DELETE FROM system_load_logs');
+      console.log('✅ Cleared all system load logs');
+    } else {
+      console.log('ℹ️ system_load_logs table does not exist, skipping log clearing');
+    }
     
-    // Clear all system load logs (if the table exists)
-    await client.query('DELETE FROM system_load_logs');
-    console.log('✅ Cleared all system load logs');
+    // Check if system_cache table exists and clear cache
+    const cacheTableExists = await client.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'system_cache'
+      );
+    `);
     
-    // Reset any cached data (if using a cache table)
-    await client.query(`
-      DELETE FROM system_cache 
-      WHERE cache_key LIKE 'system_load_%' OR cache_key LIKE 'peak_hours_%'
-    `).catch(() => {
-      // Table might not exist, that's okay
-      console.log('ℹ️ No cache table found, skipping cache reset');
-    });
+    if (cacheTableExists.rows[0].exists) {
+      await client.query(`
+        DELETE FROM system_cache 
+        WHERE cache_key LIKE 'system_load_%' OR cache_key LIKE 'peak_hours_%'
+      `);
+      console.log('✅ Cleared system cache');
+    } else {
+      console.log('ℹ️ system_cache table does not exist, skipping cache reset');
+    }
+    
+    // Clear any audit logs related to system load (if they exist)
+    try {
+      await client.query(`
+        DELETE FROM audit_logs 
+        WHERE action LIKE '%system_load%' OR action LIKE '%system load%'
+      `);
+      console.log('✅ Cleared related audit logs');
+    } catch (auditError) {
+      console.log('ℹ️ No audit logs to clear or table does not exist');
+    }
     
     await client.query('COMMIT');
     
@@ -44,10 +77,9 @@ exports.resetSystemLoadData = async (req, res) => {
       message: 'System load data has been reset successfully',
       timestamp: new Date().toISOString(),
       resetData: {
-        loginActivity: 'cleared',
-        votingActivity: 'cleared',
-        systemLogs: 'cleared',
-        cache: 'cleared'
+        systemLogs: tableExists.rows[0].exists ? 'cleared' : 'table_not_found',
+        cache: cacheTableExists.rows[0].exists ? 'cleared' : 'table_not_found',
+        auditLogs: 'attempted'
       }
     });
     
@@ -70,6 +102,29 @@ exports.resetSystemLoadData = async (req, res) => {
  */
 exports.getResetStatus = async (req, res) => {
   try {
+    // Check if system_load_logs table exists first
+    const tableExists = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'system_load_logs'
+      );
+    `);
+    
+    if (!tableExists.rows[0].exists) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          totalLogs: 0,
+          loginLogs: 0,
+          votingLogs: 0,
+          latestLog: null,
+          isEmpty: true,
+          tableExists: false
+        }
+      });
+    }
+    
     // Check if there's any system load data
     const result = await pool.query(`
       SELECT 
@@ -89,7 +144,8 @@ exports.getResetStatus = async (req, res) => {
         loginLogs: parseInt(data.login_logs),
         votingLogs: parseInt(data.voting_logs),
         latestLog: data.latest_log,
-        isEmpty: parseInt(data.total_logs) === 0
+        isEmpty: parseInt(data.total_logs) === 0,
+        tableExists: true
       }
     });
     
