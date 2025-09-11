@@ -1443,7 +1443,7 @@ export default function ElectionDetailsPage() {
                                   key={candidate.id} 
                                   className={`${isFullScreen ? 'flex flex-col items-center p-3 bg-gray-50 rounded-lg shadow-md hover:shadow-lg transition-shadow max-w-48' : 'flex items-center p-6 bg-gray-50 rounded-xl'}`}
                                 >
-                                  <div className={`relative ${isFullScreen ? 'w-32 h-40 mb-3' : 'w-32 h-40 mr-6'}`}>
+                                  <div className={`relative ${isFullScreen ? 'w-32 h-40 mb-3' : 'w-32 h-40 mr-4'}`}>
                                     {candidate.image_url && !imageErrors[candidate.id] ? (
                                       <Image
                                         src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
