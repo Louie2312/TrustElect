@@ -142,13 +142,21 @@ export default function ElectionDetailsPage() {
   };
 
   const calculateTimeRemaining = () => {
-    if (!election || election.status !== 'ongoing' || !election.date_to) {
+    if (!election || election.status !== 'ongoing' || !election.date_to || !election.end_time) {
       setTimeRemaining(null);
       return;
     }
 
     const now = new Date();
-    const endTime = new Date(election.date_to);
+    
+    // Parse the end date and time properly
+    const endDate = new Date(election.date_to);
+    const [endHour, endMinute] = election.end_time.split(':').map(Number);
+    
+    // Set the end time with proper date and time
+    const endTime = new Date(endDate);
+    endTime.setHours(endHour, endMinute, 0, 0);
+    
     const timeDiff = endTime - now;
 
     if (timeDiff <= 0) {
@@ -1276,14 +1284,13 @@ export default function ElectionDetailsPage() {
                                       <span className="text-black font-medium text-sm">{candidate.party}</span>
                                     </div>
                                   )}
-                                  <div className="mt-4">
-                                    <div className="font-bold text-black text-3xl mb-1">
-                                      {Number(candidate.vote_count || 0).toLocaleString()}
-                                    </div>
-                                    <div className="text-lg text-gray-600 mb-1">votes</div>
-                                    <div className="text-base text-gray-600 mb-3">
-                                      {election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
-                                    </div>
+                                    <div className="mt-4">
+                                      <div className="font-bold text-black text-3xl mb-1">
+                                        {Number(candidate.vote_count || 0).toLocaleString()}
+                                      </div>
+                                      <div className="text-lg text-black mb-3">
+                                        Votes ({election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%)
+                                      </div>
                                     <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
                                       <div 
                                         className={`h-full rounded-full transition-all duration-1000 ${
@@ -1338,9 +1345,8 @@ export default function ElectionDetailsPage() {
                                     <div className="font-bold text-black text-xl mb-1">
                                       {Number(candidate.vote_count || 0).toLocaleString()}
                                     </div>
-                                    <div className="text-sm text-gray-600 mb-1">votes</div>
-                                    <div className="text-sm text-gray-600">
-                                      {election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
+                                    <div className="text-sm text-black">
+                                      Votes ({election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%)
                                     </div>
                                   </div>
                                 </div>
@@ -1417,11 +1423,8 @@ export default function ElectionDetailsPage() {
                                       <div className={`font-bold text-black ${isFullScreen ? 'text-3xl' : 'text-lg'}`}>
                                         {Number(candidate.vote_count || 0).toLocaleString()}
                                       </div>
-                                      <div className={`${isFullScreen ? 'text-base' : 'text-sm'} text-gray-600`}>
-                                        votes
-                                      </div>
-                                      <div className={`${isFullScreen ? 'text-base' : 'text-sm'} text-gray-600`}>
-                                        {election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
+                                      <div className={`${isFullScreen ? 'text-base' : 'text-sm'} text-black`}>
+                                        Votes ({election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%)
                                       </div>
                                     </div>
                                   </div>
@@ -1482,9 +1485,8 @@ export default function ElectionDetailsPage() {
                                         <div className={`font-bold text-black ${isFullScreen ? 'text-xl' : 'text-lg'}`}>
                                           {Number(candidate.vote_count || 0).toLocaleString()}
                                         </div>
-                                        <div className="text-sm text-gray-600">votes</div>
-                                        <div className="text-sm text-gray-600">
-                                          {election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%
+                                        <div className="text-sm text-black">
+                                          Votes ({election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%)
                                         </div>
                                       </div>
                                     </div>
