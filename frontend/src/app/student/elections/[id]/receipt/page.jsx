@@ -221,15 +221,6 @@ export default function VoteReceiptPage({ params }) {
       `;
       infoSection.appendChild(electionInfo);
       
-      // Student info
-      const studentInfo = document.createElement('div');
-      studentInfo.style.marginBottom = '10px';
-      studentInfo.innerHTML = `
-        <p style="margin: 5px 0; font-size: 14px; color: #000;"><strong>Student:</strong> ${formatNameSimple(receipt.student.lastName, receipt.student.firstName, receipt.student.name)}</p>
-        <p style="margin: 5px 0; font-size: 14px; color: #000;"><strong>Student Number:</strong> ${receipt.student.student_number || receipt.student.studentNumber || receipt.student.studentId}</p>
-      `;
-      infoSection.appendChild(studentInfo);
-      
       // Vote token
       const tokenInfo = document.createElement('div');
       tokenInfo.innerHTML = `
@@ -247,8 +238,11 @@ export default function VoteReceiptPage({ params }) {
       footer.style.padding = '15px';
       footer.style.marginTop = '20px';
       footer.innerHTML = `
+        <p style="margin: 0 0 8px 0; font-size: 14px; color: #b7791f;">
+          <strong>Note:</strong> Please save your receipt for your records. This serves as proof of your vote submission.
+        </p>
         <p style="margin: 0; font-size: 14px; color: #b7791f;">
-          Please save your receipt for your records. This serves as proof of your vote submission.
+          <strong>Thank you for voting!</strong>
         </p>
       `;
       container.appendChild(footer);
@@ -369,17 +363,6 @@ export default function VoteReceiptPage({ params }) {
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <p className="text-sm text-black">Student</p>
-                  <p className="font-medium text-black">{formatNameSimple(receipt.student.lastName, receipt.student.firstName, receipt.student.name)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-black">Student Number</p>
-                  <p className="font-medium text-black">{receipt.student.student_number || receipt.student.studentNumber || receipt.student.studentId}</p>
-                </div>
-              </div>
-              
               <div>
                 <p className="text-sm text-gray-500 text-black">Receipt ID</p>
                 <p className="font-medium text-xs break-all text-black">{receipt.voteToken}</p>
@@ -388,7 +371,10 @@ export default function VoteReceiptPage({ params }) {
             
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-6">
               <p className="text-sm text-yellow-700">
-                Please save your receipt for your records. This serves as proof of your vote submission.
+                <strong>Note:</strong> Please save your receipt for your records. This serves as proof of your vote submission.
+              </p>
+              <p className="text-sm text-yellow-700 mt-2">
+                <strong>Thank you for voting!</strong>
               </p>
             </div>
           </div>
