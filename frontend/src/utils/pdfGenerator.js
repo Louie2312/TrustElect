@@ -715,7 +715,7 @@ export const generatePdfReport = (reportId, data) => {
         doc = generateUserReport(data);
         break;
       case 3:
-        doc = generateAdminActivityReport(data);
+        doc = generateFailedLoginReport(data);
         break;
       case 4:
         doc = generateAuditLogReport(data);
