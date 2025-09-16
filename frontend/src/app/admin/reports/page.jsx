@@ -366,7 +366,7 @@ export default function AdminReportsPage() {
                 <h2 className="text-2xl font-bold text-black">{report.title}</h2>
                 <button 
                   onClick={() => setSelectedReport(null)} 
-                  className="text-blackhover:text-gray-700"
+                  className="text-black hover:text-gray-700"
                 >
                   ✕
                 </button>

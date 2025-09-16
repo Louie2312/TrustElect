@@ -346,43 +346,22 @@ export default function AdminDashboard() {
     try {
       const token = Cookies.get('token');
       
-      // Load election stats and total students count in parallel
-      const [electionsResponse, studentsResponse] = await Promise.all([
-        fetch(`/api/elections/stats`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }),
-        fetch(`/api/superadmin/students/count`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        })
-      ]);
+      // Load election stats only (remove superadmin endpoint for admin users)
+      const electionsResponse = await fetch(`/api/elections/stats`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       
       if (!electionsResponse.ok) {
         throw new Error(`Failed to load election stats: ${electionsResponse.status}`);
       }
       
       const electionsData = await electionsResponse.json();
-      let totalStudents = 0;
       
-      // Get total students count if available
-      if (studentsResponse.ok) {
-        const studentsData = await studentsResponse.json();
-        totalStudents = studentsData.total_students || studentsData.count || 0;
-      }
-      
-      // Add total students to the stats
+      // Set stats without total_students for admin users
       const statsData = electionsData || [];
-      if (Array.isArray(statsData)) {
-        statsData.total_students = totalStudents;
-      } else {
-        statsData.total_students = totalStudents;
-      }
-      
       setStats(statsData);
       return statsData;
     } catch (err) {
@@ -420,7 +399,8 @@ export default function AdminDashboard() {
       setRefreshTime(new Date());
     } catch (err) {
       console.error("[Admin] Failed to load live vote count:", err);
-      setLiveVoteData(null);
+      // Set empty data instead of null to prevent UI errors
+      setLiveVoteData([]);
     }
   }, []);
 
@@ -433,7 +413,12 @@ export default function AdminDashboard() {
       setSelectedTimeframe(timeframe);
     } catch (err) {
       console.error("[Admin] Failed to load system load data:", err);
-      setSystemLoadData(null);
+      // Set empty data structure instead of null to prevent UI errors
+      setSystemLoadData({
+        login_activity: [],
+        voting_activity: [],
+        summary: {}
+      });
     } finally {
       setIsSystemLoadLoading(false);
     }
@@ -464,15 +449,19 @@ export default function AdminDashboard() {
         setIsLoading(true);
         setError(null);
         
-        // Load data in parallel
+        // Load critical data first
         await Promise.all([
           loadAllElections(),
           loadStats(),
           loadUIDesign(),
           loadTotalUniqueVoters(),
-          loadLiveVoteCount(),
-          loadSystemLoadData('24h')
+          loadLiveVoteCount()
         ]);
+        
+        // Load system load data in background (non-blocking)
+        loadSystemLoadData('24h').catch(err => {
+          console.log("[Admin] System load data not available:", err.message);
+        });
         
         if (isMounted) {
           setDataLoaded(true);
@@ -655,9 +644,8 @@ export default function AdminDashboard() {
   // Handle system load reports modal
   const handleViewSystemLoadReports = () => {
     setShowSystemLoadModal(true);
-    if (!systemLoadData) {
-      loadSystemLoadData('24h');
-    }
+    // Always try to load fresh data when opening modal
+    loadSystemLoadData('24h');
   };
 
   // Helper functions for system load reports
@@ -1043,7 +1031,7 @@ export default function AdminDashboard() {
       )}
       
       {/* Live Vote Count Section */}
-      {activeTab === 'ongoing' && elections.length > 0 && liveVoteData && (
+      {activeTab === 'ongoing' && elections.length > 0 && liveVoteData && liveVoteData.length > 0 && (
         <div className="mt-8 bg-gray-50 rounded-lg shadow-lg p-6 border border-gray-200">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold text-black flex items-center">
@@ -1129,7 +1117,7 @@ export default function AdminDashboard() {
               <h3 className="text-sm font-semibold text-black">Login Activity</h3>
             </div>
             <p className="text-2xl font-bold text-black">
-              {systemLoadData ? formatNumber((systemLoadData.login_activity || []).reduce((sum, item) => sum + (item.count || 0), 0)) : '0'}
+              {systemLoadData && systemLoadData.login_activity ? formatNumber((systemLoadData.login_activity || []).reduce((sum, item) => sum + (item.count || 0), 0)) : '0'}
             </p>
             <p className="text-xs text-blue-600">Total logins (24h)</p>
           </div>
@@ -1142,7 +1130,7 @@ export default function AdminDashboard() {
               <h3 className="text-sm font-semibold text-black">Voting Activity</h3>
             </div>
             <p className="text-2xl font-bold text-black">
-              {systemLoadData ? formatNumber((systemLoadData.voting_activity || []).reduce((sum, item) => sum + (item.count || 0), 0)) : '0'}
+              {systemLoadData && systemLoadData.voting_activity ? formatNumber((systemLoadData.voting_activity || []).reduce((sum, item) => sum + (item.count || 0), 0)) : '0'}
             </p>
             <p className="text-xs text-green-600">Total votes (24h)</p>
           </div>
@@ -1166,7 +1154,10 @@ export default function AdminDashboard() {
         
         <div className="mt-4 p-3 bg-gray-50 rounded-lg">
           <p className="text-sm text-gray-600 text-center">
-            Click &quot;View Reports&quot; to load system analytics and performance metrics.
+            {systemLoadData && systemLoadData.login_activity 
+              ? 'System analytics loaded successfully. Click "View Reports" for detailed analysis.'
+              : 'Click "View Reports" to load system analytics and performance metrics.'
+            }
           </p>
         </div>
       </div>
