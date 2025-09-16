@@ -49,7 +49,7 @@ exports.createElection = async (req, res) => {
         };
 
         if (needsApproval) {
-          // Send notification to superadmins for approval
+          // Send notification to superadmins for approval (admin-created election)
           const { rows: superadminDetails } = await pool.query(
             `SELECT id, email, active FROM users WHERE role_id = 1`
           );
@@ -69,7 +69,51 @@ exports.createElection = async (req, res) => {
             );
           }
         } else if (isSuperAdmin) {
-          // For superadmin-created elections, notify eligible students immediately
+          // For superadmin-created elections, send notifications to other superadmins and admins
+          const { createNotificationForUsers } = require('../models/notificationModel');
+          
+          // Notify other superadmins (excluding the creator)
+          const { rows: otherSuperadminDetails } = await pool.query(
+            `SELECT id, email, active FROM users WHERE role_id = 1 AND id != $1`,
+            [req.user.id]
+          );
+          
+          if (otherSuperadminDetails.length > 0) {
+            const otherSuperadminIds = otherSuperadminDetails.map(sa => sa.id);
+            
+            await createNotificationForUsers(
+              otherSuperadminIds,
+              'Super Admin',
+              'New Election Created', 
+              `A new election "${electionWithCreator.title}" has been created by a Super Admin.`,
+              'info',
+              'election',
+              electionWithCreator.id
+            );
+          }
+          
+          // Notify all admins about the new election
+          const { rows: adminDetails } = await pool.query(
+            `SELECT u.id, u.email, u.active FROM users u 
+             JOIN admins a ON u.email = a.email 
+             WHERE u.role_id = 2`
+          );
+          
+          if (adminDetails.length > 0) {
+            const adminIds = adminDetails.map(admin => admin.id);
+            
+            await createNotificationForUsers(
+              adminIds,
+              'Admin',
+              'New Election Created', 
+              `A new election "${electionWithCreator.title}" has been created by a Super Admin.`,
+              'info',
+              'election',
+              electionWithCreator.id
+            );
+          }
+          
+          // Notify eligible students immediately
           await notificationService.notifyStudentsAboutElection(electionWithCreator);
         }
       } catch (notifError) {

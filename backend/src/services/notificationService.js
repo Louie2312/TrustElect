@@ -56,59 +56,118 @@ const notifyElectionNeedsApproval = async (election) => {
       return [];
     }
     
- 
-    const { rows: superadminUsers } = await pool.query(`
-      SELECT id FROM users 
-      WHERE role_id = 1
-      AND active = true
-    `);
+    // Check if the election creator is a superadmin
+    const { rows: creatorRows } = await pool.query(`
+      SELECT role_id FROM users WHERE id = $1
+    `, [election.created_by]);
     
-    let superadminIds = superadminUsers.map(user => user.id);
+    const isCreatorSuperAdmin = creatorRows.length > 0 && creatorRows[0].role_id === 1;
     
-    if (superadminIds.length === 0) {
-      const { rows: inactiveUsers } = await pool.query(`
+    if (isCreatorSuperAdmin) {
+      // If created by superadmin, don't send approval notifications
+      // Instead, send informational notifications to other superadmins and admins
+      const promises = [];
+      
+      // Notify other superadmins (excluding the creator)
+      const { rows: otherSuperadminUsers } = await pool.query(`
         SELECT id FROM users 
-        WHERE role_id = 1
-      `);
-      superadminIds = inactiveUsers.map(user => user.id);
-    }
-    
-    if (superadminIds.length === 0) {
-      const { rows: joinedUsers } = await pool.query(`
-        SELECT u.id 
-        FROM users u
-        JOIN superadmins s ON u.email = s.email
-        WHERE u.active = true OR u.active IS NULL
-      `);
-      superadminIds = joinedUsers.map(user => user.id);
-    }
-    
-    if (superadminIds.length === 0) {
-      return [];
-    }
-    
-    let adminName = 'An admin';
-    if (election.created_by) {
-      const { rows: userRows } = await pool.query(`
-        SELECT name FROM users WHERE id = $1
+        WHERE role_id = 1 AND id != $1 AND active = true
       `, [election.created_by]);
       
-      if (userRows.length > 0 && userRows[0].name) {
-        adminName = userRows[0].name;
+      if (otherSuperadminUsers.length > 0) {
+        const otherSuperadminIds = otherSuperadminUsers.map(user => user.id);
+        promises.push(
+          createNotificationForUsers(
+            otherSuperadminIds,
+            'Super Admin',
+            'New Election Created',
+            `A new election "${election.title}" has been created by a Super Admin.`,
+            NOTIFICATION_TYPES.INFO,
+            RELATED_ENTITIES.ELECTION,
+            election.id
+          )
+        );
       }
-    }
+      
+      // Notify all admins
+      const { rows: adminUsers } = await pool.query(`
+        SELECT u.id FROM users u 
+        JOIN admins a ON u.email = a.email 
+        WHERE u.role_id = 2 AND u.active = true
+      `);
+      
+      if (adminUsers.length > 0) {
+        const adminIds = adminUsers.map(user => user.id);
+        promises.push(
+          createNotificationForUsers(
+            adminIds,
+            'Admin',
+            'New Election Created',
+            `A new election "${election.title}" has been created by a Super Admin.`,
+            NOTIFICATION_TYPES.INFO,
+            RELATED_ENTITIES.ELECTION,
+            election.id
+          )
+        );
+      }
+      
+      const results = await Promise.all(promises);
+      return results.flat();
+    } else {
+      // Original logic for admin-created elections that need approval
+      const { rows: superadminUsers } = await pool.query(`
+        SELECT id FROM users 
+        WHERE role_id = 1
+        AND active = true
+      `);
+      
+      let superadminIds = superadminUsers.map(user => user.id);
+      
+      if (superadminIds.length === 0) {
+        const { rows: inactiveUsers } = await pool.query(`
+          SELECT id FROM users 
+          WHERE role_id = 1
+        `);
+        superadminIds = inactiveUsers.map(user => user.id);
+      }
+      
+      if (superadminIds.length === 0) {
+        const { rows: joinedUsers } = await pool.query(`
+          SELECT u.id 
+          FROM users u
+          JOIN superadmins s ON u.email = s.email
+          WHERE u.active = true OR u.active IS NULL
+        `);
+        superadminIds = joinedUsers.map(user => user.id);
+      }
+      
+      if (superadminIds.length === 0) {
+        return [];
+      }
+      
+      let adminName = 'An admin';
+      if (election.created_by) {
+        const { rows: userRows } = await pool.query(`
+          SELECT name FROM users WHERE id = $1
+        `, [election.created_by]);
+        
+        if (userRows.length > 0 && userRows[0].name) {
+          adminName = userRows[0].name;
+        }
+      }
 
-    const result = await createNotificationForUsers(
-      superadminIds,
-      'Super Admin',
-      'Election Needs Approval',
-      `${adminName} created "${election.title}" that needs approval.`,
-      NOTIFICATION_TYPES.INFO,
-      RELATED_ENTITIES.ELECTION,
-      election.id
-    );
-    
-    return result;
+      const result = await createNotificationForUsers(
+        superadminIds,
+        'Super Admin',
+        'Election Needs Approval',
+        `${adminName} created "${election.title}" that needs approval.`,
+        NOTIFICATION_TYPES.INFO,
+        RELATED_ENTITIES.ELECTION,
+        election.id
+      );
+      
+      return result;
+    }
   } catch (error) {
 
     try {
