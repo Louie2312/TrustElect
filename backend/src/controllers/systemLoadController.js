@@ -3,6 +3,8 @@ const pool = require('../config/db');
 const getSystemLoad = async (req, res) => {
   try {
     const { timeframe = '24h' } = req.query;
+    console.log('System Load Request - Timeframe:', timeframe);
+    
     let interval;
     let grouping;
     let dateFormat;
@@ -65,7 +67,7 @@ const getSystemLoad = async (req, res) => {
     const peakStatsQuery = `
       WITH login_stats AS (
         SELECT 
-          ${timeframe === '30d' ? 'EXTRACT(DAY FROM' : 'EXTRACT(HOUR FROM'}${grouping}) as hour,
+          ${timeframe === '30d' ? 'EXTRACT(DAY FROM' : 'EXTRACT(HOUR FROM'} ${grouping}) as hour,
           COUNT(*) as count
         FROM audit_logs
         WHERE 
@@ -87,12 +89,17 @@ const getSystemLoad = async (req, res) => {
         WHERE created_at >= NOW() - ${interval}
       )
       SELECT
-        (SELECT hour || ':00' FROM login_stats ORDER BY count DESC LIMIT 1) as peak_login_hour,
-        (SELECT count FROM login_stats ORDER BY count DESC LIMIT 1) as peak_login_count,
-        (SELECT hour || ':00' FROM vote_stats ORDER BY count DESC LIMIT 1) as peak_voting_hour,
-        (SELECT count FROM vote_stats ORDER BY count DESC LIMIT 1) as peak_voting_count,
-        (SELECT count FROM active_users) as total_active_users
+        (SELECT COALESCE(hour || ':00', 'N/A') FROM login_stats ORDER BY count DESC LIMIT 1) as peak_login_hour,
+        (SELECT COALESCE(count, 0) FROM login_stats ORDER BY count DESC LIMIT 1) as peak_login_count,
+        (SELECT COALESCE(hour || ':00', 'N/A') FROM vote_stats ORDER BY count DESC LIMIT 1) as peak_voting_hour,
+        (SELECT COALESCE(count, 0) FROM vote_stats ORDER BY count DESC LIMIT 1) as peak_voting_count,
+        (SELECT COALESCE(count, 0) FROM active_users) as total_active_users
     `;
+
+    console.log('Generated SQL Queries:');
+    console.log('Login Query:', loginQuery);
+    console.log('Voting Query:', votingQuery);
+    console.log('Peak Stats Query:', peakStatsQuery);
 
     const [loginActivity, votingActivity, peakStats] = await Promise.all([
       pool.query(loginQuery),
@@ -126,9 +133,15 @@ const getSystemLoad = async (req, res) => {
 
   } catch (error) {
     console.error('Error in getSystemLoad:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      timeframe: req.query.timeframe
+    });
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch system load data'
+      error: 'Failed to fetch system load data',
+      details: error.message
     });
   }
 };
