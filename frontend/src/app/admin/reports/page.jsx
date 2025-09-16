@@ -14,6 +14,7 @@ import ElectionSummaryReport from "./components/ElectionSummaryReport";
 import VoterParticipationReport from "./components/VoterParticipationReport";
 import CandidateListReport from "./components/CandidateListReport";
 import AdminActivityReport from "./components/AdminActivityReport";
+import SystemLoadDetail from "../../superadmin/reports/components/SystemLoadDetail";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -77,6 +78,13 @@ export default function AdminReportsPage() {
       type: "Activity",
       icon: "audit",
       description: "Tracking of administrative actions and system changes"
+    },
+    {
+      id: 8,
+      title: "System Load Report",
+      type: "System",
+      icon: "system",
+      description: "Analysis of peak usage times and system activity patterns"
     }
   ];
 
@@ -156,6 +164,15 @@ export default function AdminReportsPage() {
             headers: { Authorization: `Bearer ${token}` }
           });
           transformedData = activityResponse.data;
+          break;
+
+        case 8: 
+          // System Load Report
+          endpoint = '/reports/system-load?timeframe=24h';
+          const systemLoadResponse = await axios.get(`${API_BASE}${endpoint}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          transformedData = systemLoadResponse.data;
           break;
 
         default:
@@ -337,6 +354,29 @@ export default function AdminReportsPage() {
               </div>
               <div className="p-6 flex-grow overflow-y-auto">
                 <AdminActivityReport />
+              </div>
+            </div>
+          </div>
+        );
+      case 8:
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col border border-gray-200">
+              <div className="flex justify-between items-center p-6 border-b">
+                <h2 className="text-2xl font-bold text-black">{report.title}</h2>
+                <button 
+                  onClick={() => setSelectedReport(null)} 
+                  className="text-blackhover:text-gray-700"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="p-6 flex-grow overflow-y-auto">
+                <SystemLoadDetail 
+                  report={report} 
+                  onClose={() => setSelectedReport(null)}
+                  onDownload={() => downloadReport(report.id)}
+                />
               </div>
             </div>
           </div>
