@@ -38,8 +38,8 @@ exports.createElection = async (req, res) => {
       needsApproval
     );
 
-    // Only send notifications if the election was created successfully
-    if (result.election && needsApproval) {
+    // Send notifications if the election was created successfully
+    if (result.election) {
       try {
         const electionWithCreator = {
           ...result.election,
@@ -48,27 +48,32 @@ exports.createElection = async (req, res) => {
           description: description || result.election.description
         };
 
-        // Send a single notification to all superadmins
-        const { rows: superadminDetails } = await pool.query(
-          `SELECT id, email, active FROM users WHERE role_id = 1`
-        );
-        
-        if (superadminDetails.length > 0) {
-          const { createNotificationForUsers } = require('../models/notificationModel');
-          const superadminIds = superadminDetails.map(sa => sa.id);
-          
-          await createNotificationForUsers(
-            superadminIds,
-            'Super Admin',
-            'Election Needs Approval', 
-            `Election "${electionWithCreator.title}" needs your approval.`,
-            'info',
-            'election',
-            electionWithCreator.id
+        if (needsApproval) {
+          // Send notification to superadmins for approval
+          const { rows: superadminDetails } = await pool.query(
+            `SELECT id, email, active FROM users WHERE role_id = 1`
           );
+          
+          if (superadminDetails.length > 0) {
+            const { createNotificationForUsers } = require('../models/notificationModel');
+            const superadminIds = superadminDetails.map(sa => sa.id);
+            
+            await createNotificationForUsers(
+              superadminIds,
+              'Super Admin',
+              'Election Needs Approval', 
+              `Election "${electionWithCreator.title}" needs your approval.`,
+              'info',
+              'election',
+              electionWithCreator.id
+            );
+          }
+        } else if (isSuperAdmin) {
+          // For superadmin-created elections, notify eligible students immediately
+          await notificationService.notifyStudentsAboutElection(electionWithCreator);
         }
       } catch (notifError) {
-        console.error('Failed to send approval notifications:', notifError);
+        console.error('Failed to send notifications:', notifError);
         // Don't rethrow - we still want to return success response
       }
     }

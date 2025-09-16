@@ -19,8 +19,9 @@ async function updateElectionStatuses() {
 
     const now = DateTime.now().setZone(MANILA_TIMEZONE);
     
-    // Track elections that transitioned to completed status
+    // Track elections that transitioned to completed or ongoing status
     const newlyCompletedElections = [];
+    const newlyOngoingElections = [];
 
     for (const election of elections) {
       const startDateTime = DateTime.fromISO(election.date_from)
@@ -56,16 +57,18 @@ async function updateElectionStatuses() {
           [newStatus, election.id]
         );
         
-        // If transitioning to completed status, track for notifications
+        // Track status changes for notifications
         if (newStatus === 'completed' && oldStatus !== 'completed') {
           newlyCompletedElections.push(election);
+        } else if (newStatus === 'ongoing' && oldStatus !== 'ongoing') {
+          newlyOngoingElections.push(election);
         }
       }
     }
 
     await client.query('COMMIT');
     
-    // After transaction is committed, send notifications for completed elections
+    // After transaction is committed, send notifications for status changes
     if (newlyCompletedElections.length > 0) {
       // Process each completed election
       for (const election of newlyCompletedElections) {
@@ -84,6 +87,29 @@ async function updateElectionStatuses() {
           }
         } catch (error) {
           console.error(`Error sending notifications for completed election ${election.id}:`, error);
+          // Continue with other elections even if one fails
+        }
+      }
+    }
+
+    if (newlyOngoingElections.length > 0) {
+      // Process each election that became ongoing
+      for (const election of newlyOngoingElections) {
+        try {
+          // Get complete election details for the notification
+          const { rows } = await pool.query(
+            'SELECT * FROM elections WHERE id = $1',
+            [election.id]
+          );
+          
+          if (rows.length > 0) {
+            const completeElection = rows[0];
+            
+            // Send notifications to students that election is now ongoing
+            await notificationService.notifyStudentsAboutElection(completeElection);
+          }
+        } catch (error) {
+          console.error(`Error sending notifications for ongoing election ${election.id}:`, error);
           // Continue with other elections even if one fails
         }
       }
