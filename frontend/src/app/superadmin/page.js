@@ -220,6 +220,9 @@ export default function SuperAdminDashboard() {
   const [selectedElection, setSelectedElection] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshTime, setRefreshTime] = useState(new Date());
+  const [systemLoadData, setSystemLoadData] = useState(null);
+  const [showSystemLoadModal, setShowSystemLoadModal] = useState(false);
+  const [isSystemLoadLoading, setIsSystemLoadLoading] = useState(false);
 
   const loadElections = useCallback(async (status) => {
     try {
@@ -340,9 +343,40 @@ export default function SuperAdminDashboard() {
     }
   }, []);
 
+  const loadSystemLoadData = useCallback(async (timeframe = '24h') => {
+    try {
+      setIsSystemLoadLoading(true);
+      const token = Cookies.get('token');
+      const response = await fetch(`${API_BASE}/reports/system-load?timeframe=${timeframe}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch system load data');
+      }
+      
+      const data = await response.json();
+      setSystemLoadData(data.data);
+    } catch (error) {
+      console.error('Error loading system load data:', error);
+      setSystemLoadData(null);
+    } finally {
+      setIsSystemLoadLoading(false);
+    }
+  }, []);
+
   const handleViewLiveVoteDetails = (election) => {
     setSelectedElection(election);
     setShowLiveVoteModal(true);
+  };
+
+  const handleViewSystemLoadReports = async () => {
+    setShowSystemLoadModal(true);
+    if (!systemLoadData) {
+      await loadSystemLoadData('24h');
+    }
   };
 
   useEffect(() => {
@@ -355,7 +389,8 @@ export default function SuperAdminDashboard() {
           loadStats(),
           loadElections(activeTab),
           loadTotalUniqueVoters(),
-          loadLiveVoteCount()
+          loadLiveVoteCount(),
+          loadSystemLoadData('24h')
         ]);
       } catch (error) {
         console.error('[SuperAdmin] Error during initial load:', error);
@@ -682,6 +717,90 @@ export default function SuperAdminDashboard() {
           </div>
         </div>
       )}
+
+      {/* System Load Reports Navigation */}
+      <div className="mt-8 bg-white rounded-lg shadow-lg p-6 border border-gray-200">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold text-black flex items-center">
+            <BarChart className="mr-2 text-black" />
+            System Load Reports
+            <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+              Analytics
+            </span>
+          </h2>
+          <button 
+            onClick={handleViewSystemLoadReports}
+            className="flex items-center text-black bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-md transition-colors duration-150 shadow-sm"
+          >
+            <BarChart className="w-4 h-4 mr-2" />
+            View Reports
+          </button>
+        </div>
+
+        {systemLoadData ? (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-blue-700 mb-1">Peak Login Hour</h3>
+                  <p className="text-lg font-bold text-blue-900">
+                    {systemLoadData.peak_login_hour || 'N/A'}
+                  </p>
+                </div>
+                <Users className="w-6 h-6 text-blue-600" />
+              </div>
+            </div>
+            
+            <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-green-700 mb-1">Peak Login Count</h3>
+                  <p className="text-lg font-bold text-green-900">
+                    {systemLoadData.peak_login_count || 0}
+                  </p>
+                </div>
+                <CheckCircle className="w-6 h-6 text-green-600" />
+              </div>
+            </div>
+            
+            <div className="bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-purple-700 mb-1">Peak Voting Hour</h3>
+                  <p className="text-lg font-bold text-purple-900">
+                    {systemLoadData.peak_voting_hour || 'N/A'}
+                  </p>
+                </div>
+                <BarChart className="w-6 h-6 text-purple-600" />
+              </div>
+            </div>
+            
+            <div className="bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-orange-700 mb-1">Active Users</h3>
+                  <p className="text-lg font-bold text-orange-900">
+                    {systemLoadData.total_active_users || 0}
+                  </p>
+                </div>
+                <Clock className="w-6 h-6 text-orange-600" />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <div className="text-gray-500 mb-4">
+              <BarChart className="w-12 h-12 mx-auto" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              System Load Data
+            </h3>
+            <p className="text-gray-600">
+              Click "View Reports" to load system analytics and performance metrics.
+            </p>
+          </div>
+        )}
+      </div>
       
     
       <DeleteConfirmationModal 
@@ -1011,6 +1130,253 @@ export default function SuperAdminDashboard() {
                 </button>
                 <button
                   onClick={() => setShowLiveVoteModal(false)}
+                  className="flex items-center text-black bg-gray-200 px-5 py-2.5 rounded-md hover:bg-gray-300 shadow-sm transition-all duration-150 font-medium"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* System Load Reports Modal */}
+      {showSystemLoadModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="bg-gray-50 rounded-lg shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-auto border border-gray-300">
+            <div className="p-8">
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-black">System Load Reports</h2>
+                  <p className="text-sm text-black bg-gray-100 px-3 py-1 rounded-md inline-block mt-2 shadow-sm">
+                    <Clock className="w-4 h-4 inline mr-1" />
+                    Real-time system analytics and performance metrics
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setShowSystemLoadModal(false)} 
+                  className="text-black hover:text-gray-700 bg-gray-200 p-2 rounded-full hover:bg-gray-300 transition-colors duration-150"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Timeframe Selector */}
+              <div className="mb-6 bg-white p-4 rounded-lg shadow-md border border-gray-200">
+                <h3 className="text-lg font-bold text-black mb-4">Select Timeframe</h3>
+                <div className="flex space-x-4">
+                  {['24h', '7d', '30d'].map((timeframe) => (
+                    <button
+                      key={timeframe}
+                      onClick={() => loadSystemLoadData(timeframe)}
+                      disabled={isSystemLoadLoading}
+                      className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-black rounded-md transition-colors duration-150 disabled:opacity-50"
+                    >
+                      {timeframe === '24h' ? 'Last 24 Hours' : 
+                       timeframe === '7d' ? 'Last 7 Days' : 'Last 30 Days'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {isSystemLoadLoading ? (
+                <div className="flex justify-center items-center h-64">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                </div>
+              ) : systemLoadData ? (
+                <>
+                  {/* Summary Statistics */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-6 shadow-md">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-sm font-medium text-blue-700 mb-2">Peak Login Hour</h3>
+                          <p className="text-2xl font-bold text-blue-900">
+                            {systemLoadData.peak_login_hour || 'N/A'}
+                          </p>
+                        </div>
+                        <Users className="w-8 h-8 text-blue-600" />
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg p-6 shadow-md">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-sm font-medium text-green-700 mb-2">Peak Login Count</h3>
+                          <p className="text-2xl font-bold text-green-900">
+                            {systemLoadData.peak_login_count || 0}
+                          </p>
+                        </div>
+                        <CheckCircle className="w-8 h-8 text-green-600" />
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-lg p-6 shadow-md">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-sm font-medium text-purple-700 mb-2">Peak Voting Hour</h3>
+                          <p className="text-2xl font-bold text-purple-900">
+                            {systemLoadData.peak_voting_hour || 'N/A'}
+                          </p>
+                        </div>
+                        <BarChart className="w-8 h-8 text-purple-600" />
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-lg p-6 shadow-md">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-sm font-medium text-orange-700 mb-2">Active Users</h3>
+                          <p className="text-2xl font-bold text-orange-900">
+                            {systemLoadData.total_active_users || 0}
+                          </p>
+                        </div>
+                        <Clock className="w-8 h-8 text-orange-600" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Login Activity Chart */}
+                  {systemLoadData.login_activity && systemLoadData.login_activity.length > 0 && (
+                    <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 mb-6">
+                      <h3 className="text-lg font-bold text-black mb-4">Login Activity</h3>
+                      <div className="h-96">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RechartsBarChart
+                            data={systemLoadData.login_activity}
+                            margin={{ top: 20, right: 30, left: 60, bottom: 80 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" strokeOpacity={0.6} />
+                            <XAxis 
+                              dataKey="hour" 
+                              angle={-45} 
+                              textAnchor="end" 
+                              height={80} 
+                              tick={{ fill: '#374151', fontSize: 12, fontWeight: '500' }}
+                              axisLine={{ stroke: '#D1D5DB' }}
+                              tickLine={{ stroke: '#D1D5DB' }}
+                            />
+                            <YAxis 
+                              tick={{ fill: '#374151', fontSize: 12 }}
+                              axisLine={{ stroke: '#D1D5DB' }}
+                              tickLine={{ stroke: '#D1D5DB' }}
+                              label={{ 
+                                value: 'Login Count', 
+                                angle: -90, 
+                                position: 'insideLeft', 
+                                style: { textAnchor: 'middle', fill: '#374151', fontSize: '14px', fontWeight: '600' } 
+                              }}
+                            />
+                            <Tooltip 
+                              formatter={(value, name) => [value.toLocaleString(), 'Logins']}
+                              labelStyle={{ 
+                                color: '#000000', 
+                                fontWeight: 'bold',
+                                fontSize: '14px'
+                              }}
+                              contentStyle={{ 
+                                backgroundColor: '#F9FAFB', 
+                                border: '1px solid #E5E7EB', 
+                                borderRadius: '8px',
+                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                              }}
+                            />
+                            <Bar 
+                              dataKey="count" 
+                              fill="#3B82F6" 
+                              radius={[6, 6, 0, 0]}
+                              stroke="#1D4ED8"
+                              strokeWidth={1}
+                            />
+                          </RechartsBarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Voting Activity Chart */}
+                  {systemLoadData.voting_activity && systemLoadData.voting_activity.length > 0 && (
+                    <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 mb-6">
+                      <h3 className="text-lg font-bold text-black mb-4">Voting Activity</h3>
+                      <div className="h-96">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RechartsBarChart
+                            data={systemLoadData.voting_activity}
+                            margin={{ top: 20, right: 30, left: 60, bottom: 80 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" strokeOpacity={0.6} />
+                            <XAxis 
+                              dataKey="hour" 
+                              angle={-45} 
+                              textAnchor="end" 
+                              height={80} 
+                              tick={{ fill: '#374151', fontSize: 12, fontWeight: '500' }}
+                              axisLine={{ stroke: '#D1D5DB' }}
+                              tickLine={{ stroke: '#D1D5DB' }}
+                            />
+                            <YAxis 
+                              tick={{ fill: '#374151', fontSize: 12 }}
+                              axisLine={{ stroke: '#D1D5DB' }}
+                              tickLine={{ stroke: '#D1D5DB' }}
+                              label={{ 
+                                value: 'Vote Count', 
+                                angle: -90, 
+                                position: 'insideLeft', 
+                                style: { textAnchor: 'middle', fill: '#374151', fontSize: '14px', fontWeight: '600' } 
+                              }}
+                            />
+                            <Tooltip 
+                              formatter={(value, name) => [value.toLocaleString(), 'Votes']}
+                              labelStyle={{ 
+                                color: '#000000', 
+                                fontWeight: 'bold',
+                                fontSize: '14px'
+                              }}
+                              contentStyle={{ 
+                                backgroundColor: '#F9FAFB', 
+                                border: '1px solid #E5E7EB', 
+                                borderRadius: '8px',
+                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                              }}
+                            />
+                            <Bar 
+                              dataKey="count" 
+                              fill="#10B981" 
+                              radius={[6, 6, 0, 0]}
+                              stroke="#059669"
+                              strokeWidth={1}
+                            />
+                          </RechartsBarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-12">
+                  <div className="text-gray-500 mb-4">
+                    <BarChart className="w-16 h-16 mx-auto" />
+                  </div>
+                  <h3 className="text-xl font-medium text-gray-900 mb-2">
+                    No System Load Data
+                  </h3>
+                  <p className="text-gray-600">
+                    Unable to load system analytics data. Please try again.
+                  </p>
+                </div>
+              )}
+
+              <div className="mt-8 flex justify-end space-x-4">
+                <button
+                  onClick={() => loadSystemLoadData('24h')}
+                  disabled={isSystemLoadLoading}
+                  className="flex items-center text-black bg-gray-200 px-5 py-2.5 rounded-md hover:bg-gray-300 shadow-sm transition-all duration-150 font-medium disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-5 h-5 mr-2 ${isSystemLoadLoading ? 'animate-spin' : ''}`} />
+                  Refresh Data
+                </button>
+                <button
+                  onClick={() => setShowSystemLoadModal(false)}
                   className="flex items-center text-black bg-gray-200 px-5 py-2.5 rounded-md hover:bg-gray-300 shadow-sm transition-all duration-150 font-medium"
                 >
                   Close
