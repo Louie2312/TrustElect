@@ -9,18 +9,49 @@ import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
-async function fetchWithAuth(url, options = {}) {
+async function fetchWithAuth(url, options = {}, retries = 3) {
   const token = Cookies.get('token');
-  const response = await fetch(`${API_BASE}${url}`, {
-    ...options,
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      ...(options.headers || {})
+  
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      const response = await fetch(`${API_BASE}${url}`, {
+        ...options,
+        signal: controller.signal,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          ...(options.headers || {})
+        }
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        if (response.status >= 500 && attempt < retries) {
+          console.warn(`Attempt ${attempt} failed with ${response.status}, retrying...`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Exponential backoff
+          continue;
+        }
+        throw new Error(`Request failed with status ${response.status}`);
+      }
+      
+      return response.json();
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        throw new Error('Request timeout');
+      }
+      
+      if (attempt === retries) {
+        throw error;
+      }
+      
+      console.warn(`Attempt ${attempt} failed:`, error.message);
+      await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Exponential backoff
     }
-  });
-  if (!response.ok) throw new Error('Request failed');
-  return response.json();
+  }
 }
 
 const statusTabs = [
@@ -220,6 +251,8 @@ export default function SuperAdminDashboard() {
   const [selectedElection, setSelectedElection] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshTime, setRefreshTime] = useState(new Date());
+  const [isStatsLoading, setIsStatsLoading] = useState(true);
+  const [connectionStatus, setConnectionStatus] = useState('online');
 
   const loadElections = useCallback(async (status) => {
     try {
@@ -233,20 +266,7 @@ export default function SuperAdminDashboard() {
         endpoint = `/elections/status/${status}`;
       }
       
-      const response = await fetch(`${API_BASE}${endpoint}`, {
-        headers: {
-          'Authorization': `Bearer ${Cookies.get('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`[SuperAdmin] Error loading elections: ${response.status} ${response.statusText}`, errorText);
-        throw new Error(`Failed to load elections: ${response.status} ${response.statusText}`);
-      }
-      
-      const data = await response.json();
+      const data = await fetchWithAuth(endpoint);
       setElections(data || []);
 
       if (status === 'to_approve') {
@@ -264,36 +284,30 @@ export default function SuperAdminDashboard() {
 
   const loadPendingApprovals = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/elections/pending-approval`, {
-        headers: {
-          'Authorization': `Bearer ${Cookies.get('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        return;
-      }
-      
-      const data = await response.json();
-      setPendingApprovals(data);
-      setPendingCount(data.length);
+      const data = await fetchWithAuth('/elections/pending-approval');
+      setPendingApprovals(data || []);
+      setPendingCount(data?.length || 0);
 
       if (activeTab === 'to_approve') {
-        setElections(data);
+        setElections(data || []);
       }
     } catch (err) {
       console.error('[SuperAdmin] Error loading pending approvals:', err);
+      // Don't set error state for pending approvals to avoid blocking the UI
     }
   }, [activeTab]);
 
   const loadStats = useCallback(async () => {
     try {
+      setIsStatsLoading(true);
       const data = await fetchWithAuth('/elections/stats');
       setStats(data || []);
     } catch (err) {
       console.error("[SuperAdmin] Failed to load stats:", err);
       setStats([]);
+      // Don't set error state for stats to avoid blocking the UI
+    } finally {
+      setIsStatsLoading(false);
     }
   }, []);
 
@@ -313,28 +327,19 @@ export default function SuperAdminDashboard() {
     } catch (err) {
       console.error("[SuperAdmin] Failed to load total unique voters:", err);
       setTotalUniqueVoters(0);
+      // Don't set error state for total voters to avoid blocking the UI
     }
   }, []);
 
   const loadLiveVoteCount = useCallback(async () => {
     try {
       setIsRefreshing(true);
-      const token = Cookies.get('token');
-      const response = await fetch(`${API_BASE}/reports/live-vote-count`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch live vote count data');
-      }
-      
-      const data = await response.json();
-      setLiveVoteData(data.data);
+      const data = await fetchWithAuth('/reports/live-vote-count');
+      setLiveVoteData(data.data || null);
       setRefreshTime(new Date());
     } catch (error) {
       console.error('Error loading live vote count:', error);
+      setLiveVoteData(null);
     } finally {
       setIsRefreshing(false);
     }
@@ -350,13 +355,24 @@ export default function SuperAdminDashboard() {
       setIsLoading(true);
       
       try {
-        await loadPendingApprovals();
-        await Promise.all([
+        // Load critical data first (elections)
+        await loadElections(activeTab);
+        
+        // Load secondary data in parallel (non-blocking)
+        Promise.all([
+          loadPendingApprovals(),
           loadStats(),
-          loadElections(activeTab),
-          loadTotalUniqueVoters(),
-          loadLiveVoteCount()
-        ]);
+          loadTotalUniqueVoters()
+        ]).catch(error => {
+          console.error('[SuperAdmin] Error loading secondary data:', error);
+        });
+        
+        // Load live vote data only if on ongoing tab
+        if (activeTab === 'ongoing') {
+          loadLiveVoteCount().catch(error => {
+            console.error('[SuperAdmin] Error loading live vote data:', error);
+          });
+        }
       } catch (error) {
         console.error('[SuperAdmin] Error during initial load:', error);
       } finally {
@@ -366,32 +382,53 @@ export default function SuperAdminDashboard() {
     
     initialLoad();
 
-    // Refresh pending approvals every 15 seconds
+    // Refresh pending approvals every 30 seconds (reduced frequency)
     const pendingInterval = setInterval(() => {
       loadPendingApprovals();
-    }, 15000);
+    }, 30000);
     
-    // Refresh stats and live vote count every 30 seconds
+    // Refresh stats every 2 minutes
     const statsInterval = setInterval(() => {
       loadStats();
-      loadLiveVoteCount();
-    }, 30000);
+    }, 120000);
 
-    // Refresh election data every 1 minute instead of 5 minutes
+    // Refresh election data every 2 minutes
     const electionInterval = setInterval(() => {
       loadElections(activeTab);
-    }, 60000); // 1 minute instead of 300000 (5 minutes)
+    }, 120000);
+
+    // Refresh live vote data every 30 seconds only for ongoing tab
+    const liveVoteInterval = setInterval(() => {
+      if (activeTab === 'ongoing') {
+        loadLiveVoteCount();
+      }
+    }, 30000);
 
     return () => {
       clearInterval(pendingInterval);
       clearInterval(statsInterval);
       clearInterval(electionInterval);
+      clearInterval(liveVoteInterval);
     };
   }, [activeTab]);
 
   useEffect(() => {
     loadElections(activeTab);
   }, [activeTab, loadElections]);
+
+  // Monitor connection status
+  useEffect(() => {
+    const handleOnline = () => setConnectionStatus('online');
+    const handleOffline = () => setConnectionStatus('offline');
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const handleElectionClick = (electionId) => {
     if (!electionId || isNaN(parseInt(electionId))) {
@@ -470,7 +507,20 @@ export default function SuperAdminDashboard() {
 
   return (
     <div className="container mx-auto px-4 py-8 min-h-screen">
-      <h1 className="text-3xl font-bold mb-2 text-black">Dashboard</h1>      
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-3xl font-bold text-black">Dashboard</h1>
+        <div className="flex items-center space-x-4">
+          {connectionStatus === 'offline' && (
+            <div className="flex items-center text-red-600 bg-red-50 px-3 py-1 rounded-full text-sm">
+              <div className="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
+              Connection Issues
+            </div>
+          )}
+          <div className="text-sm text-gray-500">
+            Last updated: {new Date().toLocaleTimeString()}
+          </div>
+        </div>
+      </div>      
      
       {actionMessage && (
         <div className={`mb-4 p-4 rounded-lg shadow ${actionMessage.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' : 'bg-red-100 text-red-800 border-l-4 border-red-500'}`}>
@@ -482,21 +532,39 @@ export default function SuperAdminDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="font-medium mb-2 text-black">Total Elections</h3>
-          <p className="text-3xl font-bold text-black">
-            {Number(stats.reduce((sum, stat) => sum + parseInt(stat.count || 0), 0)).toLocaleString()}
-          </p>
+          {isStatsLoading ? (
+            <div className="flex items-center">
+              <div className="animate-pulse bg-gray-200 h-8 w-20 rounded"></div>
+            </div>
+          ) : (
+            <p className="text-3xl font-bold text-black">
+              {Number(stats.reduce((sum, stat) => sum + parseInt(stat.count || 0), 0)).toLocaleString()}
+            </p>
+          )}
         </div>
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="font-medium mb-2 text-black">Total Voters</h3>
-          <p className="text-3xl font-bold text-black">
-            {Number(totalUniqueVoters).toLocaleString()}
-          </p>
+          {isStatsLoading ? (
+            <div className="flex items-center">
+              <div className="animate-pulse bg-gray-200 h-8 w-20 rounded"></div>
+            </div>
+          ) : (
+            <p className="text-3xl font-bold text-black">
+              {Number(totalUniqueVoters).toLocaleString()}
+            </p>
+          )}
         </div>
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="font-medium mb-2 text-black">Total Votes Cast</h3>
-          <p className="text-3xl font-bold text-black">
-            {Number(stats.reduce((sum, stat) => sum + parseInt(stat.total_votes || 0), 0)).toLocaleString()}
-          </p>
+          {isStatsLoading ? (
+            <div className="flex items-center">
+              <div className="animate-pulse bg-gray-200 h-8 w-20 rounded"></div>
+            </div>
+          ) : (
+            <p className="text-3xl font-bold text-black">
+              {Number(stats.reduce((sum, stat) => sum + parseInt(stat.total_votes || 0), 0)).toLocaleString()}
+            </p>
+          )}
         </div>
       </div>
 
@@ -561,13 +629,24 @@ export default function SuperAdminDashboard() {
   
       {error && (
         <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg shadow mb-6">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <XCircle className="h-5 w-5 text-red-500" />
+          <div className="flex items-center justify-between">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <XCircle className="h-5 w-5 text-red-500" />
+              </div>
+              <div className="ml-3">
+                <p className="text-sm">{error}</p>
+              </div>
             </div>
-            <div className="ml-3">
-              <p className="text-sm">{error}</p>
-            </div>
+            <button
+              onClick={() => {
+                setError(null);
+                loadElections(activeTab);
+              }}
+              className="ml-4 bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition-colors"
+            >
+              Retry
+            </button>
           </div>
         </div>
       )}
