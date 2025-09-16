@@ -9,49 +9,18 @@ import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
-async function fetchWithAuth(url, options = {}, retries = 3) {
+async function fetchWithAuth(url, options = {}) {
   const token = Cookies.get('token');
-  
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-      
-      const response = await fetch(`${API_BASE}${url}`, {
-        ...options,
-        signal: controller.signal,
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          ...(options.headers || {})
-        }
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        if (response.status >= 500 && attempt < retries) {
-          console.warn(`Attempt ${attempt} failed with ${response.status}, retrying...`);
-          await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Exponential backoff
-          continue;
-        }
-        throw new Error(`Request failed with status ${response.status}`);
-      }
-      
-      return response.json();
-    } catch (error) {
-      if (error.name === 'AbortError') {
-        throw new Error('Request timeout');
-      }
-      
-      if (attempt === retries) {
-        throw error;
-      }
-      
-      console.warn(`Attempt ${attempt} failed:`, error.message);
-      await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Exponential backoff
+  const response = await fetch(`${API_BASE}${url}`, {
+    ...options,
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      ...(options.headers || {})
     }
-  }
+  });
+  if (!response.ok) throw new Error('Request failed');
+  return response.json();
 }
 
 const statusTabs = [
@@ -251,8 +220,6 @@ export default function SuperAdminDashboard() {
   const [selectedElection, setSelectedElection] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshTime, setRefreshTime] = useState(new Date());
-  const [isStatsLoading, setIsStatsLoading] = useState(true);
-  const [connectionStatus, setConnectionStatus] = useState('online');
 
   const loadElections = useCallback(async (status) => {
     try {
@@ -266,7 +233,20 @@ export default function SuperAdminDashboard() {
         endpoint = `/elections/status/${status}`;
       }
       
-      const data = await fetchWithAuth(endpoint);
+      const response = await fetch(`${API_BASE}${endpoint}`, {
+        headers: {
+          'Authorization': `Bearer ${Cookies.get('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[SuperAdmin] Error loading elections: ${response.status} ${response.statusText}`, errorText);
+        throw new Error(`Failed to load elections: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
       setElections(data || []);
 
       if (status === 'to_approve') {
@@ -284,30 +264,36 @@ export default function SuperAdminDashboard() {
 
   const loadPendingApprovals = useCallback(async () => {
     try {
-      const data = await fetchWithAuth('/elections/pending-approval');
-      setPendingApprovals(data || []);
-      setPendingCount(data?.length || 0);
+      const response = await fetch(`${API_BASE}/elections/pending-approval`, {
+        headers: {
+          'Authorization': `Bearer ${Cookies.get('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        return;
+      }
+      
+      const data = await response.json();
+      setPendingApprovals(data);
+      setPendingCount(data.length);
 
       if (activeTab === 'to_approve') {
-        setElections(data || []);
+        setElections(data);
       }
     } catch (err) {
       console.error('[SuperAdmin] Error loading pending approvals:', err);
-      // Don't set error state for pending approvals to avoid blocking the UI
     }
   }, [activeTab]);
 
   const loadStats = useCallback(async () => {
     try {
-      setIsStatsLoading(true);
       const data = await fetchWithAuth('/elections/stats');
       setStats(data || []);
     } catch (err) {
       console.error("[SuperAdmin] Failed to load stats:", err);
       setStats([]);
-      // Don't set error state for stats to avoid blocking the UI
-    } finally {
-      setIsStatsLoading(false);
     }
   }, []);
 
@@ -327,19 +313,28 @@ export default function SuperAdminDashboard() {
     } catch (err) {
       console.error("[SuperAdmin] Failed to load total unique voters:", err);
       setTotalUniqueVoters(0);
-      // Don't set error state for total voters to avoid blocking the UI
     }
   }, []);
 
   const loadLiveVoteCount = useCallback(async () => {
     try {
       setIsRefreshing(true);
-      const data = await fetchWithAuth('/reports/live-vote-count');
-      setLiveVoteData(data.data || null);
+      const token = Cookies.get('token');
+      const response = await fetch(`${API_BASE}/reports/live-vote-count`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch live vote count data');
+      }
+      
+      const data = await response.json();
+      setLiveVoteData(data.data);
       setRefreshTime(new Date());
     } catch (error) {
       console.error('Error loading live vote count:', error);
-      setLiveVoteData(null);
     } finally {
       setIsRefreshing(false);
     }
@@ -353,44 +348,17 @@ export default function SuperAdminDashboard() {
   useEffect(() => {
     const initialLoad = async () => {
       setIsLoading(true);
-      setConnectionStatus('loading');
       
       try {
-        // Load critical data first (elections) with timeout
-        await Promise.race([
-          loadElections(activeTab),
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Elections load timeout')), 10000)
-          )
-        ]);
-        
-        setConnectionStatus('online');
-        
-        // Load secondary data in parallel (non-blocking)
-        const secondaryPromises = [
-          loadPendingApprovals(),
+        await loadPendingApprovals();
+        await Promise.all([
           loadStats(),
-          loadTotalUniqueVoters()
-        ];
-        
-        // Don't wait for secondary data to complete
-        Promise.allSettled(secondaryPromises).then((results) => {
-          const failed = results.filter(result => result.status === 'rejected');
-          if (failed.length > 0) {
-            console.warn('[SuperAdmin] Some secondary data failed to load:', failed);
-          }
-        });
-        
-        // Load live vote data only if on ongoing tab
-        if (activeTab === 'ongoing') {
-          loadLiveVoteCount().catch(error => {
-            console.warn('[SuperAdmin] Error loading live vote data:', error);
-          });
-        }
+          loadElections(activeTab),
+          loadTotalUniqueVoters(),
+          loadLiveVoteCount()
+        ]);
       } catch (error) {
         console.error('[SuperAdmin] Error during initial load:', error);
-        setConnectionStatus('error');
-        setError('Failed to load election data. Please check your connection and try again.');
       } finally {
         setIsLoading(false);
       }
@@ -398,61 +366,32 @@ export default function SuperAdminDashboard() {
     
     initialLoad();
 
-    // Refresh pending approvals every 60 seconds (reduced frequency)
+    // Refresh pending approvals every 15 seconds
     const pendingInterval = setInterval(() => {
-      loadPendingApprovals().catch(err => {
-        console.warn('[SuperAdmin] Failed to refresh pending approvals:', err);
-      });
-    }, 60000);
+      loadPendingApprovals();
+    }, 15000);
     
-    // Refresh stats every 3 minutes (reduced frequency)
+    // Refresh stats and live vote count every 30 seconds
     const statsInterval = setInterval(() => {
-      loadStats().catch(err => {
-        console.warn('[SuperAdmin] Failed to refresh stats:', err);
-      });
-    }, 180000);
+      loadStats();
+      loadLiveVoteCount();
+    }, 30000);
 
-    // Refresh election data every 3 minutes (reduced frequency)
+    // Refresh election data every 1 minute instead of 5 minutes
     const electionInterval = setInterval(() => {
-      loadElections(activeTab).catch(err => {
-        console.warn('[SuperAdmin] Failed to refresh elections:', err);
-      });
-    }, 180000);
-
-    // Refresh live vote data every 60 seconds only for ongoing tab
-    const liveVoteInterval = setInterval(() => {
-      if (activeTab === 'ongoing') {
-        loadLiveVoteCount().catch(err => {
-          console.warn('[SuperAdmin] Failed to refresh live vote count:', err);
-        });
-      }
-    }, 60000);
+      loadElections(activeTab);
+    }, 60000); // 1 minute instead of 300000 (5 minutes)
 
     return () => {
       clearInterval(pendingInterval);
       clearInterval(statsInterval);
       clearInterval(electionInterval);
-      clearInterval(liveVoteInterval);
     };
   }, [activeTab]);
 
   useEffect(() => {
     loadElections(activeTab);
   }, [activeTab, loadElections]);
-
-  // Monitor connection status
-  useEffect(() => {
-    const handleOnline = () => setConnectionStatus('online');
-    const handleOffline = () => setConnectionStatus('offline');
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
 
   const handleElectionClick = (electionId) => {
     if (!electionId || isNaN(parseInt(electionId))) {
@@ -531,49 +470,7 @@ export default function SuperAdminDashboard() {
 
   return (
     <div className="container mx-auto px-4 py-8 min-h-screen">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-3xl font-bold text-black">Dashboard</h1>
-        <div className="flex items-center space-x-4">
-          {connectionStatus === 'loading' && (
-            <div className="flex items-center text-blue-600 bg-blue-50 px-3 py-1 rounded-full text-sm">
-              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500 mr-2"></div>
-              Loading...
-            </div>
-          )}
-          {connectionStatus === 'error' && (
-            <div className="flex items-center text-red-600 bg-red-50 px-3 py-1 rounded-full text-sm">
-              <div className="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
-              Connection Issues
-            </div>
-          )}
-          {connectionStatus === 'online' && (
-            <div className="flex items-center text-green-600 bg-green-50 px-3 py-1 rounded-full text-sm">
-              <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-              Connected
-            </div>
-          )}
-          <div className="flex items-center space-x-2">
-            <div className="text-sm text-gray-500">
-              Last updated: {new Date().toLocaleTimeString()}
-            </div>
-            <button
-              onClick={() => {
-                setConnectionStatus('loading');
-                loadElections(activeTab).then(() => {
-                  setConnectionStatus('online');
-                }).catch(() => {
-                  setConnectionStatus('error');
-                });
-              }}
-              disabled={connectionStatus === 'loading'}
-              className="p-1 text-gray-500 hover:text-gray-700 disabled:opacity-50"
-              title="Refresh data"
-            >
-              <RefreshCw className={`w-4 h-4 ${connectionStatus === 'loading' ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
-        </div>
-      </div>      
+      <h1 className="text-3xl font-bold mb-2 text-black">Dashboard</h1>      
      
       {actionMessage && (
         <div className={`mb-4 p-4 rounded-lg shadow ${actionMessage.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' : 'bg-red-100 text-red-800 border-l-4 border-red-500'}`}>
@@ -585,39 +482,21 @@ export default function SuperAdminDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="font-medium mb-2 text-black">Total Elections</h3>
-          {isStatsLoading ? (
-            <div className="flex items-center">
-              <div className="animate-pulse bg-gray-200 h-8 w-20 rounded"></div>
-            </div>
-          ) : (
-            <p className="text-3xl font-bold text-black">
-              {Number(stats.reduce((sum, stat) => sum + parseInt(stat.count || 0), 0)).toLocaleString()}
-            </p>
-          )}
+          <p className="text-3xl font-bold text-black">
+            {Number(stats.reduce((sum, stat) => sum + parseInt(stat.count || 0), 0)).toLocaleString()}
+          </p>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="font-medium mb-2 text-black">Total Voters</h3>
-          {isStatsLoading ? (
-            <div className="flex items-center">
-              <div className="animate-pulse bg-gray-200 h-8 w-20 rounded"></div>
-            </div>
-          ) : (
-            <p className="text-3xl font-bold text-black">
-              {Number(totalUniqueVoters).toLocaleString()}
-            </p>
-          )}
+          <p className="text-3xl font-bold text-black">
+            {Number(totalUniqueVoters).toLocaleString()}
+          </p>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="font-medium mb-2 text-black">Total Votes Cast</h3>
-          {isStatsLoading ? (
-            <div className="flex items-center">
-              <div className="animate-pulse bg-gray-200 h-8 w-20 rounded"></div>
-            </div>
-          ) : (
-            <p className="text-3xl font-bold text-black">
-              {Number(stats.reduce((sum, stat) => sum + parseInt(stat.total_votes || 0), 0)).toLocaleString()}
-            </p>
-          )}
+          <p className="text-3xl font-bold text-black">
+            {Number(stats.reduce((sum, stat) => sum + parseInt(stat.total_votes || 0), 0)).toLocaleString()}
+          </p>
         </div>
       </div>
 
@@ -682,24 +561,13 @@ export default function SuperAdminDashboard() {
   
       {error && (
         <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg shadow mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <XCircle className="h-5 w-5 text-red-500" />
-              </div>
-              <div className="ml-3">
-                <p className="text-sm">{error}</p>
-              </div>
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <XCircle className="h-5 w-5 text-red-500" />
             </div>
-            <button
-              onClick={() => {
-                setError(null);
-                loadElections(activeTab);
-              }}
-              className="ml-4 bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition-colors"
-            >
-              Retry
-            </button>
+            <div className="ml-3">
+              <p className="text-sm">{error}</p>
+            </div>
           </div>
         </div>
       )}
@@ -1128,59 +996,6 @@ export default function SuperAdminDashboard() {
                         </Bar>
                       </RechartsBarChart>
                     </ResponsiveContainer>
-                  </div>
-                </div>
-              )}
-
-              {/* Top Participating Courses Table */}
-              {selectedElection.votes_by_program && selectedElection.votes_by_program.length > 0 && (
-                <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 mt-6">
-                  <h3 className="text-lg font-bold text-black mb-4">Course Participation Details</h3>
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr className="bg-gray-50 border-b-2 border-gray-200">
-                          <th className="p-3 text-left text-sm font-bold text-gray-700">Rank</th>
-                          <th className="p-3 text-left text-sm font-bold text-gray-700">Course/Program</th>
-                          <th className="p-3 text-left text-sm font-bold text-gray-700">Votes Cast</th>
-                          <th className="p-3 text-left text-sm font-bold text-gray-700">Participation %</th>
-                          <th className="p-3 text-left text-sm font-bold text-gray-700">Progress</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedElection.votes_by_program
-                          .sort((a, b) => b.votes_cast - a.votes_cast)
-                          .slice(0, 10)
-                          .map((course, index) => {
-                            const participationPercent = ((course.votes_cast / selectedElection.current_votes) * 100).toFixed(1);
-                            return (
-                              <tr key={course.program} className="border-b hover:bg-gray-50 transition-colors duration-150">
-                                <td className="p-3 text-sm font-medium text-gray-900">
-                                  <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
-                                    index === 0 ? 'bg-yellow-100 text-yellow-800' :
-                                    index === 1 ? 'bg-gray-100 text-gray-800' :
-                                    index === 2 ? 'bg-orange-100 text-orange-800' :
-                                    'bg-blue-100 text-blue-800'
-                                  }`}>
-                                    {index + 1}
-                                  </span>
-                                </td>
-                                <td className="p-3 text-sm font-medium text-gray-900">{course.program}</td>
-                                <td className="p-3 text-sm font-bold text-gray-900">{course.votes_cast.toLocaleString()}</td>
-                                <td className="p-3 text-sm text-gray-600">{participationPercent}%</td>
-                                <td className="p-3 text-sm">
-                                  <div className="w-full bg-gray-200 rounded-full h-2">
-                                    <div 
-                                      className="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full transition-all duration-300"
-                                      style={{ width: `${Math.min(parseFloat(participationPercent), 100)}%` }}
-                                    ></div>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                      </tbody>
-                    </table>
                   </div>
                 </div>
               )}
