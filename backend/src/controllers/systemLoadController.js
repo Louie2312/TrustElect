@@ -5,77 +5,81 @@ const getSystemLoad = async (req, res) => {
     const { timeframe = '24h' } = req.query;
     let interval;
     let grouping;
+    let dateFormat;
 
-    // Set the time interval based on timeframe
+    // Set the time interval and grouping based on timeframe
     switch (timeframe) {
       case '7d':
         interval = 'INTERVAL \'7 days\'';
         grouping = 'date_trunc(\'hour\', created_at)';
+        dateFormat = 'YYYY-MM-DD HH24:00:00';
         break;
       case '30d':
         interval = 'INTERVAL \'30 days\'';
-        grouping = 'date_trunc(\'hour\', created_at)';
+        grouping = 'date_trunc(\'day\', created_at)';
+        dateFormat = 'YYYY-MM-DD';
         break;
       default: // 24h
         interval = 'INTERVAL \'24 hours\'';
         grouping = 'date_trunc(\'hour\', created_at)';
+        dateFormat = 'YYYY-MM-DD HH24:00:00';
     }
 
-    // Get login activity
+    // Get login activity with better data handling
     const loginQuery = `
       WITH hourly_logins AS (
         SELECT 
-          ${grouping} as hour,
+          ${grouping} as time_period,
           COUNT(*) as count
         FROM audit_logs
         WHERE 
           action = 'LOGIN'
           AND created_at >= NOW() - ${interval}
         GROUP BY ${grouping}
-        ORDER BY hour
+        ORDER BY time_period
       )
       SELECT 
-        EXTRACT(HOUR FROM hour) as hour,
+        ${timeframe === '30d' ? 'EXTRACT(DAY FROM time_period) as hour' : 'EXTRACT(HOUR FROM time_period) as hour'},
         count
       FROM hourly_logins
     `;
 
-    // Get voting activity
+    // Get voting activity with better data handling
     const votingQuery = `
       WITH hourly_votes AS (
         SELECT 
-          ${grouping} as hour,
+          ${grouping} as time_period,
           COUNT(*) as count
         FROM votes
         WHERE created_at >= NOW() - ${interval}
         GROUP BY ${grouping}
-        ORDER BY hour
+        ORDER BY time_period
       )
       SELECT 
-        EXTRACT(HOUR FROM hour) as hour,
+        ${timeframe === '30d' ? 'EXTRACT(DAY FROM time_period) as hour' : 'EXTRACT(HOUR FROM time_period) as hour'},
         count
       FROM hourly_votes
     `;
 
-    // Get peak hours and counts
+    // Get peak hours and counts with better timeframe handling
     const peakStatsQuery = `
       WITH login_stats AS (
         SELECT 
-          EXTRACT(HOUR FROM ${grouping}) as hour,
+          ${timeframe === '30d' ? 'EXTRACT(DAY FROM' : 'EXTRACT(HOUR FROM'}${grouping}) as hour,
           COUNT(*) as count
         FROM audit_logs
         WHERE 
           action = 'LOGIN'
           AND created_at >= NOW() - ${interval}
-        GROUP BY EXTRACT(HOUR FROM ${grouping})
+        GROUP BY ${timeframe === '30d' ? 'EXTRACT(DAY FROM' : 'EXTRACT(HOUR FROM'} ${grouping})
       ),
       vote_stats AS (
         SELECT 
-          EXTRACT(HOUR FROM ${grouping}) as hour,
+          ${timeframe === '30d' ? 'EXTRACT(DAY FROM' : 'EXTRACT(HOUR FROM'} ${grouping}) as hour,
           COUNT(*) as count
         FROM votes
         WHERE created_at >= NOW() - ${interval}
-        GROUP BY EXTRACT(HOUR FROM ${grouping})
+        GROUP BY ${timeframe === '30d' ? 'EXTRACT(DAY FROM' : 'EXTRACT(HOUR FROM'} ${grouping})
       ),
       active_users AS (
         SELECT COUNT(DISTINCT user_id) as count

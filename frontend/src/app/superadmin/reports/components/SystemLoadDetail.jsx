@@ -21,6 +21,38 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [isDataReset, setIsDataReset] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentData, setCurrentData] = useState(report.data || {});
+
+  // Fetch data based on selected timeframe
+  const fetchDataForTimeframe = async (timeframe) => {
+    setIsLoading(true);
+    try {
+      const token = document.cookie.split('token=')[1]?.split(';')[0];
+      const response = await fetch(`/api/reports/system-load?timeframe=${timeframe}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCurrentData(data.data);
+      } else {
+        console.error('Failed to fetch data for timeframe:', timeframe);
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle timeframe change
+  const handleTimeframeChange = (newTimeframe) => {
+    setSelectedTimeframe(newTimeframe);
+    fetchDataForTimeframe(newTimeframe);
+  };
 
   const formatNumber = (num) => {
     if (num === undefined || num === null || isNaN(num)) return '0';
@@ -134,8 +166,8 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
   ];
 
   // Process data based on selected timeframe
-  const processedLoginData = isDataReset ? [] : filterDataByTimeframe(validateData(report.data.login_activity || []), selectedTimeframe);
-  const processedVotingData = isDataReset ? [] : filterDataByTimeframe(validateData(report.data.voting_activity || []), selectedTimeframe);
+  const processedLoginData = isDataReset ? [] : validateData(currentData.login_activity || []);
+  const processedVotingData = isDataReset ? [] : validateData(currentData.voting_activity || []);
   
   // Find peak hours from processed data
   const loginPeak = findPeakHour(processedLoginData);
@@ -150,7 +182,8 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
       },
       data: processedLoginData,
       average: calculateAverage(processedLoginData),
-      peak: loginPeak
+      peak: loginPeak,
+      total: processedLoginData.reduce((sum, item) => sum + item.count, 0)
     },
     voting: {
       gradient: {
@@ -159,7 +192,8 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
       },
       data: processedVotingData,
       average: calculateAverage(processedVotingData),
-      peak: votingPeak
+      peak: votingPeak,
+      total: processedVotingData.reduce((sum, item) => sum + item.count, 0)
     }
   };
 
@@ -244,8 +278,9 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
             <div className="flex gap-2">
               <select
                 value={selectedTimeframe}
-                onChange={(e) => setSelectedTimeframe(e.target.value)}
+                onChange={(e) => handleTimeframeChange(e.target.value)}
                 className="px-3 py-2 border rounded-md text-sm"
+                disabled={isLoading}
               >
                 {timeframeOptions.map(option => (
                   <option key={option.value} value={option.value}>
@@ -282,6 +317,16 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
             </div>
           )}
 
+          {/* Loading Indicator */}
+          {isLoading && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <div className="flex items-center gap-3">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                <p className="text-blue-800">Loading data for {timeframeOptions.find(opt => opt.value === selectedTimeframe)?.label}...</p>
+              </div>
+            </div>
+          )}
+
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200 shadow-sm">
@@ -298,7 +343,7 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
                 {formatNumber(chartConfig.login.peak.count)} logins
               </p>
               <div className="mt-2 text-xs text-blue-600">
-                Average: {formatNumber(chartConfig.login.average)} logins/hour
+                Total: {formatNumber(chartConfig.login.total)} | Avg: {formatNumber(chartConfig.login.average)}/hour
               </div>
             </div>
             <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl border border-green-200 shadow-sm">
@@ -315,7 +360,7 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
                 {formatNumber(chartConfig.voting.peak.count)} votes
               </p>
               <div className="mt-2 text-xs text-green-600">
-                Average: {formatNumber(chartConfig.voting.average)} votes/hour
+                Total: {formatNumber(chartConfig.voting.total)} | Avg: {formatNumber(chartConfig.voting.average)}/hour
               </div>
             </div>
             <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200 shadow-sm">
@@ -326,12 +371,14 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
                 <h3 className="text-sm font-semibold text-black">Total Activity</h3>
               </div>
               <p className="text-3xl font-bold text-black mb-1">
-                {formatNumber(chartConfig.login.data.reduce((sum, item) => sum + item.count, 0) + 
-                             chartConfig.voting.data.reduce((sum, item) => sum + item.count, 0))}
+                {formatNumber(chartConfig.login.total + chartConfig.voting.total)}
               </p>
               <p className="text-sm text-black">
-                total actions in the last {selectedTimeframe === '24h' ? '24 hours' : selectedTimeframe === '7d' ? '7 days' : '30 days'}
+                total actions in the last {timeframeOptions.find(opt => opt.value === selectedTimeframe)?.label.toLowerCase()}
               </p>
+              <div className="mt-2 text-xs text-purple-600">
+                Logins: {formatNumber(chartConfig.login.total)} | Votes: {formatNumber(chartConfig.voting.total)}
+              </div>
             </div>
           </div>
 
@@ -339,14 +386,21 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
           <div className="space-y-6">
             {/* Login Activity Chart */}
             <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-              {isDataReset ? (
+              {isDataReset || processedLoginData.length === 0 ? (
                 <div className="h-[350px] flex items-center justify-center">
                   <div className="text-center">
                     <div className="p-4 bg-gray-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
                       <BarChart2 className="w-8 h-8 text-gray-400" />
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-600 mb-2">No Login Data Available</h3>
-                    <p className="text-gray-500">Data has been reset. New login activity will be tracked during testing.</p>
+                    <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                      {isDataReset ? 'No Login Data Available' : 'No Login Data for Selected Period'}
+                    </h3>
+                    <p className="text-gray-500">
+                      {isDataReset 
+                        ? 'Data has been reset. New login activity will be tracked during testing.'
+                        : `No login activity found for the last ${timeframeOptions.find(opt => opt.value === selectedTimeframe)?.label.toLowerCase()}.`
+                      }
+                    </p>
                   </div>
                 </div>
               ) : (
@@ -413,14 +467,21 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
 
             {/* Voting Activity Chart */}
             <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-              {isDataReset ? (
+              {isDataReset || processedVotingData.length === 0 ? (
                 <div className="h-[350px] flex items-center justify-center">
                   <div className="text-center">
                     <div className="p-4 bg-gray-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
                       <Activity className="w-8 h-8 text-gray-400" />
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-600 mb-2">No Voting Data Available</h3>
-                    <p className="text-gray-500">Data has been reset. New voting activity will be tracked during testing.</p>
+                    <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                      {isDataReset ? 'No Voting Data Available' : 'No Voting Data for Selected Period'}
+                    </h3>
+                    <p className="text-gray-500">
+                      {isDataReset 
+                        ? 'Data has been reset. New voting activity will be tracked during testing.'
+                        : `No voting activity found for the last ${timeframeOptions.find(opt => opt.value === selectedTimeframe)?.label.toLowerCase()}.`
+                      }
+                    </p>
                   </div>
                 </div>
               ) : (

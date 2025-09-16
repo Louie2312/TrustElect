@@ -276,15 +276,15 @@ export default function ReportsPage() {
           });
 
           transformedData = {
-            summary: {
+            summary: loadResponse.data.data.summary || {
               peak_login_hour: loadResponse.data.data.peak_login_hour,
               peak_login_count: loadResponse.data.data.peak_login_count,
               peak_voting_hour: loadResponse.data.data.peak_voting_hour,
               peak_voting_count: loadResponse.data.data.peak_voting_count,
               total_active_users: loadResponse.data.data.total_active_users
             },
-            login_activity: loadResponse.data.data.login_activity,
-            voting_activity: loadResponse.data.data.voting_activity
+            login_activity: loadResponse.data.data.login_activity || [],
+            voting_activity: loadResponse.data.data.voting_activity || []
           };
           break;
 
