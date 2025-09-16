@@ -386,21 +386,23 @@ export default function AdminDashboard() {
       });
       setTotalUniqueVoters(response.count || 0);
     } catch (err) {
-      console.error("[Admin] Failed to load total unique voters:", err);
+      console.log("[Admin] Total unique voters not available:", err.message);
       setTotalUniqueVoters(0);
     }
   }, []);
 
-  // Load live vote count for ongoing elections
+  // Load live vote count for ongoing elections (optional feature)
   const loadLiveVoteCount = useCallback(async () => {
     try {
       const response = await fetchWithAuth('/elections/live-vote-count');
       setLiveVoteData(response);
       setRefreshTime(new Date());
+      return response;
     } catch (err) {
-      console.error("[Admin] Failed to load live vote count:", err);
+      console.log("[Admin] Live vote count not available:", err.message);
       // Set empty data instead of null to prevent UI errors
       setLiveVoteData([]);
+      return [];
     }
   }, []);
 
@@ -449,19 +451,25 @@ export default function AdminDashboard() {
         setIsLoading(true);
         setError(null);
         
-        // Load critical data first
+        // Load only critical data first
         await Promise.all([
           loadAllElections(),
           loadStats(),
-          loadUIDesign(),
-          loadTotalUniqueVoters(),
-          loadLiveVoteCount()
+          loadUIDesign()
         ]);
         
-        // Load system load data in background (non-blocking)
-        loadSystemLoadData('24h').catch(err => {
-          console.log("[Admin] System load data not available:", err.message);
-        });
+        // Load optional data in background (non-blocking)
+        Promise.allSettled([
+          loadTotalUniqueVoters().catch(err => {
+            console.log("[Admin] Total unique voters not available:", err.message);
+          }),
+          loadLiveVoteCount().catch(err => {
+            console.log("[Admin] Live vote count not available:", err.message);
+          }),
+          loadSystemLoadData('24h').catch(err => {
+            console.log("[Admin] System load data not available:", err.message);
+          })
+        ]);
         
         if (isMounted) {
           setDataLoaded(true);
@@ -494,13 +502,21 @@ export default function AdminDashboard() {
       }
     }, 15000));
     
-    // Refresh stats and live vote count every 30 seconds
+    // Refresh stats every 30 seconds
     intervals.push(setInterval(() => {
       if (isMounted) {
         loadStats();
-        loadLiveVoteCount();
       }
     }, 30000));
+    
+    // Refresh optional data every 2 minutes (non-critical)
+    intervals.push(setInterval(() => {
+      if (isMounted) {
+        loadTotalUniqueVoters().catch(err => {
+          console.log("[Admin] Total unique voters not available:", err.message);
+        });
+      }
+    }, 120000)); // 2 minutes
     
     // Refresh election data every 1 minute to sync with backend status updates
     intervals.push(setInterval(() => {
@@ -636,9 +652,11 @@ export default function AdminDashboard() {
   };
 
   // Handle live vote count modal
-  const handleViewLiveVoteCount = (election) => {
+  const handleViewLiveVoteCount = async (election) => {
     setSelectedElection(election);
     setShowLiveVoteModal(true);
+    // Load live vote data when modal is opened
+    await loadLiveVoteCount();
   };
 
   // Handle system load reports modal
@@ -1045,7 +1063,10 @@ export default function AdminDashboard() {
               <Clock className="w-4 h-4 mr-1" />
               Last updated: {refreshTime.toLocaleTimeString()}
               <button 
-                onClick={loadLiveVoteCount} 
+                onClick={() => {
+                  setIsRefreshing(true);
+                  loadLiveVoteCount().finally(() => setIsRefreshing(false));
+                }}
                 disabled={isRefreshing}
                 className="ml-2 p-1 hover:bg-gray-200 rounded transition-colors"
                 title="Refresh live data"
