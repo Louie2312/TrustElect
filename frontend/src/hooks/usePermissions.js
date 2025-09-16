@@ -165,7 +165,7 @@ export default function usePermissions() {
     }
     
     return Promise.resolve(false);
-  }, [fetchPermissions]); // Only depend on fetchPermissions
+  }, [fetchPermissions, userData?.id]); // Added userData?.id dependency
 
   const hasPermission = useCallback((module, action) => {
     const userRole = Cookies.get('role');
@@ -186,7 +186,7 @@ export default function usePermissions() {
     if (userData?.id && !permissionsLastUpdated) {
       fetchPermissions(userData.id);
     }
-  }, [userData?.id]); // REMOVED fetchPermissions from dependencies
+  }, [userData?.id, fetchPermissions, permissionsLastUpdated]); // Added missing dependencies
 
   // Global permissions update listener - FIXED to prevent circular dependencies
   useEffect(() => {
@@ -222,7 +222,7 @@ export default function usePermissions() {
       window.removeEventListener('admin-permissions-updated', handlePermissionUpdate);
       clearInterval(permissionCheckInterval);
     };
-  }, [userData?.id, permissionsLastUpdated]); // REMOVED refreshPermissions and fetchPermissions
+  }, [userData?.id, permissionsLastUpdated, fetchPermissions]); // Added fetchPermissions dependency
 
   const triggerGlobalPermissionsRefresh = useCallback(() => {
     updateGlobalPermissionsTimestamp();

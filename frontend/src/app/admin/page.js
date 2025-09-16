@@ -481,7 +481,7 @@ export default function AdminDashboard() {
       isMounted = false;
       intervals.forEach(interval => clearInterval(interval));
     };
-  }, [permissionsLoading, hasPermission, dataLoaded]); // REMOVED function dependencies
+  }, [permissionsLoading, hasPermission, dataLoaded, loadAllElections, loadStats, loadUIDesign, loadTotalUniqueVoters]);
 
   // Handle tab change - update elections when tab or allElections change
   useEffect(() => {

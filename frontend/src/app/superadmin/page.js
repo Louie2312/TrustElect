@@ -422,7 +422,7 @@ export default function SuperAdminDashboard() {
       clearInterval(statsInterval);
       clearInterval(electionInterval);
     };
-  }, [activeTab]);
+  }, [activeTab, loadPendingApprovals, loadStats, loadElections, loadTotalUniqueVoters, loadLiveVoteCount, loadSystemLoadData]);
 
   useEffect(() => {
     loadElections(activeTab);
@@ -796,7 +796,7 @@ export default function SuperAdminDashboard() {
               System Load Data
             </h3>
             <p className="text-gray-600">
-              Click "View Reports" to load system analytics and performance metrics.
+              Click &quot;View Reports&quot; to load system analytics and performance metrics.
             </p>
           </div>
         )}

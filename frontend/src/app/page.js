@@ -167,7 +167,7 @@ export default function Home() {
   useEffect(() => {
     checkApiConnection();
     fetchContent();
-  }, []); // Empty dependency array - this is correct
+  }, [fetchContent]); // Added fetchContent dependency
 
 
   const formatImageUrl = (url) => {
