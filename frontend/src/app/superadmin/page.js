@@ -713,65 +713,146 @@ export default function SuperAdminDashboard() {
                  </button>
               </div>
 
+              {/* Summary Statistics */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div className="border border-gray-200 rounded-lg p-5 bg-white shadow-md hover:shadow-lg transition-all duration-200">
-                  <h3 className="text-sm font-medium text-black mb-2">Total Eligible Voters</h3>
-                  <p className="text-3xl font-bold text-black">{Number(totalUniqueVoters).toLocaleString()}</p>
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-6 shadow-md hover:shadow-lg transition-all duration-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-medium text-blue-700 mb-2">Total Eligible Voters</h3>
+                      <p className="text-3xl font-bold text-blue-900">{selectedElection.eligible_voters.toLocaleString()}</p>
+                    </div>
+                    <Users className="w-8 h-8 text-blue-600" />
+                  </div>
                 </div>
-               
-                <div className="border border-gray-200 rounded-lg p-5 bg-white shadow-md hover:shadow-lg transition-all duration-200">
-                  <h3 className="text-sm font-medium text-black mb-2">Current Votes</h3>
-                  <p className="text-3xl font-bold text-black">{selectedElection.current_votes.toLocaleString()}</p>
+                
+                <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg p-6 shadow-md hover:shadow-lg transition-all duration-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-medium text-green-700 mb-2">Current Votes</h3>
+                      <p className="text-3xl font-bold text-green-900">{selectedElection.current_votes.toLocaleString()}</p>
+                    </div>
+                    <CheckCircle className="w-8 h-8 text-green-600" />
+                  </div>
                 </div>
-                <div className="border border-gray-200 rounded-lg p-5 bg-white shadow-md hover:shadow-lg transition-all duration-200">
-                  <h3 className="text-sm font-medium text-black mb-2">Live Turnout</h3>
-                  <p className="text-3xl font-bold text-black">{(selectedElection.live_turnout * 100).toFixed(1)}%</p>
+                
+                <div className="bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-lg p-6 shadow-md hover:shadow-lg transition-all duration-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-medium text-purple-700 mb-2">Live Turnout</h3>
+                      <p className="text-3xl font-bold text-purple-900">{(selectedElection.live_turnout * 100).toFixed(1)}%</p>
+                    </div>
+                    <BarChart className="w-8 h-8 text-purple-600" />
+                  </div>
+                </div>
+                
+                <div className="bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-lg p-6 shadow-md hover:shadow-lg transition-all duration-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-medium text-orange-700 mb-2">Remaining Voters</h3>
+                      <p className="text-3xl font-bold text-orange-900">{(selectedElection.eligible_voters - selectedElection.current_votes).toLocaleString()}</p>
+                    </div>
+                    <Clock className="w-8 h-8 text-orange-600" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Participation Progress Bar */}
+              <div className="mb-8 bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                <h3 className="text-lg font-bold text-black mb-4">Participation Progress</h3>
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-gray-700">Overall Participation</span>
+                      <span className="text-sm font-bold text-gray-900">
+                        {selectedElection.current_votes.toLocaleString()} / {selectedElection.eligible_voters.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-4 shadow-inner">
+                      <div 
+                        className="bg-gradient-to-r from-blue-500 to-green-500 h-4 rounded-full transition-all duration-500 ease-out"
+                        style={{ width: `${Math.min(selectedElection.live_turnout * 100, 100)}%` }}
+                      ></div>
+                    </div>
+                    <div className="flex justify-between items-center mt-2">
+                      <span className="text-xs text-gray-500">0%</span>
+                      <span className="text-sm font-bold text-gray-900">
+                        {(selectedElection.live_turnout * 100).toFixed(1)}%
+                      </span>
+                      <span className="text-xs text-gray-500">100%</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               <div className="mb-8 bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                <h3 className="text-lg font-bold text-black mb-4">Voter Participation</h3>
-                <div className="h-80">
+                <h3 className="text-lg font-bold text-black mb-4">Voter Participation Overview</h3>
+                <div className="h-96">
                   <ResponsiveContainer width="100%" height="100%">
                     <RechartsPieChart>
                       <Pie
                         data={[
-                          { name: 'Voted', value: selectedElection.current_votes },
-                          { name: 'Not Voted', value: selectedElection.eligible_voters - selectedElection.current_votes }
+                          { 
+                            name: 'Voted', 
+                            value: selectedElection.current_votes,
+                            fill: '#10B981'
+                          },
+                          { 
+                            name: 'Not Voted', 
+                            value: Math.max(0, selectedElection.eligible_voters - selectedElection.current_votes),
+                            fill: '#EF4444'
+                          }
                         ]}
                         cx="50%"
                         cy="50%"
-                        labelLine={false}
-                        outerRadius={120}
-                        fill="#8884d8"
+                        outerRadius={140}
+                        innerRadius={60}
                         dataKey="value"
-                        label={({ name, value }) => {
-                          if (name === 'Not Voted' && value === 0) {
-                            return '';
-                          }
-                          // Calculate percentage based on total eligible voters
-                          const percentage = (value / selectedElection.eligible_voters * 100).toFixed(1);
-                          return `${name}: ${value.toLocaleString()} (${percentage}%)`;
+                        label={({ name, value, percent }) => {
+                          if (value === 0) return '';
+                          return `${(percent * 100).toFixed(1)}%`;
                         }}
+                        labelLine={false}
                       >
-                        <Cell fill="#22C55E" />
+                        <Cell fill="#10B981" />
                         <Cell fill="#EF4444" />
                       </Pie>
                       <Tooltip 
                         formatter={(value, name) => {
-                          if (name === 'Not Voted' && value === 0) {
-                            return ['', ''];
-                          }
-                          return [value.toLocaleString(), name];
-                        }} 
+                          if (value === 0) return ['', ''];
+                          const percentage = ((value / selectedElection.eligible_voters) * 100).toFixed(1);
+                          return [
+                            `${value.toLocaleString()} (${percentage}%)`, 
+                            name
+                          ];
+                        }}
+                        contentStyle={{
+                          backgroundColor: '#F9FAFB',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                        }}
+                        labelStyle={{ 
+                          color: '#000000', 
+                          fontWeight: 'bold',
+                          fontSize: '14px'
+                        }}
                       />
                       <Legend 
+                        verticalAlign="bottom" 
+                        height={36}
                         formatter={(value, entry) => {
-                          if (value === 'Not Voted' && entry.payload.value === 0) {
-                            return '';
-                          }
-                          return <span className="text-black font-medium">{value}</span>;
-                        }} 
+                          if (entry.payload.value === 0) return '';
+                          const percentage = ((entry.payload.value / selectedElection.eligible_voters) * 100).toFixed(1);
+                          return (
+                            <span className="text-black font-medium text-sm">
+                              {value}: {entry.payload.value.toLocaleString()} ({percentage}%)
+                            </span>
+                          );
+                        }}
+                        wrapperStyle={{
+                          paddingTop: '20px',
+                          fontSize: '14px'
+                        }}
                       />
                     </RechartsPieChart>
                   </ResponsiveContainer>
@@ -781,41 +862,68 @@ export default function SuperAdminDashboard() {
               {selectedElection.positions && selectedElection.positions.length > 0 && (
                 <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
                   <h3 className="text-lg font-bold text-black mb-4">Votes by Position</h3>
-                  <div className="h-80">
+                  <div className="h-96">
                     <ResponsiveContainer width="100%" height="100%">
                       <RechartsBarChart
                         data={selectedElection.positions.map(pos => ({
                           name: pos.name,
                           votes: pos.votes || 0
                         }))}
-                        margin={{ top: 20, right: 30, left: 20, bottom: 70 }}
+                        margin={{ top: 20, right: 30, left: 60, bottom: 80 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" strokeOpacity={0.6} />
                         <XAxis 
                           dataKey="name" 
                           angle={-45} 
                           textAnchor="end" 
-                          height={70} 
-                          tick={{ fill: '#000000', fontSize: 12 }}
+                          height={80} 
+                          tick={{ fill: '#374151', fontSize: 12, fontWeight: '500' }}
+                          axisLine={{ stroke: '#D1D5DB' }}
+                          tickLine={{ stroke: '#D1D5DB' }}
                         />
-                        <YAxis tick={{ fill: '#000000' }} />
+                        <YAxis 
+                          tick={{ fill: '#374151', fontSize: 12 }}
+                          axisLine={{ stroke: '#D1D5DB' }}
+                          tickLine={{ stroke: '#D1D5DB' }}
+                          label={{ 
+                            value: 'Number of Votes', 
+                            angle: -90, 
+                            position: 'insideLeft', 
+                            style: { textAnchor: 'middle', fill: '#374151', fontSize: '14px', fontWeight: '600' } 
+                          }}
+                        />
                         <Tooltip 
-                          formatter={(value) => value.toLocaleString()} 
-                          labelStyle={{ color: '#000000', fontWeight: 'bold' }}
-                          contentStyle={{ backgroundColor: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '6px' }}
+                          formatter={(value, name) => [value.toLocaleString(), 'Votes']}
+                          labelStyle={{ 
+                            color: '#000000', 
+                            fontWeight: 'bold',
+                            fontSize: '14px'
+                          }}
+                          contentStyle={{ 
+                            backgroundColor: '#F9FAFB', 
+                            border: '1px solid #E5E7EB', 
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                          }}
                         />
-                        <Bar dataKey="votes" fill="#000000" radius={[4, 4, 0, 0]} />
+                        <Bar 
+                          dataKey="votes" 
+                          fill="#3B82F6" 
+                          radius={[6, 6, 0, 0]}
+                          stroke="#1D4ED8"
+                          strokeWidth={1}
+                        />
                       </RechartsBarChart>
                     </ResponsiveContainer>
                   </div>
                 </div>
               )}
 
-              {/* New Bar Chart for Votes by Program/Course */}
+              {/* Participation by Course/Program */}
               {selectedElection.votes_by_program && selectedElection.votes_by_program.length > 0 && (
                 <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 mt-6">
-                  <h3 className="text-lg font-bold text-black mb-4">Votes Cast by Course</h3>
-                  <div className="h-80">
+                  <h3 className="text-lg font-bold text-black mb-4">Participation by Course/Program</h3>
+                  <div className="h-96">
                     <ResponsiveContainer width="100%" height="100%">
                       <RechartsBarChart
                         data={selectedElection.votes_by_program
@@ -829,28 +937,46 @@ export default function SuperAdminDashboard() {
                             ][index % 15]
                           }))
                         }
-                        margin={{ top: 20, right: 30, left: 20, bottom: 70 }}
+                        margin={{ top: 20, right: 30, left: 60, bottom: 80 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" strokeOpacity={0.6} />
                         <XAxis 
                           dataKey="program" 
                           angle={-45} 
                           textAnchor="end" 
-                          height={70} 
-                          tick={{ fill: '#000000', fontSize: 12 }}
+                          height={80} 
+                          tick={{ fill: '#374151', fontSize: 12, fontWeight: '500' }}
+                          axisLine={{ stroke: '#D1D5DB' }}
+                          tickLine={{ stroke: '#D1D5DB' }}
                         />
                         <YAxis 
-                          tick={{ fill: '#000000' }}
-                          label={{ value: 'Votes Cast', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: '#000000' } }}
+                          tick={{ fill: '#374151', fontSize: 12 }}
+                          axisLine={{ stroke: '#D1D5DB' }}
+                          tickLine={{ stroke: '#D1D5DB' }}
+                          label={{ 
+                            value: 'Votes Cast', 
+                            angle: -90, 
+                            position: 'insideLeft', 
+                            style: { textAnchor: 'middle', fill: '#374151', fontSize: '14px', fontWeight: '600' } 
+                          }}
                         />
                         <Tooltip 
-                          formatter={(value) => [value.toLocaleString(), 'Votes Cast']} 
-                          labelStyle={{ color: '#000000', fontWeight: 'bold' }}
-                          contentStyle={{ backgroundColor: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '6px' }}
+                          formatter={(value, name) => [value.toLocaleString(), 'Votes Cast']}
+                          labelStyle={{ 
+                            color: '#000000', 
+                            fontWeight: 'bold',
+                            fontSize: '14px'
+                          }}
+                          contentStyle={{ 
+                            backgroundColor: '#F9FAFB', 
+                            border: '1px solid #E5E7EB', 
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                          }}
                         />
                         <Bar 
                           dataKey="votes_cast" 
-                          radius={[4, 4, 0, 0]}
+                          radius={[6, 6, 0, 0]}
                           stroke="#ffffff"
                           strokeWidth={1}
                         >
@@ -870,6 +996,59 @@ export default function SuperAdminDashboard() {
                         </Bar>
                       </RechartsBarChart>
                     </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+
+              {/* Top Participating Courses Table */}
+              {selectedElection.votes_by_program && selectedElection.votes_by_program.length > 0 && (
+                <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 mt-6">
+                  <h3 className="text-lg font-bold text-black mb-4">Course Participation Details</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50 border-b-2 border-gray-200">
+                          <th className="p-3 text-left text-sm font-bold text-gray-700">Rank</th>
+                          <th className="p-3 text-left text-sm font-bold text-gray-700">Course/Program</th>
+                          <th className="p-3 text-left text-sm font-bold text-gray-700">Votes Cast</th>
+                          <th className="p-3 text-left text-sm font-bold text-gray-700">Participation %</th>
+                          <th className="p-3 text-left text-sm font-bold text-gray-700">Progress</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedElection.votes_by_program
+                          .sort((a, b) => b.votes_cast - a.votes_cast)
+                          .slice(0, 10)
+                          .map((course, index) => {
+                            const participationPercent = ((course.votes_cast / selectedElection.current_votes) * 100).toFixed(1);
+                            return (
+                              <tr key={course.program} className="border-b hover:bg-gray-50 transition-colors duration-150">
+                                <td className="p-3 text-sm font-medium text-gray-900">
+                                  <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
+                                    index === 0 ? 'bg-yellow-100 text-yellow-800' :
+                                    index === 1 ? 'bg-gray-100 text-gray-800' :
+                                    index === 2 ? 'bg-orange-100 text-orange-800' :
+                                    'bg-blue-100 text-blue-800'
+                                  }`}>
+                                    {index + 1}
+                                  </span>
+                                </td>
+                                <td className="p-3 text-sm font-medium text-gray-900">{course.program}</td>
+                                <td className="p-3 text-sm font-bold text-gray-900">{course.votes_cast.toLocaleString()}</td>
+                                <td className="p-3 text-sm text-gray-600">{participationPercent}%</td>
+                                <td className="p-3 text-sm">
+                                  <div className="w-full bg-gray-200 rounded-full h-2">
+                                    <div 
+                                      className="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full transition-all duration-300"
+                                      style={{ width: `${Math.min(parseFloat(participationPercent), 100)}%` }}
+                                    ></div>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )}
