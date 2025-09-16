@@ -423,7 +423,12 @@ export default function AdminDashboard() {
         throw new Error(`Failed to load system load data: ${response.status}`);
       }
       
-      const data = await response.json();
+      const responseData = await response.json();
+      
+      // Extract the actual data from the response structure
+      // Backend returns: { success: true, data: { summary: {...}, login_activity: [...], voting_activity: [...] } }
+      const data = responseData.success ? responseData.data : responseData;
+      
       setSystemLoadData(data);
       setSelectedTimeframe(timeframe);
     } catch (err) {
