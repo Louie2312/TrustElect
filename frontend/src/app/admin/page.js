@@ -737,6 +737,13 @@ export default function AdminDashboard() {
 
 
   const handleResetSystemLoadData = async () => {
+    // Check if user has permission to reset system load data
+    if (!hasPermission('system', 'reset')) {
+      toast.error('You do not have permission to reset system load data');
+      setShowResetConfirm(false);
+      return;
+    }
+
     setIsResetting(true);
     try {
       const response = await fetch(`${API_BASE}/reports/system-load/reset`, {
@@ -1334,14 +1341,17 @@ export default function AdminDashboard() {
                     <option value="7d">Last 7 Days</option>
                     <option value="30d">Last 30 Days</option>
                   </select>
-                  <button 
-                    onClick={() => setShowResetConfirm(true)}
-                    className="flex items-center gap-2 px-3 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors text-sm font-medium"
-                    title="Reset system load data for fresh testing"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                    Reset Data
-                  </button>
+                  {/* Only show reset button for superadmins */}
+                  {hasPermission('system', 'reset') && (
+                    <button 
+                      onClick={() => setShowResetConfirm(true)}
+                      className="flex items-center gap-2 px-3 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors text-sm font-medium"
+                      title="Reset system load data for fresh testing"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      Reset Data
+                    </button>
+                  )}
                   <button onClick={() => setShowSystemLoadModal(false)} className="text-black hover:text-gray-700">
                     <X className="w-6 h-6" />
                   </button>
