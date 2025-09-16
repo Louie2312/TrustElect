@@ -1327,7 +1327,7 @@ export default function SuperAdminDashboard() {
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold text-green-800">Data Reset Successfully!</h3>
-                      <p className="text-green-700">All system load data has been cleared. Fresh data collection will begin for tomorrow's testing.</p>
+                      <p className="text-green-700">All system load data has been cleared. Fresh data collection will begin for tomorrow&apos;s testing.</p>
                     </div>
                   </div>
                 </div>
@@ -1661,7 +1661,7 @@ export default function SuperAdminDashboard() {
                       <li>Clear all login activity records</li>
                       <li>Clear all voting activity records</li>
                       <li>Reset peak hour calculations</li>
-                      <li>Start fresh data collection for tomorrow's testing</li>
+                      <li>Start fresh data collection for tomorrow&apos;s testing</li>
                     </ul>
                     <p className="text-red-600 font-medium mt-3">
                       ⚠️ This action cannot be undone!
