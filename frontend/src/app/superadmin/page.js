@@ -209,8 +209,6 @@ export default function SuperAdminDashboard() {
   const [pendingApprovals, setPendingApprovals] = useState([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const [isElectionsLoading, setIsElectionsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [electionToDelete, setElectionToDelete] = useState(null);
@@ -222,34 +220,10 @@ export default function SuperAdminDashboard() {
   const [selectedElection, setSelectedElection] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshTime, setRefreshTime] = useState(new Date());
-  const [dataCache, setDataCache] = useState({});
-  const [lastFetchTime, setLastFetchTime] = useState({});
 
-  const loadElections = useCallback(async (status, useCache = true, showLoading = true) => {
+  const loadElections = useCallback(async (status) => {
     try {
-      // Check cache first (only for non-initial loads)
-      if (useCache && dataCache[status] && lastFetchTime[status]) {
-        const cacheAge = Date.now() - lastFetchTime[status];
-        const cacheTimeout = status === 'ongoing' ? 30000 : 120000; // 30s for ongoing, 2min for others
-        
-        if (cacheAge < cacheTimeout) {
-          setElections(dataCache[status]);
-          if (status === 'to_approve') {
-            setPendingApprovals(dataCache[status]);
-            setPendingCount(dataCache[status].length);
-          }
-          return;
-        }
-      }
-
-      // Show loading state immediately
-      if (showLoading) {
-        if (isInitialLoad) {
-          setIsLoading(true);
-        } else {
-          setIsElectionsLoading(true);
-        }
-      }
+      setIsLoading(true);
       setError(null);
       
       let endpoint;
@@ -259,19 +233,12 @@ export default function SuperAdminDashboard() {
         endpoint = `/elections/status/${status}`;
       }
       
-      // Add timeout to prevent hanging
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-      
       const response = await fetch(`${API_BASE}${endpoint}`, {
         headers: {
           'Authorization': `Bearer ${Cookies.get('token')}`,
           'Content-Type': 'application/json'
-        },
-        signal: controller.signal
+        }
       });
-      
-      clearTimeout(timeoutId);
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -280,11 +247,6 @@ export default function SuperAdminDashboard() {
       }
       
       const data = await response.json();
-      
-      // Update cache
-      setDataCache(prev => ({ ...prev, [status]: data || [] }));
-      setLastFetchTime(prev => ({ ...prev, [status]: Date.now() }));
-      
       setElections(data || []);
 
       if (status === 'to_approve') {
@@ -293,39 +255,15 @@ export default function SuperAdminDashboard() {
       }
     } catch (err) {
       console.error('[SuperAdmin] Error in loadElections:', err);
-      if (err.name === 'AbortError') {
-        setError('Request timeout - please try again');
-      } else {
-        setError(err.message || 'Failed to load elections');
-      }
+      setError(err.message || 'Failed to load elections');
       setElections([]);
     } finally {
-      if (showLoading) {
-        if (isInitialLoad) {
-          setIsLoading(false);
-          setIsInitialLoad(false);
-        } else {
-          setIsElectionsLoading(false);
-        }
-      }
+      setIsLoading(false);
     }
-  }, [dataCache, lastFetchTime, isInitialLoad]);
+  }, []);
 
-  const loadPendingApprovals = useCallback(async (useCache = true) => {
+  const loadPendingApprovals = useCallback(async () => {
     try {
-      // Check cache first
-      if (useCache && dataCache['to_approve'] && lastFetchTime['to_approve']) {
-        const cacheAge = Date.now() - lastFetchTime['to_approve'];
-        if (cacheAge < 30000) { // 30 second cache for pending approvals
-          setPendingApprovals(dataCache['to_approve']);
-          setPendingCount(dataCache['to_approve'].length);
-          if (activeTab === 'to_approve') {
-            setElections(dataCache['to_approve']);
-          }
-          return;
-        }
-      }
-
       const response = await fetch(`${API_BASE}/elections/pending-approval`, {
         headers: {
           'Authorization': `Bearer ${Cookies.get('token')}`,
@@ -338,11 +276,6 @@ export default function SuperAdminDashboard() {
       }
       
       const data = await response.json();
-      
-      // Update cache
-      setDataCache(prev => ({ ...prev, 'to_approve': data || [] }));
-      setLastFetchTime(prev => ({ ...prev, 'to_approve': Date.now() }));
-      
       setPendingApprovals(data);
       setPendingCount(data.length);
 
@@ -352,43 +285,20 @@ export default function SuperAdminDashboard() {
     } catch (err) {
       console.error('[SuperAdmin] Error loading pending approvals:', err);
     }
-  }, [activeTab, dataCache, lastFetchTime]);
+  }, [activeTab]);
 
-  const loadStats = useCallback(async (useCache = true) => {
+  const loadStats = useCallback(async () => {
     try {
-      // Check cache first
-      if (useCache && dataCache['stats'] && lastFetchTime['stats']) {
-        const cacheAge = Date.now() - lastFetchTime['stats'];
-        if (cacheAge < 60000) { // 1 minute cache for stats
-          setStats(dataCache['stats']);
-          return;
-        }
-      }
-
       const data = await fetchWithAuth('/elections/stats');
-      
-      // Update cache
-      setDataCache(prev => ({ ...prev, 'stats': data || [] }));
-      setLastFetchTime(prev => ({ ...prev, 'stats': Date.now() }));
-      
       setStats(data || []);
     } catch (err) {
       console.error("[SuperAdmin] Failed to load stats:", err);
       setStats([]);
     }
-  }, [dataCache, lastFetchTime]);
+  }, []);
 
-  const loadTotalUniqueVoters = useCallback(async (useCache = true) => {
+  const loadTotalUniqueVoters = useCallback(async () => {
     try {
-      // Check cache first
-      if (useCache && dataCache['totalVoters'] && lastFetchTime['totalVoters']) {
-        const cacheAge = Date.now() - lastFetchTime['totalVoters'];
-        if (cacheAge < 300000) { // 5 minute cache for total voters (rarely changes)
-          setTotalUniqueVoters(dataCache['totalVoters']);
-          return;
-        }
-      }
-
       const response = await fetchWithAuth('/elections/preview-voters', {
         method: 'POST',
         body: JSON.stringify({
@@ -401,32 +311,17 @@ export default function SuperAdminDashboard() {
       });
       
       const count = response.count || 0;
-      
-      // Update cache
-      setDataCache(prev => ({ ...prev, 'totalVoters': count }));
-      setLastFetchTime(prev => ({ ...prev, 'totalVoters': Date.now() }));
-      
       setTotalUniqueVoters(count);
     } catch (err) {
       console.error("[SuperAdmin] Failed to load total unique voters:", err);
       setTotalUniqueVoters(0);
     }
-  }, [dataCache, lastFetchTime]);
+  }, []);
 
-  const loadLiveVoteCount = useCallback(async (useCache = true) => {
+  const loadLiveVoteCount = useCallback(async () => {
     try {
-      // Only load live vote data if there are ongoing elections
       if (activeTab !== 'ongoing') {
         return;
-      }
-
-      // Check cache first
-      if (useCache && dataCache['liveVote'] && lastFetchTime['liveVote']) {
-        const cacheAge = Date.now() - lastFetchTime['liveVote'];
-        if (cacheAge < 15000) { // 15 second cache for live data
-          setLiveVoteData(dataCache['liveVote']);
-          return;
-        }
       }
 
       setIsRefreshing(true);
@@ -442,11 +337,6 @@ export default function SuperAdminDashboard() {
       }
       
       const data = await response.json();
-      
-      // Update cache
-      setDataCache(prev => ({ ...prev, 'liveVote': data.data }));
-      setLastFetchTime(prev => ({ ...prev, 'liveVote': Date.now() }));
-      
       setLiveVoteData(data.data);
       setRefreshTime(new Date());
     } catch (error) {
@@ -454,7 +344,7 @@ export default function SuperAdminDashboard() {
     } finally {
       setIsRefreshing(false);
     }
-  }, [activeTab, dataCache, lastFetchTime]);
+  }, [activeTab]);
 
   const handleViewLiveVoteDetails = (election) => {
     setSelectedElection(election);
@@ -466,35 +356,15 @@ export default function SuperAdminDashboard() {
       setIsLoading(true);
       
       try {
-        // Load elections immediately - this is the most critical data
-        const electionsPromise = loadElections(activeTab, false, true);
+        await Promise.all([
+          loadElections(activeTab),
+          loadPendingApprovals(),
+          loadStats(),
+          loadTotalUniqueVoters()
+        ]);
         
-        // Load pending approvals in parallel
-        const pendingPromise = loadPendingApprovals(false);
-        
-        // Wait for elections to load first, then load secondary data
-        await electionsPromise;
-        
-        // Load pending approvals
-        await pendingPromise;
-        
-        // Load secondary data in background (non-blocking)
-        setTimeout(() => {
-          Promise.all([
-            loadStats(false),
-            loadTotalUniqueVoters(false)
-          ]).catch(error => {
-            console.error('[SuperAdmin] Error loading secondary data:', error);
-          });
-        }, 100);
-        
-        // Load live vote data only if on ongoing tab
         if (activeTab === 'ongoing') {
-          setTimeout(() => {
-            loadLiveVoteCount(false).catch(error => {
-              console.error('[SuperAdmin] Error loading live vote data:', error);
-            });
-          }, 200);
+          loadLiveVoteCount();
         }
       } catch (error) {
         console.error('[SuperAdmin] Error during initial load:', error);
@@ -505,19 +375,19 @@ export default function SuperAdminDashboard() {
     
     initialLoad();
 
-    // Refresh pending approvals every 30 seconds (reduced frequency)
+    // Refresh pending approvals every 30 seconds
     const pendingInterval = setInterval(() => {
       loadPendingApprovals();
     }, 30000);
     
-    // Refresh stats every 2 minutes (reduced frequency)
+    // Refresh stats every 2 minutes
     const statsInterval = setInterval(() => {
       loadStats();
     }, 120000);
 
-    // Refresh election data every 2 minutes (reduced frequency)
+    // Refresh election data every 2 minutes
     const electionInterval = setInterval(() => {
-      loadElections(activeTab, true, false); // Use cache, don't show loading
+      loadElections(activeTab);
     }, 120000);
 
     // Refresh live vote data every 30 seconds only for ongoing tab
@@ -535,23 +405,6 @@ export default function SuperAdminDashboard() {
     };
   }, [activeTab]);
 
-  // Handle tab switching with immediate feedback
-  useEffect(() => {
-    if (!isInitialLoad) {
-      // Show loading state immediately when switching tabs
-      setIsElectionsLoading(true);
-      
-      // Load elections for the new tab
-      loadElections(activeTab, true, false).finally(() => {
-        setIsElectionsLoading(false);
-      });
-      
-      // Load live vote data if switching to ongoing tab
-      if (activeTab === 'ongoing') {
-        loadLiveVoteCount();
-      }
-    }
-  }, [activeTab, loadElections, loadLiveVoteCount, isInitialLoad]);
 
   const handleElectionClick = (electionId) => {
     if (!electionId || isNaN(parseInt(electionId))) {
@@ -722,37 +575,18 @@ export default function SuperAdminDashboard() {
       </div>
   
        <div className="mb-6 flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <h2 className="text-xl font-bold text-black">
-            {activeTab === 'ongoing' && 'Ongoing Elections'}
-            {activeTab === 'upcoming' && 'Upcoming Elections'}
-            {activeTab === 'completed' && 'Completed Elections'}
-            {activeTab === 'to_approve' && 'Elections Pending Approval'}
-          </h2>
-          {isElectionsLoading && (
-            <div className="flex items-center text-blue-600">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-2"></div>
-              <span className="text-sm">Loading...</span>
-            </div>
-          )}
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => loadElections(activeTab, false, true)}
-            disabled={isElectionsLoading}
-            className="inline-flex items-center px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            title="Refresh elections"
-          >
-            <RefreshCw className={`w-4 h-4 mr-1 ${isElectionsLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
-          <Link 
-            href="/superadmin/election/create"
-            className="inline-flex items-center px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-md hover:shadow-lg transition-all"
-          >
-            + Create New Election
-          </Link>
-        </div>
+        <h2 className="text-xl font-bold text-black">
+          {activeTab === 'ongoing' && 'Ongoing Elections'}
+          {activeTab === 'upcoming' && 'Upcoming Elections'}
+          {activeTab === 'completed' && 'Completed Elections'}
+          {activeTab === 'to_approve' && 'Elections Pending Approval'}
+        </h2>
+        <Link 
+          href="/superadmin/election/create"
+          className="inline-flex items-center px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-md hover:shadow-lg transition-all"
+        >
+          + Create New Election
+        </Link>
       </div>
 
   
@@ -771,73 +605,39 @@ export default function SuperAdminDashboard() {
 
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading elections...</p>
-          </div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
         </div>
       ) : (
-        <div className="relative">
-          {/* Elections loading indicator */}
-          {isElectionsLoading && (
-            <div className="absolute top-0 left-0 right-0 z-10 bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-              <div className="flex items-center justify-center">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500 mr-2"></div>
-                <span className="text-blue-700 font-medium">Loading elections...</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {elections.length > 0 ? (
+            elections.map((election, index) => (
+              <ElectionCard 
+                key={`${election.id}-${index}`} 
+                election={election} 
+                onClick={handleElectionClick}
+                onDeleteClick={handleDeleteClick}
+                activeTab={activeTab}
+              />
+            ))
+          ) : (
+            <div className="col-span-full text-center py-12 bg-white rounded-lg shadow">
+              <div className="text-black mb-4">
+                {activeTab === 'ongoing' && <Clock className="w-16 h-16 mx-auto" />}
+                {activeTab === 'upcoming' && <Calendar className="w-16 h-16 mx-auto" />}
+                {activeTab === 'completed' && <CheckCircle className="w-16 h-16 mx-auto" />}
+                {activeTab === 'to_approve' && <AlertCircle className="w-16 h-16 mx-auto" />}
               </div>
+              <h3 className="text-xl font-medium text-gray-900 mb-2">
+                No {activeTab === 'to_approve' ? 'elections pending approval' : `${activeTab} elections`}
+              </h3>
+              <p className="text-black max-w-md mx-auto">
+                {activeTab === 'ongoing' && 'There are currently no ongoing elections.'}
+                {activeTab === 'upcoming' && 'No upcoming elections scheduled.'}
+                {activeTab === 'completed' && 'No completed elections yet. Elections that have ended will be shown here.'}
+                {activeTab === 'to_approve' && 'No elections waiting for your approval.'}
+              </p>
             </div>
           )}
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {elections.length > 0 ? (
-              elections.map((election, index) => (
-                <ElectionCard 
-                  key={`${election.id}-${index}`} 
-                  election={election} 
-                  onClick={handleElectionClick}
-                  onDeleteClick={handleDeleteClick}
-                  activeTab={activeTab}
-                />
-              ))
-            ) : !isElectionsLoading ? (
-              <div className="col-span-full text-center py-12 bg-white rounded-lg shadow">
-                <div className="text-black mb-4">
-                  {activeTab === 'ongoing' && <Clock className="w-16 h-16 mx-auto" />}
-                  {activeTab === 'upcoming' && <Calendar className="w-16 h-16 mx-auto" />}
-                  {activeTab === 'completed' && <CheckCircle className="w-16 h-16 mx-auto" />}
-                  {activeTab === 'to_approve' && <AlertCircle className="w-16 h-16 mx-auto" />}
-                </div>
-                <h3 className="text-xl font-medium text-gray-900 mb-2">
-                  No {activeTab === 'to_approve' ? 'elections pending approval' : `${activeTab} elections`}
-                </h3>
-                <p className="text-black max-w-md mx-auto">
-                  {activeTab === 'ongoing' && 'There are currently no ongoing elections.'}
-                  {activeTab === 'upcoming' && 'No upcoming elections scheduled.'}
-                  {activeTab === 'completed' && 'No completed elections yet. Elections that have ended will be shown here.'}
-                  {activeTab === 'to_approve' && 'No elections waiting for your approval.'}
-                </p>
-              </div>
-            ) : (
-              // Show skeleton loading for elections
-              <div className="col-span-full">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="bg-white rounded-lg shadow p-6 animate-pulse">
-                      <div className="h-4 bg-gray-200 rounded mb-4"></div>
-                      <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                      <div className="h-4 bg-gray-200 rounded mb-4 w-3/4"></div>
-                      <div className="grid grid-cols-2 gap-3 mb-4">
-                        <div className="h-16 bg-gray-200 rounded"></div>
-                        <div className="h-16 bg-gray-200 rounded"></div>
-                      </div>
-                      <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                      <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
         </div>
       )}
       
