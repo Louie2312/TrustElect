@@ -353,28 +353,44 @@ export default function SuperAdminDashboard() {
   useEffect(() => {
     const initialLoad = async () => {
       setIsLoading(true);
+      setConnectionStatus('loading');
       
       try {
-        // Load critical data first (elections)
-        await loadElections(activeTab);
+        // Load critical data first (elections) with timeout
+        await Promise.race([
+          loadElections(activeTab),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Elections load timeout')), 10000)
+          )
+        ]);
+        
+        setConnectionStatus('online');
         
         // Load secondary data in parallel (non-blocking)
-        Promise.all([
+        const secondaryPromises = [
           loadPendingApprovals(),
           loadStats(),
           loadTotalUniqueVoters()
-        ]).catch(error => {
-          console.error('[SuperAdmin] Error loading secondary data:', error);
+        ];
+        
+        // Don't wait for secondary data to complete
+        Promise.allSettled(secondaryPromises).then((results) => {
+          const failed = results.filter(result => result.status === 'rejected');
+          if (failed.length > 0) {
+            console.warn('[SuperAdmin] Some secondary data failed to load:', failed);
+          }
         });
         
         // Load live vote data only if on ongoing tab
         if (activeTab === 'ongoing') {
           loadLiveVoteCount().catch(error => {
-            console.error('[SuperAdmin] Error loading live vote data:', error);
+            console.warn('[SuperAdmin] Error loading live vote data:', error);
           });
         }
       } catch (error) {
         console.error('[SuperAdmin] Error during initial load:', error);
+        setConnectionStatus('error');
+        setError('Failed to load election data. Please check your connection and try again.');
       } finally {
         setIsLoading(false);
       }
@@ -382,27 +398,35 @@ export default function SuperAdminDashboard() {
     
     initialLoad();
 
-    // Refresh pending approvals every 30 seconds (reduced frequency)
+    // Refresh pending approvals every 60 seconds (reduced frequency)
     const pendingInterval = setInterval(() => {
-      loadPendingApprovals();
-    }, 30000);
+      loadPendingApprovals().catch(err => {
+        console.warn('[SuperAdmin] Failed to refresh pending approvals:', err);
+      });
+    }, 60000);
     
-    // Refresh stats every 2 minutes
+    // Refresh stats every 3 minutes (reduced frequency)
     const statsInterval = setInterval(() => {
-      loadStats();
-    }, 120000);
+      loadStats().catch(err => {
+        console.warn('[SuperAdmin] Failed to refresh stats:', err);
+      });
+    }, 180000);
 
-    // Refresh election data every 2 minutes
+    // Refresh election data every 3 minutes (reduced frequency)
     const electionInterval = setInterval(() => {
-      loadElections(activeTab);
-    }, 120000);
+      loadElections(activeTab).catch(err => {
+        console.warn('[SuperAdmin] Failed to refresh elections:', err);
+      });
+    }, 180000);
 
-    // Refresh live vote data every 30 seconds only for ongoing tab
+    // Refresh live vote data every 60 seconds only for ongoing tab
     const liveVoteInterval = setInterval(() => {
       if (activeTab === 'ongoing') {
-        loadLiveVoteCount();
+        loadLiveVoteCount().catch(err => {
+          console.warn('[SuperAdmin] Failed to refresh live vote count:', err);
+        });
       }
-    }, 30000);
+    }, 60000);
 
     return () => {
       clearInterval(pendingInterval);
@@ -510,14 +534,43 @@ export default function SuperAdminDashboard() {
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-3xl font-bold text-black">Dashboard</h1>
         <div className="flex items-center space-x-4">
-          {connectionStatus === 'offline' && (
+          {connectionStatus === 'loading' && (
+            <div className="flex items-center text-blue-600 bg-blue-50 px-3 py-1 rounded-full text-sm">
+              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500 mr-2"></div>
+              Loading...
+            </div>
+          )}
+          {connectionStatus === 'error' && (
             <div className="flex items-center text-red-600 bg-red-50 px-3 py-1 rounded-full text-sm">
               <div className="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
               Connection Issues
             </div>
           )}
-          <div className="text-sm text-gray-500">
-            Last updated: {new Date().toLocaleTimeString()}
+          {connectionStatus === 'online' && (
+            <div className="flex items-center text-green-600 bg-green-50 px-3 py-1 rounded-full text-sm">
+              <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+              Connected
+            </div>
+          )}
+          <div className="flex items-center space-x-2">
+            <div className="text-sm text-gray-500">
+              Last updated: {new Date().toLocaleTimeString()}
+            </div>
+            <button
+              onClick={() => {
+                setConnectionStatus('loading');
+                loadElections(activeTab).then(() => {
+                  setConnectionStatus('online');
+                }).catch(() => {
+                  setConnectionStatus('error');
+                });
+              }}
+              disabled={connectionStatus === 'loading'}
+              className="p-1 text-gray-500 hover:text-gray-700 disabled:opacity-50"
+              title="Refresh data"
+            >
+              <RefreshCw className={`w-4 h-4 ${connectionStatus === 'loading' ? 'animate-spin' : ''}`} />
+            </button>
           </div>
         </div>
       </div>      
