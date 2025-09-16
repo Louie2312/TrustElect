@@ -7,8 +7,49 @@ import { useAuth } from '@/context/AuthContext';
 import { Download, X, Calendar, Eye } from 'lucide-react';
 import { generatePdfReport } from '@/utils/pdfGenerator';
 import Cookies from 'js-cookie';
+import Image from 'next/image';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+
+const getImageUrl = (imageUrl) => {
+  if (!imageUrl) return '/images/default-avatar.png';
+  if (imageUrl.startsWith('http')) return imageUrl;
+  if (imageUrl.startsWith('blob:')) return imageUrl;
+  
+  // Handle different image path formats
+  let cleanImageUrl = imageUrl;
+  
+  // Remove leading slashes
+  if (cleanImageUrl.startsWith('/')) {
+    cleanImageUrl = cleanImageUrl.substring(1);
+  }
+  
+  // If it already starts with uploads, use it directly
+  if (cleanImageUrl.startsWith('uploads/')) {
+    return `${API_BASE}/${cleanImageUrl}`;
+  }
+  
+  // If it's just a filename, assume it's in candidates folder
+  if (!cleanImageUrl.includes('/')) {
+    return `${API_BASE}/uploads/candidates/${cleanImageUrl}`;
+  }
+  
+  // Default case
+  return `${API_BASE}/uploads/candidates/${cleanImageUrl}`;
+};
+
+const formatNameSimple = (lastName, firstName, fallback) => {
+  const cap = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
+  if ((!lastName && !firstName) && fallback) {
+    const words = fallback.trim().split(/\s+/);
+    if (words.length === 1) return cap(words[0]);
+    const last = cap(words[words.length - 1]);
+    const first = words.slice(0, -1).map(cap).join(' ');
+    return `${last}, ${first}`;
+  }
+  if (!lastName && !firstName) return 'No Name';
+  return `${cap(lastName)}, ${cap(firstName)}`;
+};
 
 export default function ElectionSummaryReport() {
   const [summaryData, setSummaryData] = useState(null);
@@ -18,6 +59,7 @@ export default function ElectionSummaryReport() {
   const [selectedElection, setSelectedElection] = useState(null);
   const [electionDetails, setElectionDetails] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [dateRange, setDateRange] = useState({ start: null, end: null });
   const { token } = useAuth();
 
   useEffect(() => {
@@ -239,30 +281,56 @@ export default function ElectionSummaryReport() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold text-[#01579B]">Election Summary Report</h2>
-        <div className="flex items-center gap-4">
-          <div className="flex border rounded-md overflow-hidden">
-            <button
-              className={`px-4 py-2 ${activeTab === "summary" ? "bg-[#01579B] text-white" : "bg-white text-gray-600"}`}
-              onClick={() => setActiveTab("summary")}
-            >
-              Summary
-            </button>
-            <button
-              className={`px-4 py-2 ${activeTab === "details" ? "bg-[#01579B] text-white" : "bg-white text-gray-600"}`}
-              onClick={() => setActiveTab("details")}
-            >
-              Details
-            </button>
-          </div>
-          <button
-            onClick={electionDetails ? handleDownloadElectionDetails : handleDownload}
-            className="flex items-center gap-2 bg-[#01579B] text-white px-4 py-2 rounded hover:bg-[#01416E] transition-colors"
-          >
-            <Download className="w-4 h-4" />
-            {electionDetails ? 'Download Election PDF' : 'Download Summary PDF'}
-          </button>
+        <div>
+          <h2 className="text-xl font-bold text-black">Election Summary Report</h2>
+          <p className="text-sm text-black">Overview of all elections with detailed statistics and voter turnout</p>
         </div>
+      </div>
+
+      <div className="flex border-b mb-4">
+        <button
+          className={`px-4 py-2 font-medium ${activeTab === "summary" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-600"}`}
+          onClick={() => setActiveTab("summary")}
+        >
+          Summary
+        </button>
+        <button
+          className={`px-4 py-2 font-medium ${activeTab === "details" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-600"}`}
+          onClick={() => setActiveTab("details")}
+        >
+          Details
+        </button>
+      </div>
+
+      <div className="mb-4 flex justify-between items-center">
+        <div className="flex gap-2">
+          <div className="relative">
+            <Calendar className="absolute left-3 top-3 h-4 w-4 text-black" />
+            <input
+              type="date"
+              className="border p-2 pl-10 rounded text-sm text-black"
+              placeholder="Start date"
+              onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+            />
+          </div>
+          <span className="self-center">to</span>
+          <div className="relative">
+            <Calendar className="absolute left-3 top-3 h-4 w-4 text-black" />
+            <input
+              type="date"
+              className="border p-2 pl-10 rounded text-sm text-black"
+              placeholder="End date"
+              onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+            />
+          </div>
+        </div>
+        <button
+          onClick={electionDetails ? handleDownloadElectionDetails : handleDownload}
+          className="flex items-center text-white bg-[#01579B] px-4 py-2 rounded hover:bg-[#01416E]"
+        >
+          <Download className="w-5 h-5 mr-2" />
+          {electionDetails ? 'Download Election PDF' : 'Download Summary PDF'}
+        </button>
       </div>
 
       {loadingDetails && (
@@ -271,144 +339,197 @@ export default function ElectionSummaryReport() {
         </div>
       )}
 
-      {!loadingDetails && activeTab === "summary" && summaryData && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <div className="border rounded-lg p-4">
-            <h3 className="text-sm font-medium text-gray-500 mb-1">Total Elections</h3>
-            <p className="text-2xl font-bold text-gray-900">{formatNumber(summaryData.summary.total_elections)}</p>
+      <div className="overflow-y-auto max-h-[50vh]">
+        {activeTab === "summary" && summaryData && (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="border rounded-lg p-4">
+              <h3 className="text-sm font-medium text-black mb-1">Total Elections</h3>
+              <p className="text-2xl font-bold text-black">{formatNumber(summaryData.summary.total_elections)}</p>
+            </div>
+            <div className="border rounded-lg p-4">
+              <h3 className="text-sm font-medium text-black mb-1">Ongoing Elections</h3>
+              <p className="text-2xl font-bold text-blue-600">{formatNumber(summaryData.summary.ongoing_elections)}</p>
+            </div>
+            <div className="border rounded-lg p-4">
+              <h3 className="text-sm font-medium text-black mb-1">Completed Elections</h3>
+              <p className="text-2xl font-bold text-green-600">{formatNumber(summaryData.summary.completed_elections)}</p>
+            </div>
+            <div className="border rounded-lg p-4">
+              <h3 className="text-sm font-medium text-black mb-1">Upcoming Elections</h3>
+              <p className="text-2xl font-bold text-orange-600">{formatNumber(summaryData.summary.upcoming_elections)}</p>
+            </div>
+            <div className="border rounded-lg p-4">
+              <h3 className="text-sm font-medium text-black mb-1">Total Eligible Voters</h3>
+              <p className="text-2xl font-bold text-black">{formatNumber(summaryData.summary.total_eligible_voters)}</p>
+            </div>
+            <div className="border rounded-lg p-4">
+              <h3 className="text-sm font-medium text-black mb-1">Total Votes Cast</h3>
+              <p className="text-2xl font-bold text-black">{formatNumber(summaryData.summary.total_votes_cast)}</p>
+              <p className="text-sm text-gray-500">
+                {formatPercentage(summaryData.summary.voter_turnout_percentage)} turnout
+              </p>
+            </div>
           </div>
-          <div className="border rounded-lg p-4">
-            <h3 className="text-sm font-medium text-gray-500 mb-1">Ongoing Elections</h3>
-            <p className="text-2xl font-bold text-blue-600">{formatNumber(summaryData.summary.ongoing_elections)}</p>
-          </div>
-          <div className="border rounded-lg p-4">
-            <h3 className="text-sm font-medium text-gray-500 mb-1">Completed Elections</h3>
-            <p className="text-2xl font-bold text-green-600">{formatNumber(summaryData.summary.completed_elections)}</p>
-          </div>
-          <div className="border rounded-lg p-4">
-            <h3 className="text-sm font-medium text-gray-500 mb-1">Upcoming Elections</h3>
-            <p className="text-2xl font-bold text-orange-600">{formatNumber(summaryData.summary.upcoming_elections)}</p>
-          </div>
-          <div className="border rounded-lg p-4">
-            <h3 className="text-sm font-medium text-gray-500 mb-1">Total Eligible Voters</h3>
-            <p className="text-2xl font-bold text-gray-900">{formatNumber(summaryData.summary.total_eligible_voters)}</p>
-          </div>
-          <div className="border rounded-lg p-4">
-            <h3 className="text-sm font-medium text-gray-500 mb-1">Total Votes Cast</h3>
-            <p className="text-2xl font-bold text-gray-900">{formatNumber(summaryData.summary.total_votes_cast)}</p>
-            <p className="text-sm text-gray-500">
-              {formatPercentage(summaryData.summary.voter_turnout_percentage)} turnout
-            </p>
-          </div>
-        </div>
-      )}
+        )}
 
-      {!loadingDetails && activeTab === "details" && !electionDetails && summaryData && (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        {activeTab === "details" && summaryData && (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Election Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Voters</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Votes Cast</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Turnout</th>
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="p-3 text-left text-sm font-medium text-black">Election Name</th>
+                  <th className="p-3 text-left text-sm font-medium text-black">Type</th>
+                  <th className="p-3 text-left text-sm font-medium text-black">Status</th>
+                  <th className="p-3 text-left text-sm font-medium text-black">Start Date</th>
+                  <th className="p-3 text-left text-sm font-medium text-black">End Date</th>
+                  <th className="p-3 text-left text-sm font-medium text-black">Voters</th>
+                  <th className="p-3 text-left text-sm font-medium text-black">Votes Cast</th>
+                  <th className="p-3 text-left text-sm font-medium text-black">Turnout</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {summaryData.recent_elections.map((election, index) => (
-                  <tr key={election.id} className={`cursor-pointer hover:bg-blue-50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`} onClick={() => handleViewDetails(election)}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 flex items-center gap-2">
+              <tbody>
+                {summaryData.recent_elections.map((election) => (
+                  <tr key={election.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => handleViewDetails(election)}>
+                    <td className="p-3 text-sm text-black flex items-center gap-2">
                       {election.title}
                       <Eye className="w-4 h-4 text-blue-600" />
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{election.election_type}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        election.status === 'completed' ? 'bg-green-100 text-green-800' :
-                        election.status === 'ongoing' ? 'bg-blue-100 text-blue-800' :
-                        'bg-gray-100 text-gray-800'
+                    <td className="p-3 text-sm text-black">{election.election_type}</td>
+                    <td className="p-3 text-sm">
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        election.status === "ongoing" ? "bg-blue-100 text-blue-800" :
+                        election.status === "completed" ? "bg-green-100 text-green-800" :
+                        "bg-gray-100 text-gray-800"
                       }`}>
-                        {election.status.charAt(0).toUpperCase() + election.status.slice(1)}
+                        {election.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(election.start_date)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(election.end_date)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatNumber(election.voter_count)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatNumber(election.total_votes)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        (election.total_votes / election.voter_count * 100) >= 75 ? 'bg-green-100 text-green-800' :
-                        (election.total_votes / election.voter_count * 100) >= 50 ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {formatPercentage((election.total_votes / election.voter_count * 100) || 0)}
-                      </span>
-                    </td>
+                    <td className="p-3 text-sm text-black">{formatDate(election.start_date)}</td>
+                    <td className="p-3 text-sm text-black">{formatDate(election.end_date)}</td>
+                    <td className="p-3 text-sm text-black">{formatNumber(election.voter_count)}</td>
+                    <td className="p-3 text-sm text-black">{formatNumber(election.total_votes)}</td>
+                    <td className="p-3 text-sm text-black">{formatPercentage((election.total_votes / election.voter_count * 100) || 0)}</td>
                   </tr>
                 ))}
                 {summaryData.recent_elections.length === 0 && (
                   <tr>
-                    <td colSpan="8" className="px-6 py-4 text-center text-gray-500">No election data available</td>
+                    <td colSpan="8" className="p-3 text-center text-gray-500">No election data available</td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {!loadingDetails && activeTab === "details" && electionDetails && (
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h3 className="text-xl font-bold text-gray-800">{electionDetails.title}</h3>
-            <button 
-              onClick={handleCloseDetails}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <X className="w-6 h-6" />
-            </button>
-          </div>
-          <p className="text-gray-600">{electionDetails.description}</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-blue-50 rounded-lg p-4">
-              <p className="text-sm text-gray-600">Total Eligible Voters</p>
-              <p className="text-2xl font-bold text-blue-600">{formatNumber(electionDetails.voter_count || 0)}</p>
-            </div>
-            <div className="bg-green-50 rounded-lg p-4">
-              <p className="text-sm text-gray-600">Total Votes Cast</p>
-              <p className="text-2xl font-bold text-green-600">{formatNumber(electionDetails.vote_count !== undefined ? electionDetails.vote_count : 0)}</p>
-            </div>
-            <div className="bg-purple-50 rounded-lg p-4">
-              <p className="text-sm text-gray-600">Voter Turnout</p>
-              <p className="text-2xl font-bold text-purple-600">
-                {formatPercentage(calculateTurnout(
-                  electionDetails.vote_count !== undefined ? electionDetails.vote_count : 0,
-                  electionDetails.voter_count !== undefined ? electionDetails.voter_count : 0
-                ))}
-              </p>
-            </div>
-          </div>
-          <h4 className="text-lg font-semibold text-gray-800 mt-6">Ballot Details</h4>
-          <div className="space-y-4">
-            {(electionDetails.positions || []).map(position => (
-              <div key={position.id} className="border rounded-lg p-4">
-                <h5 className="font-semibold text-gray-800">{position.name}</h5>
-                <p className="text-sm text-gray-600">Max Choices: {position.max_choices}</p>
-                <div className="mt-2 space-y-2">
-                  {(position.candidates || []).map(candidate => (
-                    <div key={candidate.id} className="flex items-center justify-between bg-gray-50 p-3 rounded">
-                      <span className="text-gray-800">{`${candidate.first_name} ${candidate.last_name}`} ({candidate.party})</span>
-                      <span className="font-medium text-gray-800">{formatNumber(candidate.vote_count || 0)} votes ({formatPercentage(electionDetails.vote_count > 0 ? ((candidate.vote_count || 0) / electionDetails.vote_count * 100) : 0)})</span>
-                    </div>
-                  ))}
+      {/* Election Details Modal */}
+      {selectedElection && electionDetails && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto p-6 border border-gray-200">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h2 className="text-2xl font-bold text-black mb-2">{electionDetails.title}</h2>
+                <div className="text-sm text-gray-600 space-y-1">
+                  <p>Start: {formatDateTime(electionDetails.date_from || electionDetails.start_date, electionDetails.start_time)}</p>
+                  <p>End: {formatDateTime(electionDetails.date_to || electionDetails.end_date, electionDetails.end_time)}</p>
+                  <p className="mt-2">Status: <span className={`inline-block px-2 py-1 rounded-full text-xs ${electionDetails.status === 'ongoing' ? 'bg-blue-100 text-blue-800' : electionDetails.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{electionDetails.status?.toUpperCase()}</span></p>
                 </div>
               </div>
-            ))}
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={handleDownloadElectionDetails}
+                  className="flex items-center text-white bg-[#01579B] px-4 py-2 rounded hover:bg-[#01416E]"
+                >
+                  <Download className="w-5 h-5 mr-2" />
+                  Download PDF
+                </button>
+                <button onClick={handleCloseDetails} className="text-gray-500 hover:text-gray-700">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-6 border-t pt-6">
+              <div className="mb-8">
+                <h3 className="text-lg font-semibold mb-4 text-black">Election Summary</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-blue-50 rounded-lg p-4">
+                    <p className="text-sm text-gray-600">Total Eligible Voters</p>
+                    <p className="text-2xl font-bold text-blue-600">{formatNumber(electionDetails.voter_count || 0)}</p>
+                  </div>
+                  <div className="bg-green-50 rounded-lg p-4">
+                    <p className="text-sm text-gray-600">Total Votes Cast</p>
+                    <p className="text-2xl font-bold text-green-600">
+                      {formatNumber(electionDetails.vote_count !== undefined ? electionDetails.vote_count : 0)}
+                    </p>
+                  </div>
+                  <div className="bg-purple-50 rounded-lg p-4">
+                    <p className="text-sm text-gray-600">Voter Turnout</p>
+                    <p className="text-2xl font-bold text-purple-600">
+                      {formatPercentage(calculateTurnout(
+                        electionDetails.vote_count !== undefined ? electionDetails.vote_count : 0, 
+                        electionDetails.voter_count !== undefined ? electionDetails.voter_count : 0
+                      ))}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <h3 className="text-lg font-semibold mb-4 text-black">Ballot Details</h3>
+              <div className="space-y-8">
+                {electionDetails.positions?.map((position) => (
+                  <div key={position.id} className="border rounded-lg p-6 bg-gray-50">
+                    <div className="flex justify-between items-center mb-6">
+                      <div>
+                        <h3 className="text-xl font-semibold text-black">{position.name}</h3>
+                        <p className="text-sm text-gray-600 mt-1">Maximum choices: {position.max_choices || 1}</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {position.candidates?.map((candidate, index) => (
+                        <div key={candidate.id} className="bg-white border rounded-lg p-4 flex items-start space-x-4 hover:shadow-md transition-shadow duration-200">
+                          <div className="relative w-24 h-24 flex-shrink-0 overflow-hidden rounded-lg bg-gray-200">
+                            <Image
+                              src={getImageUrl(candidate.image_url)}
+                              alt={formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
+                              fill
+                              sizes="96px"
+                              className="rounded-lg object-cover object-center"
+                              style={{ objectFit: 'cover' }}
+                              onError={(e) => {
+                                e.target.src = '/images/default-avatar.png';
+                              }}
+                            />
+                          </div>
+                          <div className="flex-grow">
+                            <h4 className="font-medium text-black text-lg">
+                              {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
+                            </h4>
+                            {candidate.party && (
+                              <div className="flex items-center mt-1">
+                                <span className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded-full">{candidate.party}</span>
+                              </div>
+                            )}
+                            {electionDetails.status !== 'upcoming' && (
+                              <div className="mt-3 space-y-1">
+                                <p className="text-sm font-medium text-blue-600">
+                                  Total Votes: {formatNumber(candidate.vote_count || 0)}
+                                </p>
+                                {parseInt(electionDetails.vote_count || 0) > 0 && (
+                                  <p className="text-xs text-gray-500">
+                                    {formatPercentage((parseInt(candidate.vote_count || 0) / parseInt(electionDetails.vote_count || 1)) * 100)} of total votes
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}
