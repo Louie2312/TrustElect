@@ -209,6 +209,7 @@ export default function SuperAdminDashboard() {
   const [pendingApprovals, setPendingApprovals] = useState([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [error, setError] = useState(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [electionToDelete, setElectionToDelete] = useState(null);
@@ -220,10 +221,29 @@ export default function SuperAdminDashboard() {
   const [selectedElection, setSelectedElection] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshTime, setRefreshTime] = useState(new Date());
+  const [dataCache, setDataCache] = useState({});
+  const [lastFetchTime, setLastFetchTime] = useState({});
 
-  const loadElections = useCallback(async (status) => {
+  const loadElections = useCallback(async (status, useCache = true) => {
     try {
-      setIsLoading(true);
+      // Check cache first (only for non-initial loads)
+      if (useCache && dataCache[status] && lastFetchTime[status]) {
+        const cacheAge = Date.now() - lastFetchTime[status];
+        const cacheTimeout = status === 'ongoing' ? 30000 : 120000; // 30s for ongoing, 2min for others
+        
+        if (cacheAge < cacheTimeout) {
+          setElections(dataCache[status]);
+          if (status === 'to_approve') {
+            setPendingApprovals(dataCache[status]);
+            setPendingCount(dataCache[status].length);
+          }
+          return;
+        }
+      }
+
+      if (isInitialLoad) {
+        setIsLoading(true);
+      }
       setError(null);
       
       let endpoint;
@@ -247,6 +267,11 @@ export default function SuperAdminDashboard() {
       }
       
       const data = await response.json();
+      
+      // Update cache
+      setDataCache(prev => ({ ...prev, [status]: data || [] }));
+      setLastFetchTime(prev => ({ ...prev, [status]: Date.now() }));
+      
       setElections(data || []);
 
       if (status === 'to_approve') {
@@ -258,12 +283,28 @@ export default function SuperAdminDashboard() {
       setError(err.message || 'Failed to load elections');
       setElections([]);
     } finally {
-      setIsLoading(false);
+      if (isInitialLoad) {
+        setIsLoading(false);
+        setIsInitialLoad(false);
+      }
     }
-  }, []);
+  }, [dataCache, lastFetchTime, isInitialLoad]);
 
-  const loadPendingApprovals = useCallback(async () => {
+  const loadPendingApprovals = useCallback(async (useCache = true) => {
     try {
+      // Check cache first
+      if (useCache && dataCache['to_approve'] && lastFetchTime['to_approve']) {
+        const cacheAge = Date.now() - lastFetchTime['to_approve'];
+        if (cacheAge < 30000) { // 30 second cache for pending approvals
+          setPendingApprovals(dataCache['to_approve']);
+          setPendingCount(dataCache['to_approve'].length);
+          if (activeTab === 'to_approve') {
+            setElections(dataCache['to_approve']);
+          }
+          return;
+        }
+      }
+
       const response = await fetch(`${API_BASE}/elections/pending-approval`, {
         headers: {
           'Authorization': `Bearer ${Cookies.get('token')}`,
@@ -276,6 +317,11 @@ export default function SuperAdminDashboard() {
       }
       
       const data = await response.json();
+      
+      // Update cache
+      setDataCache(prev => ({ ...prev, 'to_approve': data || [] }));
+      setLastFetchTime(prev => ({ ...prev, 'to_approve': Date.now() }));
+      
       setPendingApprovals(data);
       setPendingCount(data.length);
 
@@ -285,20 +331,43 @@ export default function SuperAdminDashboard() {
     } catch (err) {
       console.error('[SuperAdmin] Error loading pending approvals:', err);
     }
-  }, [activeTab]);
+  }, [activeTab, dataCache, lastFetchTime]);
 
-  const loadStats = useCallback(async () => {
+  const loadStats = useCallback(async (useCache = true) => {
     try {
+      // Check cache first
+      if (useCache && dataCache['stats'] && lastFetchTime['stats']) {
+        const cacheAge = Date.now() - lastFetchTime['stats'];
+        if (cacheAge < 60000) { // 1 minute cache for stats
+          setStats(dataCache['stats']);
+          return;
+        }
+      }
+
       const data = await fetchWithAuth('/elections/stats');
+      
+      // Update cache
+      setDataCache(prev => ({ ...prev, 'stats': data || [] }));
+      setLastFetchTime(prev => ({ ...prev, 'stats': Date.now() }));
+      
       setStats(data || []);
     } catch (err) {
       console.error("[SuperAdmin] Failed to load stats:", err);
       setStats([]);
     }
-  }, []);
+  }, [dataCache, lastFetchTime]);
 
-  const loadTotalUniqueVoters = useCallback(async () => {
+  const loadTotalUniqueVoters = useCallback(async (useCache = true) => {
     try {
+      // Check cache first
+      if (useCache && dataCache['totalVoters'] && lastFetchTime['totalVoters']) {
+        const cacheAge = Date.now() - lastFetchTime['totalVoters'];
+        if (cacheAge < 300000) { // 5 minute cache for total voters (rarely changes)
+          setTotalUniqueVoters(dataCache['totalVoters']);
+          return;
+        }
+      }
+
       const response = await fetchWithAuth('/elections/preview-voters', {
         method: 'POST',
         body: JSON.stringify({
@@ -309,15 +378,36 @@ export default function SuperAdminDashboard() {
           }
         })
       });
-      setTotalUniqueVoters(response.count || 0);
+      
+      const count = response.count || 0;
+      
+      // Update cache
+      setDataCache(prev => ({ ...prev, 'totalVoters': count }));
+      setLastFetchTime(prev => ({ ...prev, 'totalVoters': Date.now() }));
+      
+      setTotalUniqueVoters(count);
     } catch (err) {
       console.error("[SuperAdmin] Failed to load total unique voters:", err);
       setTotalUniqueVoters(0);
     }
-  }, []);
+  }, [dataCache, lastFetchTime]);
 
-  const loadLiveVoteCount = useCallback(async () => {
+  const loadLiveVoteCount = useCallback(async (useCache = true) => {
     try {
+      // Only load live vote data if there are ongoing elections
+      if (activeTab !== 'ongoing') {
+        return;
+      }
+
+      // Check cache first
+      if (useCache && dataCache['liveVote'] && lastFetchTime['liveVote']) {
+        const cacheAge = Date.now() - lastFetchTime['liveVote'];
+        if (cacheAge < 15000) { // 15 second cache for live data
+          setLiveVoteData(dataCache['liveVote']);
+          return;
+        }
+      }
+
       setIsRefreshing(true);
       const token = Cookies.get('token');
       const response = await fetch(`${API_BASE}/reports/live-vote-count`, {
@@ -331,6 +421,11 @@ export default function SuperAdminDashboard() {
       }
       
       const data = await response.json();
+      
+      // Update cache
+      setDataCache(prev => ({ ...prev, 'liveVote': data.data }));
+      setLastFetchTime(prev => ({ ...prev, 'liveVote': Date.now() }));
+      
       setLiveVoteData(data.data);
       setRefreshTime(new Date());
     } catch (error) {
@@ -338,7 +433,7 @@ export default function SuperAdminDashboard() {
     } finally {
       setIsRefreshing(false);
     }
-  }, []);
+  }, [activeTab, dataCache, lastFetchTime]);
 
   const handleViewLiveVoteDetails = (election) => {
     setSelectedElection(election);
@@ -350,13 +445,26 @@ export default function SuperAdminDashboard() {
       setIsLoading(true);
       
       try {
-        await loadPendingApprovals();
+        // Load critical data first (elections and pending approvals)
         await Promise.all([
-          loadStats(),
-          loadElections(activeTab),
-          loadTotalUniqueVoters(),
-          loadLiveVoteCount()
+          loadElections(activeTab, false), // Don't use cache on initial load
+          loadPendingApprovals(false) // Don't use cache on initial load
         ]);
+        
+        // Load secondary data in background
+        Promise.all([
+          loadStats(false), // Don't use cache on initial load
+          loadTotalUniqueVoters(false) // Don't use cache on initial load
+        ]).catch(error => {
+          console.error('[SuperAdmin] Error loading secondary data:', error);
+        });
+        
+        // Load live vote data only if on ongoing tab
+        if (activeTab === 'ongoing') {
+          loadLiveVoteCount(false).catch(error => {
+            console.error('[SuperAdmin] Error loading live vote data:', error);
+          });
+        }
       } catch (error) {
         console.error('[SuperAdmin] Error during initial load:', error);
       } finally {
@@ -366,32 +474,42 @@ export default function SuperAdminDashboard() {
     
     initialLoad();
 
-    // Refresh pending approvals every 15 seconds
+    // Refresh pending approvals every 30 seconds (reduced frequency)
     const pendingInterval = setInterval(() => {
       loadPendingApprovals();
-    }, 15000);
+    }, 30000);
     
-    // Refresh stats and live vote count every 30 seconds
+    // Refresh stats every 2 minutes (reduced frequency)
     const statsInterval = setInterval(() => {
       loadStats();
-      loadLiveVoteCount();
-    }, 30000);
+    }, 120000);
 
-    // Refresh election data every 1 minute instead of 5 minutes
+    // Refresh election data every 2 minutes (reduced frequency)
     const electionInterval = setInterval(() => {
       loadElections(activeTab);
-    }, 60000); // 1 minute instead of 300000 (5 minutes)
+    }, 120000);
+
+    // Refresh live vote data every 30 seconds only for ongoing tab
+    const liveVoteInterval = setInterval(() => {
+      if (activeTab === 'ongoing') {
+        loadLiveVoteCount();
+      }
+    }, 30000);
 
     return () => {
       clearInterval(pendingInterval);
       clearInterval(statsInterval);
       clearInterval(electionInterval);
+      clearInterval(liveVoteInterval);
     };
   }, [activeTab]);
 
+  // Load live vote data when switching to ongoing tab
   useEffect(() => {
-    loadElections(activeTab);
-  }, [activeTab, loadElections]);
+    if (activeTab === 'ongoing') {
+      loadLiveVoteCount();
+    }
+  }, [activeTab, loadLiveVoteCount]);
 
   const handleElectionClick = (electionId) => {
     if (!electionId || isNaN(parseInt(electionId))) {
@@ -482,21 +600,39 @@ export default function SuperAdminDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="font-medium mb-2 text-black">Total Elections</h3>
-          <p className="text-3xl font-bold text-black">
-            {Number(stats.reduce((sum, stat) => sum + parseInt(stat.count || 0), 0)).toLocaleString()}
-          </p>
+          {stats.length > 0 ? (
+            <p className="text-3xl font-bold text-black">
+              {Number(stats.reduce((sum, stat) => sum + parseInt(stat.count || 0), 0)).toLocaleString()}
+            </p>
+          ) : (
+            <div className="flex items-center">
+              <div className="animate-pulse bg-gray-200 h-8 w-20 rounded"></div>
+            </div>
+          )}
         </div>
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="font-medium mb-2 text-black">Total Voters</h3>
-          <p className="text-3xl font-bold text-black">
-            {Number(totalUniqueVoters).toLocaleString()}
-          </p>
+          {totalUniqueVoters > 0 ? (
+            <p className="text-3xl font-bold text-black">
+              {Number(totalUniqueVoters).toLocaleString()}
+            </p>
+          ) : (
+            <div className="flex items-center">
+              <div className="animate-pulse bg-gray-200 h-8 w-20 rounded"></div>
+            </div>
+          )}
         </div>
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="font-medium mb-2 text-black">Total Votes Cast</h3>
-          <p className="text-3xl font-bold text-black">
-            {Number(stats.reduce((sum, stat) => sum + parseInt(stat.total_votes || 0), 0)).toLocaleString()}
-          </p>
+          {stats.length > 0 ? (
+            <p className="text-3xl font-bold text-black">
+              {Number(stats.reduce((sum, stat) => sum + parseInt(stat.total_votes || 0), 0)).toLocaleString()}
+            </p>
+          ) : (
+            <div className="flex items-center">
+              <div className="animate-pulse bg-gray-200 h-8 w-20 rounded"></div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -611,7 +747,7 @@ export default function SuperAdminDashboard() {
       )}
       
       {/* Live Vote Count Section */}
-      {activeTab === 'ongoing' && elections.length > 0 && liveVoteData && (
+      {activeTab === 'ongoing' && elections.length > 0 && (
         <div className="mt-8 bg-gray-50 rounded-lg shadow-lg p-6 border border-gray-200">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold text-black flex items-center">
@@ -635,20 +771,21 @@ export default function SuperAdminDashboard() {
           </div>
 
           <div className="overflow-x-auto bg-white rounded-lg shadow-inner">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-gray-100 border-b-2 border-gray-200">
-                  <th className="p-4 text-left text-sm font-bold text-black">Election Name</th>
-                  <th className="p-4 text-left text-sm font-bold text-black">Type</th>
-                  <th className="p-4 text-left text-sm font-bold text-black">Eligible Voters</th>
-                  <th className="p-4 text-left text-sm font-bold text-black">Current Votes</th>
-                  <th className="p-4 text-left text-sm font-bold text-black">Live Turnout</th>
-                  <th className="p-4 text-left text-sm font-bold text-black">Time Remaining</th>
-                  <th className="p-4 text-left text-sm font-bold text-black">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {liveVoteData.live_elections && liveVoteData.live_elections.map((election) => (
+            {liveVoteData ? (
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-gray-100 border-b-2 border-gray-200">
+                    <th className="p-4 text-left text-sm font-bold text-black">Election Name</th>
+                    <th className="p-4 text-left text-sm font-bold text-black">Type</th>
+                    <th className="p-4 text-left text-sm font-bold text-black">Eligible Voters</th>
+                    <th className="p-4 text-left text-sm font-bold text-black">Current Votes</th>
+                    <th className="p-4 text-left text-sm font-bold text-black">Live Turnout</th>
+                    <th className="p-4 text-left text-sm font-bold text-black">Time Remaining</th>
+                    <th className="p-4 text-left text-sm font-bold text-black">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {liveVoteData.live_elections && liveVoteData.live_elections.map((election) => (
                   <tr key={election.id} className="border-b hover:bg-gray-50 transition-colors duration-150">
                     <td className="p-4 text-sm font-medium text-black">{election.title}</td>
                     <td className="p-4 text-sm text-black">{election.election_type}</td>
@@ -676,9 +813,15 @@ export default function SuperAdminDashboard() {
                       </button>
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="p-8 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading live vote data...</p>
+              </div>
+            )}
           </div>
         </div>
       )}
