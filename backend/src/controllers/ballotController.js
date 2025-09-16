@@ -193,8 +193,14 @@ exports.createBallot = async (req, res) => {
         positions
       }, client);
 
+      // Only set needs_approval = TRUE if the election was created by an admin (not superadmin)
       await client.query(
-        'UPDATE elections SET needs_approval = TRUE WHERE id = $1',
+        `UPDATE elections 
+         SET needs_approval = TRUE 
+         WHERE id = $1 
+         AND created_by IN (
+           SELECT id FROM users WHERE role_id = 2
+         )`,
         [election_id]
       );
       
@@ -205,7 +211,14 @@ exports.createBallot = async (req, res) => {
       if (election && req.user && req.user.id) {
         try {
           await notificationService.notifyBallotCreated(req.user.id, election);
-          const notificationResult = await notificationService.notifyElectionNeedsApproval(election);
+          
+          // Only send approval notifications if the election needs approval
+          if (election.needs_approval) {
+            const notificationResult = await notificationService.notifyElectionNeedsApproval(election);
+          } else {
+            // For superadmin-created elections, notify students that ballot is ready
+            await notificationService.notifyStudentsAboutElection(election);
+          }
         } catch (notifError) {
           console.error('Failed to send ballot creation notifications:', notifError);
           console.error(notifError.stack);
