@@ -309,9 +309,7 @@ export default function SuperAdminDashboard() {
           }
         })
       });
-      
-      const count = response.count || 0;
-      setTotalUniqueVoters(count);
+      setTotalUniqueVoters(response.count || 0);
     } catch (err) {
       console.error("[SuperAdmin] Failed to load total unique voters:", err);
       setTotalUniqueVoters(0);
@@ -320,10 +318,6 @@ export default function SuperAdminDashboard() {
 
   const loadLiveVoteCount = useCallback(async () => {
     try {
-      if (activeTab !== 'ongoing') {
-        return;
-      }
-
       setIsRefreshing(true);
       const token = Cookies.get('token');
       const response = await fetch(`${API_BASE}/reports/live-vote-count`, {
@@ -344,7 +338,7 @@ export default function SuperAdminDashboard() {
     } finally {
       setIsRefreshing(false);
     }
-  }, [activeTab]);
+  }, []);
 
   const handleViewLiveVoteDetails = (election) => {
     setSelectedElection(election);
@@ -356,16 +350,13 @@ export default function SuperAdminDashboard() {
       setIsLoading(true);
       
       try {
+        await loadPendingApprovals();
         await Promise.all([
-          loadElections(activeTab),
-          loadPendingApprovals(),
           loadStats(),
-          loadTotalUniqueVoters()
+          loadElections(activeTab),
+          loadTotalUniqueVoters(),
+          loadLiveVoteCount()
         ]);
-        
-        if (activeTab === 'ongoing') {
-          loadLiveVoteCount();
-        }
       } catch (error) {
         console.error('[SuperAdmin] Error during initial load:', error);
       } finally {
@@ -375,36 +366,32 @@ export default function SuperAdminDashboard() {
     
     initialLoad();
 
-    // Refresh pending approvals every 30 seconds
+    // Refresh pending approvals every 15 seconds
     const pendingInterval = setInterval(() => {
       loadPendingApprovals();
-    }, 30000);
+    }, 15000);
     
-    // Refresh stats every 2 minutes
+    // Refresh stats and live vote count every 30 seconds
     const statsInterval = setInterval(() => {
       loadStats();
-    }, 120000);
+      loadLiveVoteCount();
+    }, 30000);
 
-    // Refresh election data every 2 minutes
+    // Refresh election data every 1 minute instead of 5 minutes
     const electionInterval = setInterval(() => {
       loadElections(activeTab);
-    }, 120000);
-
-    // Refresh live vote data every 30 seconds only for ongoing tab
-    const liveVoteInterval = setInterval(() => {
-      if (activeTab === 'ongoing') {
-        loadLiveVoteCount();
-      }
-    }, 30000);
+    }, 60000); // 1 minute instead of 300000 (5 minutes)
 
     return () => {
       clearInterval(pendingInterval);
       clearInterval(statsInterval);
       clearInterval(electionInterval);
-      clearInterval(liveVoteInterval);
     };
   }, [activeTab]);
 
+  useEffect(() => {
+    loadElections(activeTab);
+  }, [activeTab, loadElections]);
 
   const handleElectionClick = (electionId) => {
     if (!electionId || isNaN(parseInt(electionId))) {
@@ -495,39 +482,21 @@ export default function SuperAdminDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="font-medium mb-2 text-black">Total Elections</h3>
-          {stats.length > 0 ? (
-            <p className="text-3xl font-bold text-black">
-              {Number(stats.reduce((sum, stat) => sum + parseInt(stat.count || 0), 0)).toLocaleString()}
-            </p>
-          ) : (
-            <div className="flex items-center">
-              <div className="animate-pulse bg-gray-200 h-8 w-20 rounded"></div>
-            </div>
-          )}
+          <p className="text-3xl font-bold text-black">
+            {Number(stats.reduce((sum, stat) => sum + parseInt(stat.count || 0), 0)).toLocaleString()}
+          </p>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="font-medium mb-2 text-black">Total Voters</h3>
-          {totalUniqueVoters > 0 ? (
-            <p className="text-3xl font-bold text-black">
-              {Number(totalUniqueVoters).toLocaleString()}
-            </p>
-          ) : (
-            <div className="flex items-center">
-              <div className="animate-pulse bg-gray-200 h-8 w-20 rounded"></div>
-            </div>
-          )}
+          <p className="text-3xl font-bold text-black">
+            {Number(totalUniqueVoters).toLocaleString()}
+          </p>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="font-medium mb-2 text-black">Total Votes Cast</h3>
-          {stats.length > 0 ? (
-            <p className="text-3xl font-bold text-black">
-              {Number(stats.reduce((sum, stat) => sum + parseInt(stat.total_votes || 0), 0)).toLocaleString()}
-            </p>
-          ) : (
-            <div className="flex items-center">
-              <div className="animate-pulse bg-gray-200 h-8 w-20 rounded"></div>
-            </div>
-          )}
+          <p className="text-3xl font-bold text-black">
+            {Number(stats.reduce((sum, stat) => sum + parseInt(stat.total_votes || 0), 0)).toLocaleString()}
+          </p>
         </div>
       </div>
 
@@ -642,7 +611,7 @@ export default function SuperAdminDashboard() {
       )}
       
       {/* Live Vote Count Section */}
-      {activeTab === 'ongoing' && elections.length > 0 && (
+      {activeTab === 'ongoing' && elections.length > 0 && liveVoteData && (
         <div className="mt-8 bg-gray-50 rounded-lg shadow-lg p-6 border border-gray-200">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold text-black flex items-center">
@@ -666,21 +635,20 @@ export default function SuperAdminDashboard() {
           </div>
 
           <div className="overflow-x-auto bg-white rounded-lg shadow-inner">
-            {liveVoteData ? (
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-gray-100 border-b-2 border-gray-200">
-                    <th className="p-4 text-left text-sm font-bold text-black">Election Name</th>
-                    <th className="p-4 text-left text-sm font-bold text-black">Type</th>
-                    <th className="p-4 text-left text-sm font-bold text-black">Eligible Voters</th>
-                    <th className="p-4 text-left text-sm font-bold text-black">Current Votes</th>
-                    <th className="p-4 text-left text-sm font-bold text-black">Live Turnout</th>
-                    <th className="p-4 text-left text-sm font-bold text-black">Time Remaining</th>
-                    <th className="p-4 text-left text-sm font-bold text-black">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {liveVoteData.live_elections && liveVoteData.live_elections.map((election) => (
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-gray-100 border-b-2 border-gray-200">
+                  <th className="p-4 text-left text-sm font-bold text-black">Election Name</th>
+                  <th className="p-4 text-left text-sm font-bold text-black">Type</th>
+                  <th className="p-4 text-left text-sm font-bold text-black">Eligible Voters</th>
+                  <th className="p-4 text-left text-sm font-bold text-black">Current Votes</th>
+                  <th className="p-4 text-left text-sm font-bold text-black">Live Turnout</th>
+                  <th className="p-4 text-left text-sm font-bold text-black">Time Remaining</th>
+                  <th className="p-4 text-left text-sm font-bold text-black">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {liveVoteData.live_elections && liveVoteData.live_elections.map((election) => (
                   <tr key={election.id} className="border-b hover:bg-gray-50 transition-colors duration-150">
                     <td className="p-4 text-sm font-medium text-black">{election.title}</td>
                     <td className="p-4 text-sm text-black">{election.election_type}</td>
@@ -708,15 +676,9 @@ export default function SuperAdminDashboard() {
                       </button>
                     </td>
                   </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <div className="p-8 text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                <p className="text-gray-600">Loading live vote data...</p>
-              </div>
-            )}
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
