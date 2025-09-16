@@ -1297,12 +1297,12 @@ export default function SuperAdminDashboard() {
                   <select
                     value={selectedTimeframe}
                     onChange={(e) => loadSystemLoadData(e.target.value)}
-                    className="px-3 py-2 border rounded-md text-sm"
+                    className="px-3 py-2 border rounded-md text-sm text-black"
                     disabled={isSystemLoadLoading}
                   >
-                    <option value="24h">Last 24 Hours</option>
-                    <option value="7d">Last 7 Days</option>
-                    <option value="30d">Last 30 Days</option>
+                    <option value="24h" className="text-black">Last 24 Hours</option>
+                    <option value="7d" className="text-black">Last 7 Days</option>
+                    <option value="30d" className="text-black">Last 30 Days</option>
                   </select>
                   <button 
                     onClick={() => setShowResetConfirm(true)}

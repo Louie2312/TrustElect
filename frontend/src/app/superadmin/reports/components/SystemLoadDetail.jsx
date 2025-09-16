@@ -279,11 +279,11 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
               <select
                 value={selectedTimeframe}
                 onChange={(e) => handleTimeframeChange(e.target.value)}
-                className="px-3 py-2 border rounded-md text-sm"
+                className="px-3 py-2 border rounded-md text-sm text-black"
                 disabled={isLoading}
               >
                 {timeframeOptions.map(option => (
-                  <option key={option.value} value={option.value}>
+                  <option key={option.value} value={option.value} className="text-black">
                     {option.label}
                   </option>
                 ))}
