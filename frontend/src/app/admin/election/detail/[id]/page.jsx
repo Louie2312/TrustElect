@@ -19,7 +19,7 @@ const ElectionDetailPage = () => {
         if (!token || !electionId) return;
         
         // Make API call to mark all notifications related to this election as read
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/notifications/markReadByEntity`, {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/notifications/markReadByEntity`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${token}`,

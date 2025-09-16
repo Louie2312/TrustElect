@@ -143,12 +143,12 @@ export default function ContentManagement() {
       const timestamp = new Date().getTime();
 
       // Fetch main content
-      const response = await axios.get(`${API_URL}/api/content?t=${timestamp}`, {
+      const response = await axios.get(`${API_URL}/content?t=${timestamp}`, {
         timeout: 5000
       });
 
       // Fetch student UI configuration
-      const studentUIResponse = await axios.get(`${API_URL}/api/studentUI?t=${timestamp}`, {
+      const studentUIResponse = await axios.get(`${API_URL}/studentUI?t=${timestamp}`, {
         headers: {
           'Authorization': `Bearer ${Cookies.get('token')}`
         }
@@ -354,7 +354,7 @@ export default function ContentManagement() {
         
         // Make the request with proper headers
         const response = await axios.post(
-          `${API_URL}/api/studentUI`,
+          `${API_URL}/studentUI`,
           formData,
           {
             headers: {
@@ -472,7 +472,7 @@ export default function ContentManagement() {
         
         // Make the request to remove the background
         const response = await axios.post(
-          `${API_URL}/api/studentUI`,
+          `${API_URL}/studentUI`,
           formData,
           {
             headers: {
@@ -619,7 +619,7 @@ export default function ContentManagement() {
           console.log('Using direct force-landing endpoint for landing design');
           
           const directResponse = await axios.post(
-            `${API_URL}/api/studentUI/force-landing`,
+            `${API_URL}/studentUI/force-landing`,
             {},
             {
               headers: {
@@ -646,7 +646,7 @@ export default function ContentManagement() {
         // For poster design, use the regular endpoint
         else {
           const response = await axios.post(
-            `${API_URL}/api/studentUI?t=${timestamp}`,
+            `${API_URL}/studentUI?t=${timestamp}`,
             formData,
             config
           );
@@ -815,7 +815,7 @@ export default function ContentManagement() {
       
       let endpoint = section === 'studentUI' ? 'studentUI' : `content/${section}`;
       const response = await axios.post(
-        `${API_URL}/api/${endpoint}?t=${timestamp}`, 
+        `${API_URL}/${endpoint}?t=${timestamp}`, 
         formData,
         config
       );

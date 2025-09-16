@@ -21,7 +21,7 @@ export default function Header() {
       const email = Cookies.get("email");
       const role = Cookies.get("role");
 
-      await axios.post(`${API_URL}/api/auth/logout`, {
+      await axios.post(`${API_URL}/auth/logout`, {
         userId,
         email,
         role

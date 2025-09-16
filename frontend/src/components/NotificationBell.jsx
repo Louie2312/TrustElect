@@ -190,7 +190,7 @@ const NotificationBell = () => {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
       
      
-      const response = await fetch(`${API_URL}/api/elections/student/status/${electionId}`, {
+      const response = await fetch(`${API_URL}/elections/student/status/${electionId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -235,7 +235,7 @@ const NotificationBell = () => {
           const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
           
          
-          const electionResponse = await fetch(`${API_URL}/api/elections/${entity_id}/details`, {
+          const electionResponse = await fetch(`${API_URL}/elections/${entity_id}/details`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }
@@ -269,7 +269,7 @@ const NotificationBell = () => {
           console.log(`Election status: ${electionStatus}`);
           
         
-          const studentStatusResponse = await fetch(`${API_URL}/api/elections/student/status/${entity_id}`, {
+          const studentStatusResponse = await fetch(`${API_URL}/elections/student/status/${entity_id}`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }
@@ -405,7 +405,7 @@ const NotificationBell = () => {
           console.log(`Processing notification with entity_id: ${notification.entity_id}`);
           
    
-          const electionResponse = await fetch(`${API_URL}/api/elections/${notification.entity_id}/details`, {
+          const electionResponse = await fetch(`${API_URL}/elections/${notification.entity_id}/details`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }
@@ -435,7 +435,7 @@ const NotificationBell = () => {
         
           const electionStatus = electionDetails.status?.toLowerCase() || '';
        
-          const eligibilityResponse = await fetch(`${API_URL}/api/elections/${notification.entity_id}/student-eligible`, {
+          const eligibilityResponse = await fetch(`${API_URL}/elections/${notification.entity_id}/student-eligible`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }
@@ -461,7 +461,7 @@ const NotificationBell = () => {
 
           if (!hasVoted) {
         
-            const statusResponse = await fetch(`${API_URL}/api/elections/student/status/${notification.entity_id}`, {
+            const statusResponse = await fetch(`${API_URL}/elections/student/status/${notification.entity_id}`, {
               headers: {
                 'Authorization': `Bearer ${token}`
               }

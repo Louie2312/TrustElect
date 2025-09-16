@@ -98,7 +98,7 @@ export const NotificationProvider = ({ children }) => {
     }
 
     try {
-      const response = await axios.get(`${API_URL}/api/notifications`, {
+      const response = await axios.get(`${API_URL}/notifications`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -143,7 +143,7 @@ export const NotificationProvider = ({ children }) => {
     }
 
     try {
-      const response = await axios.get(`${API_URL}/api/notifications/unread-count`, {
+      const response = await axios.get(`${API_URL}/notifications/unread-count`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -166,7 +166,7 @@ export const NotificationProvider = ({ children }) => {
       
       
       const response = await axios.put(
-        `${API_URL}/api/notifications/${notificationId}/read`,
+        `${API_URL}/notifications/${notificationId}/read`,
         {},
         {
           headers: {
@@ -222,7 +222,7 @@ export const NotificationProvider = ({ children }) => {
       }
 
       const response = await axios.put(
-        `${API_URL}/api/notifications/read-all`,
+        `${API_URL}/notifications/read-all`,
         {},
         {
           headers: {
@@ -278,7 +278,7 @@ export const NotificationProvider = ({ children }) => {
   
       
       const response = await axios.delete(
-        `${API_URL}/api/notifications/${notificationId}`,
+        `${API_URL}/notifications/${notificationId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`

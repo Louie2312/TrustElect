@@ -29,7 +29,7 @@ export default function StudentsSection({
       
       if (type === 'landing') {
 
-        const directUpdateResponse = await fetch(`${API_URL}/api/studentUI/force-landing`, {
+        const directUpdateResponse = await fetch(`${API_URL}/studentUI/force-landing`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -66,7 +66,7 @@ export default function StudentsSection({
           existing_background_image: backgroundImage
         }));
 
-        const response = await fetch(`${API_URL}/api/studentUI`, {
+        const response = await fetch(`${API_URL}/studentUI`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -118,7 +118,7 @@ export default function StudentsSection({
       }));
       formData.append('removeBackground', 'true');
       
-      const response = await fetch(`${API_URL}/api/studentUI`, {
+      const response = await fetch(`${API_URL}/studentUI`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`

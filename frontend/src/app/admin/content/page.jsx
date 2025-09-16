@@ -146,7 +146,7 @@ export default function ContentManagement() {
       // Fetch content for each section
       for (const section of sections) {
         try {
-          const response = await axios.get(`${API_URL}/api/content/${section}`, {
+          const response = await axios.get(`${API_URL}/content/${section}`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }
@@ -447,7 +447,7 @@ export default function ContentManagement() {
       formData.append('content', JSON.stringify(contentData));
       
       const response = await axios.post(
-        `${API_URL}/api/content/${section}`,
+        `${API_URL}/content/${section}`,
         formData,
         {
           headers: {
