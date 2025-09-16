@@ -23,65 +23,41 @@ const getElectionStatus = (date_from, date_to, start_time, end_time, needs_appro
 const getDisplayStatus = getElectionStatus;
 
 const getElectionsByStatus = async (status) => {
-  // Optimized query with better performance
   const result = await pool.query(`
-      WITH election_stats AS (
-        SELECT 
-          e.id,
+      SELECT 
+          e.id, 
+          e.title, 
+          e.description,
+          e.date_from,
+          e.date_to,
+          e.start_time,
+          e.end_time,
+          e.status,
+          e.created_at,
+          e.needs_approval,
           COUNT(DISTINCT ev.id) AS voter_count,
-          COUNT(DISTINCT v.id) AS vote_count
-        FROM elections e
-        LEFT JOIN eligible_voters ev ON e.id = ev.election_id
-        LEFT JOIN votes v ON e.id = v.election_id
-        WHERE e.status = $1 
-        AND (
+          COALESCE(COUNT(DISTINCT CASE WHEN v.id IS NOT NULL THEN CONCAT(v.student_id, '-', v.election_id) END), 0) AS vote_count,
+          EXISTS (
+              SELECT 1 FROM ballots b 
+              JOIN positions p ON b.id = p.ballot_id
+              WHERE b.election_id = e.id
+              LIMIT 1
+          ) AS ballot_exists
+      FROM elections e
+      LEFT JOIN eligible_voters ev ON e.id = ev.election_id
+      LEFT JOIN votes v ON e.id = v.election_id
+      LEFT JOIN ballots b ON e.id = b.election_id
+      WHERE e.status = $1 
+      AND (
           e.needs_approval = FALSE 
           OR e.needs_approval IS NULL
           OR EXISTS (
-            SELECT 1 FROM users u 
-            WHERE u.id = e.created_by 
-            AND u.role_id = 1
+              SELECT 1 FROM users u 
+              WHERE u.id = e.created_by 
+              AND u.role_id = 1
           )
-        )
-        GROUP BY e.id
-      ),
-      election_ballots AS (
-        SELECT DISTINCT
-          b.election_id,
-          TRUE AS ballot_exists
-        FROM ballots b
-        WHERE EXISTS (
-          SELECT 1 FROM positions p 
-          WHERE p.ballot_id = b.id
-        )
       )
-      SELECT 
-        e.id, 
-        e.title, 
-        e.description,
-        e.date_from,
-        e.date_to,
-        e.start_time,
-        e.end_time,
-        e.status,
-        e.created_at,
-        e.needs_approval,
-        COALESCE(es.voter_count, 0) AS voter_count,
-        COALESCE(es.vote_count, 0) AS vote_count,
-        COALESCE(eb.ballot_exists, FALSE) AS ballot_exists
-      FROM elections e
-      LEFT JOIN election_stats es ON e.id = es.id
-      LEFT JOIN election_ballots eb ON e.id = eb.election_id
-      WHERE e.status = $1 
-      AND (
-        e.needs_approval = FALSE 
-        OR e.needs_approval IS NULL
-        OR EXISTS (
-          SELECT 1 FROM users u 
-          WHERE u.id = e.created_by 
-          AND u.role_id = 1
-        )
-      )
+      GROUP BY e.id, b.id
       ORDER BY e.date_from DESC
   `, [status]);
   
@@ -678,54 +654,37 @@ const rejectElection = async (electionId) => {
 };
 
 const getPendingApprovalElections = async (adminId = null) => {
-  // Optimized query with better performance
   let query = `
-    WITH election_stats AS (
-      SELECT 
-        e.id,
-        COUNT(DISTINCT ev.id) AS voter_count,
-        COUNT(DISTINCT v.id) AS vote_count
-      FROM elections e
-      LEFT JOIN eligible_voters ev ON e.id = ev.election_id
-      LEFT JOIN votes v ON e.id = v.election_id
-      WHERE e.needs_approval = TRUE
-      AND NOT EXISTS (
+    SELECT 
+      e.*, 
+      COUNT(DISTINCT ev.id) AS voter_count,
+      COALESCE(COUNT(DISTINCT CASE WHEN v.id IS NOT NULL THEN CONCAT(v.student_id, '-', v.election_id) END), 0) AS vote_count,
+      EXISTS (
+          SELECT 1 FROM ballots b 
+          JOIN positions p ON b.id = p.ballot_id
+          WHERE b.election_id = e.id
+          LIMIT 1
+      ) AS ballot_exists
+    FROM elections e
+    LEFT JOIN eligible_voters ev ON e.id = ev.election_id
+    LEFT JOIN votes v ON e.id = v.election_id
+    WHERE e.needs_approval = TRUE
+    AND NOT EXISTS (
         SELECT 1 FROM users u 
         WHERE u.id = e.created_by 
         AND u.role_id = 1
-      )
-      ${adminId ? 'AND e.created_by = $1' : ''}
-      GROUP BY e.id
-    ),
-    election_ballots AS (
-      SELECT DISTINCT
-        b.election_id,
-        TRUE AS ballot_exists
-      FROM ballots b
-      WHERE EXISTS (
-        SELECT 1 FROM positions p 
-        WHERE p.ballot_id = b.id
-      )
     )
-    SELECT 
-      e.*, 
-      COALESCE(es.voter_count, 0) AS voter_count,
-      COALESCE(es.vote_count, 0) AS vote_count,
-      COALESCE(eb.ballot_exists, FALSE) AS ballot_exists
-    FROM elections e
-    LEFT JOIN election_stats es ON e.id = es.id
-    LEFT JOIN election_ballots eb ON e.id = eb.election_id
-    WHERE e.needs_approval = TRUE
-    AND NOT EXISTS (
-      SELECT 1 FROM users u 
-      WHERE u.id = e.created_by 
-      AND u.role_id = 1
-    )
-    ${adminId ? 'AND e.created_by = $1' : ''}
-    ORDER BY e.created_at DESC
   `;
   
-  const params = adminId ? [adminId] : [];
+  const params = [];
+  
+  if (adminId) {
+    query += ` AND e.created_by = $1`;
+    params.push(adminId);
+  }
+  
+  query += ` GROUP BY e.id ORDER BY e.created_at DESC`;
+  
   const result = await pool.query(query, params);
   return result.rows;
 };
