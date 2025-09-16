@@ -210,6 +210,7 @@ export default function SuperAdminDashboard() {
   const [pendingCount, setPendingCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [isElectionsLoading, setIsElectionsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [electionToDelete, setElectionToDelete] = useState(null);
@@ -224,7 +225,7 @@ export default function SuperAdminDashboard() {
   const [dataCache, setDataCache] = useState({});
   const [lastFetchTime, setLastFetchTime] = useState({});
 
-  const loadElections = useCallback(async (status, useCache = true) => {
+  const loadElections = useCallback(async (status, useCache = true, showLoading = true) => {
     try {
       // Check cache first (only for non-initial loads)
       if (useCache && dataCache[status] && lastFetchTime[status]) {
@@ -241,8 +242,13 @@ export default function SuperAdminDashboard() {
         }
       }
 
-      if (isInitialLoad) {
-        setIsLoading(true);
+      // Show loading state immediately
+      if (showLoading) {
+        if (isInitialLoad) {
+          setIsLoading(true);
+        } else {
+          setIsElectionsLoading(true);
+        }
       }
       setError(null);
       
@@ -253,12 +259,19 @@ export default function SuperAdminDashboard() {
         endpoint = `/elections/status/${status}`;
       }
       
+      // Add timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
       const response = await fetch(`${API_BASE}${endpoint}`, {
         headers: {
           'Authorization': `Bearer ${Cookies.get('token')}`,
           'Content-Type': 'application/json'
-        }
+        },
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -280,12 +293,20 @@ export default function SuperAdminDashboard() {
       }
     } catch (err) {
       console.error('[SuperAdmin] Error in loadElections:', err);
-      setError(err.message || 'Failed to load elections');
+      if (err.name === 'AbortError') {
+        setError('Request timeout - please try again');
+      } else {
+        setError(err.message || 'Failed to load elections');
+      }
       setElections([]);
     } finally {
-      if (isInitialLoad) {
-        setIsLoading(false);
-        setIsInitialLoad(false);
+      if (showLoading) {
+        if (isInitialLoad) {
+          setIsLoading(false);
+          setIsInitialLoad(false);
+        } else {
+          setIsElectionsLoading(false);
+        }
       }
     }
   }, [dataCache, lastFetchTime, isInitialLoad]);
@@ -445,25 +466,35 @@ export default function SuperAdminDashboard() {
       setIsLoading(true);
       
       try {
-        // Load critical data first (elections and pending approvals)
-        await Promise.all([
-          loadElections(activeTab, false), // Don't use cache on initial load
-          loadPendingApprovals(false) // Don't use cache on initial load
-        ]);
+        // Load elections immediately - this is the most critical data
+        const electionsPromise = loadElections(activeTab, false, true);
         
-        // Load secondary data in background
-        Promise.all([
-          loadStats(false), // Don't use cache on initial load
-          loadTotalUniqueVoters(false) // Don't use cache on initial load
-        ]).catch(error => {
-          console.error('[SuperAdmin] Error loading secondary data:', error);
-        });
+        // Load pending approvals in parallel
+        const pendingPromise = loadPendingApprovals(false);
+        
+        // Wait for elections to load first, then load secondary data
+        await electionsPromise;
+        
+        // Load pending approvals
+        await pendingPromise;
+        
+        // Load secondary data in background (non-blocking)
+        setTimeout(() => {
+          Promise.all([
+            loadStats(false),
+            loadTotalUniqueVoters(false)
+          ]).catch(error => {
+            console.error('[SuperAdmin] Error loading secondary data:', error);
+          });
+        }, 100);
         
         // Load live vote data only if on ongoing tab
         if (activeTab === 'ongoing') {
-          loadLiveVoteCount(false).catch(error => {
-            console.error('[SuperAdmin] Error loading live vote data:', error);
-          });
+          setTimeout(() => {
+            loadLiveVoteCount(false).catch(error => {
+              console.error('[SuperAdmin] Error loading live vote data:', error);
+            });
+          }, 200);
         }
       } catch (error) {
         console.error('[SuperAdmin] Error during initial load:', error);
@@ -486,7 +517,7 @@ export default function SuperAdminDashboard() {
 
     // Refresh election data every 2 minutes (reduced frequency)
     const electionInterval = setInterval(() => {
-      loadElections(activeTab);
+      loadElections(activeTab, true, false); // Use cache, don't show loading
     }, 120000);
 
     // Refresh live vote data every 30 seconds only for ongoing tab
@@ -504,12 +535,23 @@ export default function SuperAdminDashboard() {
     };
   }, [activeTab]);
 
-  // Load live vote data when switching to ongoing tab
+  // Handle tab switching with immediate feedback
   useEffect(() => {
-    if (activeTab === 'ongoing') {
-      loadLiveVoteCount();
+    if (!isInitialLoad) {
+      // Show loading state immediately when switching tabs
+      setIsElectionsLoading(true);
+      
+      // Load elections for the new tab
+      loadElections(activeTab, true, false).finally(() => {
+        setIsElectionsLoading(false);
+      });
+      
+      // Load live vote data if switching to ongoing tab
+      if (activeTab === 'ongoing') {
+        loadLiveVoteCount();
+      }
     }
-  }, [activeTab, loadLiveVoteCount]);
+  }, [activeTab, loadElections, loadLiveVoteCount, isInitialLoad]);
 
   const handleElectionClick = (electionId) => {
     if (!electionId || isNaN(parseInt(electionId))) {
@@ -680,18 +722,37 @@ export default function SuperAdminDashboard() {
       </div>
   
        <div className="mb-6 flex justify-between items-center">
-        <h2 className="text-xl font-bold text-black">
-          {activeTab === 'ongoing' && 'Ongoing Elections'}
-          {activeTab === 'upcoming' && 'Upcoming Elections'}
-          {activeTab === 'completed' && 'Completed Elections'}
-          {activeTab === 'to_approve' && 'Elections Pending Approval'}
-        </h2>
-        <Link 
-          href="/superadmin/election/create"
-          className="inline-flex items-center px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-md hover:shadow-lg transition-all"
-        >
-          + Create New Election
-        </Link>
+        <div className="flex items-center gap-4">
+          <h2 className="text-xl font-bold text-black">
+            {activeTab === 'ongoing' && 'Ongoing Elections'}
+            {activeTab === 'upcoming' && 'Upcoming Elections'}
+            {activeTab === 'completed' && 'Completed Elections'}
+            {activeTab === 'to_approve' && 'Elections Pending Approval'}
+          </h2>
+          {isElectionsLoading && (
+            <div className="flex items-center text-blue-600">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-2"></div>
+              <span className="text-sm">Loading...</span>
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => loadElections(activeTab, false, true)}
+            disabled={isElectionsLoading}
+            className="inline-flex items-center px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            title="Refresh elections"
+          >
+            <RefreshCw className={`w-4 h-4 mr-1 ${isElectionsLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+          <Link 
+            href="/superadmin/election/create"
+            className="inline-flex items-center px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-md hover:shadow-lg transition-all"
+          >
+            + Create New Election
+          </Link>
+        </div>
       </div>
 
   
@@ -710,39 +771,73 @@ export default function SuperAdminDashboard() {
 
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading elections...</p>
+          </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {elections.length > 0 ? (
-            elections.map((election, index) => (
-              <ElectionCard 
-                key={`${election.id}-${index}`} 
-                election={election} 
-                onClick={handleElectionClick}
-                onDeleteClick={handleDeleteClick}
-                activeTab={activeTab}
-              />
-            ))
-          ) : (
-            <div className="col-span-full text-center py-12 bg-white rounded-lg shadow">
-              <div className="text-black mb-4">
-                {activeTab === 'ongoing' && <Clock className="w-16 h-16 mx-auto" />}
-                {activeTab === 'upcoming' && <Calendar className="w-16 h-16 mx-auto" />}
-                {activeTab === 'completed' && <CheckCircle className="w-16 h-16 mx-auto" />}
-                {activeTab === 'to_approve' && <AlertCircle className="w-16 h-16 mx-auto" />}
+        <div className="relative">
+          {/* Elections loading indicator */}
+          {isElectionsLoading && (
+            <div className="absolute top-0 left-0 right-0 z-10 bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+              <div className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500 mr-2"></div>
+                <span className="text-blue-700 font-medium">Loading elections...</span>
               </div>
-              <h3 className="text-xl font-medium text-gray-900 mb-2">
-                No {activeTab === 'to_approve' ? 'elections pending approval' : `${activeTab} elections`}
-              </h3>
-              <p className="text-black max-w-md mx-auto">
-                {activeTab === 'ongoing' && 'There are currently no ongoing elections.'}
-                {activeTab === 'upcoming' && 'No upcoming elections scheduled.'}
-                {activeTab === 'completed' && 'No completed elections yet. Elections that have ended will be shown here.'}
-                {activeTab === 'to_approve' && 'No elections waiting for your approval.'}
-              </p>
             </div>
           )}
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {elections.length > 0 ? (
+              elections.map((election, index) => (
+                <ElectionCard 
+                  key={`${election.id}-${index}`} 
+                  election={election} 
+                  onClick={handleElectionClick}
+                  onDeleteClick={handleDeleteClick}
+                  activeTab={activeTab}
+                />
+              ))
+            ) : !isElectionsLoading ? (
+              <div className="col-span-full text-center py-12 bg-white rounded-lg shadow">
+                <div className="text-black mb-4">
+                  {activeTab === 'ongoing' && <Clock className="w-16 h-16 mx-auto" />}
+                  {activeTab === 'upcoming' && <Calendar className="w-16 h-16 mx-auto" />}
+                  {activeTab === 'completed' && <CheckCircle className="w-16 h-16 mx-auto" />}
+                  {activeTab === 'to_approve' && <AlertCircle className="w-16 h-16 mx-auto" />}
+                </div>
+                <h3 className="text-xl font-medium text-gray-900 mb-2">
+                  No {activeTab === 'to_approve' ? 'elections pending approval' : `${activeTab} elections`}
+                </h3>
+                <p className="text-black max-w-md mx-auto">
+                  {activeTab === 'ongoing' && 'There are currently no ongoing elections.'}
+                  {activeTab === 'upcoming' && 'No upcoming elections scheduled.'}
+                  {activeTab === 'completed' && 'No completed elections yet. Elections that have ended will be shown here.'}
+                  {activeTab === 'to_approve' && 'No elections waiting for your approval.'}
+                </p>
+              </div>
+            ) : (
+              // Show skeleton loading for elections
+              <div className="col-span-full">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="bg-white rounded-lg shadow p-6 animate-pulse">
+                      <div className="h-4 bg-gray-200 rounded mb-4"></div>
+                      <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                      <div className="h-4 bg-gray-200 rounded mb-4 w-3/4"></div>
+                      <div className="grid grid-cols-2 gap-3 mb-4">
+                        <div className="h-16 bg-gray-200 rounded"></div>
+                        <div className="h-16 bg-gray-200 rounded"></div>
+                      </div>
+                      <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
       
