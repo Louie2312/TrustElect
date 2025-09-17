@@ -411,7 +411,7 @@ const generateElectionResultReport = (data) => {
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(0, 100, 0); // Green color for winner
-        doc.text(`🏆 Winner: ${winner.name} (${winner.vote_count} votes - ${winner.vote_percentage}%)`, 14, yPos);
+        doc.text(`Winner: ${winner.name} (${winner.vote_count} votes - ${winner.vote_percentage}%)`, 14, yPos);
         doc.setTextColor(0, 0, 0); // Reset to black
         yPos += 8;
       }

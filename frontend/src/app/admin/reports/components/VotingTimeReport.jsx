@@ -57,8 +57,10 @@ export default function VotingTimeReport() {
     try {
       setLoading(true);
       const endpoint = electionId === 'all' 
-        ? `/api/reports/voting-time?page=${page}&limit=50` 
-        : `/api/reports/voting-time/${electionId}?page=${page}&limit=50`;
+        ? `/reports/voting-time?page=${page}&limit=50` 
+        : `/reports/voting-time/${electionId}?page=${page}&limit=50`;
+      
+      console.log('Fetching voting time data from:', `${API_BASE}${endpoint}`);
       
       const response = await axios.get(`${API_BASE}${endpoint}`, {
         headers: {
