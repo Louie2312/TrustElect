@@ -85,6 +85,20 @@ const createAuditLog = (req, res, next) => {
         action = 'VOTE';
       }
 
+      // Skip logging for notification-related endpoints to prevent spam
+      if (req.originalUrl.includes('notifications') || 
+          req.originalUrl.includes('system-load') ||
+          req.originalUrl.includes('health') ||
+          req.originalUrl.includes('status')) {
+        return;
+      }
+
+      // Special handling for election creation - only log when ballot is created
+      if (req.originalUrl.includes('elections') && action === 'CREATE') {
+        // Skip election creation logs - we'll log when ballot is created instead
+        return;
+      }
+
       // Create a more specific log key to prevent duplicates
       const timestamp = Math.floor(Date.now() / 1000); // Round to seconds
       const logKey = `${user_id}-${action}-${entity_type}-${entity_id}-${timestamp}`;
@@ -134,12 +148,16 @@ const createAuditLog = (req, res, next) => {
       }
 
       // Add specific details for important operations
-      if (req.originalUrl.includes('elections') && action === 'CREATE') {
+      if (req.originalUrl.includes('ballots') && action === 'CREATE') {
         try {
           const responseData = JSON.parse(chunk);
-          if (responseData.election) {
-            details.election_id = responseData.election.id;
-            details.election_title = responseData.election.title;
+          if (responseData.ballot) {
+            details.election_id = responseData.ballot.election_id;
+            details.ballot_id = responseData.ballot.id;
+            // This represents the complete election + ballot creation process
+            action = 'CREATE_ELECTION_WITH_BALLOT';
+            entity_type = 'elections';
+            entity_id = responseData.ballot.election_id;
           }
         } catch (e) {
           // Ignore parsing errors

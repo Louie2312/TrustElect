@@ -268,6 +268,8 @@ export default function AuditLogsPage() {
         if (log.entity_type === 'positions') return `Position ${id} added at ${timestamp}`;
         if (log.entity_type === 'admin') return `Admin account created at ${timestamp}`;
         return `${log.entity_type} ${id} created at ${timestamp}`;
+      case 'CREATE_ELECTION_WITH_BALLOT':
+        return `Election "${log.details?.election_title || id}" created with ballot at ${timestamp}`;
       case 'UPDATE':
         if (log.entity_type === 'elections') return `Election ${id} updated at ${timestamp}`;
         if (log.entity_type === 'ballots') return `Ballot ${id} updated at ${timestamp}`;
@@ -301,6 +303,7 @@ export default function AuditLogsPage() {
     
     switch (action) {
       case 'CREATE': return 'bg-green-100 text-green-800';
+      case 'CREATE_ELECTION_WITH_BALLOT': return 'bg-green-100 text-green-800';
       case 'UPDATE': return 'bg-blue-100 text-blue-800';
       case 'DELETE': return 'bg-red-100 text-red-800';
       case 'LOGIN': return 'bg-purple-100 text-purple-800';
