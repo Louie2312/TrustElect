@@ -5,14 +5,20 @@ exports.getVotingTimeData = async (req, res) => {
     const { page = 1, limit = 100 } = req.query;
     const offset = (page - 1) * limit;
 
-    // Get total count for pagination
+    console.log('Fetching voting time data with params:', { page, limit, offset });
+
+    // Get total count for pagination - using subquery for better compatibility
     const countQuery = `
-      SELECT COUNT(DISTINCT v.student_id, e.id) as total
-      FROM votes v
-      JOIN elections e ON v.election_id = e.id
+      SELECT COUNT(*) as total FROM (
+        SELECT DISTINCT v.student_id, e.id
+        FROM votes v
+        JOIN elections e ON v.election_id = e.id
+      ) as distinct_votes
     `;
     const countResult = await pool.query(countQuery);
     const totalCount = parseInt(countResult.rows[0].total);
+
+    console.log('Total count:', totalCount);
 
     // Get paginated voting time data
     const query = `
@@ -28,11 +34,13 @@ exports.getVotingTimeData = async (req, res) => {
       FROM votes v
       JOIN elections e ON v.election_id = e.id
       GROUP BY v.student_id, e.id, e.title, e.status
-      ORDER BY last_vote_time DESC
+      ORDER BY MAX(v.created_at) DESC
       LIMIT $1 OFFSET $2
     `;
 
     const result = await pool.query(query, [limit, offset]);
+    
+    console.log('Query result rows:', result.rows.length);
     
     res.json({
       success: true,
@@ -50,7 +58,8 @@ exports.getVotingTimeData = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching voting time data',
-      error: error.message
+      error: error.message,
+      stack: error.stack
     });
   }
 };

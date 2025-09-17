@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Cookies from 'js-cookie';
 import Image from 'next/image';
-import { Download } from 'lucide-react';
+import { Download, Award, User, Trophy, Medal } from 'lucide-react';
 import { generatePdfReport } from '@/utils/pdfGenerator';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
@@ -35,6 +35,21 @@ const getImageUrl = (imageUrl) => {
   return `${API_BASE}/uploads/candidates/${cleanImageUrl}`;
 };
 
+const formatNameSimple = (lastName, firstName, positionName) => {
+  if (!lastName || !firstName) return 'Unknown Candidate';
+  
+  // For positions like "President", "Vice President", etc., use "Last, First" format
+  if (positionName && (positionName.toLowerCase().includes('president') || 
+      positionName.toLowerCase().includes('vice') || 
+      positionName.toLowerCase().includes('secretary') ||
+      positionName.toLowerCase().includes('treasurer'))) {
+    return `${lastName}, ${firstName}`;
+  }
+  
+  // For other positions, use "First Last" format
+  return `${firstName} ${lastName}`;
+};
+
 const ElectionResultReport = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -42,6 +57,7 @@ const ElectionResultReport = () => {
     elections: [],
     selectedElection: null,
     positions: [],
+    groupedPositions: [],
     pagination: {
       total: 0,
       page: 1,
@@ -94,7 +110,17 @@ const ElectionResultReport = () => {
 
       const { election, positions } = response.data.data;
       
-      // Flatten positions and candidates for table display
+      // Group candidates by position and sort by vote count
+      const groupedPositions = positions.map(position => {
+        const sortedCandidates = [...position.candidates].sort((a, b) => b.vote_count - a.vote_count);
+        return {
+          ...position,
+          sortedCandidates,
+          winner: sortedCandidates[0] || null
+        };
+      });
+
+      // Flatten positions and candidates for table display (for pagination)
       const results = [];
       positions.forEach(position => {
         position.candidates.forEach(candidate => {
@@ -115,6 +141,7 @@ const ElectionResultReport = () => {
         ...prev,
         selectedElection: election,
         positions: results,
+        groupedPositions: groupedPositions,
         pagination: {
           ...prev.pagination,
           total: results.length,
@@ -262,29 +289,96 @@ const ElectionResultReport = () => {
         <div className="bg-red-50 p-4 rounded-md">
           <p className="text-red-600">{error}</p>
         </div>
-      ) : selectedElectionId && data.positions.length > 0 ? (
-        <div className="bg-white/50 backdrop-blur-sm rounded-lg shadow border border-gray-200">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-black">Position</TableHead>
-                <TableHead className="text-black">Candidate</TableHead>
-                <TableHead className="text-black">Party List</TableHead>
-                <TableHead className="text-black">Vote Count</TableHead>
-                <TableHead className="text-black">Vote %</TableHead>
-                <TableHead className="text-black">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {getPaginatedResults().map((result) => (
-                <TableRow key={`${result.position}-${result.candidate_id}`}>
-                  <TableCell className="text-black">{result.position}</TableCell>
-                  <TableCell className="text-black">
-                    <div className="flex items-center gap-2">
-                      <div className="relative w-8 h-8 rounded-full overflow-hidden">
+      ) : selectedElectionId && data.groupedPositions.length > 0 ? (
+        <div className="space-y-8">
+          {data.groupedPositions.map((position, positionIndex) => (
+            <div key={position.position_id} className="bg-white/50 backdrop-blur-sm rounded-lg shadow border border-gray-200 p-6">
+              <h3 className="text-xl font-semibold text-black mb-6 flex items-center">
+                <Trophy className="w-6 h-6 mr-2 text-[#01579B]" />
+                {position.position_name}
+              </h3>
+              
+              {/* Winner Banner */}
+              {position.winner && (
+                <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg p-6 shadow-sm">
+                  <h4 className="text-lg font-semibold text-blue-800 mb-4 flex items-center">
+                    <Award className="w-5 h-5 mr-2 text-blue-600" />
+                    Winner for {position.position_name}
+                  </h4>
+                  <div className="flex items-center">
+                    <div className="relative w-20 h-24 mr-6">
+                      {position.winner.image_url ? (
                         <Image
-                          src={getImageUrl(result.image_url)}
-                          alt={result.candidate_name}
+                          src={getImageUrl(position.winner.image_url)}
+                          alt={`${position.winner.first_name} ${position.winner.last_name}`}
+                          fill
+                          sizes="80px"
+                          className="object-cover rounded-lg border-2 border-blue-500"
+                          onError={(e) => {
+                            e.target.src = '/images/default-avatar.png';
+                          }}
+                        />
+                      ) : (
+                        <div className="w-20 h-24 rounded-lg bg-blue-200 flex items-center justify-center border-2 border-blue-500">
+                          <User className="w-10 h-10 text-blue-600" />
+                        </div>
+                      )}
+                      <div className="absolute -top-2 -right-2 bg-blue-500 rounded-full p-1">
+                        <Award className="w-4 h-4 text-white" />
+                      </div>
+                    </div>
+                    
+                    <div className="flex-1">
+                      <h4 className="font-bold text-black text-xl mb-2">
+                        {formatNameSimple(position.winner.last_name, position.winner.first_name, position.position_name)}
+                      </h4>
+                      {position.winner.partylist_name && position.winner.partylist_name !== '-' && (
+                        <div className="mb-3">
+                          <span className="font-medium text-sm text-black">Partylist:</span>
+                          <span className="ml-2 px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full font-medium">
+                            {position.winner.partylist_name}
+                          </span>
+                        </div>
+                      )}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <span className="font-medium text-sm text-black">Votes:</span>
+                          <span className="ml-2 text-black font-bold text-lg">
+                            {Number(position.winner.vote_count || 0).toLocaleString()}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-sm text-black">Percentage:</span>
+                          <span className="ml-2 text-blue-600 font-bold text-lg">
+                            {position.winner.vote_percentage?.toFixed(2) || '0.00'}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* All Candidates Results */}
+              <div className="space-y-3">
+                <h5 className="text-lg font-medium text-black mb-4">All Candidates Results</h5>
+                {position.sortedCandidates.map((candidate, candidateIndex) => (
+                  <div 
+                    key={candidate.id} 
+                    className={`flex items-center justify-between p-4 rounded-lg border ${
+                      candidateIndex === 0 
+                        ? 'bg-green-50 border-green-200' 
+                        : 'bg-gray-50 border-gray-200'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#01579B] text-white font-bold text-sm mr-4">
+                        {candidateIndex + 1}
+                      </div>
+                      <div className="relative w-12 h-12 rounded-full overflow-hidden mr-4">
+                        <Image
+                          src={getImageUrl(candidate.image_url)}
+                          alt={`${candidate.first_name} ${candidate.last_name}`}
                           fill
                           className="object-cover"
                           onError={(e) => {
@@ -292,25 +386,57 @@ const ElectionResultReport = () => {
                           }}
                         />
                       </div>
-                      {result.candidate_name}
+                      <div>
+                        <h6 className="font-semibold text-black">
+                          {formatNameSimple(candidate.last_name, candidate.first_name, position.position_name)}
+                        </h6>
+                        {candidate.partylist_name && candidate.partylist_name !== '-' && (
+                          <p className="text-sm text-gray-600">{candidate.partylist_name}</p>
+                        )}
+                      </div>
                     </div>
-                  </TableCell>
-                  <TableCell className="text-black">{result.partylist}</TableCell>
-                  <TableCell className="text-black">{result.vote_count}</TableCell>
-                  <TableCell className="text-black">{result.vote_percentage.toFixed(2)}%</TableCell>
-                  <TableCell>
-                    <span className={`px-2 py-1 rounded-full text-sm ${
-                      result.is_winner 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {result.is_winner ? 'Winner' : 'Runner-up'}
-                    </span>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                    
+                    <div className="flex items-center space-x-6">
+                      <div className="text-center">
+                        <p className="text-sm text-gray-600">Votes</p>
+                        <p className="font-bold text-lg text-black">
+                          {Number(candidate.vote_count || 0).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-sm text-gray-600">Percentage</p>
+                        <p className="font-bold text-lg text-[#01579B]">
+                          {candidate.vote_percentage?.toFixed(2) || '0.00'}%
+                        </p>
+                      </div>
+                      <div className="flex items-center">
+                        {candidateIndex === 0 ? (
+                          <span className="flex items-center px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                            <Trophy className="w-4 h-4 mr-1" />
+                            Winner
+                          </span>
+                        ) : candidateIndex === 1 ? (
+                          <span className="flex items-center px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm font-medium">
+                            <Medal className="w-4 h-4 mr-1" />
+                            2nd Place
+                          </span>
+                        ) : candidateIndex === 2 ? (
+                          <span className="flex items-center px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
+                            <Medal className="w-4 h-4 mr-1" />
+                            3rd Place
+                          </span>
+                        ) : (
+                          <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm">
+                            {candidateIndex + 1}th Place
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       ) : selectedElectionId ? (
         <div className="text-center py-8 text-gray-500">
@@ -318,38 +444,27 @@ const ElectionResultReport = () => {
         </div>
       ) : null}
 
-      {/* Pagination */}
-      {selectedElectionId && data.positions.length > 0 && (
-        <div className="flex justify-between items-center mt-4 bg-white/50 backdrop-blur-sm rounded-lg p-4 border border-gray-200">
-          <div className="text-sm text-black">
-            Showing {getPaginatedResults().length} of {data.positions.length} results
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                currentPage === 1
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-[#01579B] text-white hover:bg-[#01416E]'
-              }`}
-            >
-              Previous
-            </button>
-            <span className="px-4 py-2 text-sm text-black">
-              Page {currentPage} of {data.pagination.total_pages}
-            </span>
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === data.pagination.total_pages}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                currentPage === data.pagination.total_pages
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-[#01579B] text-white hover:bg-[#01416E]'
-              }`}
-            >
-              Next
-            </button>
+      {/* Summary Stats */}
+      {selectedElectionId && data.groupedPositions.length > 0 && (
+        <div className="mt-8 bg-white/50 backdrop-blur-sm rounded-lg p-6 border border-gray-200">
+          <h3 className="text-lg font-semibold text-black mb-4">Election Summary</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-[#01579B]">{data.groupedPositions.length}</div>
+              <div className="text-sm text-gray-600">Positions</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-[#01579B]">
+                {data.groupedPositions.reduce((total, pos) => total + pos.sortedCandidates.length, 0)}
+              </div>
+              <div className="text-sm text-gray-600">Total Candidates</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-[#01579B]">
+                {data.selectedElection?.total_votes || 0}
+              </div>
+              <div className="text-sm text-gray-600">Total Votes Cast</div>
+            </div>
           </div>
         </div>
       )}
