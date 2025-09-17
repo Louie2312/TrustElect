@@ -1110,6 +1110,20 @@ export default function ElectionDetailsPage() {
                         <Tooltip 
                           formatter={(value, name) => [`${value} votes (${election.voter_count ? ((value / election.voter_count) * 100).toFixed(2) : '0.00'}% `, 'Votes']}
                           labelFormatter={(name) => `${name}`}
+                          contentStyle={{
+                            backgroundColor: 'white',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                            color: '#000000'
+                          }}
+                          labelStyle={{
+                            color: '#000000',
+                            fontWeight: 'bold'
+                          }}
+                          itemStyle={{
+                            color: '#000000'
+                          }}
                         />
                         <Legend />
                         <Bar 
@@ -1124,7 +1138,7 @@ export default function ElectionDetailsPage() {
                               <LabelList 
                                 dataKey="votes" 
                                 position="top" 
-                                style={{ fontSize: '12px', fontWeight: 'bold', fill: '#374151' }}
+                                style={{ fontSize: '12px', fontWeight: 'bold', fill: '#000000' }}
                                 formatter={(value) => value.toLocaleString()}
                               />
                             </Cell>
