@@ -125,14 +125,33 @@ export default function VoterParticipationReport() {
     }
   };
 
-  const getPaginatedVoters = () => {
+  const getUniqueVoters = () => {
     if (!selectedElection?.voters) return [];
+    
+    // Deduplicate voters by student_id, keeping the most recent entry
+    return selectedElection.voters.reduce((acc, voter) => {
+      const existingVoter = acc.find(v => v.student_id === voter.student_id);
+      if (!existingVoter) {
+        acc.push(voter);
+      } else {
+        // If voter already exists, keep the one with vote_date (voted) or the most recent
+        if (voter.vote_date && !existingVoter.vote_date) {
+          const index = acc.findIndex(v => v.student_id === voter.student_id);
+          acc[index] = voter;
+        }
+      }
+      return acc;
+    }, []);
+  };
+
+  const getPaginatedVoters = () => {
+    const uniqueVoters = getUniqueVoters();
     const startIndex = (currentPage - 1) * VOTERS_PER_PAGE;
-    return selectedElection.voters.slice(startIndex, startIndex + VOTERS_PER_PAGE);
+    return uniqueVoters.slice(startIndex, startIndex + VOTERS_PER_PAGE);
   };
 
   const totalPages = selectedElection?.voters 
-    ? Math.ceil(selectedElection.voters.length / VOTERS_PER_PAGE) 
+    ? Math.ceil(getUniqueVoters().length / VOTERS_PER_PAGE) 
     : 0;
 
   const handlePageChange = (newPage) => {
@@ -221,21 +240,6 @@ export default function VoterParticipationReport() {
 
       {selectedElection && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="border rounded-lg p-4">
-              <h3 className="text-sm font-medium text-gray-500 mb-1">Total Eligible Voters</h3>
-              <p className="text-2xl font-bold text-gray-900">{formatNumber(selectedElection.total_eligible_voters)}</p>
-            </div>
-            <div className="border rounded-lg p-4">
-              <h3 className="text-sm font-medium text-gray-500 mb-1">Total Votes Cast</h3>
-              <p className="text-2xl font-bold text-gray-900">{formatNumber(selectedElection.total_votes_cast)}</p>
-            </div>
-            <div className="border rounded-lg p-4">
-              <h3 className="text-sm font-medium text-gray-500 mb-1">Voter Turnout</h3>
-              <p className="text-2xl font-bold text-gray-900">{formatPercentage(selectedElection.turnout_percentage)}</p>
-            </div>
-          </div>
-
           {/* Overall Statistics Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div className="bg-blue-50 p-4 rounded-lg">
@@ -420,66 +424,12 @@ export default function VoterParticipationReport() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <h3 className="px-6 py-3 text-lg font-semibold border-b text-black">Department Statistics (Detailed)</h3>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Department
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Eligible Voters
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Votes Cast
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Turnout
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {selectedElection.department_stats.map((dept, index) => (
-                    <tr key={dept.department} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {dept.department}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatNumber(dept.eligible_voters)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatNumber(dept.votes_cast)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          dept.turnout >= 75 ? 'bg-green-100 text-green-800' :
-                          dept.turnout >= 50 ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>
-                          {formatPercentage(dept.turnout)}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                  {selectedElection.department_stats.length === 0 && (
-                    <tr>
-                      <td colSpan="4" className="px-6 py-4 text-center text-gray-500">
-                        No department statistics available
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
 
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="px-6 py-3 flex justify-between items-center border-b">
               <h3 className="text-lg font-semibold">Voter List</h3>
               <div className="text-sm text-gray-500">
-                Showing {((currentPage - 1) * VOTERS_PER_PAGE) + 1} to {Math.min(currentPage * VOTERS_PER_PAGE, selectedElection.voters.length)} of {selectedElection.voters.length} voters
+                Showing {((currentPage - 1) * VOTERS_PER_PAGE) + 1} to {Math.min(currentPage * VOTERS_PER_PAGE, getUniqueVoters().length)} of {getUniqueVoters().length} voters
               </div>
             </div>
             <div className="overflow-x-auto">
@@ -527,7 +477,7 @@ export default function VoterParticipationReport() {
                       </td>
                     </tr>
                   ))}
-                  {selectedElection.voters.length === 0 && (
+                  {getUniqueVoters().length === 0 && (
                     <tr>
                       <td colSpan="5" className="px-6 py-4 text-center text-gray-500">
                         No voter data available
