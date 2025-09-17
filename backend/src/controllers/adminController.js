@@ -39,9 +39,7 @@ exports.registerAdmin = async (req, res) => {
     if (!token) return res.status(401).json({ message: "Unauthorized. Token is missing." });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (decoded.role !== "Super Admin") {  
-      return res.status(403).json({ message: "Access Denied. Only Super Admins can create Admins." });
-    }
+    // Permission check is handled by middleware, no need for hardcoded Super Admin check
     const createdBy = decoded.id || 1; 
 
     if (!email.endsWith("@novaliches.sti.edu.ph") && !email.endsWith("@novaliches.sti.edu")) {
