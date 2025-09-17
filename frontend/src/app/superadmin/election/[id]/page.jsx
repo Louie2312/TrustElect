@@ -12,7 +12,7 @@ import {
 import Link from 'next/link';
 import Cookies from 'js-cookie';
 import Image from 'next/image';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, LabelList } from 'recharts';
 import toast from 'react-hot-toast';
 import { BASE_URL } from '@/config';
 
@@ -541,6 +541,9 @@ export default function ElectionDetailsPage() {
         percentage: election.voter_count ? ((candidate.vote_count || 0) / election.voter_count * 100).toFixed(2) : '0.00',
         color: CHART_COLORS[index % CHART_COLORS.length]
       }));
+      
+      // Debug logging for chart data
+      console.log(`Chart data for position ${position.name}:`, chartData.map(c => ({ name: c.name, votes: c.votes })));
       
       return {
         ...position,
@@ -1221,11 +1224,21 @@ export default function ElectionDetailsPage() {
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={position.chartData}
-                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                        margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
+                        <XAxis 
+                          dataKey="name" 
+                          angle={-45}
+                          textAnchor="end"
+                          height={60}
+                          fontSize={12}
+                        />
+                        <YAxis 
+                          domain={[0, 'dataMax']}
+                          allowDecimals={false}
+                          tickFormatter={(value) => value.toLocaleString()}
+                        />
                         <Tooltip 
                           formatter={(value, name) => [`${value} votes (${election.voter_count ? ((value / election.voter_count) * 100).toFixed(2) : '0.00'}% `, 'Votes']}
                           labelFormatter={(name) => `${name}`}
@@ -1236,9 +1249,17 @@ export default function ElectionDetailsPage() {
                           name="Vote Count" 
                           fill="#3b82f6" 
                           isAnimationActive={true}
+                          radius={[4, 4, 0, 0]}
                         >
                           {position.chartData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
+                            <Cell key={`cell-${index}`} fill={entry.color}>
+                              <LabelList 
+                                dataKey="votes" 
+                                position="top" 
+                                style={{ fontSize: '12px', fontWeight: 'bold', fill: '#374151' }}
+                                formatter={(value) => value.toLocaleString()}
+                              />
+                            </Cell>
                           ))}
                         </Bar>
                       </BarChart>
