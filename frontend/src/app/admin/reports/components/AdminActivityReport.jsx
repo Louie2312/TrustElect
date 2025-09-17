@@ -4,7 +4,7 @@ import axios from 'axios';
 import Cookies from 'js-cookie';
 import { generatePdfReport } from '@/utils/pdfGenerator';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 const AdminActivityReport = () => {
   const [selectedTimeframe, setSelectedTimeframe] = useState('all');
@@ -140,7 +140,7 @@ const AdminActivityReport = () => {
         }))
       };
 
-      await generateReport(10, reportData); // 10 is the report ID for Admin Activity
+      await generatePdfReport(10, reportData); // 10 is the report ID for Admin Activity
     } catch (error) {
       console.error('Error downloading report:', error);
     }

@@ -7,6 +7,8 @@ const auditLogModel = require('../models/auditLogModel');
  */
 exports.getAdminActivities = async (req, res) => {
   try {
+    console.log('Admin activities request received:', req.query);
+    
     const {
       timeframe = 'all',
       action = 'all',
@@ -28,6 +30,8 @@ exports.getAdminActivities = async (req, res) => {
       sort_order,
       search
     };
+    
+    console.log('Filter options before processing:', filterOptions);
 
     // Add date filtering based on timeframe
     const now = new Date();
@@ -55,67 +59,119 @@ exports.getAdminActivities = async (req, res) => {
     }
 
     // Get activities and total count
-    const [activities, count] = await Promise.all([
-      auditLogModel.getAuditLogs(filterOptions),
-      auditLogModel.getAuditLogsCount(filterOptions)
-    ]);
+    console.log('Filter options:', filterOptions);
+    
+    let activities, count;
+    try {
+      [activities, count] = await Promise.all([
+        auditLogModel.getAuditLogs(filterOptions),
+        auditLogModel.getAuditLogsCount(filterOptions)
+      ]);
+      console.log('Activities count:', activities.length, 'Total count:', count);
+    } catch (dbError) {
+      console.error('Database query error:', dbError);
+      throw new Error(`Database query failed: ${dbError.message}`);
+    }
 
     // Get active admins (admins who exist in the system)
-    const activeAdminsQuery = `
-      SELECT COUNT(DISTINCT u.id) as count
-      FROM users u
-      WHERE u.role_id IN (1, 2)  -- 1 for superadmin, 2 for admin
-      AND u.is_active = true
-    `;
-    const activeAdminsResult = await auditLogModel.executeQuery(activeAdminsQuery, []);
-    const activeAdmins = parseInt(activeAdminsResult.rows[0]?.count || 0);
+    let activeAdmins;
+    try {
+      const activeAdminsQuery = `
+        SELECT COUNT(DISTINCT u.id) as count
+        FROM users u
+        WHERE u.role_id IN (1, 2)  -- 1 for superadmin, 2 for admin
+        AND u.is_active = true
+      `;
+      const activeAdminsResult = await auditLogModel.executeQuery(activeAdminsQuery, []);
+      activeAdmins = parseInt(activeAdminsResult.rows[0]?.count || 0);
+      console.log('Active admins count:', activeAdmins);
+    } catch (error) {
+      console.error('Error getting active admins:', error);
+      activeAdmins = 0;
+    }
 
     // Get most common action
-    const actionCountQuery = `
-      SELECT action, COUNT(*) as count
-      FROM audit_logs
-      WHERE user_role IN ('admin', 'superadmin', 'Admin', 'SuperAdmin', 'Super Admin')
-      ${filterOptions.start_date ? "AND created_at >= $1" : ""}
-      GROUP BY action
-      ORDER BY count DESC
-      LIMIT 1
-    `;
-    const actionCountValues = filterOptions.start_date ? [filterOptions.start_date] : [];
-    const actionCountResult = await auditLogModel.executeQuery(actionCountQuery, actionCountValues);
-    const mostCommonAction = actionCountResult.rows[0]?.action || 'N/A';
+    let mostCommonAction = 'N/A';
+    try {
+      const actionCountQuery = `
+        SELECT action, COUNT(*) as count
+        FROM audit_logs
+        WHERE user_role IN ('admin', 'superadmin', 'Admin', 'SuperAdmin', 'Super Admin')
+        ${filterOptions.start_date ? "AND created_at >= $1" : ""}
+        GROUP BY action
+        ORDER BY count DESC
+        LIMIT 1
+      `;
+      const actionCountValues = filterOptions.start_date ? [filterOptions.start_date] : [];
+      const actionCountResult = await auditLogModel.executeQuery(actionCountQuery, actionCountValues);
+      mostCommonAction = actionCountResult.rows[0]?.action || 'N/A';
+      console.log('Most common action:', mostCommonAction);
+    } catch (error) {
+      console.error('Error getting most common action:', error);
+    }
 
     // Get activities today
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const activitiesTodayQuery = `
-      SELECT COUNT(*) as count
-      FROM audit_logs
-      WHERE user_role IN ('admin', 'superadmin', 'Admin', 'SuperAdmin', 'Super Admin')
-      AND created_at >= $1
-    `;
-    const activitiesTodayResult = await auditLogModel.executeQuery(activitiesTodayQuery, [todayStart]);
-    const activitiesToday = parseInt(activitiesTodayResult.rows[0]?.count || 0);
+    let activitiesToday = 0;
+    try {
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const activitiesTodayQuery = `
+        SELECT COUNT(*) as count
+        FROM audit_logs
+        WHERE user_role IN ('admin', 'superadmin', 'Admin', 'SuperAdmin', 'Super Admin')
+        AND created_at >= $1
+      `;
+      const activitiesTodayResult = await auditLogModel.executeQuery(activitiesTodayQuery, [todayStart]);
+      activitiesToday = parseInt(activitiesTodayResult.rows[0]?.count || 0);
+      console.log('Activities today:', activitiesToday);
+    } catch (error) {
+      console.error('Error getting activities today:', error);
+    }
 
     // Get admin details for each activity
-    const activitiesWithDetails = await Promise.all(
-      activities.map(async (activity) => {
-        const adminQuery = `
-          SELECT u.id, u.email, u.first_name, u.last_name, u.role_id, u.is_active
-          FROM users u
-          WHERE u.id = $1 AND u.role_id IN (1, 2)
-        `;
-        const adminResult = await auditLogModel.executeQuery(adminQuery, [activity.user_id]);
-        const admin = adminResult.rows[0];
-        
-        return {
-          ...activity,
-          user_email: admin?.email || activity.user_email,
-          admin_name: admin ? `${admin.first_name} ${admin.last_name}` : 'Unknown',
-          is_active: admin?.is_active || false,
-          role_name: admin?.role_id === 1 ? 'Super Admin' : 'Admin'
-        };
-      })
-    );
+    let activitiesWithDetails = [];
+    try {
+      activitiesWithDetails = await Promise.all(
+        activities.map(async (activity) => {
+          try {
+            const adminQuery = `
+              SELECT u.id, u.email, u.first_name, u.last_name, u.role_id, u.is_active
+              FROM users u
+              WHERE u.id = $1 AND u.role_id IN (1, 2)
+            `;
+            const adminResult = await auditLogModel.executeQuery(adminQuery, [activity.user_id]);
+            const admin = adminResult.rows[0];
+            
+            return {
+              ...activity,
+              user_email: admin?.email || activity.user_email,
+              admin_name: admin ? `${admin.first_name} ${admin.last_name}` : 'Unknown',
+              is_active: admin?.is_active || false,
+              role_name: admin?.role_id === 1 ? 'Super Admin' : 'Admin'
+            };
+          } catch (error) {
+            console.error('Error getting admin details for activity:', activity.id, error);
+            return {
+              ...activity,
+              user_email: activity.user_email || 'Unknown',
+              admin_name: 'Unknown',
+              is_active: false,
+              role_name: 'Unknown'
+            };
+          }
+        })
+      );
+      console.log('Activities with details processed:', activitiesWithDetails.length);
+    } catch (error) {
+      console.error('Error processing activities with details:', error);
+      activitiesWithDetails = activities.map(activity => ({
+        ...activity,
+        user_email: activity.user_email || 'Unknown',
+        admin_name: 'Unknown',
+        is_active: false,
+        role_name: 'Unknown'
+      }));
+    }
 
     const totalPages = Math.ceil(count / parseInt(limit, 10));
 
@@ -139,10 +195,12 @@ exports.getAdminActivities = async (req, res) => {
     });
   } catch (error) {
     console.error('Error getting admin activities:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve admin activities',
-      error: error.message
+      error: error.message,
+      stack: error.stack
     });
   }
 };
@@ -154,6 +212,8 @@ exports.getAdminActivities = async (req, res) => {
  */
 exports.getAdminActivitySummary = async (req, res) => {
   try {
+    console.log('Admin activity summary request received:', req.query);
+    
     const { timeframe = 'all' } = req.query;
 
     let startDate;
@@ -222,21 +282,37 @@ exports.getAdminActivitySummary = async (req, res) => {
       return acc;
     }, {});
 
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const activitiesTodayQuery = `
+      SELECT COUNT(*) as count
+      FROM audit_logs a
+      JOIN users u ON a.user_id = u.id
+      WHERE u.role_id IN (1, 2)
+      AND u.is_active = true
+      AND a.created_at >= $1
+    `;
+    const activitiesTodayResult = await auditLogModel.executeQuery(activitiesTodayQuery, [todayStart]);
+    const activitiesToday = parseInt(activitiesTodayResult.rows[0]?.count || 0);
+
     res.status(200).json({
       success: true,
       data: {
         total_activities: totalActivities,
         active_admins: activeAdmins,
+        activities_today: activitiesToday,
         most_common_action: mostCommonAction,
         action_types: actionTypes
       }
     });
   } catch (error) {
     console.error('Error getting admin activity summary:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve admin activity summary',
-      error: error.message
+      error: error.message,
+      stack: error.stack
     });
   }
 }; 
