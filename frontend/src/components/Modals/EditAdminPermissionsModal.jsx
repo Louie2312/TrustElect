@@ -12,7 +12,8 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
     elections: { canView: false, canCreate: false, canEdit: false, canDelete: false },
     departments: { canView: false, canCreate: false, canEdit: false, canDelete: false },
     cms: { canView: false, canCreate: false, canEdit: false, canDelete: false },
-    auditLog: { canView: false, canCreate: false, canEdit: false, canDelete: false }
+    auditLog: { canView: false, canCreate: false, canEdit: false, canDelete: false },
+    adminManagement: { canView: false, canCreate: false, canEdit: false, canDelete: false }
   };
   
   const { refreshPermissions, triggerGlobalPermissionsRefresh } = usePermissions();
@@ -146,7 +147,8 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
         elections: permissions.elections || { canView: false, canCreate: false, canEdit: false, canDelete: false },
         departments: permissions.departments || { canView: false, canCreate: false, canEdit: false, canDelete: false },
         cms: permissions.cms || { canView: false, canCreate: false, canEdit: false, canDelete: false },
-        auditLog: permissions.auditLog || { canView: false, canCreate: false, canEdit: false, canDelete: false }
+        auditLog: permissions.auditLog || { canView: false, canCreate: false, canEdit: false, canDelete: false },
+        adminManagement: permissions.adminManagement || { canView: false, canCreate: false, canEdit: false, canDelete: false }
       };
       
       console.log('Saving permissions:', JSON.stringify(formattedPermissions));
@@ -582,6 +584,67 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
                     className="form-checkbox h-5 w-5 text-blue-600"
                   />
                   <span className="text-black">Delete Records</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Admin Management Permission Section */}
+            <div className="mb-6 p-3 border rounded">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="text-lg font-semibold text-black">Admin Management</h3>
+                <div className="space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectAll('adminManagement')}
+                    className="px-2 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600"
+                  >
+                    Select All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeselectAll('adminManagement')}
+                    className="px-2 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
+                  >
+                    Deselect All
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={getPermissionValue('adminManagement', 'canView')}
+                    onChange={() => handlePermissionChange('adminManagement', 'canView')}
+                    className="form-checkbox h-5 w-5 text-blue-600"
+                  />
+                  <span className="text-black">View Admins</span>
+                </label>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={getPermissionValue('adminManagement', 'canCreate')}
+                    onChange={() => handlePermissionChange('adminManagement', 'canCreate')}
+                    className="form-checkbox h-5 w-5 text-blue-600"
+                  />
+                  <span className="text-black">Create Admins</span>
+                </label>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={getPermissionValue('adminManagement', 'canEdit')}
+                    onChange={() => handlePermissionChange('adminManagement', 'canEdit')}
+                    className="form-checkbox h-5 w-5 text-blue-600"
+                  />
+                  <span className="text-black">Edit Admins</span>
+                </label>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={getPermissionValue('adminManagement', 'canDelete')}
+                    onChange={() => handlePermissionChange('adminManagement', 'canDelete')}
+                    className="form-checkbox h-5 w-5 text-blue-600"
+                  />
+                  <span className="text-black">Delete Admins</span>
                 </label>
               </div>
             </div>
