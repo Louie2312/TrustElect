@@ -15,12 +15,31 @@ export default function VotingTimeReport() {
   const [error, setError] = useState(null);
   const [selectedElection, setSelectedElection] = useState('all');
   const [elections, setElections] = useState([]);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 0,
+    totalCount: 0,
+    hasNextPage: false,
+    hasPrevPage: false
+  });
+  const [currentPage, setCurrentPage] = useState(1);
   const { token } = useAuth();
 
   useEffect(() => {
     fetchElections();
-    fetchVotingData();
+  }, []);
+
+  useEffect(() => {
+    if (selectedElection) {
+      setCurrentPage(1);
+      fetchVotingTimeData(selectedElection, 1);
+    }
   }, [selectedElection]);
+
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
+    fetchVotingTimeData(selectedElection, newPage);
+  };
 
   const fetchElections = async () => {
     try {
@@ -34,24 +53,35 @@ export default function VotingTimeReport() {
     }
   };
 
-  const fetchVotingTimeData = async (electionId) => {
+  const fetchVotingTimeData = async (electionId, page = 1) => {
     try {
-      const endpoint = `/reports/voting-time/${electionId}`; // Removed /api prefix
+      setLoading(true);
+      const endpoint = electionId === 'all' 
+        ? `/api/reports/voting-time?page=${page}&limit=50` 
+        : `/api/reports/voting-time/${electionId}?page=${page}&limit=50`;
+      
       const response = await axios.get(`${API_BASE}${endpoint}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${token}`,
         },
       });
       
       if (response.data.success) {
         setVotingData(response.data.data);
+        setPagination(response.data.pagination || {
+          currentPage: 1,
+          totalPages: 1,
+          totalCount: response.data.data.length,
+          hasNextPage: false,
+          hasPrevPage: false
+        });
         setError(null);
       } else {
         throw new Error(response.data.message || 'Failed to fetch voting time data');
       }
     } catch (error) {
       console.error('Error fetching voting time data:', error);
-      setError(error.message || 'Failed to fetch voting time data');
+      setError(error.response?.data?.message || error.message || 'Failed to fetch voting time data');
     } finally {
       setLoading(false);
     }
@@ -75,7 +105,7 @@ export default function VotingTimeReport() {
         }))
       };
 
-      await generateReport(12, reportData); // 12 is the report ID for Voting Time Report
+      await generatePdfReport(12, reportData); // 12 is the report ID for Voting Time Report
     } catch (error) {
       console.error('Error downloading report:', error);
     }
@@ -177,6 +207,42 @@ export default function VotingTimeReport() {
           </table>
         </div>
       </div>
+
+      {/* Pagination */}
+      {votingData.length > 0 && pagination.totalPages > 1 && (
+        <div className="flex justify-between items-center mt-4 bg-white/50 backdrop-blur-sm rounded-lg p-4 border border-gray-200">
+          <div className="text-sm text-gray-600">
+            Showing {votingData.length} of {pagination.totalCount} results
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={!pagination.hasPrevPage}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                !pagination.hasPrevPage
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-[#01579B] text-white hover:bg-[#01416E]'
+              }`}
+            >
+              Previous
+            </button>
+            <span className="px-4 py-2 text-sm text-gray-600">
+              Page {currentPage} of {pagination.totalPages}
+            </span>
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={!pagination.hasNextPage}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                !pagination.hasNextPage
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-[#01579B] text-white hover:bg-[#01416E]'
+              }`}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -55,6 +55,7 @@ const ElectionResultReport = () => {
   // Fetch completed elections
   const fetchElections = async () => {
     try {
+      setLoading(true);
       const token = Cookies.get('token');
       const response = await axios.get(`${API_BASE}/elections/status/completed`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -65,10 +66,11 @@ const ElectionResultReport = () => {
           ...prev,
           elections: response.data
         }));
+        setError(null);
       }
     } catch (err) {
       console.error('Error fetching elections:', err);
-      setError('Failed to fetch elections');
+      setError(err.response?.data?.message || 'Failed to fetch elections');
     } finally {
       setLoading(false);
     }
@@ -78,10 +80,12 @@ const ElectionResultReport = () => {
   const fetchResults = async (electionId) => {
     try {
       setLoading(true);
+      setError(null);
       const token = Cookies.get('token');
       
       const response = await axios.get(`${API_BASE}/elections/completed/${electionId}/results`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 30000 // 30 second timeout
       });
 
       if (!response.data.success) {
@@ -101,6 +105,7 @@ const ElectionResultReport = () => {
             image_url: candidate.image_url,
             partylist: candidate.partylist_name || '-',
             vote_count: candidate.vote_count,
+            vote_percentage: candidate.vote_percentage || 0,
             is_winner: candidate.is_winner
           });
         });
@@ -119,7 +124,11 @@ const ElectionResultReport = () => {
       setError(null);
     } catch (err) {
       console.error('Error fetching election results:', err);
-      setError(err.response?.data?.message || 'Failed to fetch election results');
+      if (err.code === 'ECONNABORTED') {
+        setError('Request timeout. The election results are taking too long to load. Please try again.');
+      } else {
+        setError(err.response?.data?.message || err.message || 'Failed to fetch election results');
+      }
     } finally {
       setLoading(false);
     }
@@ -262,6 +271,7 @@ const ElectionResultReport = () => {
                 <TableHead className="text-black">Candidate</TableHead>
                 <TableHead className="text-black">Party List</TableHead>
                 <TableHead className="text-black">Vote Count</TableHead>
+                <TableHead className="text-black">Vote %</TableHead>
                 <TableHead className="text-black">Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -287,6 +297,7 @@ const ElectionResultReport = () => {
                   </TableCell>
                   <TableCell className="text-black">{result.partylist}</TableCell>
                   <TableCell className="text-black">{result.vote_count}</TableCell>
+                  <TableCell className="text-black">{result.vote_percentage.toFixed(2)}%</TableCell>
                   <TableCell>
                     <span className={`px-2 py-1 rounded-full text-sm ${
                       result.is_winner 
