@@ -561,10 +561,10 @@ export default function ElectionDetailsPage() {
       
       // Format for chart with unique colors
       const chartData = sortedCandidates.map((candidate, index) => ({
-        name: `${candidate.first_name} ${candidate.last_name}`,
+        name: formatNameSimple(candidate.last_name, candidate.first_name, candidate.name),
         votes: candidate.vote_count || 0,
         party: candidate.party || 'Independent',
-        // Assign a color based on index, cycling through the array if needed
+        percentage: election.voter_count ? ((candidate.vote_count || 0) / election.voter_count * 100).toFixed(2) : '0.00',
         color: CHART_COLORS[index % CHART_COLORS.length]
       }));
       
@@ -995,112 +995,153 @@ export default function ElectionDetailsPage() {
               <h2 className="text-xl font-semibold text-black">
                 {election.status === 'completed' ? 'Final Results' : 'Partial Results'}
               </h2>
+              
               {election.status === 'ongoing' && (
                 <div className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">
                   Preliminary Results - Voting Still In Progress
                 </div>
               )}
             </div>
+            
             {election.positions && election.positions.length > 0 ? (
-              election.positions.map(position => (
+              formatResultsData(election.positions).map(position => (
                 <div key={position.id} className="mb-8 border-b pb-6">
                   <h3 className="text-lg font-medium text-black mb-4">{position.name}</h3>
+                  
                   {/* Winner banner (for completed elections) */}
-                  {election.status === 'completed' && position.candidates && position.candidates.length > 0 && (() => {
-                    const winner = position.candidates.reduce((prev, current) => 
-                      (prev.vote_count || 0) > (current.vote_count || 0) ? prev : current
-                    );
-                    return (
-                      <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4 shadow-sm">
-                        <h4 className="text-sm font-medium text-blue-800 mb-2 flex items-center">
-                          <Award className="w-4 h-4 mr-1 text-blue-600" />
-                          Winner for {position.name}
-                        </h4>
-                        <div className="flex items-center">
-                          <div className="relative w-32 h-40 mr-4">
-                            {winner.image_url && !imageErrors[winner.id] ? (
-                              <Image
-                                src={candidateImages[winner.id] || getImageUrl(winner.image_url)}
-                                alt={`${winner.first_name} ${winner.last_name}`}
-                                fill
-                                sizes="128px"
-                                className="object-cover rounded-lg"
-                                onError={() => handleImageError(winner.id)}
-                              />
-                            ) : (
-                              <div className="w-32 h-40 rounded-lg bg-gray-200 flex items-center justify-center">
-                                <User className="w-8 h-8 text-gray-400" />
-                              </div>
-                            )}
-                          </div>
-                          <div>
-                            <h4 className="font-bold text-black text-lg">
-                              {formatNameSimple(winner.last_name, winner.first_name, winner.name)}
-                            </h4>
-                            {winner.party && (
-                              <p className="text-sm text-gray-600 mb-1">{winner.party}</p>
-                            )}
-                            <p className="text-sm text-gray-600">
-                              {Number(winner.vote_count || 0).toLocaleString()} votes ({election.voter_count ? ((winner.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%)
-                            </p>
+                  {election.status === 'completed' && position.sortedCandidates.length > 0 && (
+                    <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4 shadow-sm">
+                      <h4 className="text-sm font-medium text-blue-800 mb-2 flex items-center">
+                        <Award className="w-4 h-4 mr-1 text-blue-600" />
+                        Winner for {position.name}
+                      </h4>
+                      <div className="flex items-center">
+                        <div className="relative w-16 h-20 mr-4">
+                          {position.sortedCandidates[0].image_url && !imageErrors[position.sortedCandidates[0].id] ? (
+                            <Image
+                              src={candidateImages[position.sortedCandidates[0].id] || getImageUrl(position.sortedCandidates[0].image_url)}
+                              alt={`${position.sortedCandidates[0].first_name} ${position.sortedCandidates[0].last_name}`}
+                              fill
+                              sizes="64px"
+                              className="object-cover rounded-lg border-2 border-blue-500"
+                              onError={() => handleImageError(position.sortedCandidates[0].id)}
+                            />
+                          ) : (
+                            <div className="w-16 h-20 rounded-lg bg-blue-200 flex items-center justify-center border-2 border-blue-500">
+                              <User className="w-8 h-8 text-blue-600" />
+                            </div>
+                          )}
+                          <div className="absolute -top-2 -right-2 bg-blue-500 rounded-full p-1">
+                            <Award className="w-4 h-4 text-white" />
                           </div>
                         </div>
-                      </div>
-                    );
-                  })()}
-                  {/* Candidates sorted by votes */}
-                  <div className="space-y-3">
-                    {position.candidates && position.candidates.length > 0 ? (
-                      position.candidates
-                        .sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0))
-                        .map((candidate, index) => (
-                        <div key={candidate.id} className={`flex items-center p-3 rounded-lg ${index === 0 && election.status === 'completed' ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'}`}>
-                          <div className="relative w-16 h-20 mr-4 flex-shrink-0">
-                            {candidate.image_url && !imageErrors[candidate.id] ? (
-                              <Image
-                                src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
-                                alt={`${candidate.first_name} ${candidate.last_name}`}
-                                fill
-                                sizes="64px"
-                                className="object-cover rounded-lg"
-                                onError={() => handleImageError(candidate.id)}
-                              />
-                            ) : (
-                              <div className="w-16 h-20 rounded-lg bg-gray-200 flex items-center justify-center">
-                                <User className="w-8 h-8 text-gray-400" />
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center">
-                              <h4 className="font-medium text-black">
-                                {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
-                              </h4>
-                              {candidate.party && (
-                                <span className="ml-2 px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
-                                  {candidate.party}
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center mt-1">
-                              <div className="w-48 h-2 bg-gray-200 rounded-full overflow-hidden">
-                                <div 
-                                  className="h-full bg-blue-500 rounded-full"
-                                  style={{ width: `${election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : 0}%` }}
-                                />
-                              </div>
-                              <span className="ml-3 text-black">
-                                {Number(candidate.vote_count || 0).toLocaleString()} votes ({election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%)
+                        
+                        <div>
+                          <h4 className="font-bold text-black text-lg">
+                            {formatNameSimple(position.sortedCandidates[0].last_name, position.sortedCandidates[0].first_name, position.name)}
+                          </h4>
+                          {position.sortedCandidates[0].party && (
+                            <div className="mt-1">
+                              <span className="font-medium text-sm text-black">Partylist:</span>
+                              <span className="ml-1 px-2 py-0.5 bg-blue-100 text-blue-800 text-sm rounded">
+                                {position.sortedCandidates[0].party}
                               </span>
                             </div>
+                          )}
+                          <div className="mt-2">
+                            <span className="font-medium text-sm text-black">Votes:</span>
+                            <span className="ml-1 text-black font-bold">
+                              {Number(position.sortedCandidates[0].vote_count || 0).toLocaleString()} 
+                            </span>
+                            <span className="ml-1 text-blue-600">
+                              ({election.voter_count ? (position.sortedCandidates[0].vote_count / election.voter_count * 100).toFixed(2) : 0}% of eligible voters)
+                            </span>
                           </div>
                         </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-4 text-gray-500">
-                        No candidates for this position
                       </div>
-                    )}
+                    </div>
+                  )}
+                  
+                  {/* Results chart */}
+                  <div className="h-72 mb-6">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={position.chartData}
+                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <Tooltip 
+                          formatter={(value, name) => [`${value} votes (${election.voter_count ? ((value / election.voter_count) * 100).toFixed(2) : '0.00'}% `, 'Votes']}
+                          labelFormatter={(name) => `${name}`}
+                        />
+                        <Legend />
+                        <Bar 
+                          dataKey="votes" 
+                          name="Vote Count" 
+                          fill="#3b82f6" 
+                          isAnimationActive={true}
+                        >
+                          {position.chartData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  {/* Candidates sorted by votes */}
+                  <div className="space-y-3">
+                    {position.sortedCandidates.map((candidate, index) => (
+                      <div key={candidate.id} className={`flex items-center p-3 rounded-lg ${index === 0 && election.status === 'completed' ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'}`}>
+                        <div className="relative w-16 h-20 mr-4">
+                          {candidate.image_url && !imageErrors[candidate.id] ? (
+                            <Image
+                              src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
+                              alt={`${candidate.first_name} ${candidate.last_name}`}
+                              fill
+                              sizes="64px"
+                              className="object-cover rounded-lg"
+                              onError={() => handleImageError(candidate.id)}
+                            />
+                          ) : (
+                            <div className="w-16 h-20 rounded-lg bg-gray-200 flex items-center justify-center">
+                              <User className="w-8 h-8 text-gray-400" />
+                            </div>
+                          )}
+                          {index === 0 && election.status === 'completed' && (
+                            <div className="absolute -top-2 -right-2 bg-blue-500 rounded-full p-1">
+                              <Award className="w-4 h-4 text-white" />
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="flex-1">
+                          <div className="flex items-center">
+                            <h4 className="font-medium text-black">
+                              {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
+                            </h4>
+                            {candidate.party && (
+                              <span className="ml-2 px-2 py-1 bg-gray-100 text-black text-xs rounded">
+                                {candidate.party}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center mt-1">
+                            <div className="w-48 h-2 bg-gray-200 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-blue-500 rounded-full"
+                                style={{ width: `${election.voter_count ? (candidate.vote_count / election.voter_count * 100).toFixed(2) : 0}%` }}
+                              />
+                            </div>
+                            <span className="ml-3 text-black">
+                              {Number(candidate.vote_count || 0).toLocaleString()} votes ({election.voter_count ? (candidate.vote_count / election.voter_count * 100).toFixed(2) : 0}%)
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))
@@ -1109,6 +1150,7 @@ export default function ElectionDetailsPage() {
                 No results available yet
               </div>
             )}
+            
             {election.status === 'completed' && (
               <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <h3 className="font-medium text-black mb-2">Election Summary</h3>
