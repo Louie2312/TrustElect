@@ -262,11 +262,9 @@ export default function AuditLogsPage() {
 
     switch (log.action) {
       case 'LOGIN':
-        if (log.details?.success) {
-          return `User logged in successfully at ${timestamp}`;
-        } else {
-          return `Login attempt failed at ${timestamp}`;
-        }
+        return `User logged in successfully at ${timestamp}`;
+      case 'LOGIN_FAILED':
+        return `Login attempt failed at ${timestamp}`;
       case 'LOGOUT':
         return `User logged out at ${timestamp}`;
       case 'VOTE':
@@ -317,6 +315,7 @@ export default function AuditLogsPage() {
       case 'UPDATE': return 'bg-blue-100 text-blue-800';
       case 'DELETE': return 'bg-red-100 text-red-800';
       case 'LOGIN': return 'bg-purple-100 text-purple-800';
+      case 'LOGIN_FAILED': return 'bg-red-100 text-red-800';
       case 'LOGOUT': return 'bg-gray-100 text-gray-800';
       case 'APPROVE': return 'bg-emerald-100 text-emerald-800';
       case 'REJECT': return 'bg-orange-100 text-orange-800';

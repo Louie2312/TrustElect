@@ -79,12 +79,26 @@ exports.loginUser = async (req, res) => {
 
     if (!user) {
 
-      // Failed login audit log is handled by middleware
+      // Log failed login attempt
+      await logAction(
+        { id: 0, email: email, role: 'Unknown' },
+        'LOGIN_FAILED',
+        'auth',
+        null,
+        { reason: 'Invalid credentials', ipAddress }
+      );
       return res.status(401).json({ success: false, message: "Invalid email or password." });
     }
 
     if (user.is_locked && user.locked_until > new Date()) {
-      // Account locked audit log is handled by middleware
+      // Log account locked login attempt
+      await logAction(
+        { id: user.id, email: user.email, role },
+        'LOGIN_FAILED',
+        'auth',
+        null,
+        { reason: 'Account locked', ipAddress }
+      );
       return res.status(403).json({
         success: false,
         message: `Your account is locked. Try again later.`,
@@ -93,7 +107,14 @@ exports.loginUser = async (req, res) => {
 
     if (!user.is_active) {
 
-      // Account inactive audit log is handled by middleware
+      // Log account inactive login attempt
+      await logAction(
+        { id: user.id, email: user.email, role },
+        'LOGIN_FAILED',
+        'auth',
+        null,
+        { reason: 'Account inactive', ipAddress }
+      );
       return res.status(403).json({
         success: false,
         message: "Account is deactivated. Contact your admin.",
@@ -103,7 +124,14 @@ exports.loginUser = async (req, res) => {
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
     if (!isPasswordValid) {
       await handleFailedLogin(user.id);
-      // Invalid password audit log is handled by middleware
+      // Log invalid password login attempt
+      await logAction(
+        { id: user.id, email: user.email, role },
+        'LOGIN_FAILED',
+        'auth',
+        null,
+        { reason: 'Invalid password', ipAddress }
+      );
       return res.status(401).json({ success: false, message: "Invalid email or password." });
     }
     await resetFailedAttempts(user.id);
@@ -146,7 +174,14 @@ exports.loginUser = async (req, res) => {
       response.studentId = studentId;
     }
 
-    // Login audit log is handled by middleware
+    // Log successful login
+    await logAction(
+      { id: user.id, email: user.email, role },
+      'LOGIN',
+      'auth',
+      user.id,
+      { ipAddress, userAgent: req.headers['user-agent'] || 'unknown' }
+    );
 
     res.status(200).json(response);
   } catch (error) {
