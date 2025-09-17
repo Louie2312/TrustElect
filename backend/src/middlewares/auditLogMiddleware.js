@@ -76,6 +76,7 @@ const createAuditLog = (req, res, next) => {
       if (req.originalUrl.includes('login')) {
         action = 'LOGIN';
         entity_type = 'auth';
+        console.log('Login detected:', req.originalUrl, 'Method:', req.method);
       } else if (req.originalUrl.includes('logout')) {
         action = 'LOGOUT';
         entity_type = 'auth';
@@ -142,14 +143,27 @@ const createAuditLog = (req, res, next) => {
         // Try to extract user info from response for successful logins
         if (res.statusCode >= 200 && res.statusCode < 300) {
           try {
-            const responseData = JSON.parse(chunk);
-            if (responseData.user) {
-              user_id = responseData.user.id;
-              user_email = responseData.user.email;
-              user_role = responseData.user.role || responseData.role;
+            if (chunk && typeof chunk === 'string') {
+              const responseData = JSON.parse(chunk);
+              console.log('Login response data:', responseData);
+              if (responseData.user) {
+                user_id = responseData.user.id;
+                user_email = responseData.user.email;
+                user_role = responseData.user.role || responseData.role;
+                console.log('Extracted user info from response.user:', { user_id, user_email, user_role });
+              } else if (responseData.user_id) {
+                // Fallback to direct user_id if user object is not present
+                user_id = responseData.user_id;
+                user_email = req.body?.email || 'unknown';
+                user_role = responseData.role || 'Unknown';
+                console.log('Extracted user info from response.user_id:', { user_id, user_email, user_role });
+              }
+            } else {
+              console.log('No response chunk available for login');
             }
           } catch (e) {
-            // Ignore parsing errors, use original values
+            console.error('Error parsing login response:', e);
+            // Use original values if parsing fails
           }
         }
       } else if (res.statusCode < 200 || res.statusCode >= 300) {
@@ -218,6 +232,8 @@ const createAuditLog = (req, res, next) => {
         ip_address: req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown',
         user_agent: req.headers['user-agent'] || 'unknown'
       };
+      
+      console.log('Creating audit log with data:', logData);
       
       auditLogModel.createAuditLog(logData)
         .then(log => {
