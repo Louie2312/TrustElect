@@ -153,8 +153,8 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
       
       console.log('Saving permissions:', JSON.stringify(formattedPermissions));
 
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
-      const apiUrl = `${baseUrl}/api/admin-permissions/${admin.id}`;
+      // Use relative URL to avoid double /api prefix
+      const apiUrl = `/api/admin-permissions/${admin.id}`;
       
       console.log('Making API request to:', apiUrl);
 
