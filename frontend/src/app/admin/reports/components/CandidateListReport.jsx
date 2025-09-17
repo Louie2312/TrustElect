@@ -1,12 +1,22 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { Download, Search, X } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Download, Search, X, BarChart3, Users, TrendingUp } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '@/context/AuthContext';
 import { generatePdfReport } from '@/utils/pdfGenerator';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend, 
+  ResponsiveContainer
+} from 'recharts';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 const getImageUrl = (imageUrl) => {
   if (!imageUrl) return '/images/default-avatar.png';
@@ -31,8 +41,14 @@ const getImageUrl = (imageUrl) => {
     return `${API_BASE}/uploads/candidates/${cleanImageUrl}`;
   }
   
-  // Default case
+  // Default case - try candidates folder first
   return `${API_BASE}/uploads/candidates/${cleanImageUrl}`;
+};
+
+// Helper function to format numbers
+const formatNumber = (num) => {
+  if (num === null || num === undefined) return '0';
+  return new Intl.NumberFormat().format(num);
 };
 
 export default function CandidateListReport() {
@@ -42,6 +58,48 @@ export default function CandidateListReport() {
   const [selectedElection, setSelectedElection] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const { token } = useAuth();
+
+  // Process data for charts
+  const chartData = useMemo(() => {
+    if (!currentElection?.positions || currentElection.positions.length === 0) {
+      return {
+        barChartData: [],
+        totalStats: { totalCandidates: 0, totalVotes: 0, averageVotes: 0 }
+      };
+    }
+
+    // Calculate statistics for each position
+    const positionStats = currentElection.positions.map(position => {
+      const totalVotes = position.candidates.reduce((sum, candidate) => sum + (candidate.vote_count || 0), 0);
+      const candidateCount = position.candidates.length;
+      const averageVotes = candidateCount > 0 ? totalVotes / candidateCount : 0;
+      
+      return {
+        position: position.position,
+        candidateCount,
+        totalVotes,
+        averageVotes: parseFloat(averageVotes.toFixed(1)),
+        maxVotes: Math.max(...position.candidates.map(c => c.vote_count || 0), 0)
+      };
+    });
+
+    // Sort by total votes (for bar chart length)
+    const sortedStats = positionStats.sort((a, b) => b.totalVotes - a.totalVotes);
+
+    // Calculate overall statistics
+    const totalCandidates = positionStats.reduce((sum, pos) => sum + pos.candidateCount, 0);
+    const totalVotes = positionStats.reduce((sum, pos) => sum + pos.totalVotes, 0);
+    const averageVotes = totalCandidates > 0 ? totalVotes / totalCandidates : 0;
+
+    return {
+      barChartData: sortedStats,
+      totalStats: {
+        totalCandidates,
+        totalVotes,
+        averageVotes: parseFloat(averageVotes.toFixed(1))
+      }
+    };
+  }, [currentElection]);
 
   useEffect(() => {
     fetchCandidateList();
@@ -245,6 +303,113 @@ export default function CandidateListReport() {
             </div>
           </div>
 
+          {/* Overall Statistics Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <Users className="w-5 h-5 text-blue-600" />
+                <h3 className="text-sm font-medium text-black">Total Candidates</h3>
+              </div>
+              <p className="text-2xl font-bold text-black">
+                {formatNumber(chartData.totalStats.totalCandidates)}
+              </p>
+            </div>
+            <div className="bg-green-50 p-4 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="w-5 h-5 text-green-600" />
+                <h3 className="text-sm font-medium text-black">Total Votes</h3>
+              </div>
+              <p className="text-2xl font-bold text-black">
+                {formatNumber(chartData.totalStats.totalVotes)}
+              </p>
+            </div>
+            <div className="bg-purple-50 p-4 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <BarChart3 className="w-5 h-5 text-purple-600" />
+                <h3 className="text-sm font-medium text-black">Average Votes</h3>
+              </div>
+              <p className="text-2xl font-bold text-black">
+                {chartData.totalStats.averageVotes.toFixed(1)}
+              </p>
+            </div>
+          </div>
+
+          {/* Bar Chart Section */}
+          <div className="bg-white/50 backdrop-blur-sm rounded-lg shadow border border-gray-200 p-6 mb-6">
+            <h3 className="text-lg font-semibold mb-4 text-black flex items-center">
+              <BarChart3 className="w-5 h-5 mr-2 text-[#01579B]" />
+              Candidates per Position
+            </h3>
+            <div className="h-[400px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart 
+                  data={chartData.barChartData} 
+                  margin={{ left: 20, right: 20, bottom: 80, top: 20 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis 
+                    dataKey="position" 
+                    stroke="#000" 
+                    tick={{ fill: '#000' }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={100}
+                    interval={0}
+                    fontSize={11}
+                  />
+                  <YAxis 
+                    stroke="#000" 
+                    tick={{ fill: '#000' }}
+                    tickFormatter={(value) => formatNumber(value)}
+                    fontSize={12}
+                  />
+                  <Tooltip 
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
+                            <p className="font-semibold text-black">{label}</p>
+                            <p className="text-sm text-black">
+                              <span className="text-blue-600">Candidates: </span>
+                              {formatNumber(data.candidateCount)}
+                            </p>
+                            <p className="text-sm text-black">
+                              <span className="text-green-600">Total Votes: </span>
+                              {formatNumber(data.totalVotes)}
+                            </p>
+                            <p className="text-sm text-black">
+                              <span className="text-purple-600">Average Votes: </span>
+                              {data.averageVotes.toFixed(1)}
+                            </p>
+                            <p className="text-sm text-black">
+                              <span className="text-orange-600">Max Votes: </span>
+                              {formatNumber(data.maxVotes)}
+                            </p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Legend />
+                  <Bar 
+                    dataKey="candidateCount" 
+                    name="Candidates" 
+                    fill="#3B82F6" 
+                    radius={[4, 4, 0, 0]}
+                  />
+                  <Bar 
+                    dataKey="totalVotes" 
+                    name="Total Votes" 
+                    fill="#16A34A" 
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
           {filteredPositions?.map((position) => (
             <div key={position.position} className="bg-white rounded-lg shadow overflow-hidden">
               <div className="bg-gray-50 p-4 border-b">
@@ -258,7 +423,18 @@ export default function CandidateListReport() {
                       alt={`${candidate.first_name} ${candidate.last_name}`}
                       className="w-16 h-16 object-cover rounded-md"
                       onError={(e) => {
-                        e.target.src = '/images/default-avatar.png';
+                        // Try alternative image paths
+                        const currentSrc = e.target.src;
+                        if (currentSrc.includes('/uploads/candidates/')) {
+                          // Try without the candidates folder
+                          e.target.src = currentSrc.replace('/uploads/candidates/', '/uploads/');
+                        } else if (currentSrc.includes('/api/uploads/')) {
+                          // Try direct path
+                          e.target.src = currentSrc.replace('/api/uploads/', '/uploads/');
+                        } else {
+                          // Fallback to default avatar
+                          e.target.src = '/images/default-avatar.png';
+                        }
                       }}
                     />
                     <div className="flex-1">
