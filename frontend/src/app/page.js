@@ -344,9 +344,7 @@ export default function Home() {
                 );
 
               } else if (heroPosterUrl) {
-                // Add cache-busting timestamp to prevent caching issues
                 const posterWithTimestamp = `${heroPosterUrl}?timestamp=${new Date().getTime()}`;
-                console.log('Rendering hero poster:', posterWithTimestamp);
                 return (
               <div className="w-full max-w-6xl aspect-video bg-black/20 rounded-lg overflow-hidden">
                 <Image
@@ -360,18 +358,14 @@ export default function Home() {
                     console.error("Error loading hero poster image:", posterWithTimestamp);
                     console.error("Original URL:", heroPosterUrl);
                     
-                    // Try alternative URL format
-                    const altUrl = heroPosterUrl.replace('/uploads/images/', '/api/uploads/images/');
-                    console.log('Trying alternative URL:', altUrl);
-                    
+                    const altUrl = heroPosterUrl.replace('/uploads/images/', '/api/uploads/images/');                  
                     const container = e.currentTarget.closest('div');
                     if (container) {
-                      // Try to reload with alternative URL
                       const img = document.createElement('img');
                       img.src = `${altUrl}?timestamp=${new Date().getTime()}`;
                       img.className = 'w-full h-full object-cover';
                       img.onload = () => {
-                        console.log('Alternative URL worked:', altUrl);
+                        console.log('Alternative URL worked:', altUrl); 
                         container.innerHTML = '';
                         container.appendChild(img);
                       };

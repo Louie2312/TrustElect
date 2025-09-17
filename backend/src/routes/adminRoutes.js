@@ -2,6 +2,7 @@ const express = require("express");
 const { check } = require("express-validator");
 const { registerAdmin, getAllAdmins, updateAdmin, softDeleteAdmin, restoreAdmin, resetAdminPassword, permanentlyDeleteAdmin, unlockAdminAccount, getAdminProfile, uploadAdminProfilePicture} = require("../controllers/adminController");
 const { verifyToken, isAdmin, isSuperAdmin } = require("../middlewares/authMiddleware");
+const { checkPermission } = require("../middlewares/permissionMiddleware");
 const router = express.Router();
 const multer = require("multer");
 const path = require("path");
@@ -66,6 +67,30 @@ router.delete("/admins/:id/permanent-delete", verifyToken, isSuperAdmin, permane
 router.patch("/admins/:id/unlock", verifyToken, isSuperAdmin, unlockAdminAccount);
 
 router.post("/admins/reset-password", verifyToken, isSuperAdmin, resetAdminPassword);
+
+// Admin management routes for regular admins with permissions
+router.get("/manage-admins", verifyToken, isAdmin, checkPermission('adminManagement', 'view'), getAllAdmins);
+router.post(
+  "/manage-admins",
+  verifyToken,
+  isAdmin,
+  checkPermission('adminManagement', 'create'),
+  [
+    check("firstName", "First Name is required").not().isEmpty(),
+    check("lastName", "Last Name is required").not().isEmpty(),
+    check("email", "Valid email is required")
+      .isEmail()
+      .matches(/^[a-zA-Z0-9._%+-]+@novaliches\.sti\.edu(\.ph)?$/),
+    check("employeeNumber", "Employee Number must be at least 4 digits.").isLength({ min: 4 }),
+    check("department", "Department is required.").not().isEmpty(),
+  ],
+  registerAdmin
+);
+router.put("/manage-admins/:id", verifyToken, isAdmin, checkPermission('adminManagement', 'edit'), updateAdmin);
+router.delete("/manage-admins/:id", verifyToken, isAdmin, checkPermission('adminManagement', 'delete'), softDeleteAdmin);
+router.patch("/manage-admins/:id/restore", verifyToken, isAdmin, checkPermission('adminManagement', 'edit'), restoreAdmin);
+router.patch("/manage-admins/:id/unlock", verifyToken, isAdmin, checkPermission('adminManagement', 'edit'), unlockAdminAccount);
+router.post("/manage-admins/reset-password", verifyToken, isAdmin, checkPermission('adminManagement', 'edit'), resetAdminPassword);
 
 router.get("/protected", verifyToken, isSuperAdmin, (req, res) => {
   res.status(200).json({ message: "Welcome, Super Admin! This is a protected route." });

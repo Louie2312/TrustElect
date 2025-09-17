@@ -130,6 +130,13 @@ export default function Sidebar() {
             <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/admin/audit-logs")}>Audit Logs</button>
           )}
 
+          {/* Only show Admin Management if user has permission */}
+          {!permissionsLoading && hasPermission('adminManagement', 'view') && (
+            <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/admin/manage-admins")}>
+              Admin Management
+            </button>
+          )}
+
           {/* Only show Reports if user has permission */}
           {/* Reports button - always visible for admins */}
             <button 

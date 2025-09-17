@@ -10,7 +10,8 @@ const AdminPermissionsModal = ({ admin, onClose, onSave }) => {
   const [permissions, setPermissions] = useState({
     users: { canView: false, canCreate: false, canEdit: false, canDelete: false },
     elections: { canView: false, canCreate: false, canEdit: false, canDelete: false },
-    departments: { canView: false, canCreate: false, canEdit: false, canDelete: false }
+    departments: { canView: false, canCreate: false, canEdit: false, canDelete: false },
+    adminManagement: { canView: false, canCreate: false, canEdit: false, canDelete: false }
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -43,6 +44,16 @@ const AdminPermissionsModal = ({ admin, onClose, onSave }) => {
           
           formattedPermissions[module] = perms;
         });
+        
+        // Ensure adminManagement module exists with default values if not present
+        if (!formattedPermissions.adminManagement) {
+          formattedPermissions.adminManagement = { 
+            canView: false, 
+            canCreate: false, 
+            canEdit: false, 
+            canDelete: false 
+          };
+        }
         
         console.log('Fetched permissions for admin:', JSON.stringify(formattedPermissions));
         setPermissions(formattedPermissions);
