@@ -264,8 +264,8 @@ export default function Home() {
             <Image 
               src={stiLogo} 
               alt="STI Logo" 
-              width={60}
-              height={20} 
+              width={65}
+              height={25} 
               className="mr-2"
               priority
               style={{ maxHeight: 'calc(51px - (0px * 2))' }}
