@@ -84,6 +84,7 @@ export default function usePermissions() {
           elections: { canView: true, canCreate: true, canEdit: true, canDelete: true },
           departments: { canView: true, canCreate: true, canEdit: true, canDelete: true },
           admins: { canView: true, canCreate: true, canEdit: true, canDelete: true },
+          adminManagement: { canView: true, canCreate: true, canEdit: true, canDelete: true },
           cms: { canView: true, canCreate: true, canEdit: true, canDelete: true },
           auditLog: { canView: true, canCreate: true, canEdit: true, canDelete: true }
         };
@@ -115,6 +116,7 @@ export default function usePermissions() {
 
       if (response.data && response.data.permissions) {
         console.log(`Permissions fetched successfully for user ${userId}:`, response.data.permissions);
+        console.log('adminManagement permissions:', response.data.permissions.adminManagement);
         setPermissions(response.data.permissions);
         setPermissionsLastUpdated(Date.now());
         setPermissionsLoading(false);
@@ -135,6 +137,7 @@ export default function usePermissions() {
           elections: { canView: true, canCreate: true, canEdit: true, canDelete: true },
           departments: { canView: true, canCreate: true, canEdit: true, canDelete: true },
           admins: { canView: true, canCreate: true, canEdit: true, canDelete: true },
+          adminManagement: { canView: true, canCreate: true, canEdit: true, canDelete: true },
           cms: { canView: true, canCreate: true, canEdit: true, canDelete: true },
           auditLog: { canView: true, canCreate: true, canEdit: true, canDelete: true }
         });
@@ -145,6 +148,7 @@ export default function usePermissions() {
           elections: { canView: true, canCreate: false, canEdit: false, canDelete: false },
           departments: { canView: true, canCreate: false, canEdit: false, canDelete: false },
           admins: { canView: false, canCreate: false, canEdit: false, canDelete: false },
+          adminManagement: { canView: false, canCreate: false, canEdit: false, canDelete: false },
           cms: { canView: false, canCreate: false, canEdit: false, canDelete: false },
           auditLog: { canView: false, canCreate: false, canEdit: false, canDelete: false }
         });

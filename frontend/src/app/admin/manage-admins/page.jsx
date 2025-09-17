@@ -13,7 +13,7 @@ import usePermissions from "@/hooks/usePermissions";
 
 export default function ManageAdminsPage() {
   const router = useRouter();
-  const { hasPermission } = usePermissions();
+  const { hasPermission, permissions, permissionsLoading } = usePermissions();
   const [admins, setAdmins] = useState([]);
   const [filteredAdmins, setFilteredAdmins] = useState([]); 
   const [loading, setLoading] = useState(true);
@@ -30,12 +30,19 @@ export default function ManageAdminsPage() {
 
   // Check if user has admin management permissions
   useEffect(() => {
-    if (!hasPermission('adminManagement', 'view')) {
+    console.log('Checking admin management permissions...');
+    console.log('hasPermission result:', hasPermission('adminManagement', 'view'));
+    console.log('permissionsLoading:', permissionsLoading);
+    console.log('Current permissions:', permissions);
+    console.log('adminManagement permissions:', permissions?.adminManagement);
+    
+    if (!permissionsLoading && !hasPermission('adminManagement', 'view')) {
+      console.log('User does not have admin management view permission');
       router.push('/admin');
       toast.error("You don't have permission to access Admin Management");
       return;
     }
-  }, [hasPermission, router]);
+  }, [hasPermission, router, permissionsLoading, permissions]);
 
   const fetchAdmins = async () => {
     try {
