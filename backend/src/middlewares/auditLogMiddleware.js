@@ -32,14 +32,28 @@ const createAuditLog = (req, res, next) => {
       return;
     }
 
-    if (!req.user) {
+    // For login/logout, we need to handle authentication differently
+    if (!req.user && !req.originalUrl.includes('login') && !req.originalUrl.includes('logout')) {
       return;
     }
     
     try {
-      const user_id = req.user.id;
-      const user_email = req.user.email;
-      const user_role = req.user.normalizedRole || req.user.role || 'Unknown';
+      let user_id, user_email, user_role;
+      
+      if (req.user) {
+        // User is authenticated
+        user_id = req.user.id;
+        user_email = req.user.email;
+        user_role = req.user.normalizedRole || req.user.role || 'Unknown';
+      } else if (req.originalUrl.includes('login')) {
+        // For login attempts, we'll extract user info from response
+        user_email = req.body?.email || 'unknown';
+        user_id = null; // Will be extracted from response if successful
+        user_role = 'Unknown';
+      } else {
+        // Skip logging if no user and not a login attempt
+        return;
+      }
 
       let action = req.method;
  
@@ -61,8 +75,10 @@ const createAuditLog = (req, res, next) => {
       // Determine action based on URL and method
       if (req.originalUrl.includes('login')) {
         action = 'LOGIN';
+        entity_type = 'auth';
       } else if (req.originalUrl.includes('logout')) {
         action = 'LOGOUT';
+        entity_type = 'auth';
       } else if (req.method === 'POST') {
         action = 'CREATE';
       } else if (req.method === 'PUT' || req.method === 'PATCH') {
@@ -120,8 +136,24 @@ const createAuditLog = (req, res, next) => {
         }
       }
 
-      // Only log successful operations (2xx status codes)
-      if (res.statusCode < 200 || res.statusCode >= 300) {
+      // For login, we want to log both successful and failed attempts
+      if (action === 'LOGIN') {
+        // Log all login attempts regardless of status code
+        // Try to extract user info from response for successful logins
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          try {
+            const responseData = JSON.parse(chunk);
+            if (responseData.user) {
+              user_id = responseData.user.id;
+              user_email = responseData.user.email;
+              user_role = responseData.user.role || responseData.role;
+            }
+          } catch (e) {
+            // Ignore parsing errors, use original values
+          }
+        }
+      } else if (res.statusCode < 200 || res.statusCode >= 300) {
+        // For other operations, only log successful ones
         return;
       }
 
@@ -131,6 +163,17 @@ const createAuditLog = (req, res, next) => {
         method: req.method,
         timestamp: new Date().toISOString()
       };
+
+      // Add login-specific details
+      if (action === 'LOGIN') {
+        details.login_attempt = true;
+        details.success = res.statusCode >= 200 && res.statusCode < 300;
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          details.message = 'Login successful';
+        } else {
+          details.message = 'Login failed';
+        }
+      }
 
       // Add request body for non-sensitive operations
       if (req.body && Object.keys(req.body).length > 0 && !req.originalUrl.includes('login')) {

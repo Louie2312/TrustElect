@@ -256,7 +256,11 @@ export default function AuditLogsPage() {
 
     switch (log.action) {
       case 'LOGIN':
-        return `User logged in successfully at ${timestamp}`;
+        if (log.details?.success) {
+          return `User logged in successfully at ${timestamp}`;
+        } else {
+          return `Login attempt failed at ${timestamp}`;
+        }
       case 'LOGOUT':
         return `User logged out at ${timestamp}`;
       case 'VOTE':
