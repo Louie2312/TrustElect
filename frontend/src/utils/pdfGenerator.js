@@ -818,6 +818,79 @@ const generateCandidateListReport = (data) => {
   return doc;
 };
 
+// Generate Department Voter Report
+const generateDepartmentVoterReport = (data) => {
+  const doc = new jsPDF();
+  doc._reportTitle = data.title || 'Department Voter Report';
+  
+  let yPos = addHeader(doc, data.title, data.description);
+  
+  // Add election details section
+  if (data.election_details) {
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text("Election Summary", 14, yPos);
+    yPos += 10;
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Total Students: ${formatNumber(data.election_details.total_students)}`, 14, yPos);
+    yPos += 6;
+    doc.text(`Total Voted: ${formatNumber(data.election_details.total_voted)}`, 14, yPos);
+    yPos += 6;
+    doc.text(`Overall Participation: ${data.election_details.overall_participation}`, 14, yPos);
+    yPos += 15;
+  }
+  
+  // Add summary statistics
+  if (data.summary) {
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text("Summary Statistics", 14, yPos);
+    yPos += 10;
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Total Departments: ${data.summary.total_departments}`, 14, yPos);
+    yPos += 6;
+    doc.text(`Total Students: ${formatNumber(data.summary.total_students)}`, 14, yPos);
+    yPos += 6;
+    doc.text(`Total Voted: ${formatNumber(data.summary.total_voted)}`, 14, yPos);
+    yPos += 6;
+    doc.text(`Overall Participation: ${data.summary.overall_participation}`, 14, yPos);
+    yPos += 15;
+  }
+  
+  // Add department statistics
+  if (data.positions && data.positions.length > 0) {
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text("Department Statistics", 14, yPos);
+    yPos += 10;
+    
+    // Create department statistics table
+    const departmentData = data.positions.map(dept => ({
+      department: dept.position_name,
+      totalStudents: formatNumber(dept.totalStudents || 0),
+      voted: formatNumber(dept.votedCount || 0),
+      notVoted: formatNumber(dept.notVoted || 0),
+      turnout: (dept.participationRate || 0).toFixed(1) + '%'
+    }));
+    
+    yPos = createSummaryTable(doc, departmentData, [
+      { header: "Department", key: "department" },
+      { header: "Total Students", key: "totalStudents" },
+      { header: "Voted", key: "voted" },
+      { header: "Not Voted", key: "notVoted" },
+      { header: "Turnout Rate", key: "turnout" }
+    ], yPos);
+  }
+  
+  addFooter(doc, data.title || 'Department Voter Report');
+  
+  return doc;
+};
+
 export const generatePdfReport = (reportId, data) => {
   try {
     let doc;
@@ -858,6 +931,9 @@ export const generatePdfReport = (reportId, data) => {
         break;
       case 13:
         doc = generateElectionResultReport(data);
+        break;
+      case 14:
+        doc = generateDepartmentVoterReport(data);
         break;
       default:
         throw new Error('Invalid report ID');
@@ -910,6 +986,8 @@ const getReportTitle = (reportId) => {
       return 'Election Detail Report';
     case 13:
       return 'Election Result Report';
+    case 14:
+      return 'Department Voter Report';
     default:
       return 'Report';
   }

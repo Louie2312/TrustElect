@@ -147,24 +147,44 @@ const DepartmentVoterReport = () => {
       const reportData = {
         title: "Department Voter Report",
         description: "Detailed voter participation statistics by department",
-        summary: data.departmentStats.map(stat => ({
-          department: stat.department,
-          total_students: stat.total_students,
-          voted_count: stat.voted_count,
-          participation_rate: ((stat.voted_count / stat.total_students) * 100).toFixed(1) + '%'
-        })),
-        students: data.students.map(student => ({
-          student_number: student.student_number,
-          name: `${student.first_name} ${student.last_name}`,
-          email: student.email,
-          department: student.department,
-          year_level: student.year_level,
-          status: student.has_voted ? 'Voted' : 'Not Voted',
-          vote_time: student.vote_timestamp ? new Date(student.vote_timestamp).toLocaleString() : '-'
+        election_details: {
+          total_students: chartData.totalStats.totalStudents,
+          total_voted: chartData.totalStats.totalVoted,
+          overall_participation: chartData.totalStats.overallParticipation.toFixed(1) + '%'
+        },
+        summary: {
+          total_departments: chartData.barChartData.length,
+          total_students: chartData.totalStats.totalStudents,
+          total_voted: chartData.totalStats.totalVoted,
+          overall_participation: chartData.totalStats.overallParticipation.toFixed(1) + '%'
+        },
+        positions: chartData.barChartData.map(dept => ({
+          position_id: dept.department,
+          position_name: dept.department,
+          candidates: [{
+            name: `${dept.department} Department`,
+            party: 'N/A',
+            vote_count: dept.votedCount,
+            vote_percentage: dept.participationRate.toFixed(1) + '%',
+            is_winner: dept.participationRate >= 50,
+            rank: 1,
+            status: dept.participationRate >= 50 ? 'Winner' : 'Participant'
+          }],
+          chartData: [{
+            name: 'Total Students',
+            votes: dept.totalStudents
+          }, {
+            name: 'Voted',
+            votes: dept.votedCount
+          }],
+          totalStudents: dept.totalStudents,
+          votedCount: dept.votedCount,
+          notVoted: dept.notVoted,
+          participationRate: dept.participationRate
         }))
       };
 
-      await generatePdfReport(11, reportData); // 11 is the report ID for Department Voter Report
+      await generatePdfReport(14, reportData); 
     } catch (error) {
       console.error('Error downloading report:', error);
     }
@@ -356,6 +376,55 @@ const DepartmentVoterReport = () => {
               </PieChart>
             </ResponsiveContainer>
           </div>
+        </div>
+      </div>
+
+      {/* Simple Department Statistics Table */}
+      <div className="bg-white/50 backdrop-blur-sm rounded-lg shadow border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold mb-4 text-black flex items-center">
+          <BarChart3 className="w-5 h-5 mr-2 text-[#01579B]" />
+          Department Statistics
+        </h3>
+        <div className="overflow-x-auto">
+          <table className="min-w-full">
+            <thead>
+              <tr className="border-b border-gray-200">
+                <th className="px-4 py-3 text-left text-sm font-semibold text-black">Department</th>
+                <th className="px-4 py-3 text-right text-sm font-semibold text-black">Total Students</th>
+                <th className="px-4 py-3 text-right text-sm font-semibold text-black">Voted</th>
+                <th className="px-4 py-3 text-right text-sm font-semibold text-black">Not Voted</th>
+                <th className="px-4 py-3 text-right text-sm font-semibold text-black">Turnout Rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {chartData.barChartData.map((dept, index) => (
+                <tr key={dept.department} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                  <td className="px-4 py-3 text-sm text-black font-medium">{dept.department}</td>
+                  <td className="px-4 py-3 text-sm text-right text-black">
+                    {formatNumber(dept.totalStudents)}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-right text-black">
+                    {formatNumber(dept.votedCount)}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-right text-black">
+                    {formatNumber(dept.notVoted)}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-right">
+                    <span className={`font-medium ${dept.participationRate >= 50 ? 'text-green-600' : 'text-red-600'}`}>
+                      {dept.participationRate.toFixed(1)}%
+                    </span>
+                  </td>
+                </tr>
+              ))}
+              {chartData.barChartData.length === 0 && (
+                <tr>
+                  <td colSpan="5" className="px-4 py-8 text-center text-gray-500">
+                    No department data available
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
