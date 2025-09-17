@@ -102,8 +102,8 @@ export default function AuditLogsPage() {
         const seenLogs = new Set();
         
         res.data.data.forEach(log => {
-          // Create a more unique key by including more fields
-          const logKey = `${log.action}-${log.created_at}-${log.entity_id}-${log.user_id}-${log.entity_type}`;
+          // Create a more comprehensive unique key
+          const logKey = `${log.action}-${log.entity_type}-${log.entity_id}-${log.user_id}-${log.user_email}-${new Date(log.created_at).getTime()}`;
           if (!seenLogs.has(logKey)) {
             seenLogs.add(logKey);
             uniqueLogs.push(log);
@@ -252,38 +252,47 @@ export default function AuditLogsPage() {
     if (!log) return "-";
     
     const id = log.entity_id ? `#${log.entity_id}` : '';
+    const timestamp = new Date(log.created_at).toLocaleString();
 
     switch (log.action) {
       case 'LOGIN':
-        return `User logged in`;
+        return `User logged in successfully at ${timestamp}`;
       case 'LOGOUT':
-        return `User logged out`;
+        return `User logged out at ${timestamp}`;
       case 'VOTE':
-        return `Vote cast in election ${id}`;
+        return `Vote cast in election ${id} at ${timestamp}`;
       case 'CREATE':
-        if (log.entity_type === 'elections') return `Election ${id} created`;
-        if (log.entity_type === 'ballots') return `Ballot ${id} created`;
-        if (log.entity_type === 'candidates') return `Candidate ${id} added`;
-        if (log.entity_type === 'positions') return `Position ${id} added`;
-        return `${log.entity_type} ${id} created`;
+        if (log.entity_type === 'elections') return `Election "${log.details?.election_title || id}" created at ${timestamp}`;
+        if (log.entity_type === 'ballots') return `Ballot ${id} created at ${timestamp}`;
+        if (log.entity_type === 'candidates') return `Candidate ${id} added at ${timestamp}`;
+        if (log.entity_type === 'positions') return `Position ${id} added at ${timestamp}`;
+        if (log.entity_type === 'admin') return `Admin account created at ${timestamp}`;
+        return `${log.entity_type} ${id} created at ${timestamp}`;
       case 'UPDATE':
-        if (log.entity_type === 'elections') return `Election ${id} updated`;
-        if (log.entity_type === 'ballots') return `Ballot ${id} updated`;
-        if (log.entity_type === 'candidates') return `Candidate ${id} updated`;
-        if (log.entity_type === 'user') return `User updated`;
-        if (log.entity_type === 'admin') return `Admin updated`;
-        return `${log.entity_type} ${id} updated`;
+        if (log.entity_type === 'elections') return `Election ${id} updated at ${timestamp}`;
+        if (log.entity_type === 'ballots') return `Ballot ${id} updated at ${timestamp}`;
+        if (log.entity_type === 'candidates') return `Candidate ${id} updated at ${timestamp}`;
+        if (log.entity_type === 'user') return `User profile updated at ${timestamp}`;
+        if (log.entity_type === 'admin') return `Admin profile updated at ${timestamp}`;
+        return `${log.entity_type} ${id} updated at ${timestamp}`;
       case 'DELETE':
-        if (log.entity_type === 'elections') return `Election ${id} deleted`;
-        if (log.entity_type === 'candidates') return `Candidate ${id} removed`;
-        if (log.entity_type === 'positions') return `Position ${id} removed`;
-        return `${log.entity_type} ${id} deleted`;
+        if (log.entity_type === 'elections') return `Election ${id} deleted at ${timestamp}`;
+        if (log.entity_type === 'candidates') return `Candidate ${id} removed at ${timestamp}`;
+        if (log.entity_type === 'positions') return `Position ${id} removed at ${timestamp}`;
+        if (log.entity_type === 'admin') return `Admin account deactivated at ${timestamp}`;
+        return `${log.entity_type} ${id} deleted at ${timestamp}`;
       case 'APPROVE':
-        return `Election ${id} approved`;
+        return `Election ${id} approved at ${timestamp}`;
       case 'REJECT':
-        return `Election ${id} rejected`;
+        return `Election ${id} rejected at ${timestamp}`;
+      case 'RESTORE':
+        return `Election ${id} restored at ${timestamp}`;
+      case 'UNLOCK':
+        return `Admin account unlocked at ${timestamp}`;
+      case 'RESET_PASSWORD':
+        return `Password reset for admin at ${timestamp}`;
       default:
-        return `${log.action} ${log.entity_type} ${id}`;
+        return `${log.action} ${log.entity_type} ${id} at ${timestamp}`;
     }
   };
 

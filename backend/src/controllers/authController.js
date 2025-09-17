@@ -79,24 +79,12 @@ exports.loginUser = async (req, res) => {
 
     if (!user) {
 
-      await logAction(
-        { id: 0, email: email, role: 'Unknown' },
-        'LOGIN_FAILED',
-        'auth',
-        null,
-        { reason: 'Invalid credentials', ipAddress }
-      );
+      // Failed login audit log is handled by middleware
       return res.status(401).json({ success: false, message: "Invalid email or password." });
     }
 
     if (user.is_locked && user.locked_until > new Date()) {
-      await logAction(
-        { id: user.id, email: user.email, role },
-        'LOGIN_FAILED',
-        'auth',
-        null,
-        { reason: 'Account locked', ipAddress }
-      );
+      // Account locked audit log is handled by middleware
       return res.status(403).json({
         success: false,
         message: `Your account is locked. Try again later.`,
@@ -105,13 +93,7 @@ exports.loginUser = async (req, res) => {
 
     if (!user.is_active) {
 
-      await logAction(
-        { id: user.id, email: user.email, role },
-        'LOGIN_FAILED',
-        'auth',
-        null,
-        { reason: 'Account inactive', ipAddress }
-      );
+      // Account inactive audit log is handled by middleware
       return res.status(403).json({
         success: false,
         message: "Account is deactivated. Contact your admin.",
@@ -121,14 +103,7 @@ exports.loginUser = async (req, res) => {
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
     if (!isPasswordValid) {
       await handleFailedLogin(user.id);
-      // Log failed login with wrong password
-      await logAction(
-        { id: user.id, email: user.email, role },
-        'LOGIN_FAILED',
-        'auth',
-        null,
-        { reason: 'Invalid password', ipAddress }
-      );
+      // Invalid password audit log is handled by middleware
       return res.status(401).json({ success: false, message: "Invalid email or password." });
     }
     await resetFailedAttempts(user.id);
@@ -171,14 +146,7 @@ exports.loginUser = async (req, res) => {
       response.studentId = studentId;
     }
 
-    // Log successful login
-    await logAction(
-      { id: user.id, email: user.email, role },
-      'LOGIN',
-      'auth',
-      user.id,
-      { ipAddress, userAgent: req.headers['user-agent'] || 'unknown' }
-    );
+    // Login audit log is handled by middleware
 
     res.status(200).json(response);
   } catch (error) {

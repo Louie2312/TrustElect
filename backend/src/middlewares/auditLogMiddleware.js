@@ -2,7 +2,7 @@ const auditLogModel = require('../models/auditLogModel');
 
 // Cache to store recent audit logs to prevent duplicates
 const recentLogs = new Map();
-const DUPLICATE_PREVENTION_WINDOW = 5000; // 5 seconds
+const DUPLICATE_PREVENTION_WINDOW = 10000; // 10 seconds
 
 /**
  * Create an audit log for the current request
@@ -11,6 +11,14 @@ const DUPLICATE_PREVENTION_WINDOW = 5000; // 5 seconds
  * @param {Function} next - Next middleware function
  */
 const createAuditLog = (req, res, next) => {
+  // Skip audit logging for certain routes that don't need it
+  const skipRoutes = [
+    '/api/audit-logs',
+    '/api/notifications',
+    '/api/system-load',
+    '/api/health',
+    '/api/status'
+  ];
 
   const originalEnd = res.end;
 
@@ -19,7 +27,8 @@ const createAuditLog = (req, res, next) => {
 
     res.end(chunk, encoding);
     
-    if (req.method === 'GET' || req.originalUrl.startsWith('/api/audit-logs')) {
+    // Skip GET requests and specific routes
+    if (req.method === 'GET' || skipRoutes.some(route => req.originalUrl.startsWith(route))) {
       return;
     }
 
@@ -49,6 +58,7 @@ const createAuditLog = (req, res, next) => {
         }
       }
 
+      // Determine action based on URL and method
       if (req.originalUrl.includes('login')) {
         action = 'LOGIN';
       } else if (req.originalUrl.includes('logout')) {
@@ -75,14 +85,15 @@ const createAuditLog = (req, res, next) => {
         action = 'VOTE';
       }
 
-      // Check for duplicate logs
-      const logKey = `${user_id}-${action}-${entity_type}-${entity_id}`;
+      // Create a more specific log key to prevent duplicates
+      const timestamp = Math.floor(Date.now() / 1000); // Round to seconds
+      const logKey = `${user_id}-${action}-${entity_type}-${entity_id}-${timestamp}`;
       const now = Date.now();
-      const recentLog = recentLogs.get(logKey);
       
-      if (recentLog && (now - recentLog) < DUPLICATE_PREVENTION_WINDOW) {
-        // Skip duplicate log
-        return;
+      // Check for very recent duplicate logs (within 1 second)
+      const recentLog = recentLogs.get(logKey);
+      if (recentLog && (now - recentLog) < 1000) {
+        return; // Skip duplicate log
       }
       
       // Update recent logs cache
@@ -95,21 +106,44 @@ const createAuditLog = (req, res, next) => {
         }
       }
 
+      // Only log successful operations (2xx status codes)
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        return;
+      }
+
       const details = {
         status: res.statusCode,
         endpoint: req.originalUrl,
+        method: req.method,
+        timestamp: new Date().toISOString()
       };
 
-      if (res.statusCode >= 200 && res.statusCode < 300 && req.body) {
+      // Add request body for non-sensitive operations
+      if (req.body && Object.keys(req.body).length > 0 && !req.originalUrl.includes('login')) {
         const sanitizedBody = { ...req.body };
-
-        if (sanitizedBody.password) sanitizedBody.password = '[REDACTED]';
-        if (sanitizedBody.password_hash) sanitizedBody.password_hash = '[REDACTED]';
-        if (sanitizedBody.newPassword) sanitizedBody.newPassword = '[REDACTED]';
-        if (sanitizedBody.currentPassword) sanitizedBody.currentPassword = '[REDACTED]';
-        if (sanitizedBody.token) sanitizedBody.token = '[REDACTED]';
+        
+        // Remove sensitive fields
+        const sensitiveFields = ['password', 'password_hash', 'token', 'otp', 'secret', 'newPassword', 'currentPassword'];
+        sensitiveFields.forEach(field => {
+          if (sanitizedBody[field]) {
+            sanitizedBody[field] = '[REDACTED]';
+          }
+        });
         
         details.request = sanitizedBody;
+      }
+
+      // Add specific details for important operations
+      if (req.originalUrl.includes('elections') && action === 'CREATE') {
+        try {
+          const responseData = JSON.parse(chunk);
+          if (responseData.election) {
+            details.election_id = responseData.election.id;
+            details.election_title = responseData.election.title;
+          }
+        } catch (e) {
+          // Ignore parsing errors
+        }
       }
 
       const logData = {
@@ -126,6 +160,7 @@ const createAuditLog = (req, res, next) => {
       
       auditLogModel.createAuditLog(logData)
         .then(log => {
+          console.log(`Audit log created: ${action} by ${user_email} (${user_role}) - ${entity_type}${entity_id ? ` #${entity_id}` : ''}`);
         })
         .catch(err => {
           console.error('Failed to create audit log:', err);
