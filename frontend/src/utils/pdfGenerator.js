@@ -337,6 +337,121 @@ const generateElectionDetailReport = (data) => {
   return doc;
 };
 
+// Generate Election Result Report (Enhanced with winners and rankings)
+const generateElectionResultReport = (data) => {
+  const doc = new jsPDF();
+  doc._reportTitle = data.title || 'Election Result Report';
+  
+  let yPos = addHeader(doc, data.title, data.description);
+  
+  // Add election details section
+  const electionData = [
+    { metric: "Election Title", value: data.election_details.title },
+    { metric: "Election Type", value: data.election_details.type },
+    { metric: "Status", value: data.election_details.status },
+    { metric: "Start Date", value: data.election_details.date_from },
+    { metric: "End Date", value: data.election_details.date_to },
+    { metric: "Total Eligible Voters", value: formatNumber(data.election_details.total_eligible_voters) },
+    { metric: "Total Votes Cast", value: formatNumber(data.election_details.total_votes) },
+    { metric: "Voter Turnout", value: `${data.election_details.voter_turnout_percentage}%` }
+  ];
+  
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text("Election Details", 14, yPos);
+  
+  yPos = createSummaryTable(doc, electionData, [
+    { header: "Detail", key: "metric" },
+    { header: "Value", key: "value" }
+  ], yPos + 10);
+  
+  // Add summary statistics
+  if (data.summary) {
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text("Summary Statistics", 14, yPos);
+    yPos += 10;
+    
+    const summaryData = [
+      { metric: "Total Positions", value: formatNumber(data.summary.total_positions) },
+      { metric: "Total Candidates", value: formatNumber(data.summary.total_candidates) },
+      { metric: "Total Votes Cast", value: formatNumber(data.summary.total_votes_cast) },
+      { metric: "Voter Turnout", value: `${data.summary.voter_turnout}%` }
+    ];
+    
+    yPos = createSummaryTable(doc, summaryData, [
+      { header: "Metric", key: "metric" },
+      { header: "Value", key: "value" }
+    ], yPos);
+  }
+  
+  // Add positions and candidates with winners highlighted
+  if (data.positions && data.positions.length > 0) {
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text("Election Results by Position", 14, yPos);
+    yPos += 10;
+    
+    data.positions.forEach((position, positionIndex) => {
+      // Add a new page if we're running out of space
+      if (yPos > 200) {
+        doc.addPage();
+        yPos = 20;
+      }
+      
+      // Position header with winner highlight
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Position: ${position.position_name}`, 14, yPos);
+      yPos += 8;
+      
+      // Highlight winner
+      if (position.candidates && position.candidates.length > 0) {
+        const winner = position.candidates.find(c => c.is_winner) || position.candidates[0];
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(0, 100, 0); // Green color for winner
+        doc.text(`🏆 Winner: ${winner.name} (${winner.vote_count} votes - ${winner.vote_percentage}%)`, 14, yPos);
+        doc.setTextColor(0, 0, 0); // Reset to black
+        yPos += 8;
+      }
+      
+      // Candidates table
+      if (position.candidates && position.candidates.length > 0) {
+        const candidateData = position.candidates.map((candidate, index) => ({
+          rank: candidate.rank,
+          name: candidate.name,
+          party: candidate.party,
+          votes: formatNumber(candidate.vote_count),
+          percentage: `${candidate.vote_percentage}%`,
+          status: candidate.status
+        }));
+        
+        yPos = createSummaryTable(doc, candidateData, [
+          { header: "Rank", key: "rank" },
+          { header: "Candidate", key: "name" },
+          { header: "Party", key: "party" },
+          { header: "Votes", key: "votes" },
+          { header: "Percentage", key: "percentage" },
+          { header: "Status", key: "status" }
+        ], yPos);
+      } else {
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text("No candidates found for this position.", 14, yPos);
+        yPos += 10;
+      }
+      
+      yPos += 15; // Add space between positions
+    });
+  }
+  
+  // Add footer to all pages
+  addFooter(doc, data.title || 'Election Result Report');
+  
+  return doc;
+};
+
 // Add this new function after generateAdminActivityReport
 const generateFailedLoginReport = (data) => {
   const doc = new jsPDF();
@@ -741,6 +856,9 @@ export const generatePdfReport = (reportId, data) => {
       case 11:
         doc = generateElectionDetailReport(data);
         break;
+      case 13:
+        doc = generateElectionResultReport(data);
+        break;
       default:
         throw new Error('Invalid report ID');
     }
@@ -790,6 +908,8 @@ const getReportTitle = (reportId) => {
       return 'Admin Activity Report';
     case 11:
       return 'Election Detail Report';
+    case 13:
+      return 'Election Result Report';
     default:
       return 'Report';
   }

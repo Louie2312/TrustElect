@@ -7,7 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Download } from 'lucide-react';
 import { generatePdfReport } from '@/utils/pdfGenerator';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 export default function VotingTimeReport() {
   const [votingData, setVotingData] = useState([]);

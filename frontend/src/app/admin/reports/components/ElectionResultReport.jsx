@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { Download, Award, User, Trophy, Medal } from 'lucide-react';
 import { generatePdfReport } from '@/utils/pdfGenerator';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 const getImageUrl = (imageUrl) => {
   if (!imageUrl) return '/images/default-avatar.png';
@@ -187,33 +187,53 @@ const ElectionResultReport = () => {
   };
 
   const handleDownload = async () => {
-    if (!selectedElectionId) return;
+    if (!selectedElectionId || !data.selectedElection) return;
 
     try {
+      // Prepare data for PDF generation using the grouped positions structure
       const reportData = {
         title: "Election Result Report",
         description: "Comprehensive election results including candidates, vote counts, and winners",
         election_details: {
           title: data.selectedElection.title,
-          type: data.selectedElection.election_type,
+          type: data.selectedElection.election_type || 'General Election',
           status: data.selectedElection.status,
-          total_votes: data.selectedElection.total_votes,
-          date: new Date(data.selectedElection.date_to).toLocaleDateString()
+          total_votes: data.selectedElection.total_votes || 0,
+          total_eligible_voters: data.selectedElection.total_eligible_voters || 0,
+          voter_turnout_percentage: data.selectedElection.voter_turnout_percentage || 0,
+          date: new Date(data.selectedElection.date_to).toLocaleDateString(),
+          date_from: new Date(data.selectedElection.date_from).toLocaleDateString(),
+          date_to: new Date(data.selectedElection.date_to).toLocaleDateString()
         },
-        positions: data.positions.map(result => ({
-          position: result.position,
-          candidates: [{
-            name: result.candidate_name,
-            party: result.partylist || 'Independent',
-            vote_count: result.vote_count,
-            status: result.is_winner ? 'Winner' : 'Runner-up'
-          }]
-        }))
+        positions: data.groupedPositions.map(position => ({
+          position_name: position.position_name,
+          max_choices: position.max_choices || 1,
+          total_votes: position.total_votes || 0,
+          candidates: position.sortedCandidates.map((candidate, index) => ({
+            rank: index + 1,
+            name: formatNameSimple(candidate.last_name, candidate.first_name, position.position_name),
+            first_name: candidate.first_name,
+            last_name: candidate.last_name,
+            party: candidate.partylist_name || 'Independent',
+            vote_count: candidate.vote_count || 0,
+            vote_percentage: candidate.vote_percentage || 0,
+            status: index === 0 ? 'Winner' : index === 1 ? '2nd Place' : index === 2 ? '3rd Place' : `${index + 1}th Place`,
+            is_winner: index === 0
+          }))
+        })),
+        summary: {
+          total_positions: data.groupedPositions.length,
+          total_candidates: data.groupedPositions.reduce((total, pos) => total + pos.sortedCandidates.length, 0),
+          total_votes_cast: data.selectedElection.total_votes || 0,
+          voter_turnout: data.selectedElection.voter_turnout_percentage || 0
+        }
       };
 
+      console.log('Generating PDF with data:', reportData);
       await generatePdfReport(13, reportData); // 13 is the report ID for Election Result Report
     } catch (error) {
       console.error('Error downloading report:', error);
+      setError('Failed to generate PDF report. Please try again.');
     }
   };
 
