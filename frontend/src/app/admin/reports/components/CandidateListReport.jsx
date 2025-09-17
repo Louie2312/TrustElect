@@ -59,6 +59,9 @@ export default function CandidateListReport() {
   const [searchTerm, setSearchTerm] = useState('');
   const { token } = useAuth();
 
+  // Get current election data
+  const currentElection = reportData?.elections.find(e => e.id === selectedElection);
+
   // Process data for charts
   const chartData = useMemo(() => {
     if (!currentElection?.positions || currentElection.positions.length === 0) {
@@ -189,8 +192,6 @@ export default function CandidateListReport() {
     }
   };
 
-  const currentElection = reportData?.elections.find(e => e.id === selectedElection);
-
   const filteredPositions = currentElection?.positions.map(position => ({
     ...position,
     candidates: position.candidates.filter(candidate =>
@@ -233,6 +234,14 @@ export default function CandidateListReport() {
     return (
       <div className="text-red-500 text-center p-4">
         {error}
+      </div>
+    );
+  }
+
+  if (!reportData) {
+    return (
+      <div className="text-gray-500 text-center p-4">
+        No data available
       </div>
     );
   }
@@ -311,7 +320,7 @@ export default function CandidateListReport() {
                 <h3 className="text-sm font-medium text-black">Total Candidates</h3>
               </div>
               <p className="text-2xl font-bold text-black">
-                {formatNumber(chartData.totalStats.totalCandidates)}
+                {formatNumber(chartData?.totalStats?.totalCandidates || 0)}
               </p>
             </div>
             <div className="bg-green-50 p-4 rounded-lg">
@@ -320,7 +329,7 @@ export default function CandidateListReport() {
                 <h3 className="text-sm font-medium text-black">Total Votes</h3>
               </div>
               <p className="text-2xl font-bold text-black">
-                {formatNumber(chartData.totalStats.totalVotes)}
+                {formatNumber(chartData?.totalStats?.totalVotes || 0)}
               </p>
             </div>
             <div className="bg-purple-50 p-4 rounded-lg">
@@ -329,86 +338,88 @@ export default function CandidateListReport() {
                 <h3 className="text-sm font-medium text-black">Average Votes</h3>
               </div>
               <p className="text-2xl font-bold text-black">
-                {chartData.totalStats.averageVotes.toFixed(1)}
+                {(chartData?.totalStats?.averageVotes || 0).toFixed(1)}
               </p>
             </div>
           </div>
 
           {/* Bar Chart Section */}
-          <div className="bg-white/50 backdrop-blur-sm rounded-lg shadow border border-gray-200 p-6 mb-6">
-            <h3 className="text-lg font-semibold mb-4 text-black flex items-center">
-              <BarChart3 className="w-5 h-5 mr-2 text-[#01579B]" />
-              Candidates per Position
-            </h3>
-            <div className="h-[400px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart 
-                  data={chartData.barChartData} 
-                  margin={{ left: 20, right: 20, bottom: 80, top: 20 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis 
-                    dataKey="position" 
-                    stroke="#000" 
-                    tick={{ fill: '#000' }}
-                    angle={-45}
-                    textAnchor="end"
-                    height={100}
-                    interval={0}
-                    fontSize={11}
-                  />
-                  <YAxis 
-                    stroke="#000" 
-                    tick={{ fill: '#000' }}
-                    tickFormatter={(value) => formatNumber(value)}
-                    fontSize={12}
-                  />
-                  <Tooltip 
-                    content={({ active, payload, label }) => {
-                      if (active && payload && payload.length) {
-                        const data = payload[0].payload;
-                        return (
-                          <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-                            <p className="font-semibold text-black">{label}</p>
-                            <p className="text-sm text-black">
-                              <span className="text-blue-600">Candidates: </span>
-                              {formatNumber(data.candidateCount)}
-                            </p>
-                            <p className="text-sm text-black">
-                              <span className="text-green-600">Total Votes: </span>
-                              {formatNumber(data.totalVotes)}
-                            </p>
-                            <p className="text-sm text-black">
-                              <span className="text-purple-600">Average Votes: </span>
-                              {data.averageVotes.toFixed(1)}
-                            </p>
-                            <p className="text-sm text-black">
-                              <span className="text-orange-600">Max Votes: </span>
-                              {formatNumber(data.maxVotes)}
-                            </p>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                  <Legend />
-                  <Bar 
-                    dataKey="candidateCount" 
-                    name="Candidates" 
-                    fill="#3B82F6" 
-                    radius={[4, 4, 0, 0]}
-                  />
-                  <Bar 
-                    dataKey="totalVotes" 
-                    name="Total Votes" 
-                    fill="#16A34A" 
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+          {chartData?.barChartData && chartData.barChartData.length > 0 && (
+            <div className="bg-white/50 backdrop-blur-sm rounded-lg shadow border border-gray-200 p-6 mb-6">
+              <h3 className="text-lg font-semibold mb-4 text-black flex items-center">
+                <BarChart3 className="w-5 h-5 mr-2 text-[#01579B]" />
+                Candidates per Position
+              </h3>
+              <div className="h-[400px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart 
+                    data={chartData.barChartData} 
+                    margin={{ left: 20, right: 20, bottom: 80, top: 20 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis 
+                      dataKey="position" 
+                      stroke="#000" 
+                      tick={{ fill: '#000' }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={100}
+                      interval={0}
+                      fontSize={11}
+                    />
+                    <YAxis 
+                      stroke="#000" 
+                      tick={{ fill: '#000' }}
+                      tickFormatter={(value) => formatNumber(value)}
+                      fontSize={12}
+                    />
+                    <Tooltip 
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload;
+                          return (
+                            <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
+                              <p className="font-semibold text-black">{label}</p>
+                              <p className="text-sm text-black">
+                                <span className="text-blue-600">Candidates: </span>
+                                {formatNumber(data.candidateCount)}
+                              </p>
+                              <p className="text-sm text-black">
+                                <span className="text-green-600">Total Votes: </span>
+                                {formatNumber(data.totalVotes)}
+                              </p>
+                              <p className="text-sm text-black">
+                                <span className="text-purple-600">Average Votes: </span>
+                                {data.averageVotes.toFixed(1)}
+                              </p>
+                              <p className="text-sm text-black">
+                                <span className="text-orange-600">Max Votes: </span>
+                                {formatNumber(data.maxVotes)}
+                              </p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Legend />
+                    <Bar 
+                      dataKey="candidateCount" 
+                      name="Candidates" 
+                      fill="#3B82F6" 
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Bar 
+                      dataKey="totalVotes" 
+                      name="Total Votes" 
+                      fill="#16A34A" 
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-          </div>
+          )}
 
           {filteredPositions?.map((position) => (
             <div key={position.position} className="bg-white rounded-lg shadow overflow-hidden">
