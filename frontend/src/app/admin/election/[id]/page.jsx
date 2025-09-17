@@ -548,6 +548,25 @@ export default function ElectionDetailsPage() {
   // Get properly mapped eligibility criteria
   const eligibilityCriteria = getEligibilityCriteria();
 
+  // Helper function to calculate Y-axis domain for better scaling
+  const calculateYAxisDomain = (chartData) => {
+    if (!chartData || chartData.length === 0) return [0, 10];
+    
+    // Ensure all vote counts are numbers
+    const voteCounts = chartData.map(d => Number(d.votes) || 0);
+    const maxVotes = Math.max(...voteCounts);
+    const minVotes = Math.min(...voteCounts);
+    
+    // If all votes are the same, add some padding
+    if (maxVotes === minVotes) {
+      return [0, Math.max(maxVotes + 1, 5)];
+    }
+    
+    // Add 10% padding to the top for better visualization, minimum 1
+    const padding = Math.max(1, Math.ceil(maxVotes * 0.1));
+    return [0, maxVotes + padding];
+  };
+
   // Inside the component body, add a function to format results data
   const formatResultsData = (positions) => {
     if (!positions || positions.length === 0) return [];
@@ -562,7 +581,7 @@ export default function ElectionDetailsPage() {
       // Format for chart with unique colors
       const chartData = sortedCandidates.map((candidate, index) => ({
         name: formatNameSimple(candidate.last_name, candidate.first_name, candidate.name),
-        votes: candidate.vote_count || 0,
+        votes: Number(candidate.vote_count || 0),
         party: candidate.party || 'Independent',
         percentage: election.voter_count ? ((candidate.vote_count || 0) / election.voter_count * 100).toFixed(2) : '0.00',
         color: CHART_COLORS[index % CHART_COLORS.length]
@@ -570,6 +589,8 @@ export default function ElectionDetailsPage() {
       
       // Debug logging for chart data
       console.log(`Chart data for position ${position.name}:`, chartData.map(c => ({ name: c.name, votes: c.votes })));
+      console.log(`Y-axis domain for ${position.name}:`, calculateYAxisDomain(chartData));
+      console.log(`Max votes: ${Math.max(...chartData.map(d => d.votes))}, Min votes: ${Math.min(...chartData.map(d => d.votes))}`);
       
       return {
         ...position,
@@ -1081,9 +1102,10 @@ export default function ElectionDetailsPage() {
                           fontSize={12}
                         />
                         <YAxis 
-                          domain={[0, 'dataMax']}
+                          domain={calculateYAxisDomain(position.chartData)}
                           allowDecimals={false}
                           tickFormatter={(value) => value.toLocaleString()}
+                          tickCount={Math.min(10, Math.max(3, Math.ceil(Math.max(...position.chartData.map(d => d.votes)) / 2)))}
                         />
                         <Tooltip 
                           formatter={(value, name) => [`${value} votes (${election.voter_count ? ((value / election.voter_count) * 100).toFixed(2) : '0.00'}% `, 'Votes']}
