@@ -181,7 +181,6 @@ export default function ElectionBulletinPage() {
             <p className="text-gray-500">
               This section will display all voter codes for this election.
               <br />
-              <span className="text-sm">(Content will be implemented later)</span>
             </p>
           </div>
         </div>
@@ -203,7 +202,7 @@ export default function ElectionBulletinPage() {
             <p className="text-gray-500">
               This section will display voter lists for each candidate by position.
               <br />
-              <span className="text-sm">(Content will be implemented later)</span>
+
             </p>
           </div>
         </div>
