@@ -10,12 +10,10 @@ import axios from "axios";
 
 export default function Header() {
   const router = useRouter();
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
   const handleLogout = async () => {
     try {
-
       const token = Cookies.get("token");
       const userId = Cookies.get("userId");
       const email = Cookies.get("email");
@@ -29,7 +27,6 @@ export default function Header() {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-
       Cookies.remove("token");
       Cookies.remove("role");
       Cookies.remove("email");
@@ -37,7 +34,6 @@ export default function Header() {
       router.push("/");
     } catch (error) {
       console.error("Logout error:", error);
-
       Cookies.remove("token");
       Cookies.remove("role");
       Cookies.remove("email");
@@ -68,35 +64,12 @@ export default function Header() {
           <NotificationBell />
         </div>
         <button
-          onClick={() => setShowLogoutConfirm(true)}
+          onClick={handleLogout}
           className="bg-red-500 px-4 py-2 rounded-lg text-white hover:bg-red-700"
         >
           Logout
         </button>
       </div>
-
-      {/* Logout Button */}
-      {showLogoutConfirm && (
-        <div className="fixed inset-0 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg text-center">
-            <h3 className="text-lg font-semibold text-gray-900">Are you sure you want to log out?</h3>
-            <div className="mt-4 flex justify-center gap-4">
-              <button
-                onClick={handleLogout}
-                className="bg-red-500 px-4 py-2 rounded-lg text-white hover:bg-red-700"
-              >
-                Yes
-              </button>
-              <button
-                onClick={() => setShowLogoutConfirm(false)}
-                className="bg-gray-400 px-4 py-2 rounded-lg text-white hover:bg-gray-600"
-              >
-                No
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </header>
   );
 }
