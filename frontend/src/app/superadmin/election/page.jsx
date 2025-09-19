@@ -60,7 +60,16 @@ export default function ElectionPage() {
       }
       
       const data = await fetchWithAuth('/elections');
-      const pendingCount = data.filter(election => election.needs_approval).length;
+      const pendingCount = data.filter(election => {
+        // Determine if the creator is a superadmin
+        const isSuperAdminCreator =
+          election.created_by === 1 ||
+          (election.created_by && election.created_by.id === 1) ||
+          election.created_by_role === 'SuperAdmin';
+        
+        // Only count elections that need approval AND are not created by superadmin
+        return election.needs_approval && !isSuperAdminCreator;
+      }).length;
 
       const updatedTabs = tabs.map(tab => 
         tab.id === 'to_approve' 
@@ -106,9 +115,20 @@ export default function ElectionPage() {
       setFilteredElections(elections);
     } else {
       setFilteredElections(
-        elections.filter(election => 
-          (activeTab === 'to_approve' ? election.needs_approval : election.status === activeTab)
-        )
+        elections.filter(election => {
+          if (activeTab === 'to_approve') {
+            // Determine if the creator is a superadmin
+            const isSuperAdminCreator =
+              election.created_by === 1 ||
+              (election.created_by && election.created_by.id === 1) ||
+              election.created_by_role === 'SuperAdmin';
+            
+            // Only show elections that need approval AND are not created by superadmin
+            return election.needs_approval && !isSuperAdminCreator;
+          } else {
+            return election.status === activeTab;
+          }
+        })
       );
     }
   }, [activeTab, elections]);
