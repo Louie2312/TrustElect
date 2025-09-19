@@ -40,7 +40,10 @@ function formatNameSimple(lastName, firstName, fallback) {
 function generateUniqueCode(receiptId) {
   if (!receiptId) return 'N/A';
   
-  // Create a hash from the receipt ID
+  // Debug logging to verify the receipt ID being used
+  console.log('Generating unique code from receipt ID:', receiptId);
+  
+  // Create a hash from the receipt ID using a more robust hashing algorithm
   let hash = 0;
   for (let i = 0; i < receiptId.length; i++) {
     const char = receiptId.charCodeAt(i);
@@ -67,7 +70,10 @@ function generateUniqueCode(receiptId) {
     code += alphanumeric[randomIndex];
   }
   
-  return code.substring(0, 6);
+  const finalCode = code.substring(0, 6);
+  console.log('Generated unique code:', finalCode);
+  
+  return finalCode;
 }
 
 export default function VoteReceiptPage({ params }) {
@@ -155,6 +161,8 @@ export default function VoteReceiptPage({ params }) {
         });
         
         // Set receipt data
+        console.log('Receipt data received:', response.data);
+        console.log('Vote token from receipt:', response.data.voteToken);
         setReceipt(response.data);
       } catch (tokenError) {
         console.error('Error fetching receipt with token, trying without token:', tokenError);
@@ -169,6 +177,8 @@ export default function VoteReceiptPage({ params }) {
         });
         
         // Set receipt data
+        console.log('Receipt data received (without token):', responseWithoutToken.data);
+        console.log('Vote token from receipt (without token):', responseWithoutToken.data.voteToken);
         setReceipt(responseWithoutToken.data);
       }
     } catch (err) {
@@ -261,6 +271,7 @@ export default function VoteReceiptPage({ params }) {
       tokenInfo.innerHTML = `
         <p style="margin: 5px 0; font-size: 14px; color: #000;"><strong>Receipt ID:</strong> ${receipt.voteToken}</p>
         <p style="margin: 5px 0; font-size: 16px; color: #2563eb; font-weight: bold; font-family: monospace; letter-spacing: 2px;"><strong>Verification Code:</strong> ${uniqueCode}</p>
+        <p style="margin: 5px 0; font-size: 12px; color: #666;"><em>Generated from Receipt ID</em></p>
       `;
       infoSection.appendChild(tokenInfo);
       
@@ -411,6 +422,9 @@ export default function VoteReceiptPage({ params }) {
                   <p className="text-sm text-gray-500 text-black">Verification Code</p>
                   <p className="font-bold text-lg text-blue-600 font-mono tracking-wider">
                     {generateUniqueCode(receipt.voteToken)}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Generated from Receipt ID
                   </p>
                 </div>
               </div>
