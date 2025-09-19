@@ -1809,24 +1809,26 @@ exports.getVotesPerCandidate = async (req, res) => {
     const positionsQuery = `
       SELECT 
         p.id as position_id,
-        p.title as position_title,
+        p.name as position_title,
         p.max_choices,
+        p.display_order,
         c.id as candidate_id,
         c.first_name,
         c.last_name,
-        c.partylist_name,
-        COUNT(v.id) as vote_count
+        c.party as partylist_name,
+        COALESCE(COUNT(v.id), 0) as vote_count
       FROM positions p
-      LEFT JOIN candidates c ON p.id = c.position_id
+      JOIN candidates c ON p.id = c.position_id
       LEFT JOIN votes v ON c.id = v.candidate_id AND v.election_id = $1
       WHERE p.ballot_id IN (
         SELECT id FROM ballots WHERE election_id = $1
       )
-      GROUP BY p.id, p.title, p.max_choices, c.id, c.first_name, c.last_name, c.partylist_name
-      ORDER BY p.id, c.id
+      GROUP BY p.id, p.name, p.max_choices, p.display_order, c.id, c.first_name, c.last_name, c.party
+      ORDER BY COALESCE(p.display_order, 999), p.id, c.id
     `;
 
     const positionsResult = await pool.query(positionsQuery, [electionId]);
+    console.log('Positions query result:', positionsResult.rows.length, 'rows');
 
     // Get all votes with verification codes for each candidate
     const votesQuery = `
@@ -1844,6 +1846,7 @@ exports.getVotesPerCandidate = async (req, res) => {
     `;
 
     const votesResult = await pool.query(votesQuery, [electionId]);
+    console.log('Votes query result:', votesResult.rows.length, 'rows');
 
     // Group votes by candidate
     const votesByCandidate = {};
@@ -1869,27 +1872,37 @@ exports.getVotesPerCandidate = async (req, res) => {
           id: row.position_id,
           title: row.position_title,
           maxChoices: row.max_choices,
+          displayOrder: row.display_order,
           candidates: []
         };
       }
 
-      if (row.candidate_id) {
-        positions[row.position_id].candidates.push({
-          id: row.candidate_id,
-          firstName: row.first_name,
-          lastName: row.last_name,
-          partylistName: row.partylist_name,
-          voteCount: parseInt(row.vote_count),
-          voters: votesByCandidate[row.candidate_id] || []
-        });
-      }
+      // Add candidate if it exists
+      positions[row.position_id].candidates.push({
+        id: row.candidate_id,
+        firstName: row.first_name,
+        lastName: row.last_name,
+        partylistName: row.partylist_name,
+        voteCount: parseInt(row.vote_count) || 0,
+        voters: votesByCandidate[row.candidate_id] || []
+      });
     });
 
-    // Convert to array and sort candidates by vote count (descending)
-    const positionsArray = Object.values(positions).map(position => ({
-      ...position,
-      candidates: position.candidates.sort((a, b) => b.voteCount - a.voteCount)
-    }));
+    console.log('Grouped positions:', Object.keys(positions).length, 'positions');
+
+    // Convert to array and sort by display order, then by position ID
+    const positionsArray = Object.values(positions)
+      .sort((a, b) => {
+        // Sort by display_order first, then by position ID
+        const orderA = a.displayOrder !== null ? a.displayOrder : 999;
+        const orderB = b.displayOrder !== null ? b.displayOrder : 999;
+        if (orderA !== orderB) return orderA - orderB;
+        return a.id - b.id;
+      })
+      .map(position => ({
+        ...position,
+        candidates: position.candidates.sort((a, b) => b.voteCount - a.voteCount)
+      }));
 
     res.json({
       success: true,
@@ -1905,9 +1918,11 @@ exports.getVotesPerCandidate = async (req, res) => {
 
   } catch (error) {
     console.error('Error fetching votes per candidate:', error);
+    console.error('Error details:', error.message);
+    console.error('Error stack:', error.stack);
     res.status(500).json({
       success: false,
-      message: "Failed to fetch votes per candidate"
+      message: "Failed to fetch votes per candidate: " + error.message
     });
   }
 };
