@@ -210,7 +210,7 @@ export default function ElectionBulletinPage() {
           <div className="mb-4">
             <input
               type="text"
-              placeholder="Search by verification code, student number, or name..."
+              placeholder="Search by verification code..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -238,15 +238,6 @@ export default function ElectionBulletinPage() {
                       Verification Code
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Student Number
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Course & Year
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Vote Date
                     </th>
                   </tr>
@@ -254,25 +245,14 @@ export default function ElectionBulletinPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {voterCodes
                     .filter(voter => 
-                      voter.verificationCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                      voter.studentNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                      `${voter.firstName} ${voter.lastName}`.toLowerCase().includes(searchTerm.toLowerCase())
+                      voter.verificationCode.toLowerCase().includes(searchTerm.toLowerCase())
                     )
                     .map((voter, index) => (
                     <tr key={voter.voteToken} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 font-mono">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 font-mono">
                           {voter.verificationCode}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {voter.studentNumber}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {voter.firstName} {voter.lastName}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {voter.courseName} - {voter.yearLevel}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {new Date(voter.voteDate).toLocaleString()}
