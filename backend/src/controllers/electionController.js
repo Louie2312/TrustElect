@@ -1780,3 +1780,134 @@ exports.getVoterVerificationCodes = async (req, res) => {
     });
   }
 };
+
+exports.getVotesPerCandidate = async (req, res) => {
+  try {
+    const { id: electionId } = req.params;
+    
+    if (!electionId || isNaN(parseInt(electionId))) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid election ID"
+      });
+    }
+
+    // Check if election exists
+    const electionCheck = await pool.query(
+      'SELECT id, title, status FROM elections WHERE id = $1',
+      [electionId]
+    );
+
+    if (electionCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Election not found"
+      });
+    }
+
+    // Get all positions and their candidates with vote counts
+    const positionsQuery = `
+      SELECT 
+        p.id as position_id,
+        p.title as position_title,
+        p.max_choices,
+        c.id as candidate_id,
+        c.first_name,
+        c.last_name,
+        c.partylist_name,
+        COUNT(v.id) as vote_count
+      FROM positions p
+      LEFT JOIN candidates c ON p.id = c.position_id
+      LEFT JOIN votes v ON c.id = v.candidate_id AND v.election_id = $1
+      WHERE p.ballot_id IN (
+        SELECT id FROM ballots WHERE election_id = $1
+      )
+      GROUP BY p.id, p.title, p.max_choices, c.id, c.first_name, c.last_name, c.partylist_name
+      ORDER BY p.id, c.id
+    `;
+
+    const positionsResult = await pool.query(positionsQuery, [electionId]);
+
+    // Get all votes with verification codes for each candidate
+    const votesQuery = `
+      SELECT 
+        v.candidate_id,
+        v.vote_token,
+        v.created_at as vote_date,
+        s.student_number,
+        s.first_name,
+        s.last_name
+      FROM votes v
+      JOIN students s ON v.student_id = s.id
+      WHERE v.election_id = $1
+      ORDER BY v.candidate_id, v.created_at DESC
+    `;
+
+    const votesResult = await pool.query(votesQuery, [electionId]);
+
+    // Group votes by candidate
+    const votesByCandidate = {};
+    votesResult.rows.forEach(vote => {
+      if (!votesByCandidate[vote.candidate_id]) {
+        votesByCandidate[vote.candidate_id] = [];
+      }
+      votesByCandidate[vote.candidate_id].push({
+        voteToken: vote.vote_token,
+        verificationCode: generateUniqueCode(vote.vote_token),
+        voteDate: vote.vote_date,
+        studentNumber: vote.student_number,
+        firstName: vote.first_name,
+        lastName: vote.last_name
+      });
+    });
+
+    // Group positions and candidates
+    const positions = {};
+    positionsResult.rows.forEach(row => {
+      if (!positions[row.position_id]) {
+        positions[row.position_id] = {
+          id: row.position_id,
+          title: row.position_title,
+          maxChoices: row.max_choices,
+          candidates: []
+        };
+      }
+
+      if (row.candidate_id) {
+        positions[row.position_id].candidates.push({
+          id: row.candidate_id,
+          firstName: row.first_name,
+          lastName: row.last_name,
+          partylistName: row.partylist_name,
+          voteCount: parseInt(row.vote_count),
+          voters: votesByCandidate[row.candidate_id] || []
+        });
+      }
+    });
+
+    // Convert to array and sort candidates by vote count (descending)
+    const positionsArray = Object.values(positions).map(position => ({
+      ...position,
+      candidates: position.candidates.sort((a, b) => b.voteCount - a.voteCount)
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        election: {
+          id: electionCheck.rows[0].id,
+          title: electionCheck.rows[0].title,
+          status: electionCheck.rows[0].status
+        },
+        positions: positionsArray
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching votes per candidate:', error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch votes per candidate"
+    });
+  }
+};

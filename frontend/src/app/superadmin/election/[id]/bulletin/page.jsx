@@ -49,6 +49,9 @@ export default function ElectionBulletinPage() {
   const [voterCodes, setVoterCodes] = useState([]);
   const [loadingCodes, setLoadingCodes] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [candidateVotes, setCandidateVotes] = useState([]);
+  const [loadingCandidateVotes, setLoadingCandidateVotes] = useState(false);
+  const [candidateSearchTerm, setCandidateSearchTerm] = useState('');
 
   const loadVoterCodes = async () => {
     try {
@@ -60,6 +63,19 @@ export default function ElectionBulletinPage() {
       toast.error(`Error loading voter codes: ${err.message}`);
     } finally {
       setLoadingCodes(false);
+    }
+  };
+
+  const loadCandidateVotes = async () => {
+    try {
+      setLoadingCandidateVotes(true);
+      const data = await fetchWithAuth(`/elections/${params.id}/votes-per-candidate`);
+      setCandidateVotes(data.data.positions || []);
+    } catch (err) {
+      console.error('Error loading candidate votes:', err);
+      toast.error(`Error loading candidate votes: ${err.message}`);
+    } finally {
+      setLoadingCandidateVotes(false);
     }
   };
 
@@ -86,6 +102,8 @@ export default function ElectionBulletinPage() {
   useEffect(() => {
     if (activeSubTab === 'all-voters' && params.id) {
       loadVoterCodes();
+    } else if (activeSubTab === 'per-candidate' && params.id) {
+      loadCandidateVotes();
     }
   }, [activeSubTab, params.id]);
 
@@ -269,22 +287,114 @@ export default function ElectionBulletinPage() {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-black flex items-center">
               <User className="w-5 h-5 mr-2" />
-              Per Candidate Voters
+              Votes Per Candidate
             </h2>
-            <div className="text-sm text-gray-500">
-              {election.positions?.length || 0} Positions
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={loadCandidateVotes}
+                disabled={loadingCandidateVotes}
+                className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loadingCandidateVotes ? 'Refreshing...' : 'Refresh'}
+              </button>
+              <div className="text-sm text-gray-500">
+                {candidateVotes.length} Positions
+              </div>
             </div>
           </div>
-          
-          <div className="bg-gray-50 rounded-lg p-8 text-center">
-            <User className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-600 mb-2">Candidate Voter Lists</h3>
-            <p className="text-gray-500">
-              This section will display voter lists for each candidate by position.
-              <br />
 
-            </p>
+          {/* Search Bar */}
+          <div className="mb-4">
+            <input
+              type="text"
+              placeholder="Search by candidate name or verification code..."
+              value={candidateSearchTerm}
+              onChange={(e) => setCandidateSearchTerm(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
           </div>
+
+          {loadingCandidateVotes ? (
+            <div className="flex justify-center items-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+          ) : candidateVotes.length === 0 ? (
+            <div className="bg-gray-50 rounded-lg p-8 text-center">
+              <User className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-600 mb-2">No Positions Found</h3>
+              <p className="text-gray-500">
+                No positions or candidates found for this election.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {candidateVotes.map((position) => (
+                <div key={position.id} className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {position.title}
+                    </h3>
+                    <span className="text-sm text-gray-500">
+                      Max Choices: {position.maxChoices}
+                    </span>
+                  </div>
+
+                  {position.candidates.length === 0 ? (
+                    <p className="text-gray-500 text-center py-4">No candidates for this position</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {position.candidates.map((candidate) => (
+                        <div key={candidate.id} className="border border-gray-100 rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <div>
+                              <h4 className="font-medium text-gray-900">
+                                {candidate.firstName} {candidate.lastName}
+                              </h4>
+                              {candidate.partylistName && (
+                                <p className="text-sm text-gray-500">
+                                  {candidate.partylistName}
+                                </p>
+                              )}
+                            </div>
+                            <span className="px-2 py-1 bg-green-100 text-green-800 text-sm font-medium rounded">
+                              {candidate.voteCount} votes
+                            </span>
+                          </div>
+
+                          {candidate.voters.length === 0 ? (
+                            <p className="text-gray-500 text-sm">No votes yet</p>
+                          ) : (
+                            <div>
+                              <h5 className="text-sm font-medium text-gray-700 mb-2">
+                                Voter Verification Codes ({candidate.voters.length})
+                              </h5>
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                                {candidate.voters
+                                  .filter(voter => 
+                                    voter.verificationCode.toLowerCase().includes(candidateSearchTerm.toLowerCase()) ||
+                                    `${candidate.firstName} ${candidate.lastName}`.toLowerCase().includes(candidateSearchTerm.toLowerCase())
+                                  )
+                                  .map((voter, index) => (
+                                    <div key={index} className="flex items-center justify-between bg-gray-50 rounded px-3 py-2">
+                                      <span className="font-mono text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                        {voter.verificationCode}
+                                      </span>
+                                      <span className="text-xs text-gray-500">
+                                        {new Date(voter.voteDate).toLocaleDateString()}
+                                      </span>
+                                    </div>
+                                  ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
