@@ -36,6 +36,40 @@ function formatNameSimple(lastName, firstName, fallback) {
   return `${cap(lastName)}, ${cap(firstName)}`;
 }
 
+// Function to generate unique 6-character code from receipt ID
+function generateUniqueCode(receiptId) {
+  if (!receiptId) return 'N/A';
+  
+  // Create a hash from the receipt ID
+  let hash = 0;
+  for (let i = 0; i < receiptId.length; i++) {
+    const char = receiptId.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  
+  // Use absolute value and convert to base36 for alphanumeric characters
+  const absHash = Math.abs(hash);
+  const base36 = absHash.toString(36).toUpperCase();
+  
+  // Take first 6 characters and pad if necessary
+  let code = base36.substring(0, 6);
+  if (code.length < 6) {
+    // Pad with additional characters from the hash
+    const padded = (absHash * 31).toString(36).toUpperCase();
+    code = (code + padded).substring(0, 6);
+  }
+  
+  // Ensure we have exactly 6 alphanumeric characters
+  const alphanumeric = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  while (code.length < 6) {
+    const randomIndex = Math.abs(hash + code.length) % alphanumeric.length;
+    code += alphanumeric[randomIndex];
+  }
+  
+  return code.substring(0, 6);
+}
+
 export default function VoteReceiptPage({ params }) {
   const resolvedParams = use(params);
   const { id: electionId } = resolvedParams;
@@ -221,10 +255,12 @@ export default function VoteReceiptPage({ params }) {
       `;
       infoSection.appendChild(electionInfo);
       
-      // Vote token
+      // Vote token and verification code
       const tokenInfo = document.createElement('div');
+      const uniqueCode = generateUniqueCode(receipt.voteToken);
       tokenInfo.innerHTML = `
         <p style="margin: 5px 0; font-size: 14px; color: #000;"><strong>Receipt ID:</strong> ${receipt.voteToken}</p>
+        <p style="margin: 5px 0; font-size: 16px; color: #2563eb; font-weight: bold; font-family: monospace; letter-spacing: 2px;"><strong>Verification Code:</strong> ${uniqueCode}</p>
       `;
       infoSection.appendChild(tokenInfo);
       
@@ -240,6 +276,9 @@ export default function VoteReceiptPage({ params }) {
       footer.innerHTML = `
         <p style="margin: 0 0 8px 0; font-size: 14px; color: #b7791f;">
           <strong>Note:</strong> Please save your receipt for your records. This serves as proof of your vote submission.
+        </p>
+        <p style="margin: 0 0 8px 0; font-size: 14px; color: #b7791f;">
+          <strong>Verification:</strong> Use the 6-character verification code to confirm your vote was recorded correctly.
         </p>
         <p style="margin: 0; font-size: 14px; color: #b7791f;">
           <strong>Thank you for voting!</strong>
@@ -363,15 +402,26 @@ export default function VoteReceiptPage({ params }) {
                 </div>
               </div>
               
-              <div>
-                <p className="text-sm text-gray-500 text-black">Receipt ID</p>
-                <p className="font-medium text-xs break-all text-black">{receipt.voteToken}</p>
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <p className="text-sm text-gray-500 text-black">Receipt ID</p>
+                  <p className="font-medium text-xs break-all text-black">{receipt.voteToken}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 text-black">Verification Code</p>
+                  <p className="font-bold text-lg text-blue-600 font-mono tracking-wider">
+                    {generateUniqueCode(receipt.voteToken)}
+                  </p>
+                </div>
               </div>
             </div>
             
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-6">
               <p className="text-sm text-yellow-700">
                 <strong>Note:</strong> Please save your receipt for your records. This serves as proof of your vote submission.
+              </p>
+              <p className="text-sm text-yellow-700 mt-2">
+                <strong>Verification:</strong> Use the 6-character verification code to confirm your vote was recorded correctly.
               </p>
               <p className="text-sm text-yellow-700 mt-2">
                 <strong>Thank you for voting!</strong>
