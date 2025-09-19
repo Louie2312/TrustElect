@@ -203,20 +203,34 @@ export default function Home() {
     }
   };
 
-  const renderImage = (url, alt, width, height, className, onErrorAction) => {
+  const getImageUrl = (url) => {
+    if (!url) return null;
+    
     const formattedUrl = formatImageUrl(url);
     if (!formattedUrl) return null;
+    
+    // For uploads, use the /api/uploads path to ensure proper serving
+    if (formattedUrl.startsWith('/uploads/')) {
+      return formattedUrl.replace('/uploads/', '/api/uploads/');
+    }
+    
+    return formattedUrl;
+  };
+
+  const renderImage = (url, alt, width, height, className, onErrorAction) => {
+    const imageUrl = getImageUrl(url);
+    if (!imageUrl) return null;
 
     return (
       <Image
-        src={formattedUrl}
+        src={imageUrl}
         alt={alt || "Image"}
         width={width || 400}
         height={height || 300}
         className={className || ""}
         unoptimized={true}
         onError={(e) => {
-          console.error("Error loading image:", formattedUrl);
+          console.error("Error loading image:", imageUrl);
           if (onErrorAction) onErrorAction(e);
         }}
       />
@@ -230,7 +244,7 @@ export default function Home() {
         <h1 className="text-2xl font-bold flex items-center">
           {landingContent.logo?.imageUrl ? (
             <Image 
-              src={`${formatImageUrl(landingContent.logo.imageUrl)}?timestamp=${new Date().getTime()}`}
+              src={getImageUrl(landingContent.logo.imageUrl)}
               alt="Site Logo" 
               width={60}
               height={20} 
@@ -240,14 +254,14 @@ export default function Home() {
               style={{ maxHeight: 'calc(51px - (0px * 2))' }}
               onError={(e) => {
                 console.error("Error loading logo:", landingContent.logo.imageUrl);
-                console.error("Formatted URL:", formatImageUrl(landingContent.logo.imageUrl));
+                console.error("Formatted URL:", getImageUrl(landingContent.logo.imageUrl));
                 
                 // Try alternative URL format
-                const altUrl = landingContent.logo.imageUrl.replace('/uploads/images/', '/api/uploads/images/');
+                const altUrl = getImageUrl(landingContent.logo.imageUrl);
                 console.log('Trying alternative logo URL:', altUrl);
                 
                 const img = e.currentTarget;
-                img.src = `${altUrl}?timestamp=${new Date().getTime()}`;
+                img.src = altUrl;
                 img.onload = () => {
                   console.log('Alternative logo URL worked:', altUrl);
                 };
@@ -313,10 +327,10 @@ export default function Home() {
             {(() => {
               
               const heroVideoUrl = landingContent.hero && landingContent.hero.videoUrl ? 
-                formatImageUrl(landingContent.hero.videoUrl) : null;
+                getImageUrl(landingContent.hero.videoUrl) : null;
               
               const heroPosterUrl = landingContent.hero && landingContent.hero.posterImage ? 
-                formatImageUrl(landingContent.hero.posterImage) : null;
+                getImageUrl(landingContent.hero.posterImage) : null;
 
           if (heroVideoUrl) {
                 return (
@@ -344,28 +358,25 @@ export default function Home() {
                 );
 
               } else if (heroPosterUrl) {
-                const posterWithTimestamp = `${heroPosterUrl}?timestamp=${new Date().getTime()}`;
                 return (
               <div className="w-full max-w-6xl aspect-video bg-black/20 rounded-lg overflow-hidden">
                 <Image
-                  src={posterWithTimestamp}
+                  src={heroPosterUrl}
                   alt="TrustElect Platform"
                   width={1920}
                   height={1080}
                   className="w-full h-full object-cover"
                   unoptimized={true}
                   onError={(e) => {
-                    console.error("Error loading hero poster image:", posterWithTimestamp);
-                    console.error("Original URL:", heroPosterUrl);
+                    console.error("Error loading hero poster image:", heroPosterUrl);
                     
-                    const altUrl = heroPosterUrl.replace('/uploads/images/', '/api/uploads/images/');                  
                     const container = e.currentTarget.closest('div');
                     if (container) {
                       const img = document.createElement('img');
-                      img.src = `${altUrl}?timestamp=${new Date().getTime()}`;
+                      img.src = heroPosterUrl;
                       img.className = 'w-full h-full object-cover';
                       img.onload = () => {
-                        console.log('Alternative URL worked:', altUrl); 
+                        console.log('Alternative URL worked:', heroPosterUrl); 
                         container.innerHTML = '';
                         container.appendChild(img);
                       };
@@ -380,7 +391,7 @@ export default function Home() {
                     }
                   }}
                   onLoad={() => {
-                    console.log('Hero poster loaded successfully:', posterWithTimestamp);
+                    console.log('Hero poster loaded successfully:', heroPosterUrl);
                   }}
                 />
               </div>
@@ -413,8 +424,7 @@ export default function Home() {
 
               let imageUrl = null;
               if (feature.imageUrl) {
-                const formattedUrl = formatImageUrl(feature.imageUrl);
-                imageUrl = formattedUrl ? `${formattedUrl}?timestamp=${new Date().getTime()}` : null;
+                imageUrl = getImageUrl(feature.imageUrl);
 
                 const isHeroImage = landingContent.hero && 
                   (feature.imageUrl === landingContent.hero.videoUrl || 

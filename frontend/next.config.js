@@ -10,9 +10,20 @@ const nextConfig = {
         pathname: '/uploads/**',
       },
       {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '5000',
+        pathname: '/api/uploads/**',
+      },
+      {
         protocol: 'https',
         hostname: 'trustelectonline.com',
         pathname: '/uploads/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'trustelectonline.com',
+        pathname: '/api/uploads/**',
       },
     ],
   },
