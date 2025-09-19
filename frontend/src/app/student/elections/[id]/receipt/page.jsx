@@ -176,9 +176,6 @@ export default function VoteReceiptPage({ params }) {
           withCredentials: true
         });
         
-        // Set receipt data
-        console.log('Receipt data received (without token):', responseWithoutToken.data);
-        console.log('Vote token from receipt (without token):', responseWithoutToken.data.voteToken);
         setReceipt(responseWithoutToken.data);
       }
     } catch (err) {
@@ -423,9 +420,7 @@ export default function VoteReceiptPage({ params }) {
                   <p className="font-bold text-lg text-blue-600 font-mono tracking-wider">
                     {generateUniqueCode(receipt.voteToken)}
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Generated from Receipt ID
-                  </p>
+               
                 </div>
               </div>
             </div>
