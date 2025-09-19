@@ -53,6 +53,22 @@ export default function ElectionBulletinPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeSubTab, setActiveSubTab] = useState('all-voters');
+  const [voterCodes, setVoterCodes] = useState([]);
+  const [loadingCodes, setLoadingCodes] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const loadVoterCodes = async () => {
+    try {
+      setLoadingCodes(true);
+      const data = await fetchWithAuth(`/elections/${params.id}/voter-codes`);
+      setVoterCodes(data.data.voterCodes || []);
+    } catch (err) {
+      console.error('Error loading voter codes:', err);
+      toast.error(`Error loading voter codes: ${err.message}`);
+    } finally {
+      setLoadingCodes(false);
+    }
+  };
 
   useEffect(() => {
     const loadElectionDetails = async () => {
@@ -73,6 +89,12 @@ export default function ElectionBulletinPage() {
       loadElectionDetails();
     }
   }, [params.id]);
+
+  useEffect(() => {
+    if (activeSubTab === 'all-voters' && params.id) {
+      loadVoterCodes();
+    }
+  }, [activeSubTab, params.id]);
 
   if (isLoading) {
     return (
@@ -175,21 +197,99 @@ export default function ElectionBulletinPage() {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-black flex items-center">
               <List className="w-5 h-5 mr-2" />
-              All Voters List
+              Voter Verification Codes
             </h2>
-            <div className="text-sm text-gray-500">
-              Total Voters: {Number(election.voter_count || 0).toLocaleString()}
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={loadVoterCodes}
+                disabled={loadingCodes}
+                className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loadingCodes ? 'Refreshing...' : 'Refresh'}
+              </button>
+              <div className="text-sm text-gray-500">
+                Total Voters: {voterCodes.length}
+              </div>
             </div>
           </div>
-          
-          <div className="bg-gray-50 rounded-lg p-8 text-center">
-            <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-600 mb-2">Voter Codes List</h3>
-            <p className="text-gray-500">
-              This section will display all voter codes for this election.
-              <br />
-            </p>
+
+          {/* Search Bar */}
+          <div className="mb-4">
+            <input
+              type="text"
+              placeholder="Search by verification code, student number, or name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
           </div>
+
+          {loadingCodes ? (
+            <div className="flex justify-center items-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+          ) : voterCodes.length === 0 ? (
+            <div className="bg-gray-50 rounded-lg p-8 text-center">
+              <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-600 mb-2">No Voters Yet</h3>
+              <p className="text-gray-500">
+                No students have voted in this election yet.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Verification Code
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Student Number
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Name
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Course & Year
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Vote Date
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {voterCodes
+                    .filter(voter => 
+                      voter.verificationCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      voter.studentNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      `${voter.firstName} ${voter.lastName}`.toLowerCase().includes(searchTerm.toLowerCase())
+                    )
+                    .map((voter, index) => (
+                    <tr key={voter.voteToken} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 font-mono">
+                          {voter.verificationCode}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {voter.studentNumber}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {voter.firstName} {voter.lastName}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {voter.courseName} - {voter.yearLevel}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(voter.voteDate).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow p-6">

@@ -24,7 +24,8 @@ const {
     sendResultNotifications,
     getStudentElectionStatus,
     updateElectionCriteria,
-    getCompletedElectionResults
+    getCompletedElectionResults,
+    getVoterVerificationCodes
 } = require("../controllers/electionController");
 const {
     getBallotByElection
@@ -74,6 +75,7 @@ router.get("/:id/student-ballot", verifyToken, isStudent, getBallotForStudent);
 router.post("/:id/vote", verifyToken, isStudent, submitVote);
 router.get("/:id/vote-receipt", verifyToken, isStudent, getVoteReceipt);
 router.get("/:id/vote-token", verifyToken, isStudent, getVoteToken);
+router.get("/:id/voter-codes", verifyToken, getVoterVerificationCodes);
 
 router.get("/ballot/:id/student", verifyToken, getBallotForStudent);
 router.get("/ballot/:id/voting", verifyToken, getBallotForVoting);

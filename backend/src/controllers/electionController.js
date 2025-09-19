@@ -1667,3 +1667,116 @@ exports.getCompletedElectionResults = async (req, res) => {
     });
   }
 };
+
+// Function to generate unique 6-character code from receipt ID (same as frontend)
+function generateUniqueCode(receiptId) {
+  if (!receiptId) return 'N/A';
+  
+  // Create a hash from the receipt ID using a more robust hashing algorithm
+  let hash = 0;
+  for (let i = 0; i < receiptId.length; i++) {
+    const char = receiptId.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  
+  // Use absolute value and convert to base36 for alphanumeric characters
+  const absHash = Math.abs(hash);
+  const base36 = absHash.toString(36).toUpperCase();
+  
+  // Take first 6 characters and pad if necessary
+  let code = base36.substring(0, 6);
+  if (code.length < 6) {
+    // Pad with additional characters from the hash
+    const padded = (absHash * 31).toString(36).toUpperCase();
+    code = (code + padded).substring(0, 6);
+  }
+  
+  // Ensure we have exactly 6 alphanumeric characters
+  const alphanumeric = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  while (code.length < 6) {
+    const randomIndex = Math.abs(hash + code.length) % alphanumeric.length;
+    code += alphanumeric[randomIndex];
+  }
+  
+  return code.substring(0, 6);
+}
+
+exports.getVoterVerificationCodes = async (req, res) => {
+  try {
+    const { id: electionId } = req.params;
+    
+    if (!electionId || isNaN(parseInt(electionId))) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid election ID"
+      });
+    }
+
+    // Check if election exists
+    const electionCheck = await pool.query(
+      'SELECT id, title, status FROM elections WHERE id = $1',
+      [electionId]
+    );
+
+    if (electionCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Election not found"
+      });
+    }
+
+    // Get all voters who have voted in this election with their vote tokens
+    const votersQuery = `
+      SELECT DISTINCT ON (v.vote_token)
+        v.vote_token,
+        v.created_at as vote_date,
+        s.student_number,
+        s.first_name,
+        s.last_name,
+        s.course_name,
+        s.year_level
+      FROM votes v
+      JOIN students s ON v.student_id = s.id
+      WHERE v.election_id = $1
+      ORDER BY v.vote_token, v.created_at DESC
+    `;
+
+    const votersResult = await pool.query(votersQuery, [electionId]);
+
+    // Generate verification codes for each voter
+    const voterCodes = votersResult.rows.map(voter => ({
+      voteToken: voter.vote_token,
+      verificationCode: generateUniqueCode(voter.vote_token),
+      voteDate: voter.vote_date,
+      studentNumber: voter.student_number,
+      firstName: voter.first_name,
+      lastName: voter.last_name,
+      courseName: voter.course_name,
+      yearLevel: voter.year_level
+    }));
+
+    // Sort by vote date (most recent first)
+    voterCodes.sort((a, b) => new Date(b.voteDate) - new Date(a.voteDate));
+
+    res.json({
+      success: true,
+      data: {
+        election: {
+          id: electionCheck.rows[0].id,
+          title: electionCheck.rows[0].title,
+          status: electionCheck.rows[0].status
+        },
+        voterCodes,
+        totalVoters: voterCodes.length
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching voter verification codes:', error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch voter verification codes"
+    });
+  }
+};
