@@ -17,7 +17,8 @@ import {
   ChevronLeft, 
   ChevronRight,
   Play,
-  Pause
+  Pause,
+  RefreshCw
 } from "lucide-react";
 
 export default function Home() {
@@ -94,11 +95,18 @@ export default function Home() {
       await Promise.all(statuses.map(async (status) => {
         try {
           const response = await axios.get(`/api/elections/status/${status}`, {
-            timeout: 10000
+            timeout: 10000,
+            headers: {
+              'Content-Type': 'application/json'
+            }
           });
           
-          if (response.data) {
-            results[status] = response.data || [];
+          if (response.data && Array.isArray(response.data)) {
+            results[status] = response.data;
+            console.log(`Fetched ${response.data.length} ${status} elections:`, response.data);
+          } else {
+            console.log(`No ${status} elections found or invalid response format:`, response.data);
+            results[status] = [];
           }
         } catch (err) {
           console.error(`Error fetching ${status} elections:`, err);
@@ -106,6 +114,7 @@ export default function Home() {
         }
       }));
       
+      console.log('Final elections data:', results);
       setElections(results);
       return results;
     } catch (err) {
@@ -727,6 +736,7 @@ export default function Home() {
                 {['ongoing', 'upcoming', 'completed'].map((status) => {
                   const config = getStatusConfig(status);
                   const isActive = currentStatus === status;
+                  const statusElections = getElectionsByStatus(status);
                   return (
                     <button
                       key={status}
@@ -741,7 +751,10 @@ export default function Home() {
                       }`}
                     >
                       {config.icon}
-                      <span className="ml-2 font-medium">{config.label}</span>
+                      <span className="ml-2 font-medium text-black">{config.label}</span>
+                      <span className="ml-2 text-xs bg-black bg-opacity-20 text-black px-2 py-1 rounded-full">
+                        {statusElections.length}
+                      </span>
                     </button>
                   );
                 })}
@@ -757,8 +770,8 @@ export default function Home() {
                 return (
                   <div className="text-center py-12">
                     <div className="text-6xl mb-4">🗳️</div>
-                    <h3 className="text-2xl font-bold mb-2">No Elections Available</h3>
-                    <p className="text-lg opacity-80">
+                    <h3 className="text-2xl font-bold mb-2 text-black">No Elections Available</h3>
+                    <p className="text-lg opacity-80 text-black">
                       {currentStatus === 'ongoing' && 'No ongoing elections at the moment.'}
                       {currentStatus === 'upcoming' && 'No upcoming elections scheduled.'}
                       {currentStatus === 'completed' && 'No completed elections to display.'}
@@ -780,13 +793,23 @@ export default function Home() {
                       <span className="ml-2 font-semibold">{statusConfig.label}</span>
                     </div>
                     
-                    {/* Play/Pause Button */}
-                    <button
-                      onClick={() => setIsPlaying(!isPlaying)}
-                      className="p-2 rounded-full bg-white bg-opacity-20 hover:bg-opacity-30 transition-all"
-                    >
-                      {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-                    </button>
+                    {/* Controls */}
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => fetchElections()}
+                        className="p-2 rounded-full bg-white bg-opacity-20 hover:bg-opacity-30 transition-all"
+                        title="Refresh Elections"
+                      >
+                        <RefreshCw className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => setIsPlaying(!isPlaying)}
+                        className="p-2 rounded-full bg-white bg-opacity-20 hover:bg-opacity-30 transition-all"
+                        title={isPlaying ? "Pause Auto-rotation" : "Resume Auto-rotation"}
+                      >
+                        {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                      </button>
+                    </div>
                   </div>
 
                   {/* Election Details */}
@@ -794,10 +817,10 @@ export default function Home() {
                     {/* Left Side - Election Info */}
                     <div className="space-y-6">
                       <div>
-                        <h3 className="text-3xl font-bold mb-2 text-white">
+                        <h3 className="text-3xl font-bold mb-2 text-black">
                           {currentElection.title}
                         </h3>
-                        <p className="text-lg text-white text-opacity-90 mb-4">
+                        <p className="text-lg text-black text-opacity-90 mb-4">
                           {currentElection.description}
                         </p>
                       </div>
@@ -805,29 +828,29 @@ export default function Home() {
                       {/* Time Status */}
                       <div className="bg-white bg-opacity-20 rounded-lg p-4">
                         <div className="flex items-center justify-between">
-                          <span className="text-lg font-semibold text-white">Time Status</span>
-                          <span className="text-lg text-white">{timeRemaining}</span>
+                          <span className="text-lg font-semibold text-black">Time Status</span>
+                          <span className="text-lg text-black">{timeRemaining}</span>
                         </div>
                       </div>
 
                       {/* Election Stats */}
                       <div className="grid grid-cols-2 gap-4">
                         <div className="bg-white bg-opacity-20 rounded-lg p-4 text-center">
-                          <Users className="w-8 h-8 mx-auto mb-2 text-white" />
-                          <div className="text-2xl font-bold text-white">{currentElection.voter_count || 0}</div>
-                          <div className="text-sm text-white text-opacity-80">Eligible Voters</div>
+                          <Users className="w-8 h-8 mx-auto mb-2 text-black" />
+                          <div className="text-2xl font-bold text-black">{currentElection.voter_count || 0}</div>
+                          <div className="text-sm text-black text-opacity-80">Eligible Voters</div>
                         </div>
                         <div className="bg-white bg-opacity-20 rounded-lg p-4 text-center">
-                          <Vote className="w-8 h-8 mx-auto mb-2 text-white" />
-                          <div className="text-2xl font-bold text-white">{currentElection.vote_count || 0}</div>
-                          <div className="text-sm text-white text-opacity-80">Votes Cast</div>
+                          <Vote className="w-8 h-8 mx-auto mb-2 text-black" />
+                          <div className="text-2xl font-bold text-black">{currentElection.vote_count || 0}</div>
+                          <div className="text-sm text-black text-opacity-80">Votes Cast</div>
                         </div>
                       </div>
 
                       {/* Election Period */}
                       <div className="bg-white bg-opacity-20 rounded-lg p-4">
-                        <h4 className="text-lg font-semibold text-white mb-3">Election Period</h4>
-                        <div className="space-y-2 text-white text-opacity-90">
+                        <h4 className="text-lg font-semibold text-black mb-3">Election Period</h4>
+                        <div className="space-y-2 text-black text-opacity-90">
                           <div className="flex justify-between">
                             <span>Starts:</span>
                             <span>{new Date(currentElection.date_from).toLocaleDateString('en-US', { 
@@ -855,7 +878,7 @@ export default function Home() {
                     {/* Right Side - Candidate Images */}
                     {candidateImages.length > 0 && (
                       <div>
-                        <h4 className="text-xl font-semibold text-white mb-4 text-center">Candidates</h4>
+                        <h4 className="text-xl font-semibold text-black mb-4 text-center">Candidates</h4>
                         <div className="grid grid-cols-4 gap-3">
                           {candidateImages.map((candidate, index) => (
                             <div key={index} className="relative group">
@@ -888,10 +911,10 @@ export default function Home() {
                   <div className="flex items-center justify-between mt-8">
                     <button
                       onClick={prevStatus}
-                      className="flex items-center px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition-all"
+                      className="flex items-center px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition-all text-black"
                     >
                       <ChevronLeft className="w-5 h-5 mr-2" />
-                      Previous Status
+                      <span className="text-black">Previous Status</span>
                     </button>
 
                     <div className="flex items-center space-x-2">
@@ -914,19 +937,21 @@ export default function Home() {
 
                     <button
                       onClick={nextStatus}
-                      className="flex items-center px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition-all"
+                      className="flex items-center px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition-all text-black"
                     >
-                      Next Status
+                      <span className="text-black">Next Status</span>
                       <ChevronRight className="w-5 h-5 ml-2" />
                     </button>
                   </div>
 
                   {/* Election Counter */}
                   {currentElections.length > 1 && (
-                    <div className="text-center mt-4 text-white text-opacity-80">
+                    <div className="text-center mt-4 text-black text-opacity-80">
                       Election {currentElectionIndex + 1} of {currentElections.length} in {statusConfig.label}
                     </div>
                   )}
+                  
+                
                 </div>
               );
             })()}
