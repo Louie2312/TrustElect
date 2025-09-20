@@ -183,11 +183,9 @@ export default function Home() {
       const isAbsolute = /^https?:\/\//i.test(baseUrl);
       
       if (isAbsolute) {
-        // Extract the path from absolute URL
-        const urlObj = new URL(baseUrl);
-        const path = urlObj.pathname;
-        console.log('Formatting absolute URL:', url, '->', path);
-        return path; // Return relative path for same-origin requests
+        // For absolute URLs, return as-is for now
+        console.log('Using absolute URL:', url);
+        return url;
       }
 
       // For relative URLs, ensure they start with /
@@ -242,18 +240,31 @@ export default function Home() {
                 console.error("Error loading logo:", landingContent.logo.imageUrl);
                 console.error("Formatted URL:", formatImageUrl(landingContent.logo.imageUrl));
                 
-                // Try alternative URL format
-                const altUrl = landingContent.logo.imageUrl.replace('/uploads/images/', '/api/uploads/images/');
-                console.log('Trying alternative logo URL:', altUrl);
+                // Try API endpoint first, then direct uploads
+                const apiUrl = landingContent.logo.imageUrl.startsWith('/uploads/') 
+                  ? landingContent.logo.imageUrl.replace('/uploads/', '/api/uploads/')
+                  : landingContent.logo.imageUrl;
+                const directUrl = landingContent.logo.imageUrl.startsWith('/uploads/') 
+                  ? landingContent.logo.imageUrl 
+                  : `/uploads/images/${landingContent.logo.imageUrl.split('/').pop()}`;
+                
+                console.log('Trying API logo URL:', apiUrl);
                 
                 const img = e.currentTarget;
-                img.src = `${altUrl}?timestamp=${new Date().getTime()}`;
+                img.src = `${apiUrl}?timestamp=${new Date().getTime()}`;
                 img.onload = () => {
-                  console.log('Alternative logo URL worked:', altUrl);
+                  console.log('API logo URL worked:', apiUrl);
                 };
                 img.onerror = () => {
-                  console.log('Alternative logo URL also failed, hiding logo');
-                  img.style.display = 'none';
+                  console.log('API logo URL failed, trying direct URL:', directUrl);
+                  img.src = `${directUrl}?timestamp=${new Date().getTime()}`;
+                  img.onload = () => {
+                    console.log('Direct logo URL worked:', directUrl);
+                  };
+                  img.onerror = () => {
+                    console.log('All logo URLs failed, hiding logo');
+                    img.style.display = 'none';
+                  };
                 };
               }}
               onLoad={() => {
@@ -344,7 +355,12 @@ export default function Home() {
                 );
 
               } else if (heroPosterUrl) {
-                const posterWithTimestamp = `${heroPosterUrl}?timestamp=${new Date().getTime()}`;
+                // Try API endpoint first, then fallback to direct uploads
+                const apiUrl = heroPosterUrl.startsWith('/uploads/') 
+                  ? heroPosterUrl.replace('/uploads/', '/api/uploads/')
+                  : heroPosterUrl;
+                const posterWithTimestamp = `${apiUrl}?timestamp=${new Date().getTime()}`;
+                
                 return (
               <div className="w-full max-w-6xl aspect-video bg-black/20 rounded-lg overflow-hidden">
                 <Image
@@ -358,19 +374,24 @@ export default function Home() {
                     console.error("Error loading hero poster image:", posterWithTimestamp);
                     console.error("Original URL:", heroPosterUrl);
                     
-                    const altUrl = heroPosterUrl.replace('/uploads/images/', '/api/uploads/images/');                  
+                    // Try direct uploads path as fallback
+                    const directUrl = heroPosterUrl.startsWith('/uploads/') 
+                      ? heroPosterUrl 
+                      : `/uploads/images/${heroPosterUrl.split('/').pop()}`;
+                    const fallbackUrl = `${directUrl}?timestamp=${new Date().getTime()}`;
+                    
                     const container = e.currentTarget.closest('div');
                     if (container) {
                       const img = document.createElement('img');
-                      img.src = `${altUrl}?timestamp=${new Date().getTime()}`;
+                      img.src = fallbackUrl;
                       img.className = 'w-full h-full object-cover';
                       img.onload = () => {
-                        console.log('Alternative URL worked:', altUrl); 
+                        console.log('Fallback URL worked:', fallbackUrl); 
                         container.innerHTML = '';
                         container.appendChild(img);
                       };
                       img.onerror = () => {
-                        console.log('Alternative URL also failed, showing fallback');
+                        console.log('All URLs failed, showing fallback');
                         container.innerHTML = `
                           <div class="w-full h-full flex items-center justify-center bg-blue-700">
                             <span class="text-xl text-white/70">Demo Video</span>
@@ -450,10 +471,25 @@ export default function Home() {
                     unoptimized={true}
                     onError={(e) => {
                       console.error(`Error loading feature image ${index}:`, imageUrl);
-                      const container = e.currentTarget.closest('.mb-4');
-                      if (container) {
-                        container.style.display = 'none';
-                      }
+                      
+                      // Try API endpoint as fallback
+                      const apiUrl = feature.imageUrl.startsWith('/uploads/') 
+                        ? feature.imageUrl.replace('/uploads/', '/api/uploads/')
+                        : feature.imageUrl;
+                      const fallbackUrl = `${apiUrl}?timestamp=${new Date().getTime()}`;
+                      
+                      const img = e.currentTarget;
+                      img.src = fallbackUrl;
+                      img.onload = () => {
+                        console.log(`Feature ${index} fallback URL worked:`, fallbackUrl);
+                      };
+                      img.onerror = () => {
+                        console.log(`Feature ${index} all URLs failed, hiding image`);
+                        const container = e.currentTarget.closest('.mb-4');
+                        if (container) {
+                          container.style.display = 'none';
+                        }
+                      };
                     }}
                   />
                 </div>
