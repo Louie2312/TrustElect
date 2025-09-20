@@ -94,7 +94,8 @@ export default function Home() {
       
       await Promise.all(statuses.map(async (status) => {
         try {
-          const response = await axios.get(`/api/elections/status/${status}`, {
+          // Use public API endpoint that doesn't require authentication
+          const response = await axios.get(`/api/elections/public/status/${status}`, {
             timeout: 10000,
             headers: {
               'Content-Type': 'application/json'
@@ -110,7 +111,22 @@ export default function Home() {
           }
         } catch (err) {
           console.error(`Error fetching ${status} elections:`, err);
-          results[status] = [];
+          // Try fallback to authenticated endpoint if public fails
+          try {
+            const fallbackResponse = await axios.get(`/api/elections/status/${status}`, {
+              timeout: 10000,
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            });
+            if (fallbackResponse.data && Array.isArray(fallbackResponse.data)) {
+              results[status] = fallbackResponse.data;
+              console.log(`Fallback: Fetched ${fallbackResponse.data.length} ${status} elections`);
+            }
+          } catch (fallbackErr) {
+            console.error(`Fallback also failed for ${status} elections:`, fallbackErr);
+            results[status] = [];
+          }
         }
       }));
       
@@ -796,7 +812,10 @@ export default function Home() {
                     {/* Controls */}
                     <div className="flex items-center space-x-2">
                       <button
-                        onClick={() => fetchElections()}
+                        onClick={() => {
+                          console.log('Manual refresh triggered');
+                          fetchElections();
+                        }}
                         className="p-2 rounded-full bg-white bg-opacity-20 hover:bg-opacity-30 transition-all"
                         title="Refresh Elections"
                       >
@@ -951,6 +970,28 @@ export default function Home() {
                     </div>
                   )}
                   
+                  {/* Debug Info */}
+                  <div className="mt-4 p-3 bg-black bg-opacity-10 rounded-lg text-xs text-black">
+                    <div><strong>Debug Info:</strong></div>
+                    <div>Current Status: {currentStatus}</div>
+                    <div>Current Index: {currentElectionIndex}</div>
+                    <div>Total Elections: {Object.values(elections).flat().length}</div>
+                    <div>Ongoing: {elections.ongoing.length}, Upcoming: {elections.upcoming.length}, Completed: {elections.completed.length}</div>
+                    {currentElection && (
+                      <div>Current Election ID: {currentElection.id} - {currentElection.title}</div>
+                    )}
+                    <div className="mt-2">
+                      <button 
+                        onClick={() => {
+                          console.log('Current elections state:', elections);
+                          console.log('Current election:', currentElection);
+                        }}
+                        className="px-2 py-1 bg-blue-500 text-white rounded text-xs"
+                      >
+                        Log to Console
+                      </button>
+                    </div>
+                  </div> 
                 
                 </div>
               );

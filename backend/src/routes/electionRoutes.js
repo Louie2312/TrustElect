@@ -35,6 +35,9 @@ const { verifyToken, isSuperAdmin, isAdmin, isStudent, verifyStudentRecord } = r
 const electionStatusService = require('../services/electionStatusService');
 const router = express.Router();
 
+// Public routes for landing page (no authentication required)
+router.get("/public/status/:status", getElectionsByStatus);
+
 // Election creation and management
 router.post("/", verifyToken, createElection);
 router.post("/preview-voters", verifyToken, previewEligibleVoters);
