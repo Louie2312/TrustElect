@@ -77,8 +77,8 @@ export default function Home() {
 
   const checkApiConnection = async () => {
     try {
-      // Use the same API pattern as superadmin dashboard
-      const response = await fetch(`${API_BASE}/api/healthcheck`, {
+      // Use relative URL since Next.js rewrites handle the routing
+      const response = await fetch('/api/healthcheck', {
         method: 'HEAD',
         timeout: 5000
       });
@@ -104,8 +104,8 @@ export default function Home() {
       
       await Promise.all(statuses.map(async (status) => {
         try {
-          // Try public endpoint first
-          let response = await fetch(`${API_BASE}/api/elections/public/status/${status}`, {
+          // Try public endpoint first - use relative URL since Next.js rewrites handle routing
+          let response = await fetch(`/api/elections/public/status/${status}`, {
             method: 'GET',
             headers: {
               'Content-Type': 'application/json'
@@ -115,7 +115,7 @@ export default function Home() {
           // If public endpoint fails, try the authenticated endpoint as fallback
           if (!response.ok) {
             console.log(`Public endpoint failed for ${status}, trying authenticated endpoint...`);
-            response = await fetch(`${API_BASE}/api/elections/status/${status}`, {
+            response = await fetch(`/api/elections/status/${status}`, {
               method: 'GET',
               headers: {
                 'Content-Type': 'application/json'
@@ -190,8 +190,8 @@ export default function Home() {
     
     try {
       const timestamp = new Date().getTime();
-      // Use the same API pattern as superadmin dashboard
-      const response = await fetch(`${API_BASE}/api/content?t=${timestamp}`, {
+      // Use relative URL since Next.js rewrites handle routing
+      const response = await fetch(`/api/content?t=${timestamp}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
@@ -992,7 +992,7 @@ export default function Home() {
                       Election {currentElectionIndex + 1} of {currentElections.length} in {statusConfig.label}
                     </div>
                   )}
-                                
+
                 </div>
               );
             })()}
