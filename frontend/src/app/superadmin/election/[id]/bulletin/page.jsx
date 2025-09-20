@@ -52,6 +52,14 @@ export default function ElectionBulletinPage() {
   const [candidateVotes, setCandidateVotes] = useState([]);
   const [loadingCandidateVotes, setLoadingCandidateVotes] = useState(false);
   const [candidateSearchTerm, setCandidateSearchTerm] = useState('');
+  
+  // Pagination states for voters
+  const [currentVoterPage, setCurrentVoterPage] = useState(1);
+  const [votersPerPage] = useState(50);
+  
+  // Pagination states for candidates
+  const [currentCandidatePage, setCurrentCandidatePage] = useState(1);
+  const [candidatesPerPage] = useState(50);
 
   const loadVoterCodes = async () => {
     try {
@@ -101,11 +109,49 @@ export default function ElectionBulletinPage() {
 
   useEffect(() => {
     if (activeSubTab === 'all-voters' && params.id) {
+      setCurrentVoterPage(1); // Reset to first page when switching tabs
       loadVoterCodes();
     } else if (activeSubTab === 'per-candidate' && params.id) {
+      setCurrentCandidatePage(1); // Reset to first page when switching tabs
       loadCandidateVotes();
     }
   }, [activeSubTab, params.id]);
+
+  // Reset pagination when search terms change
+  useEffect(() => {
+    setCurrentVoterPage(1);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    setCurrentCandidatePage(1);
+  }, [candidateSearchTerm]);
+
+  // Pagination logic for voters
+  const filteredVoters = voterCodes.filter(voter => 
+    voter.verificationCode.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  const totalVoterPages = Math.ceil(filteredVoters.length / votersPerPage);
+  const startVoterIndex = (currentVoterPage - 1) * votersPerPage;
+  const endVoterIndex = startVoterIndex + votersPerPage;
+  const currentVoters = filteredVoters.slice(startVoterIndex, endVoterIndex);
+
+  // Pagination logic for candidates
+  const allCandidates = candidateVotes.flatMap(position => 
+    position.candidates.map(candidate => ({
+      ...candidate,
+      positionTitle: position.title,
+      positionId: position.id,
+      voters: candidate.voters.filter(voter => 
+        voter.verificationCode.toLowerCase().includes(candidateSearchTerm.toLowerCase()) ||
+        `${candidate.firstName} ${candidate.lastName}`.toLowerCase().includes(candidateSearchTerm.toLowerCase())
+      )
+    }))
+  );
+  
+  const totalCandidatePages = Math.ceil(allCandidates.length / candidatesPerPage);
+  const startCandidateIndex = (currentCandidatePage - 1) * candidatesPerPage;
+  const endCandidateIndex = startCandidateIndex + candidatesPerPage;
+  const currentCandidates = allCandidates.slice(startCandidateIndex, endCandidateIndex);
 
   if (isLoading) {
     return (
@@ -219,7 +265,7 @@ export default function ElectionBulletinPage() {
                 {loadingCodes ? 'Refreshing...' : 'Refresh'}
               </button>
               <div className="text-sm text-gray-500">
-                Total Voters: {voterCodes.length}
+                Total Voters: {filteredVoters.length} (Page {currentVoterPage} of {totalVoterPages})
               </div>
             </div>
           </div>
@@ -239,7 +285,7 @@ export default function ElectionBulletinPage() {
             <div className="flex justify-center items-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
             </div>
-          ) : voterCodes.length === 0 ? (
+          ) : filteredVoters.length === 0 ? (
             <div className="bg-gray-50 rounded-lg p-8 text-center">
               <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-600 mb-2">No Voters Yet</h3>
@@ -261,11 +307,7 @@ export default function ElectionBulletinPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {voterCodes
-                    .filter(voter => 
-                      voter.verificationCode.toLowerCase().includes(searchTerm.toLowerCase())
-                    )
-                    .map((voter, index) => (
+                  {currentVoters.map((voter, index) => (
                     <tr key={voter.voteToken} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 font-mono">
@@ -279,6 +321,34 @@ export default function ElectionBulletinPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Pagination for Voters */}
+          {filteredVoters.length > votersPerPage && (
+            <div className="flex items-center justify-between mt-6 px-4 py-3 bg-gray-50 border-t border-gray-200">
+              <div className="flex items-center text-sm text-gray-700">
+                Showing {startVoterIndex + 1} to {Math.min(endVoterIndex, filteredVoters.length)} of {filteredVoters.length} results
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setCurrentVoterPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentVoterPage === 1}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <span className="px-3 py-1 text-sm">
+                  Page {currentVoterPage} of {totalVoterPages}
+                </span>
+                <button
+                  onClick={() => setCurrentVoterPage(prev => Math.min(prev + 1, totalVoterPages))}
+                  disabled={currentVoterPage === totalVoterPages}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -298,7 +368,7 @@ export default function ElectionBulletinPage() {
                 {loadingCandidateVotes ? 'Refreshing...' : 'Refresh'}
               </button>
               <div className="text-sm text-gray-500">
-                {candidateVotes.length} Positions
+                {allCandidates.length} Candidates (Page {currentCandidatePage} of {totalCandidatePages})
               </div>
             </div>
           </div>
@@ -318,7 +388,7 @@ export default function ElectionBulletinPage() {
             <div className="flex justify-center items-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
             </div>
-          ) : candidateVotes.length === 0 ? (
+          ) : allCandidates.length === 0 ? (
             <div className="bg-gray-50 rounded-lg p-8 text-center">
               <User className="w-16 h-16 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-600 mb-2">No Positions Found</h3>
@@ -327,72 +397,79 @@ export default function ElectionBulletinPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-6">
-              {candidateVotes.map((position) => (
-                <div key={position.id} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      {position.title}
-                    </h3>
-                    <span className="text-sm text-gray-500">
-                      Max Choices: {position.maxChoices}
+            <div className="space-y-4">
+              {currentCandidates.map((candidate, index) => (
+                <div key={`${candidate.positionId}-${candidate.id}`} className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h4 className="font-medium text-gray-900">
+                        {candidate.firstName} {candidate.lastName}
+                      </h4>
+                      <p className="text-sm text-gray-500">
+                        Position: {candidate.positionTitle}
+                      </p>
+                      {candidate.partylistName && (
+                        <p className="text-sm text-gray-500">
+                          Party: {candidate.partylistName}
+                        </p>
+                      )}
+                    </div>
+                    <span className="px-2 py-1 bg-green-100 text-green-800 text-sm font-medium rounded">
+                      {candidate.voteCount} votes
                     </span>
                   </div>
 
-                  {position.candidates.length === 0 ? (
-                    <p className="text-gray-500 text-center py-4">No candidates for this position</p>
+                  {candidate.voters.length === 0 ? (
+                    <p className="text-gray-500 text-sm">No votes yet</p>
                   ) : (
-                    <div className="space-y-4">
-                      {position.candidates.map((candidate) => (
-                        <div key={candidate.id} className="border border-gray-100 rounded-lg p-4">
-                          <div className="flex items-center justify-between mb-3">
-                            <div>
-                              <h4 className="font-medium text-gray-900">
-                                {candidate.firstName} {candidate.lastName}
-                              </h4>
-                              {candidate.partylistName && (
-                                <p className="text-sm text-gray-500">
-                                  {candidate.partylistName}
-                                </p>
-                              )}
-                            </div>
-                            <span className="px-2 py-1 bg-green-100 text-green-800 text-sm font-medium rounded">
-                              {candidate.voteCount} votes
+                    <div>
+                      <h5 className="text-sm font-medium text-gray-700 mb-2">
+                        Voter Verification Codes ({candidate.voters.length})
+                      </h5>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                        {candidate.voters.map((voter, voterIndex) => (
+                          <div key={voterIndex} className="flex items-center justify-between bg-gray-50 rounded px-3 py-2">
+                            <span className="font-mono text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                              {voter.verificationCode}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {new Date(voter.voteDate).toLocaleDateString()}
                             </span>
                           </div>
-
-                          {candidate.voters.length === 0 ? (
-                            <p className="text-gray-500 text-sm">No votes yet</p>
-                          ) : (
-                            <div>
-                              <h5 className="text-sm font-medium text-gray-700 mb-2">
-                                Voter Verification Codes ({candidate.voters.length})
-                              </h5>
-                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                                {candidate.voters
-                                  .filter(voter => 
-                                    voter.verificationCode.toLowerCase().includes(candidateSearchTerm.toLowerCase()) ||
-                                    `${candidate.firstName} ${candidate.lastName}`.toLowerCase().includes(candidateSearchTerm.toLowerCase())
-                                  )
-                                  .map((voter, index) => (
-                                    <div key={index} className="flex items-center justify-between bg-gray-50 rounded px-3 py-2">
-                                      <span className="font-mono text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                        {voter.verificationCode}
-                                      </span>
-                                      <span className="text-xs text-gray-500">
-                                        {new Date(voter.voteDate).toLocaleDateString()}
-                                      </span>
-                                    </div>
-                                  ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Pagination for Candidates */}
+          {allCandidates.length > candidatesPerPage && (
+            <div className="flex items-center justify-between mt-6 px-4 py-3 bg-gray-50 border-t border-gray-200">
+              <div className="flex items-center text-sm text-gray-700">
+                Showing {startCandidateIndex + 1} to {Math.min(endCandidateIndex, allCandidates.length)} of {allCandidates.length} results
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setCurrentCandidatePage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentCandidatePage === 1}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <span className="px-3 py-1 text-sm">
+                  Page {currentCandidatePage} of {totalCandidatePages}
+                </span>
+                <button
+                  onClick={() => setCurrentCandidatePage(prev => Math.min(prev + 1, totalCandidatePages))}
+                  disabled={currentCandidatePage === totalCandidatePages}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           )}
         </div>
