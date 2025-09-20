@@ -11,33 +11,6 @@ require("dotenv").config();
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCK_TIME_MINUTES = 5;
 
-// Helper function to handle database connection errors
-const handleDatabaseError = (error, res, operation = 'database operation') => {
-  console.error(`Database error during ${operation}:`, error);
-  
-  if (error.code === '53300' || error.message.includes('remaining connection slots are reserved')) {
-    return res.status(503).json({
-      success: false,
-      message: 'Database connection limit reached. Please try again in a few moments.',
-      error: 'CONNECTION_LIMIT_REACHED'
-    });
-  }
-  
-  if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
-    return res.status(503).json({
-      success: false,
-      message: 'Database service temporarily unavailable. Please try again later.',
-      error: 'DATABASE_UNAVAILABLE'
-    });
-  }
-  
-  return res.status(500).json({
-    success: false,
-    message: 'Internal Server Error. Please try again later.',
-    error: 'INTERNAL_ERROR'
-  });
-};
-
 exports.checkEmailExists = async (req, res) => {
   
   try {
@@ -57,7 +30,8 @@ exports.checkEmailExists = async (req, res) => {
     return res.status(200).json({ success: true, message: "Email is valid" });
 
   } catch (error) {
-    return handleDatabaseError(error, res, 'checkEmailExists');
+    console.error("Error checking email:", error);
+    return res.status(500).json({ success: false, message: "Internal Server Error." });
   }
 };
 
@@ -105,7 +79,6 @@ exports.loginUser = async (req, res) => {
 
     if (!user) {
 
-      // Log failed login attempt
       await logAction(
         { id: 0, email: email, role: 'Unknown' },
         'LOGIN_FAILED',
@@ -117,7 +90,6 @@ exports.loginUser = async (req, res) => {
     }
 
     if (user.is_locked && user.locked_until > new Date()) {
-      // Log account locked login attempt
       await logAction(
         { id: user.id, email: user.email, role },
         'LOGIN_FAILED',
@@ -133,7 +105,6 @@ exports.loginUser = async (req, res) => {
 
     if (!user.is_active) {
 
-      // Log account inactive login attempt
       await logAction(
         { id: user.id, email: user.email, role },
         'LOGIN_FAILED',
@@ -150,7 +121,7 @@ exports.loginUser = async (req, res) => {
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
     if (!isPasswordValid) {
       await handleFailedLogin(user.id);
-      // Log invalid password login attempt
+      // Log failed login with wrong password
       await logAction(
         { id: user.id, email: user.email, role },
         'LOGIN_FAILED',
@@ -211,7 +182,8 @@ exports.loginUser = async (req, res) => {
 
     res.status(200).json(response);
   } catch (error) {
-    return handleDatabaseError(error, res, 'loginUser');
+    console.error("Login error:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error. Please try again." });
   }
 };
 
@@ -374,7 +346,11 @@ exports.requestOTP = async (req, res) => {
       message: `Verification code sent to ${maskedEmail}`
     });
   } catch (error) {
-    return handleDatabaseError(error, res, 'requestOTP');
+    console.error('Error in requestOTP:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to send verification code'
+    });
   }
 };
 
@@ -404,7 +380,11 @@ exports.verifyOTP = async (req, res) => {
       verified: true
     });
   } catch (error) {
-    return handleDatabaseError(error, res, 'verifyOTP');
+    console.error('Error in verifyOTP:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Verification failed'
+    });
   }
 };
 
