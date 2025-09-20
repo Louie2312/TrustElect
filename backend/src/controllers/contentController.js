@@ -86,17 +86,11 @@ const isValidColorFormat = (color) => {
  */
 const getAllContent = async (req, res) => {
   try {
-    console.log('Fetching all content...');
     const content = await contentModel.getAllContent();
-    console.log('All content retrieved:', content);
     res.status(200).json(content);
   } catch (error) {
     console.error('Error in getAllContent controller:', error);
-    console.error('Error details:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch content',
-      details: error.message
-    });
+    res.status(500).json({ error: 'Failed to fetch content' });
   }
 };
 
@@ -109,15 +103,11 @@ const getSectionContent = async (req, res) => {
   try {
     const { section } = req.params;
     
-    console.log(`Fetching content for section: ${section}`);
-    
     if (!section) {
       return res.status(400).json({ error: 'Section parameter is required' });
     }
     
     const content = await contentModel.getSectionContent(section);
-    
-    console.log(`Content retrieved for section ${section}:`, content);
     
     if (!content) {
       return res.status(404).json({ error: 'Section not found' });
@@ -126,12 +116,7 @@ const getSectionContent = async (req, res) => {
     res.status(200).json(content);
   } catch (error) {
     console.error(`Error in getSectionContent controller for section ${req.params.section}:`, error);
-    console.error('Error details:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch section content',
-      details: error.message,
-      section: req.params.section
-    });
+    res.status(500).json({ error: 'Failed to fetch section content' });
   }
 };
 
