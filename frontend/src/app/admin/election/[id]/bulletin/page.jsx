@@ -462,7 +462,7 @@ export default function ElectionBulletinPage() {
                 <button
                   onClick={() => setCurrentCandidatePage(prev => Math.max(prev - 1, 1))}
                   disabled={currentCandidatePage === 1}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-black"
                 >
                   Previous
                 </button>
@@ -472,7 +472,7 @@ export default function ElectionBulletinPage() {
                 <button
                   onClick={() => setCurrentCandidatePage(prev => Math.min(prev + 1, totalCandidatePages))}
                   disabled={currentCandidatePage === totalCandidatePages}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-black"
                 >
                   Next
                 </button>
