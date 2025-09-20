@@ -9,7 +9,6 @@ import axios from "axios";
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell, ReferenceLine } from 'recharts';
 import { generatePdfReport } from '@/utils/pdfGenerator';
 import toast from 'react-hot-toast';
-import LandingElectionCarousel from '../superadmin/content/components/LandingElectionCarousel';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
@@ -854,18 +853,6 @@ export default function AdminDashboard() {
             </p>
           </div>
         </section>
-
-        {/* Election Carousel Section */}
-        {landingContent.callToAction?.enabled && (
-          <LandingElectionCarousel
-            title={landingContent.callToAction?.title || "Current Elections"}
-            subtitle={landingContent.callToAction?.subtitle || "Stay updated with our latest elections"}
-            bgColor={landingContent.callToAction?.bgColor || "#1e3a8a"}
-            textColor={landingContent.callToAction?.textColor || "#ffffff"}
-            enabled={landingContent.callToAction?.enabled || false}
-            elections={allElections.ongoing.concat(allElections.upcoming).concat(allElections.completed)}
-          />
-        )}
       </div>
     );
   };
@@ -879,11 +866,6 @@ export default function AdminDashboard() {
         </div>
       </div>
     );
-  }
-
-  // Show landing page layout if landing design is selected
-  if (uiDesign && (uiDesign.type === 'landing' || uiDesign.use_landing_design)) {
-    return <LandingPageLayout />;
   }
 
 
