@@ -7,11 +7,33 @@ import LoginForm from "@/components/Auth/LoginForm";
 import { Button } from "@/components/ui/button";
 import stiLogo from "../assets/sti_logo.png";
 import axios from "axios";
+import { 
+  Clock, 
+  Calendar, 
+  CheckCircle, 
+  Users, 
+  Vote, 
+  BarChart3, 
+  ChevronLeft, 
+  ChevronRight,
+  Play,
+  Pause
+} from "lucide-react";
 
 export default function Home() {
   const [showLogin, setShowLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [apiConnected, setApiConnected] = useState(false);
+  
+  // Election carousel states
+  const [elections, setElections] = useState({
+    ongoing: [],
+    upcoming: [],
+    completed: []
+  });
+  const [currentStatus, setCurrentStatus] = useState('ongoing');
+  const [currentElectionIndex, setCurrentElectionIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(true);
   
   const [landingContent, setLandingContent] = useState({
     logo: {
@@ -63,6 +85,34 @@ export default function Home() {
       return false;
     }
   };
+
+  const fetchElections = useCallback(async () => {
+    try {
+      const statuses = ['ongoing', 'upcoming', 'completed'];
+      const results = { ongoing: [], upcoming: [], completed: [] };
+      
+      await Promise.all(statuses.map(async (status) => {
+        try {
+          const response = await axios.get(`/api/elections/status/${status}`, {
+            timeout: 10000
+          });
+          
+          if (response.data) {
+            results[status] = response.data || [];
+          }
+        } catch (err) {
+          console.error(`Error fetching ${status} elections:`, err);
+          results[status] = [];
+        }
+      }));
+      
+      setElections(results);
+      return results;
+    } catch (err) {
+      console.error('Error in fetchElections:', err);
+      return { ongoing: [], upcoming: [], completed: [] };
+    }
+  }, []);
 
   const cacheLandingContent = (content) => {
     try {
@@ -163,11 +213,148 @@ export default function Home() {
     }
   }, [landingContent]);
 
+  // Carousel navigation functions
+  const getElectionsByStatus = (status) => {
+    return elections[status] || [];
+  };
+
+  const nextStatus = () => {
+    const statuses = ['ongoing', 'upcoming', 'completed'];
+    const currentIndex = statuses.indexOf(currentStatus);
+    const nextIndex = (currentIndex + 1) % statuses.length;
+    setCurrentStatus(statuses[nextIndex]);
+    setCurrentElectionIndex(0);
+  };
+
+  const prevStatus = () => {
+    const statuses = ['ongoing', 'upcoming', 'completed'];
+    const currentIndex = statuses.indexOf(currentStatus);
+    const prevIndex = currentIndex === 0 ? statuses.length - 1 : currentIndex - 1;
+    setCurrentStatus(statuses[prevIndex]);
+    setCurrentElectionIndex(0);
+  };
+
+  const nextElection = () => {
+    const currentElections = getElectionsByStatus(currentStatus);
+    if (currentElections.length > 0) {
+      setCurrentElectionIndex((prev) => (prev + 1) % currentElections.length);
+    }
+  };
+
+  const prevElection = () => {
+    const currentElections = getElectionsByStatus(currentStatus);
+    if (currentElections.length > 0) {
+      setCurrentElectionIndex((prev) => 
+        prev === 0 ? currentElections.length - 1 : prev - 1
+      );
+    }
+  };
+
+  const getCurrentElection = () => {
+    const currentElections = getElectionsByStatus(currentStatus);
+    return currentElections[currentElectionIndex] || null;
+  };
+
+  const getStatusConfig = (status) => {
+    const configs = {
+      ongoing: {
+        label: 'Ongoing Elections',
+        icon: <Clock className="w-5 h-5" />,
+        bgColor: 'bg-blue-100',
+        textColor: 'text-blue-800',
+        borderColor: 'border-blue-300'
+      },
+      upcoming: {
+        label: 'Upcoming Elections',
+        icon: <Calendar className="w-5 h-5" />,
+        bgColor: 'bg-yellow-100',
+        textColor: 'text-yellow-800',
+        borderColor: 'border-yellow-300'
+      },
+      completed: {
+        label: 'Completed Elections',
+        icon: <CheckCircle className="w-5 h-5" />,
+        bgColor: 'bg-green-100',
+        textColor: 'text-green-800',
+        borderColor: 'border-green-300'
+      }
+    };
+    return configs[status] || configs.ongoing;
+  };
+
+  const getTimeRemaining = (election) => {
+    if (!election) return '';
+    
+    const now = new Date();
+    const startDate = new Date(election.date_from);
+    const endDate = new Date(election.date_to);
+    
+    if (election.status === 'upcoming') {
+      const diff = startDate - now;
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      return `Starts in ${days}d ${hours}h`;
+    } else if (election.status === 'ongoing') {
+      const diff = endDate - now;
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      return `Ends in ${days}d ${hours}h`;
+    } else {
+      return 'Election Ended';
+    }
+  };
+
+  const getCandidateImages = (election) => {
+    if (!election?.positions) return [];
+    
+    const images = [];
+    election.positions.forEach(position => {
+      if (position.candidates) {
+        position.candidates.forEach(candidate => {
+          if (candidate.image_url) {
+            images.push({
+              url: candidate.image_url,
+              name: candidate.name,
+              position: position.name
+            });
+          }
+        });
+      }
+    });
+    
+    return images.slice(0, 8); // Limit to 8 images
+  };
+
   // KEEP ONLY THIS useEffect - the one with empty dependency array
   useEffect(() => {
     checkApiConnection();
     fetchContent();
-  }, [fetchContent]); // Added fetchContent dependency
+    fetchElections();
+  }, [fetchContent, fetchElections]); // Added fetchElections dependency
+
+  // Auto-rotation effects
+  useEffect(() => {
+    if (!isPlaying) return;
+
+    const interval = setInterval(() => {
+      nextStatus();
+    }, 10000); // Change status every 10 seconds
+
+    return () => clearInterval(interval);
+  }, [isPlaying, currentStatus]);
+
+  useEffect(() => {
+    if (!isPlaying) return;
+
+    const currentElections = getElectionsByStatus(currentStatus);
+    if (currentElections.length <= 1) return;
+
+    const interval = setInterval(() => {
+      nextElection();
+    }, 5000); // Change election every 5 seconds within status
+
+    return () => clearInterval(interval);
+  }, [isPlaying, currentStatus, currentElectionIndex]);
 
 
   const formatImageUrl = (url) => {
@@ -510,28 +697,239 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Call to Action Section */}
+      {/* Election Carousel Section */}
       {landingContent.callToAction.enabled && (
         <section 
-          className="text-white py-16 px-6"
+          className="text-white py-16 px-6 relative overflow-hidden"
           style={{
             backgroundColor: landingContent.callToAction?.bgColor || '#1e3a8a',
             color: landingContent.callToAction?.textColor || '#ffffff'
           }}
         >
-          <div className="container mx-auto max-w-4xl text-center">
-            <h2 
-              className="text-3xl font-bold mb-4"
-              style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
-            >
-              {landingContent.callToAction.title}
-            </h2>
-            <p 
-              className="text-xl mb-8"
-              style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
-            >
-              {landingContent.callToAction.subtitle}
-            </p>
+          <div className="container mx-auto max-w-7xl">
+            {/* Header */}
+            <div className="text-center mb-8">
+              <h2 
+                className="text-4xl font-bold mb-4"
+                style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
+              >
+                {landingContent.callToAction.title}
+              </h2>
+              <p 
+                className="text-xl mb-6"
+                style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
+              >
+                {landingContent.callToAction.subtitle}
+              </p>
+              
+              {/* Status Tabs */}
+              <div className="flex justify-center space-x-4 mb-6">
+                {['ongoing', 'upcoming', 'completed'].map((status) => {
+                  const config = getStatusConfig(status);
+                  const isActive = currentStatus === status;
+                  return (
+                    <button
+                      key={status}
+                      onClick={() => {
+                        setCurrentStatus(status);
+                        setCurrentElectionIndex(0);
+                      }}
+                      className={`flex items-center px-4 py-2 rounded-full border-2 transition-all ${
+                        isActive 
+                          ? `${config.bgColor} ${config.textColor} ${config.borderColor} border-opacity-100` 
+                          : 'bg-white bg-opacity-20 text-white border-white border-opacity-30 hover:bg-opacity-30'
+                      }`}
+                    >
+                      {config.icon}
+                      <span className="ml-2 font-medium">{config.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Election Display */}
+            {(() => {
+              const currentElection = getCurrentElection();
+              const currentElections = getElectionsByStatus(currentStatus);
+              
+              if (!currentElection || currentElections.length === 0) {
+                return (
+                  <div className="text-center py-12">
+                    <div className="text-6xl mb-4">🗳️</div>
+                    <h3 className="text-2xl font-bold mb-2">No Elections Available</h3>
+                    <p className="text-lg opacity-80">
+                      {currentStatus === 'ongoing' && 'No ongoing elections at the moment.'}
+                      {currentStatus === 'upcoming' && 'No upcoming elections scheduled.'}
+                      {currentStatus === 'completed' && 'No completed elections to display.'}
+                    </p>
+                  </div>
+                );
+              }
+
+              const statusConfig = getStatusConfig(currentStatus);
+              const candidateImages = getCandidateImages(currentElection);
+              const timeRemaining = getTimeRemaining(currentElection);
+
+              return (
+                <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-2xl p-8 relative">
+                  {/* Status Badge */}
+                  <div className="flex items-center justify-between mb-6">
+                    <div className={`flex items-center px-4 py-2 rounded-full ${statusConfig.bgColor} ${statusConfig.textColor} border ${statusConfig.borderColor}`}>
+                      {statusConfig.icon}
+                      <span className="ml-2 font-semibold">{statusConfig.label}</span>
+                    </div>
+                    
+                    {/* Play/Pause Button */}
+                    <button
+                      onClick={() => setIsPlaying(!isPlaying)}
+                      className="p-2 rounded-full bg-white bg-opacity-20 hover:bg-opacity-30 transition-all"
+                    >
+                      {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                    </button>
+                  </div>
+
+                  {/* Election Details */}
+                  <div className="grid lg:grid-cols-2 gap-8">
+                    {/* Left Side - Election Info */}
+                    <div className="space-y-6">
+                      <div>
+                        <h3 className="text-3xl font-bold mb-2 text-white">
+                          {currentElection.title}
+                        </h3>
+                        <p className="text-lg text-white text-opacity-90 mb-4">
+                          {currentElection.description}
+                        </p>
+                      </div>
+
+                      {/* Time Status */}
+                      <div className="bg-white bg-opacity-20 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-lg font-semibold text-white">Time Status</span>
+                          <span className="text-lg text-white">{timeRemaining}</span>
+                        </div>
+                      </div>
+
+                      {/* Election Stats */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-white bg-opacity-20 rounded-lg p-4 text-center">
+                          <Users className="w-8 h-8 mx-auto mb-2 text-white" />
+                          <div className="text-2xl font-bold text-white">{currentElection.voter_count || 0}</div>
+                          <div className="text-sm text-white text-opacity-80">Eligible Voters</div>
+                        </div>
+                        <div className="bg-white bg-opacity-20 rounded-lg p-4 text-center">
+                          <Vote className="w-8 h-8 mx-auto mb-2 text-white" />
+                          <div className="text-2xl font-bold text-white">{currentElection.vote_count || 0}</div>
+                          <div className="text-sm text-white text-opacity-80">Votes Cast</div>
+                        </div>
+                      </div>
+
+                      {/* Election Period */}
+                      <div className="bg-white bg-opacity-20 rounded-lg p-4">
+                        <h4 className="text-lg font-semibold text-white mb-3">Election Period</h4>
+                        <div className="space-y-2 text-white text-opacity-90">
+                          <div className="flex justify-between">
+                            <span>Starts:</span>
+                            <span>{new Date(currentElection.date_from).toLocaleDateString('en-US', { 
+                              year: 'numeric', 
+                              month: 'short', 
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Ends:</span>
+                            <span>{new Date(currentElection.date_to).toLocaleDateString('en-US', { 
+                              year: 'numeric', 
+                              month: 'short', 
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Side - Candidate Images */}
+                    {candidateImages.length > 0 && (
+                      <div>
+                        <h4 className="text-xl font-semibold text-white mb-4 text-center">Candidates</h4>
+                        <div className="grid grid-cols-4 gap-3">
+                          {candidateImages.map((candidate, index) => (
+                            <div key={index} className="relative group">
+                              <div className="aspect-square rounded-lg overflow-hidden bg-white bg-opacity-20">
+                                <Image
+                                  src={formatImageUrl(candidate.url) || '/placeholder-candidate.jpg'}
+                                  alt={candidate.name}
+                                  width={100}
+                                  height={100}
+                                  className="w-full h-full object-cover"
+                                  unoptimized={true}
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
+                              </div>
+                              {/* Hover tooltip */}
+                              <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-75 text-white text-xs p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="font-semibold">{candidate.name}</div>
+                                <div className="text-opacity-80">{candidate.position}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Navigation Controls */}
+                  <div className="flex items-center justify-between mt-8">
+                    <button
+                      onClick={prevStatus}
+                      className="flex items-center px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition-all"
+                    >
+                      <ChevronLeft className="w-5 h-5 mr-2" />
+                      Previous Status
+                    </button>
+
+                    <div className="flex items-center space-x-2">
+                      {/* Status Dots */}
+                      {['ongoing', 'upcoming', 'completed'].map((status, index) => (
+                        <button
+                          key={status}
+                          onClick={() => {
+                            setCurrentStatus(status);
+                            setCurrentElectionIndex(0);
+                          }}
+                          className={`w-3 h-3 rounded-full transition-all ${
+                            currentStatus === status 
+                              ? 'bg-white' 
+                              : 'bg-white bg-opacity-30 hover:bg-opacity-50'
+                          }`}
+                        />
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={nextStatus}
+                      className="flex items-center px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition-all"
+                    >
+                      Next Status
+                      <ChevronRight className="w-5 h-5 ml-2" />
+                    </button>
+                  </div>
+
+                  {/* Election Counter */}
+                  {currentElections.length > 1 && (
+                    <div className="text-center mt-4 text-white text-opacity-80">
+                      Election {currentElectionIndex + 1} of {currentElections.length} in {statusConfig.label}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </section>
       )}
