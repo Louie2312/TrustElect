@@ -2,10 +2,10 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import Cookies from 'js-cookie';
-import { HeroSection, FeaturesSection, CTASection, ThemesSection, CandidatesSection, LogoSection } from './components';
-import * as utils from './utils';
-import { updateAllBackgrounds, updateCTASettings } from './utils/themeUtils';
-import usePermissions from "../../../hooks/usePermissions";
+import { HeroSection, FeaturesSection, CTASection, ThemesSection, CandidatesSection, LogoSection } from './content/components';
+import * as utils from './content/utils';
+import { updateAllBackgrounds, updateCTASettings } from './content/utils/themeUtils';
+import usePermissions from "../../hooks/usePermissions";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
