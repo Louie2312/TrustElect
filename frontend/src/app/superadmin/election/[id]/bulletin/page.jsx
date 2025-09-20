@@ -274,10 +274,10 @@ export default function ElectionBulletinPage() {
           <div className="mb-4">
             <input
               type="text"
-              placeholder="Search by verification code..."
+              placeholder="Search"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black placeholder-gray-500"
             />
           </div>
 
@@ -380,7 +380,7 @@ export default function ElectionBulletinPage() {
               placeholder="Search by candidate name or verification code..."
               value={candidateSearchTerm}
               onChange={(e) => setCandidateSearchTerm(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black placeholder-gray-500"
             />
           </div>
 
