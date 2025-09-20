@@ -294,33 +294,21 @@ export default function ElectionBulletinPage() {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Verification Code
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Vote Date
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {currentVoters.map((voter, index) => (
-                    <tr key={voter.voteToken} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 font-mono">
-                          {voter.verificationCode}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(voter.voteDate).toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {currentVoters.map((voter, index) => (
+                <div key={voter.voteToken} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <div className="flex flex-col space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 font-mono">
+                        {voter.verificationCode}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {new Date(voter.voteDate).toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
@@ -426,15 +414,17 @@ export default function ElectionBulletinPage() {
                       <h5 className="text-sm font-medium text-gray-700 mb-2">
                         Voter Verification Codes ({candidate.voters.length})
                       </h5>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                         {candidate.voters.map((voter, voterIndex) => (
-                          <div key={voterIndex} className="flex items-center justify-between bg-gray-50 rounded px-3 py-2">
-                            <span className="font-mono text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                              {voter.verificationCode}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              {new Date(voter.voteDate).toLocaleDateString()}
-                            </span>
+                          <div key={voterIndex} className="bg-gray-100 rounded-lg p-3 border border-gray-200">
+                            <div className="flex flex-col space-y-1">
+                              <span className="font-mono text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded text-center">
+                                {voter.verificationCode}
+                              </span>
+                              <span className="text-xs text-gray-500 text-center">
+                                {new Date(voter.voteDate).toLocaleDateString()}
+                              </span>
+                            </div>
                           </div>
                         ))}
                       </div>
