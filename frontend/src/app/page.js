@@ -7,6 +7,8 @@ import LoginForm from "@/components/Auth/LoginForm";
 import { Button } from "@/components/ui/button";
 import stiLogo from "../assets/sti_logo.png";
 import axios from "axios";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 import { 
   Clock, 
   Calendar, 
@@ -75,11 +77,19 @@ export default function Home() {
 
   const checkApiConnection = async () => {
     try {
-      // Fix: Use relative path - Next.js rewrites will handle the routing
-      await axios.head('/api/healthcheck', { timeout: 5000 });
-      console.log('API connection successful');
-      setApiConnected(true);
-      return true;
+      // Use the same API pattern as superadmin dashboard
+      const response = await fetch(`${API_BASE}/api/healthcheck`, {
+        method: 'HEAD',
+        timeout: 5000
+      });
+      
+      if (response.ok) {
+        console.log('API connection successful');
+        setApiConnected(true);
+        return true;
+      } else {
+        throw new Error(`API connection failed: ${response.status}`);
+      }
     } catch (error) {
       console.error('API connection failed:', error);
       setApiConnected(false);
@@ -94,39 +104,43 @@ export default function Home() {
       
       await Promise.all(statuses.map(async (status) => {
         try {
-          // Use public API endpoint that doesn't require authentication
-          const response = await axios.get(`/api/elections/public/status/${status}`, {
-            timeout: 10000,
+          // Try public endpoint first
+          let response = await fetch(`${API_BASE}/api/elections/public/status/${status}`, {
+            method: 'GET',
             headers: {
               'Content-Type': 'application/json'
             }
           });
           
-          if (response.data && Array.isArray(response.data)) {
-            results[status] = response.data;
-            console.log(`Fetched ${response.data.length} ${status} elections:`, response.data);
-          } else {
-            console.log(`No ${status} elections found or invalid response format:`, response.data);
-            results[status] = [];
-          }
-        } catch (err) {
-          console.error(`Error fetching ${status} elections:`, err);
-          // Try fallback to authenticated endpoint if public fails
-          try {
-            const fallbackResponse = await axios.get(`/api/elections/status/${status}`, {
-              timeout: 10000,
+          // If public endpoint fails, try the authenticated endpoint as fallback
+          if (!response.ok) {
+            console.log(`Public endpoint failed for ${status}, trying authenticated endpoint...`);
+            response = await fetch(`${API_BASE}/api/elections/status/${status}`, {
+              method: 'GET',
               headers: {
                 'Content-Type': 'application/json'
               }
             });
-            if (fallbackResponse.data && Array.isArray(fallbackResponse.data)) {
-              results[status] = fallbackResponse.data;
-              console.log(`Fallback: Fetched ${fallbackResponse.data.length} ${status} elections`);
-            }
-          } catch (fallbackErr) {
-            console.error(`Fallback also failed for ${status} elections:`, fallbackErr);
+          }
+          
+          if (!response.ok) {
+            console.error(`Error fetching ${status} elections: ${response.status} ${response.statusText}`);
+            results[status] = [];
+            return;
+          }
+          
+          const data = await response.json();
+          
+          if (data && Array.isArray(data)) {
+            results[status] = data;
+            console.log(`Fetched ${data.length} ${status} elections:`, data);
+          } else {
+            console.log(`No ${status} elections found or invalid response format:`, data);
             results[status] = [];
           }
+        } catch (err) {
+          console.error(`Error fetching ${status} elections:`, err);
+          results[status] = [];
         }
       }));
       
@@ -176,19 +190,28 @@ export default function Home() {
     
     try {
       const timestamp = new Date().getTime();
-      // Fix: Use relative path - Next.js rewrites will handle the routing
-      const response = await axios.get(`/api/content?t=${timestamp}`, {
-        timeout: 5000
+      // Use the same API pattern as superadmin dashboard
+      const response = await fetch(`${API_BASE}/api/content?t=${timestamp}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
       
-      if (response.data) {
-        const newHero = response.data.hero || landingContent.hero;
-        const newFeatures = response.data.features || landingContent.features;
-        const newCTA = response.data.callToAction || landingContent.callToAction;
+      if (!response.ok) {
+        throw new Error(`Content fetch failed: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data) {
+        const newHero = data.hero || landingContent.hero;
+        const newFeatures = data.features || landingContent.features;
+        const newCTA = data.callToAction || landingContent.callToAction;
 
         const newContent = {
           logo: {
-            imageUrl: response.data.logo?.imageUrl || landingContent.logo.imageUrl
+            imageUrl: data.logo?.imageUrl || landingContent.logo.imageUrl
           },
           hero: {
             title: newHero.title || landingContent.hero.title,
@@ -969,30 +992,7 @@ export default function Home() {
                       Election {currentElectionIndex + 1} of {currentElections.length} in {statusConfig.label}
                     </div>
                   )}
-                  
-                  {/* Debug Info */}
-                  <div className="mt-4 p-3 bg-black bg-opacity-10 rounded-lg text-xs text-black">
-                    <div><strong>Debug Info:</strong></div>
-                    <div>Current Status: {currentStatus}</div>
-                    <div>Current Index: {currentElectionIndex}</div>
-                    <div>Total Elections: {Object.values(elections).flat().length}</div>
-                    <div>Ongoing: {elections.ongoing.length}, Upcoming: {elections.upcoming.length}, Completed: {elections.completed.length}</div>
-                    {currentElection && (
-                      <div>Current Election ID: {currentElection.id} - {currentElection.title}</div>
-                    )}
-                    <div className="mt-2">
-                      <button 
-                        onClick={() => {
-                          console.log('Current elections state:', elections);
-                          console.log('Current election:', currentElection);
-                        }}
-                        className="px-2 py-1 bg-blue-500 text-white rounded text-xs"
-                      >
-                        Log to Console
-                      </button>
-                    </div>
-                  </div> 
-                
+                                
                 </div>
               );
             })()}
