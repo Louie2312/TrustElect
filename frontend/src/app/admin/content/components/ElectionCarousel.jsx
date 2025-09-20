@@ -286,50 +286,103 @@ const ElectionCarousel = ({
                       </div>
                     </div>
 
-                    {/* Election Display */}
+                    {/* Election Display - Enhanced Preview */}
                     {currentElection ? (
-                      <div className="bg-white bg-opacity-10 rounded-lg p-6 mb-4">
+                      <div className="bg-white bg-opacity-10 rounded-2xl p-6 mb-4 backdrop-blur-sm border border-white border-opacity-20">
+                        {/* Header Section */}
                         <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center">
-                            {statusConfig[currentStatus].icon}
-                            <span className={`ml-2 px-3 py-1 rounded-full text-sm font-medium ${statusConfig[currentStatus].color}`}>
-                              {statusConfig[currentStatus].title}
-                            </span>
+                          <div className="flex items-center gap-3">
+                            <div className={`flex items-center px-3 py-1 rounded-full text-sm font-medium ${statusConfig[currentStatus].color}`}>
+                              {statusConfig[currentStatus].icon}
+                              <span className="ml-2">{statusConfig[currentStatus].title}</span>
+                            </div>
+                            <div className="px-2 py-1 bg-white bg-opacity-20 rounded-full text-xs text-white">
+                              {currentElection.election_type || 'General Election'}
+                            </div>
+                            <div className={`h-2 w-2 rounded-full ${currentElection.ballot_exists ? 'bg-green-400' : 'bg-red-400'}`}></div>
                           </div>
                           <div className="text-sm text-white text-opacity-80">
                             {currentElectionIndex + 1} of {currentElections.length}
                           </div>
                         </div>
 
-                        <h4 className="text-xl font-bold mb-2 text-white">
+                        {/* Title and Description */}
+                        <h4 className="text-lg font-bold text-white mb-2 line-clamp-2">
                           {currentElection.title}
                         </h4>
                         <p className="text-sm text-white text-opacity-90 mb-4 line-clamp-2">
                           {currentElection.description}
                         </p>
 
+                        {/* Stats Grid */}
                         <div className="grid grid-cols-2 gap-4 mb-4">
-                          <div className="flex items-center text-sm">
-                            <Users className="w-4 h-4 mr-2 text-white" />
-                            <span className="text-white">
-                              {Number(currentElection.voter_count || 0).toLocaleString()} Voters
-                            </span>
+                          <div className="bg-white bg-opacity-10 rounded-lg p-3">
+                            <div className="flex items-center mb-1">
+                              <Users className="w-4 h-4 text-white mr-1" />
+                              <span className="text-white text-opacity-80 text-xs">Voters</span>
+                            </div>
+                            <div className="text-lg font-bold text-white">
+                              {Number(currentElection.voter_count || 0).toLocaleString()}
+                            </div>
                           </div>
-                          <div className="flex items-center text-sm">
-                            <Vote className="w-4 h-4 mr-2 text-white" />
-                            <span className="text-white">
-                              {Number(currentElection.vote_count || 0).toLocaleString()} Votes
-                            </span>
+                          <div className="bg-white bg-opacity-10 rounded-lg p-3">
+                            <div className="flex items-center mb-1">
+                              <Vote className="w-4 h-4 text-white mr-1" />
+                              <span className="text-white text-opacity-80 text-xs">Votes</span>
+                            </div>
+                            <div className="text-lg font-bold text-white">
+                              {Number(currentElection.vote_count || 0).toLocaleString()}
+                            </div>
                           </div>
                         </div>
 
-                        <div className="text-xs text-white text-opacity-80">
+                        {/* Participation Rate */}
+                        {currentElection.voter_count > 0 && (
+                          <div className="bg-white bg-opacity-10 rounded-lg p-3 mb-4">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-white text-opacity-80 text-sm">Participation</span>
+                              <span className="text-white font-bold">
+                                {Math.round((currentElection.vote_count / currentElection.voter_count) * 100)}%
+                              </span>
+                            </div>
+                            <div className="w-full bg-white bg-opacity-20 rounded-full h-2">
+                              <div 
+                                className="bg-white h-2 rounded-full transition-all duration-500"
+                                style={{ 
+                                  width: `${Math.min((currentElection.vote_count / currentElection.voter_count) * 100, 100)}%` 
+                                }}
+                              ></div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Dates */}
+                        <div className="text-xs text-white text-opacity-80 space-y-1">
                           <div>Starts: {formatDate(currentElection.date_from, currentElection.start_time)}</div>
                           <div>Ends: {formatDate(currentElection.date_to, currentElection.end_time)}</div>
                         </div>
+
+                        {/* Call to Action */}
+                        <div className="mt-4 pt-4 border-t border-white border-opacity-20">
+                          <div className="flex justify-between items-center">
+                            <span className="text-white text-opacity-90 text-sm">
+                              {currentElection.status === 'ongoing' && 'Election is currently active'}
+                              {currentElection.status === 'upcoming' && 'Election will start soon'}
+                              {currentElection.status === 'completed' && 'Election completed'}
+                            </span>
+                            <button className="px-4 py-1 bg-white text-blue-600 text-sm font-semibold rounded hover:bg-gray-100 transition-colors">
+                              {currentElection.status === 'ongoing' ? 'Vote Now' : 
+                               currentElection.status === 'upcoming' ? 'View Details' : 
+                               'View Results'}
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     ) : (
-                      <div className="bg-white bg-opacity-10 rounded-lg p-6 text-center">
+                      <div className="bg-white bg-opacity-10 rounded-2xl p-6 text-center">
+                        <div className="text-4xl mb-4 text-white text-opacity-50">
+                          <Vote className="w-12 h-12 mx-auto" />
+                        </div>
                         <p className="text-white text-opacity-80">
                           No {currentStatus} elections available
                         </p>
