@@ -7,6 +7,7 @@ import LoginForm from "@/components/Auth/LoginForm";
 import { Button } from "@/components/ui/button";
 import stiLogo from "../assets/sti_logo.png";
 import axios from "axios";
+import { Clock, Calendar, CheckCircle, Users, Vote } from "lucide-react";
 
 export default function Home() {
   const [showLogin, setShowLogin] = useState(false);
@@ -46,9 +47,12 @@ export default function Home() {
       title: "Ready to Vote?",
       subtitle: "Start your experience with TrustElect",
       buttonText: "Contact Us",
-      enabled: true
+      enabled: true,
+      showElections: true,
+      electionStatusFilter: "ongoing_completed" // "ongoing_completed" or "all"
     }
   });
+  const [elections, setElections] = useState([]);
 
   const checkApiConnection = async () => {
     try {
@@ -96,6 +100,31 @@ export default function Home() {
     }
   };
 
+  const fetchElections = useCallback(async () => {
+    try {
+      const statuses = ['ongoing', 'upcoming', 'completed'];
+      const allElections = [];
+
+      for (const status of statuses) {
+        try {
+          const response = await axios.get(`/api/elections/status/${status}`, {
+            timeout: 5000
+          });
+          
+          if (response.data) {
+            allElections.push(...response.data);
+          }
+        } catch (error) {
+          console.error(`Error fetching ${status} elections:`, error);
+        }
+      }
+
+      setElections(allElections);
+    } catch (error) {
+      console.error('Error fetching elections:', error);
+    }
+  }, []);
+
   const fetchContent = useCallback(async () => {
     setIsLoading(true);
     
@@ -142,6 +171,8 @@ export default function Home() {
             buttonText: newCTA.buttonText || landingContent.callToAction.buttonText,
             buttonUrl: newCTA.buttonUrl || landingContent.callToAction.buttonUrl,
             enabled: typeof newCTA.enabled !== 'undefined' ? newCTA.enabled : true,
+            showElections: typeof newCTA.showElections !== 'undefined' ? newCTA.showElections : true,
+            electionStatusFilter: newCTA.electionStatusFilter || "ongoing_completed",
             bgColor: newCTA.bgColor || landingContent.callToAction.bgColor || "#1e3a8a",
             textColor: newCTA.textColor || landingContent.callToAction.textColor || "#ffffff"
           }
@@ -167,7 +198,8 @@ export default function Home() {
   useEffect(() => {
     checkApiConnection();
     fetchContent();
-  }, [fetchContent]); // Added fetchContent dependency
+    fetchElections();
+  }, [fetchContent, fetchElections]); // Added fetchContent and fetchElections dependency
 
 
   const formatImageUrl = (url) => {
@@ -215,6 +247,66 @@ export default function Home() {
     }
     
     return formattedUrl;
+  };
+
+  const parseElectionDate = (dateStr, timeStr) => {
+    try {
+      if (!dateStr || !timeStr) return 'Date not set';
+      
+      const [year, month, day] = dateStr.split('T')[0].split('-').map(Number);
+      const timeParts = timeStr.includes(':') ? timeStr.split(':') : [timeStr, '00'];
+      const hours = parseInt(timeParts[0], 10);
+      const minutes = parseInt(timeParts[1], 10);
+      
+      const dateObj = new Date(year, month - 1, day + 1, hours, minutes);
+      
+      if (isNaN(dateObj.getTime())) return 'Invalid date';
+      
+      return new Intl.DateTimeFormat('en-PH', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true 
+      }).format(dateObj);
+    } catch (error) {
+      console.error('Date parsing error:', error);
+      return 'Invalid date';
+    }
+  };
+
+  const getFilteredElections = () => {
+    if (!elections || elections.length === 0) return [];
+    
+    if (landingContent.callToAction.electionStatusFilter === "ongoing_completed") {
+      return elections.filter(election => 
+        election.status === 'ongoing' || election.status === 'completed'
+      );
+    }
+    
+    return elections;
+  };
+
+  const getStatusConfig = (status) => {
+    const configs = {
+      ongoing: {
+        icon: <Clock className="w-4 h-4" />,
+        color: 'bg-blue-100 text-blue-800',
+        label: 'Ongoing'
+      },
+      upcoming: {
+        icon: <Calendar className="w-4 h-4" />,
+        color: 'bg-yellow-100 text-yellow-800',
+        label: 'Upcoming'
+      },
+      completed: {
+        icon: <CheckCircle className="w-4 h-4" />,
+        color: 'bg-green-100 text-green-800',
+        label: 'Completed'
+      }
+    };
+    return configs[status] || configs.ongoing;
   };
 
   const renderImage = (url, alt, width, height, className, onErrorAction) => {
@@ -493,19 +585,145 @@ export default function Home() {
             color: landingContent.callToAction?.textColor || '#ffffff'
           }}
         >
-          <div className="container mx-auto max-w-4xl text-center">
-            <h2 
-              className="text-3xl font-bold mb-4"
-              style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
-            >
-              {landingContent.callToAction.title}
-            </h2>
-            <p 
-              className="text-xl mb-8"
-              style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
-            >
-              {landingContent.callToAction.subtitle}
-            </p>
+          <div className="container mx-auto max-w-6xl">
+            <div className="text-center mb-12">
+              <h2 
+                className="text-3xl font-bold mb-4"
+                style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
+              >
+                {landingContent.callToAction.title}
+              </h2>
+              <p 
+                className="text-xl mb-8"
+                style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
+              >
+                {landingContent.callToAction.subtitle}
+              </p>
+            </div>
+
+            {/* Elections Display */}
+            {landingContent.callToAction.showElections && (
+              <div className="mb-8">
+                <h3 
+                  className="text-2xl font-semibold mb-6 text-center"
+                  style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
+                >
+                  Current Elections
+                </h3>
+                
+                {(() => {
+                  const filteredElections = getFilteredElections();
+                  
+                  if (filteredElections.length === 0) {
+                    return (
+                      <div className="text-center py-8">
+                        <div className="text-6xl mb-4 text-white text-opacity-50">
+                          <Vote className="w-16 h-16 mx-auto" />
+                        </div>
+                        <p className="text-xl text-white text-opacity-80">
+                          No elections available at the moment
+                        </p>
+                        <p className="text-white text-opacity-60 mt-2">
+                          Check back later for new election updates
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {filteredElections.slice(0, 6).map((election, index) => {
+                        const statusConfig = getStatusConfig(election.status);
+                        
+                        return (
+                          <div 
+                            key={election.id || index}
+                            className="bg-white bg-opacity-10 rounded-lg p-6 backdrop-blur-sm hover:bg-opacity-20 transition-all duration-300"
+                          >
+                            {/* Status Badge */}
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="flex items-center">
+                                {statusConfig.icon}
+                                <span className={`ml-2 px-3 py-1 rounded-full text-sm font-medium ${statusConfig.color}`}>
+                                  {statusConfig.label}
+                                </span>
+                              </div>
+                              <div className={`h-2.5 w-2.5 rounded-full ${election.ballot_exists ? 'bg-green-400' : 'bg-red-400'}`}></div>
+                            </div>
+
+                            {/* Election Info */}
+                            <h4 className="text-xl font-bold mb-3 text-white line-clamp-2">
+                              {election.title}
+                            </h4>
+                            <p className="text-white text-opacity-90 mb-4 line-clamp-3 text-sm">
+                              {election.description}
+                            </p>
+
+                            {/* Stats */}
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                              <div className="flex items-center text-sm">
+                                <Users className="w-4 h-4 mr-2 text-white" />
+                                <div>
+                                  <div className="text-white text-opacity-80 text-xs">Voters</div>
+                                  <div className="font-bold text-white">
+                                    {Number(election.voter_count || 0).toLocaleString()}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center text-sm">
+                                <Vote className="w-4 h-4 mr-2 text-white" />
+                                <div>
+                                  <div className="text-white text-opacity-80 text-xs">Votes</div>
+                                  <div className="font-bold text-white">
+                                    {Number(election.vote_count || 0).toLocaleString()}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Dates */}
+                            <div className="text-xs text-white text-opacity-80 space-y-1">
+                              <div>Starts: {parseElectionDate(election.date_from, election.start_time)}</div>
+                              <div>Ends: {parseElectionDate(election.date_to, election.end_time)}</div>
+                            </div>
+
+                            {/* Participation Rate */}
+                            {election.status === 'completed' && election.voter_count > 0 && (
+                              <div className="mt-4 pt-4 border-t border-white border-opacity-20">
+                                <div className="flex justify-between items-center text-sm">
+                                  <span className="text-white text-opacity-80">Participation Rate</span>
+                                  <span className="font-bold text-white">
+                                    {Math.round((election.vote_count / election.voter_count) * 100)}%
+                                  </span>
+                                </div>
+                                <div className="w-full bg-white bg-opacity-20 rounded-full h-2 mt-2">
+                                  <div 
+                                    className="bg-white h-2 rounded-full transition-all duration-500"
+                                    style={{ 
+                                      width: `${Math.min((election.vote_count / election.voter_count) * 100, 100)}%` 
+                                    }}
+                                  ></div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* Call to Action Button */}
+            <div className="text-center">
+              <Button
+                onClick={() => setShowLogin(true)}
+                className="px-8 py-3 bg-white text-blue-600 font-semibold rounded-lg shadow-lg hover:bg-gray-100 transition-colors"
+              >
+                {landingContent.callToAction.buttonText || "Get Started"}
+              </Button>
+            </div>
           </div>
         </section>
       )}
