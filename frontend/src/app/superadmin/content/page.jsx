@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import Cookies from 'js-cookie';
 import { HeroSection, FeaturesSection, CTASection, ThemesSection, CandidatesSection, LogoSection } from './components';
-import ElectionCarousel from './components/ElectionCarousel';
 import * as utils from './utils';
 import { updateAllBackgrounds, updateCTASettings } from './utils/themeUtils';
 import StudentsSection from './components/StudentsSection';
@@ -64,7 +63,6 @@ export default function ContentManagement() {
       ctaText: "#ffffff"
     }
   });
-  const [elections, setElections] = useState([]);
   
   const [initialContent, setInitialContent] = useState(null);
   const [contentTab, setContentTab] = useState('hero'); 
@@ -113,7 +111,6 @@ export default function ContentManagement() {
   useEffect(() => {
     fetchContent();
     fetchThemes();
-    fetchElections();
   }, []);
 
   useEffect(() => {
@@ -221,34 +218,6 @@ export default function ContentManagement() {
 
   const fetchThemes = async () => {
     await utils.fetchThemes(API_URL, setThemes, setActiveTheme);
-  };
-
-  const fetchElections = async () => {
-    try {
-      const token = Cookies.get('token');
-      const statuses = ['ongoing', 'upcoming', 'completed'];
-      const allElections = [];
-
-      for (const status of statuses) {
-        try {
-          const response = await axios.get(`${API_URL}/elections/status/${status}`, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
-          
-          if (response.data) {
-            allElections.push(...response.data);
-          }
-        } catch (error) {
-          console.error(`Error fetching ${status} elections:`, error);
-        }
-      }
-
-      setElections(allElections);
-    } catch (error) {
-      console.error('Error fetching elections:', error);
-    }
   };
 
   const saveThemes = (updatedThemes) => {
@@ -1190,12 +1159,14 @@ export default function ContentManagement() {
             
             {/* Call to Action Section */}
             {activeTab === 'cta' && (
-              <ElectionCarousel 
+              <CTASection 
                 landingContent={landingContent}
                 updateCTA={updateCTA}
                 saveSectionContent={saveSectionContent}
                 showPreview={showPreview}
-                elections={elections}
+                handleFileUpload={handleFileUpload}
+                removeMedia={removeImage}
+                formatImageUrl={formatImageUrl}
               />
             )}
             

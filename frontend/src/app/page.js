@@ -7,7 +7,6 @@ import LoginForm from "@/components/Auth/LoginForm";
 import { Button } from "@/components/ui/button";
 import stiLogo from "../assets/sti_logo.png";
 import axios from "axios";
-import { Clock, Calendar, CheckCircle, Users, Vote, MapPin, User, List, BarChart3, Shield, Award, ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function Home() {
   const [showLogin, setShowLogin] = useState(false);
@@ -47,15 +46,9 @@ export default function Home() {
       title: "Ready to Vote?",
       subtitle: "Start your experience with TrustElect",
       buttonText: "Contact Us",
-      enabled: true,
-      showElections: true,
-      electionStatusFilter: "ongoing_completed" // "ongoing_completed" or "all"
+      enabled: true
     }
   });
-  const [elections, setElections] = useState([]);
-  const [currentElectionIndex, setCurrentElectionIndex] = useState(0);
-  const [currentStatus, setCurrentStatus] = useState('ongoing');
-  const [isPlaying, setIsPlaying] = useState(true);
 
   const checkApiConnection = async () => {
     try {
@@ -103,73 +96,6 @@ export default function Home() {
     }
   };
 
-  const fetchElections = useCallback(async () => {
-    try {
-      const statuses = ['ongoing', 'upcoming', 'completed'];
-      const allElections = [];
-
-      for (const status of statuses) {
-        try {
-          const response = await axios.get(`/api/elections/status/${status}`, {
-            timeout: 5000
-          });
-          
-          if (response.data) {
-            // Fetch detailed election data including candidates
-            const detailedElections = await Promise.all(
-              response.data.map(async (election) => {
-                try {
-                  const detailResponse = await axios.get(`/api/elections/${election.id}`, {
-                    timeout: 5000
-                  });
-                  
-                  if (detailResponse.data && detailResponse.data.election) {
-                    const electionData = detailResponse.data.election;
-                    
-                    // Extract positions and candidates
-                    let positions = [];
-                    if (electionData.ballot?.positions) {
-                      positions = electionData.ballot.positions.map(pos => ({
-                        id: pos.position_id || pos.id,
-                        name: pos.position_name || pos.name,
-                        max_choices: pos.max_choices,
-                        candidates: pos.candidates || []
-                      }));
-                    } else if (electionData.positions) {
-                      positions = electionData.positions;
-                    }
-                    
-                    return {
-                      ...election,
-                      positions: positions,
-                      election_type: electionData.election_type || election.election_type
-                    };
-                  }
-                } catch (detailError) {
-                  console.error(`Error fetching details for election ${election.id}:`, detailError);
-                }
-                
-                return {
-                  ...election,
-                  positions: [],
-                  election_type: election.election_type
-                };
-              })
-            );
-            
-            allElections.push(...detailedElections);
-          }
-        } catch (error) {
-          console.error(`Error fetching ${status} elections:`, error);
-        }
-      }
-
-      setElections(allElections);
-    } catch (error) {
-      console.error('Error fetching elections:', error);
-    }
-  }, []);
-
   const fetchContent = useCallback(async () => {
     setIsLoading(true);
     
@@ -216,8 +142,6 @@ export default function Home() {
             buttonText: newCTA.buttonText || landingContent.callToAction.buttonText,
             buttonUrl: newCTA.buttonUrl || landingContent.callToAction.buttonUrl,
             enabled: typeof newCTA.enabled !== 'undefined' ? newCTA.enabled : true,
-            showElections: typeof newCTA.showElections !== 'undefined' ? newCTA.showElections : true,
-            electionStatusFilter: newCTA.electionStatusFilter || "ongoing_completed",
             bgColor: newCTA.bgColor || landingContent.callToAction.bgColor || "#1e3a8a",
             textColor: newCTA.textColor || landingContent.callToAction.textColor || "#ffffff"
           }
@@ -243,33 +167,7 @@ export default function Home() {
   useEffect(() => {
     checkApiConnection();
     fetchContent();
-    fetchElections();
-  }, [fetchContent, fetchElections]); // Added fetchContent and fetchElections dependency
-
-  // Auto-rotate through statuses every 10 seconds
-  useEffect(() => {
-    if (!isPlaying) return;
-
-    const interval = setInterval(() => {
-      nextStatus();
-    }, 10000);
-
-    return () => clearInterval(interval);
-  }, [isPlaying, currentStatus]);
-
-  // Auto-rotate through elections within current status every 5 seconds
-  useEffect(() => {
-    if (!isPlaying) return;
-
-    const currentElections = getElectionsByStatus(currentStatus);
-    if (currentElections.length <= 1) return;
-
-    const interval = setInterval(() => {
-      nextElection();
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, [isPlaying, currentStatus, currentElectionIndex]);
+  }, [fetchContent]); // Added fetchContent dependency
 
 
   const formatImageUrl = (url) => {
@@ -305,187 +203,20 @@ export default function Home() {
     }
   };
 
-  const getImageUrl = (url) => {
-    if (!url) return null;
-    
+  const renderImage = (url, alt, width, height, className, onErrorAction) => {
     const formattedUrl = formatImageUrl(url);
     if (!formattedUrl) return null;
-    
-    // For uploads, use the /api/uploads path to ensure proper serving
-    if (formattedUrl.startsWith('/uploads/')) {
-      return formattedUrl.replace('/uploads/', '/api/uploads/');
-    }
-    
-    return formattedUrl;
-  };
-
-  const parseElectionDate = (dateStr, timeStr) => {
-    try {
-      if (!dateStr || !timeStr) return 'Date not set';
-      
-      const [year, month, day] = dateStr.split('T')[0].split('-').map(Number);
-      const timeParts = timeStr.includes(':') ? timeStr.split(':') : [timeStr, '00'];
-      const hours = parseInt(timeParts[0], 10);
-      const minutes = parseInt(timeParts[1], 10);
-      
-      const dateObj = new Date(year, month - 1, day + 1, hours, minutes);
-      
-      if (isNaN(dateObj.getTime())) return 'Invalid date';
-      
-      return new Intl.DateTimeFormat('en-PH', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true 
-      }).format(dateObj);
-    } catch (error) {
-      console.error('Date parsing error:', error);
-      return 'Invalid date';
-    }
-  };
-
-  const getFilteredElections = () => {
-    if (!elections || elections.length === 0) return [];
-    
-    if (landingContent.callToAction.electionStatusFilter === "ongoing_completed") {
-      return elections.filter(election => 
-        election.status === 'ongoing' || election.status === 'completed'
-      );
-    }
-    
-    return elections;
-  };
-
-  const getStatusConfig = (status) => {
-    const configs = {
-      ongoing: {
-        icon: <Clock className="w-5 h-5" />,
-        color: 'bg-blue-100 text-blue-800',
-        label: 'Ongoing Elections',
-        bgColor: 'bg-blue-50 border-blue-200',
-        textColor: 'text-blue-800'
-      },
-      upcoming: {
-        icon: <Calendar className="w-5 h-5" />,
-        color: 'bg-yellow-100 text-yellow-800',
-        label: 'Upcoming Elections',
-        bgColor: 'bg-yellow-50 border-yellow-200',
-        textColor: 'text-yellow-800'
-      },
-      completed: {
-        icon: <CheckCircle className="w-5 h-5" />,
-        color: 'bg-green-100 text-green-800',
-        label: 'Completed Elections',
-        bgColor: 'bg-green-50 border-green-200',
-        textColor: 'text-green-800'
-      }
-    };
-    return configs[status] || configs.ongoing;
-  };
-
-  // Get elections by status
-  const getElectionsByStatus = (status) => {
-    return elections.filter(election => election.status === status);
-  };
-
-  // Carousel navigation functions
-  const nextStatus = () => {
-    const statuses = ['ongoing', 'upcoming', 'completed'];
-    const currentIndex = statuses.indexOf(currentStatus);
-    const nextIndex = (currentIndex + 1) % statuses.length;
-    setCurrentStatus(statuses[nextIndex]);
-    setCurrentElectionIndex(0);
-  };
-
-  const prevStatus = () => {
-    const statuses = ['ongoing', 'upcoming', 'completed'];
-    const currentIndex = statuses.indexOf(currentStatus);
-    const prevIndex = currentIndex === 0 ? statuses.length - 1 : currentIndex - 1;
-    setCurrentStatus(statuses[prevIndex]);
-    setCurrentElectionIndex(0);
-  };
-
-  const nextElection = () => {
-    const currentElections = getElectionsByStatus(currentStatus);
-    if (currentElections.length > 0) {
-      setCurrentElectionIndex((prev) => (prev + 1) % currentElections.length);
-    }
-  };
-
-  const prevElection = () => {
-    const currentElections = getElectionsByStatus(currentStatus);
-    if (currentElections.length > 0) {
-      setCurrentElectionIndex((prev) => prev === 0 ? currentElections.length - 1 : prev - 1);
-    }
-  };
-
-  const formatElectionType = (type) => {
-    if (!type) return 'General Election';
-    return type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-  };
-
-  const getTimeRemaining = (dateFrom, timeFrom, dateTo, timeTo) => {
-    try {
-      const now = new Date();
-      const startDate = new Date(dateFrom + 'T' + (timeFrom || '00:00'));
-      const endDate = new Date(dateTo + 'T' + (timeTo || '23:59'));
-      
-      if (now < startDate) {
-        const diff = startDate - now;
-        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        return `Starts in ${days}d ${hours}h`;
-      } else if (now >= startDate && now <= endDate) {
-        const diff = endDate - now;
-        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        return `Ends in ${days}d ${hours}h`;
-      } else {
-        return 'Election Ended';
-      }
-    } catch (error) {
-      return 'Time not available';
-    }
-  };
-
-  const getCandidateImages = (election) => {
-    if (!election.positions || election.positions.length === 0) return [];
-    
-    const allCandidates = [];
-    election.positions.forEach(position => {
-      if (position.candidates && position.candidates.length > 0) {
-        position.candidates.forEach(candidate => {
-          if (candidate.image_url) {
-            allCandidates.push({
-              id: candidate.id,
-              name: candidate.name || `${candidate.first_name} ${candidate.last_name}`,
-              image_url: candidate.image_url,
-              position: position.name
-            });
-          }
-        });
-      }
-    });
-    
-    return allCandidates.slice(0, 8); // Limit to 8 candidate images
-  };
-
-  const renderImage = (url, alt, width, height, className, onErrorAction) => {
-    const imageUrl = getImageUrl(url);
-    if (!imageUrl) return null;
 
     return (
       <Image
-        src={imageUrl}
+        src={formattedUrl}
         alt={alt || "Image"}
         width={width || 400}
         height={height || 300}
         className={className || ""}
         unoptimized={true}
         onError={(e) => {
-          console.error("Error loading image:", imageUrl);
+          console.error("Error loading image:", formattedUrl);
           if (onErrorAction) onErrorAction(e);
         }}
       />
@@ -499,7 +230,7 @@ export default function Home() {
         <h1 className="text-2xl font-bold flex items-center">
           {landingContent.logo?.imageUrl ? (
             <Image 
-              src={getImageUrl(landingContent.logo.imageUrl)}
+              src={`${formatImageUrl(landingContent.logo.imageUrl)}?timestamp=${new Date().getTime()}`}
               alt="Site Logo" 
               width={60}
               height={20} 
@@ -509,14 +240,14 @@ export default function Home() {
               style={{ maxHeight: 'calc(51px - (0px * 2))' }}
               onError={(e) => {
                 console.error("Error loading logo:", landingContent.logo.imageUrl);
-                console.error("Formatted URL:", getImageUrl(landingContent.logo.imageUrl));
+                console.error("Formatted URL:", formatImageUrl(landingContent.logo.imageUrl));
                 
                 // Try alternative URL format
-                const altUrl = getImageUrl(landingContent.logo.imageUrl);
+                const altUrl = landingContent.logo.imageUrl.replace('/uploads/images/', '/api/uploads/images/');
                 console.log('Trying alternative logo URL:', altUrl);
                 
                 const img = e.currentTarget;
-                img.src = altUrl;
+                img.src = `${altUrl}?timestamp=${new Date().getTime()}`;
                 img.onload = () => {
                   console.log('Alternative logo URL worked:', altUrl);
                 };
@@ -582,10 +313,10 @@ export default function Home() {
             {(() => {
               
               const heroVideoUrl = landingContent.hero && landingContent.hero.videoUrl ? 
-                getImageUrl(landingContent.hero.videoUrl) : null;
+                formatImageUrl(landingContent.hero.videoUrl) : null;
               
               const heroPosterUrl = landingContent.hero && landingContent.hero.posterImage ? 
-                getImageUrl(landingContent.hero.posterImage) : null;
+                formatImageUrl(landingContent.hero.posterImage) : null;
 
           if (heroVideoUrl) {
                 return (
@@ -613,25 +344,28 @@ export default function Home() {
                 );
 
               } else if (heroPosterUrl) {
+                const posterWithTimestamp = `${heroPosterUrl}?timestamp=${new Date().getTime()}`;
                 return (
               <div className="w-full max-w-6xl aspect-video bg-black/20 rounded-lg overflow-hidden">
                 <Image
-                  src={heroPosterUrl}
+                  src={posterWithTimestamp}
                   alt="TrustElect Platform"
                   width={1920}
                   height={1080}
                   className="w-full h-full object-cover"
                   unoptimized={true}
                   onError={(e) => {
-                    console.error("Error loading hero poster image:", heroPosterUrl);
+                    console.error("Error loading hero poster image:", posterWithTimestamp);
+                    console.error("Original URL:", heroPosterUrl);
                     
+                    const altUrl = heroPosterUrl.replace('/uploads/images/', '/api/uploads/images/');                  
                     const container = e.currentTarget.closest('div');
                     if (container) {
                       const img = document.createElement('img');
-                      img.src = heroPosterUrl;
+                      img.src = `${altUrl}?timestamp=${new Date().getTime()}`;
                       img.className = 'w-full h-full object-cover';
                       img.onload = () => {
-                        console.log('Alternative URL worked:', heroPosterUrl); 
+                        console.log('Alternative URL worked:', altUrl); 
                         container.innerHTML = '';
                         container.appendChild(img);
                       };
@@ -646,7 +380,7 @@ export default function Home() {
                     }
                   }}
                   onLoad={() => {
-                    console.log('Hero poster loaded successfully:', heroPosterUrl);
+                    console.log('Hero poster loaded successfully:', posterWithTimestamp);
                   }}
                 />
               </div>
@@ -679,7 +413,8 @@ export default function Home() {
 
               let imageUrl = null;
               if (feature.imageUrl) {
-                imageUrl = getImageUrl(feature.imageUrl);
+                const formattedUrl = formatImageUrl(feature.imageUrl);
+                imageUrl = formattedUrl ? `${formattedUrl}?timestamp=${new Date().getTime()}` : null;
 
                 const isHeroImage = landingContent.hero && 
                   (feature.imageUrl === landingContent.hero.videoUrl || 
@@ -748,367 +483,19 @@ export default function Home() {
             color: landingContent.callToAction?.textColor || '#ffffff'
           }}
         >
-          <div className="container mx-auto max-w-6xl">
-            <div className="text-center mb-12">
-              <h2 
-                className="text-3xl font-bold mb-4"
-                style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
-              >
-                {landingContent.callToAction.title}
-              </h2>
-              <p 
-                className="text-xl mb-8"
-                style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
-              >
-                {landingContent.callToAction.subtitle}
-              </p>
-            </div>
-
-            {/* Elections Carousel Display */}
-            {landingContent.callToAction.showElections && (
-              <div className="mb-8">
-                <h3 
-                  className="text-2xl font-semibold mb-6 text-center"
-                  style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
-                >
-                  Current Elections
-                </h3>
-                
-                {(() => {
-                  const currentElections = getElectionsByStatus(currentStatus);
-                  const statusConfig = getStatusConfig(currentStatus);
-                  
-                  if (elections.length === 0) {
-                    return (
-                      <div className="text-center py-12">
-                        <div className="text-6xl mb-6 text-white text-opacity-50">
-                          <Vote className="w-20 h-20 mx-auto" />
-                        </div>
-                        <h4 className="text-2xl font-bold text-white mb-4">No Elections Available</h4>
-                        <p className="text-lg text-white text-opacity-80 mb-2">
-                          There are currently no elections available at the moment
-                        </p>
-                        <p className="text-white text-opacity-60">
-                          Check back later for new election updates
-                        </p>
-                      </div>
-                    );
-                  }
-
-                  if (currentElections.length === 0) {
-                    return (
-                      <div className="text-center py-12">
-                        <div className="text-6xl mb-6 text-white text-opacity-50">
-                          {statusConfig.icon}
-                        </div>
-                        <h4 className="text-2xl font-bold text-white mb-4">No {statusConfig.label}</h4>
-                        <p className="text-lg text-white text-opacity-80">
-                          There are currently no {currentStatus} elections available
-                        </p>
-                      </div>
-                    );
-                  }
-
-                  const currentElection = currentElections[currentElectionIndex];
-                  const participationRate = currentElection.voter_count > 0 
-                    ? Math.round((currentElection.vote_count / currentElection.voter_count) * 100) 
-                    : 0;
-                  const candidateImages = getCandidateImages(currentElection);
-
-                  return (
-                    <div className="relative">
-                      {/* Status Tabs */}
-                      <div className="flex justify-center mb-8">
-                        <div className="flex bg-white bg-opacity-20 rounded-lg p-1">
-                          {['ongoing', 'upcoming', 'completed'].map((status) => {
-                            const config = getStatusConfig(status);
-                            const statusElections = getElectionsByStatus(status);
-                            
-                            return (
-                              <button
-                                key={status}
-                                onClick={() => {
-                                  setCurrentStatus(status);
-                                  setCurrentElectionIndex(0);
-                                }}
-                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                                  currentStatus === status
-                                    ? 'bg-white text-gray-900'
-                                    : 'text-white hover:bg-white hover:bg-opacity-10'
-                                }`}
-                              >
-                                <div className="flex items-center">
-                                  {config.icon}
-                                  <span className="ml-2">{config.label}</span>
-                                  {statusElections.length > 0 && (
-                                    <span className="ml-2 px-2 py-1 bg-white bg-opacity-20 rounded-full text-xs">
-                                      {statusElections.length}
-                                    </span>
-                                  )}
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Election Display */}
-                      <div className="bg-white bg-opacity-10 rounded-2xl p-8 backdrop-blur-sm border border-white border-opacity-20">
-                        {/* Header Section */}
-                        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between mb-6">
-                          <div className="flex-1">
-                            {/* Status and Type */}
-                            <div className="flex items-center gap-3 mb-4">
-                              <div className={`flex items-center px-4 py-2 rounded-full text-sm font-medium ${statusConfig.color}`}>
-                                {statusConfig.icon}
-                                <span className="ml-2">{statusConfig.label}</span>
-                              </div>
-                              <div className="px-3 py-1 bg-white bg-opacity-20 rounded-full text-sm text-white">
-                                {formatElectionType(currentElection.election_type)}
-                              </div>
-                              <div className={`h-3 w-3 rounded-full ${currentElection.ballot_exists ? 'bg-green-400' : 'bg-red-400'}`}></div>
-                            </div>
-
-                            {/* Title and Description */}
-                            <h4 className="text-2xl lg:text-3xl font-bold text-white mb-3 line-clamp-2">
-                              {currentElection.title}
-                            </h4>
-                            <p className="text-white text-opacity-90 text-lg line-clamp-3 mb-4">
-                              {currentElection.description}
-                            </p>
-                          </div>
-
-                          {/* Time Remaining */}
-                          <div className="lg:ml-6 mb-4 lg:mb-0">
-                            <div className="text-right">
-                              <div className="text-sm text-white text-opacity-80 mb-1">Time Status</div>
-                              <div className="text-lg font-bold text-white">
-                                {getTimeRemaining(currentElection.date_from, currentElection.start_time, currentElection.date_to, currentElection.end_time)}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Candidate Images */}
-                        {candidateImages.length > 0 && (
-                          <div className="mb-6">
-                            <h5 className="text-lg font-semibold text-white mb-4 text-center">Candidates</h5>
-                            <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">
-                              {candidateImages.map((candidate, index) => (
-                                <div key={candidate.id || index} className="text-center">
-                                  <div className="w-16 h-16 mx-auto mb-2 rounded-full overflow-hidden border-2 border-white border-opacity-30">
-                                    <Image
-                                      src={getImageUrl(candidate.image_url)}
-                                      alt={candidate.name}
-                                      width={64}
-                                      height={64}
-                                      className="w-full h-full object-cover"
-                                      unoptimized={true}
-                                      onError={(e) => {
-                                        e.currentTarget.style.display = 'none';
-                                      }}
-                                    />
-                                  </div>
-                                  <p className="text-xs text-white text-opacity-80 line-clamp-2">
-                                    {candidate.name}
-                                  </p>
-                                  <p className="text-xs text-white text-opacity-60">
-                                    {candidate.position}
-                                  </p>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Stats Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-                          {/* Voter Count */}
-                          <div className="bg-white bg-opacity-10 rounded-xl p-4">
-                            <div className="flex items-center mb-2">
-                              <Users className="w-5 h-5 text-white mr-2" />
-                              <span className="text-white text-opacity-80 text-sm">Eligible Voters</span>
-                            </div>
-                            <div className="text-2xl font-bold text-white">
-                              {Number(currentElection.voter_count || 0).toLocaleString()}
-                            </div>
-                          </div>
-
-                          {/* Vote Count */}
-                          <div className="bg-white bg-opacity-10 rounded-xl p-4">
-                            <div className="flex items-center mb-2">
-                              <Vote className="w-5 h-5 text-white mr-2" />
-                              <span className="text-white text-opacity-80 text-sm">Votes Cast</span>
-                            </div>
-                            <div className="text-2xl font-bold text-white">
-                              {Number(currentElection.vote_count || 0).toLocaleString()}
-                            </div>
-                          </div>
-
-                          {/* Participation Rate */}
-                          <div className="bg-white bg-opacity-10 rounded-xl p-4">
-                            <div className="flex items-center mb-2">
-                              <BarChart3 className="w-5 h-5 text-white mr-2" />
-                              <span className="text-white text-opacity-80 text-sm">Participation</span>
-                            </div>
-                            <div className="text-2xl font-bold text-white">
-                              {participationRate}%
-                            </div>
-                            <div className="w-full bg-white bg-opacity-20 rounded-full h-2 mt-2">
-                              <div 
-                                className="bg-white h-2 rounded-full transition-all duration-500"
-                                style={{ width: `${Math.min(participationRate, 100)}%` }}
-                              ></div>
-                            </div>
-                          </div>
-
-                          {/* Election Type */}
-                          <div className="bg-white bg-opacity-10 rounded-xl p-4">
-                            <div className="flex items-center mb-2">
-                              <Award className="w-5 h-5 text-white mr-2" />
-                              <span className="text-white text-opacity-80 text-sm">Type</span>
-                            </div>
-                            <div className="text-lg font-semibold text-white line-clamp-2">
-                              {formatElectionType(currentElection.election_type)}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Date Information */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                          <div className="bg-white bg-opacity-10 rounded-xl p-4">
-                            <div className="flex items-center mb-3">
-                              <Calendar className="w-5 h-5 text-white mr-2" />
-                              <span className="text-white font-semibold">Election Period</span>
-                            </div>
-                            <div className="space-y-2">
-                              <div className="flex justify-between items-center">
-                                <span className="text-white text-opacity-80">Starts:</span>
-                                <span className="text-white font-medium">
-                                  {parseElectionDate(currentElection.date_from, currentElection.start_time)}
-                                </span>
-                              </div>
-                              <div className="flex justify-between items-center">
-                                <span className="text-white text-opacity-80">Ends:</span>
-                                <span className="text-white font-medium">
-                                  {parseElectionDate(currentElection.date_to, currentElection.end_time)}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="bg-white bg-opacity-10 rounded-xl p-4">
-                            <div className="flex items-center mb-3">
-                              <Shield className="w-5 h-5 text-white mr-2" />
-                              <span className="text-white font-semibold">Election Status</span>
-                            </div>
-                            <div className="space-y-2">
-                              <div className="flex justify-between items-center">
-                                <span className="text-white text-opacity-80">Ballot Status:</span>
-                                <span className={`font-medium ${currentElection.ballot_exists ? 'text-green-300' : 'text-red-300'}`}>
-                                  {currentElection.ballot_exists ? 'Ready' : 'Not Ready'}
-                                </span>
-                              </div>
-                              <div className="flex justify-between items-center">
-                                <span className="text-white text-opacity-80">Status:</span>
-                                <span className={`font-medium ${statusConfig.textColor}`}>
-                                  {statusConfig.label}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Call to Action */}
-                        <div className="mt-6 pt-6 border-t border-white border-opacity-20">
-                          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                            <div className="text-center sm:text-left">
-                              <p className="text-white text-opacity-90 mb-1">
-                                {currentElection.status === 'ongoing' && 'Election is currently active - Cast your vote now!'}
-                                {currentElection.status === 'upcoming' && 'Election will start soon - Get ready to vote!'}
-                                {currentElection.status === 'completed' && `Election completed with ${participationRate}% participation`}
-                              </p>
-                            </div>
-                            <Button
-                              onClick={() => setShowLogin(true)}
-                              className="px-6 py-2 bg-white text-blue-600 font-semibold rounded-lg shadow-lg hover:bg-gray-100 transition-colors"
-                            >
-                              {currentElection.status === 'ongoing' ? 'Vote Now' : 
-                               currentElection.status === 'upcoming' ? 'View Details' : 
-                               'View Results'}
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Navigation Controls */}
-                      <div className="flex justify-center items-center gap-4 mt-6">
-                        <button
-                          onClick={prevStatus}
-                          className="p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-colors"
-                          title="Previous status"
-                        >
-                          <ChevronLeft className="w-5 h-5 text-white" />
-                        </button>
-                        
-                        <button
-                          onClick={prevElection}
-                          disabled={currentElections.length <= 1}
-                          className="p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Previous election"
-                        >
-                          <ChevronLeft className="w-4 h-4 text-white" />
-                        </button>
-                        
-                        <div className="flex items-center gap-2">
-                          <div className="text-white text-sm">
-                            {currentElectionIndex + 1} of {currentElections.length}
-                          </div>
-                          <div className="flex space-x-1">
-                            {currentElections.map((_, index) => (
-                              <button
-                                key={index}
-                                onClick={() => setCurrentElectionIndex(index)}
-                                className={`w-2 h-2 rounded-full transition-colors ${
-                                  index === currentElectionIndex ? 'bg-white' : 'bg-white bg-opacity-50'
-                                }`}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                        
-                        <button
-                          onClick={nextElection}
-                          disabled={currentElections.length <= 1}
-                          className="p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Next election"
-                        >
-                          <ChevronRight className="w-4 h-4 text-white" />
-                        </button>
-                        
-                        <button
-                          onClick={nextStatus}
-                          className="p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-colors"
-                          title="Next status"
-                        >
-                          <ChevronRight className="w-5 h-5 text-white" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-            )}
-
-            {/* Call to Action Button */}
-            <div className="text-center">
-              <Button
-                onClick={() => setShowLogin(true)}
-                className="px-8 py-3 bg-white text-blue-600 font-semibold rounded-lg shadow-lg hover:bg-gray-100 transition-colors"
-              >
-                {landingContent.callToAction.buttonText || "Get Started"}
-              </Button>
-            </div>
+          <div className="container mx-auto max-w-4xl text-center">
+            <h2 
+              className="text-3xl font-bold mb-4"
+              style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
+            >
+              {landingContent.callToAction.title}
+            </h2>
+            <p 
+              className="text-xl mb-8"
+              style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
+            >
+              {landingContent.callToAction.subtitle}
+            </p>
           </div>
         </section>
       )}
