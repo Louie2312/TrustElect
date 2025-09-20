@@ -11,6 +11,33 @@ require("dotenv").config();
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCK_TIME_MINUTES = 5;
 
+// Helper function to handle database connection errors
+const handleDatabaseError = (error, res, operation = 'database operation') => {
+  console.error(`Database error during ${operation}:`, error);
+  
+  if (error.code === '53300' || error.message.includes('remaining connection slots are reserved')) {
+    return res.status(503).json({
+      success: false,
+      message: 'Database connection limit reached. Please try again in a few moments.',
+      error: 'CONNECTION_LIMIT_REACHED'
+    });
+  }
+  
+  if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+    return res.status(503).json({
+      success: false,
+      message: 'Database service temporarily unavailable. Please try again later.',
+      error: 'DATABASE_UNAVAILABLE'
+    });
+  }
+  
+  return res.status(500).json({
+    success: false,
+    message: 'Internal Server Error. Please try again later.',
+    error: 'INTERNAL_ERROR'
+  });
+};
+
 exports.checkEmailExists = async (req, res) => {
   
   try {
@@ -30,8 +57,7 @@ exports.checkEmailExists = async (req, res) => {
     return res.status(200).json({ success: true, message: "Email is valid" });
 
   } catch (error) {
-    console.error("Error checking email:", error);
-    return res.status(500).json({ success: false, message: "Internal Server Error." });
+    return handleDatabaseError(error, res, 'checkEmailExists');
   }
 };
 
@@ -185,8 +211,7 @@ exports.loginUser = async (req, res) => {
 
     res.status(200).json(response);
   } catch (error) {
-    console.error("Login error:", error);
-    res.status(500).json({ success: false, message: "Internal Server Error. Please try again." });
+    return handleDatabaseError(error, res, 'loginUser');
   }
 };
 
@@ -349,11 +374,7 @@ exports.requestOTP = async (req, res) => {
       message: `Verification code sent to ${maskedEmail}`
     });
   } catch (error) {
-    console.error('Error in requestOTP:', error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Failed to send verification code'
-    });
+    return handleDatabaseError(error, res, 'requestOTP');
   }
 };
 
@@ -383,11 +404,7 @@ exports.verifyOTP = async (req, res) => {
       verified: true
     });
   } catch (error) {
-    console.error('Error in verifyOTP:', error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Verification failed'
-    });
+    return handleDatabaseError(error, res, 'verifyOTP');
   }
 };
 
