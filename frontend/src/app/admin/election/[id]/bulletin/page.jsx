@@ -334,7 +334,7 @@ export default function ElectionBulletinPage() {
           {/* Pagination for Voters */}
           {filteredVoters.length > votersPerPage && (
             <div className="flex items-center justify-between mt-6 px-4 py-3 bg-gray-50 border-t border-gray-200">
-              <div className="flex items-center text-sm text-gray-700">
+              <div className="flex items-center text-sm text-black">
                 Showing {startVoterIndex + 1} to {Math.min(endVoterIndex, filteredVoters.length)} of {filteredVoters.length} results
               </div>
               <div className="flex items-center space-x-2">
@@ -345,7 +345,7 @@ export default function ElectionBulletinPage() {
                 >
                   Previous
                 </button>
-                <span className="px-3 py-1 text-sm">
+                <span className="px-3 py-1 text-sm text-black">
                   Page {currentVoterPage} of {totalVoterPages}
                 </span>
                 <button
@@ -455,7 +455,7 @@ export default function ElectionBulletinPage() {
           {/* Pagination for Candidates */}
           {allCandidates.length > candidatesPerPage && (
             <div className="flex items-center justify-between mt-6 px-4 py-3 bg-gray-50 border-t border-gray-200">
-              <div className="flex items-center text-sm text-gray-700">
+              <div className="flex items-center text-sm text-black">
                 Showing {startCandidateIndex + 1} to {Math.min(endCandidateIndex, allCandidates.length)} of {allCandidates.length} results
               </div>
               <div className="flex items-center space-x-2">
@@ -466,7 +466,7 @@ export default function ElectionBulletinPage() {
                 >
                   Previous
                 </button>
-                <span className="px-3 py-1 text-sm">
+                <span className="px-3 py-1 text-sm text-black">
                   Page {currentCandidatePage} of {totalCandidatePages}
                 </span>
                 <button
