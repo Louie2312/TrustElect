@@ -7,7 +7,7 @@ import LoginForm from "@/components/Auth/LoginForm";
 import { Button } from "@/components/ui/button";
 import stiLogo from "../assets/sti_logo.png";
 import axios from "axios";
-import { Clock, Calendar, CheckCircle, Users, Vote, MapPin, User, List, BarChart3, Shield, Award } from "lucide-react";
+import { Clock, Calendar, CheckCircle, Users, Vote, MapPin, User, List, BarChart3, Shield, Award, ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function Home() {
   const [showLogin, setShowLogin] = useState(false);
@@ -53,6 +53,9 @@ export default function Home() {
     }
   });
   const [elections, setElections] = useState([]);
+  const [currentElectionIndex, setCurrentElectionIndex] = useState(0);
+  const [currentStatus, setCurrentStatus] = useState('ongoing');
+  const [isPlaying, setIsPlaying] = useState(true);
 
   const checkApiConnection = async () => {
     try {
@@ -112,7 +115,49 @@ export default function Home() {
           });
           
           if (response.data) {
-            allElections.push(...response.data);
+            // Fetch detailed election data including candidates
+            const detailedElections = await Promise.all(
+              response.data.map(async (election) => {
+                try {
+                  const detailResponse = await axios.get(`/api/elections/${election.id}`, {
+                    timeout: 5000
+                  });
+                  
+                  if (detailResponse.data && detailResponse.data.election) {
+                    const electionData = detailResponse.data.election;
+                    
+                    // Extract positions and candidates
+                    let positions = [];
+                    if (electionData.ballot?.positions) {
+                      positions = electionData.ballot.positions.map(pos => ({
+                        id: pos.position_id || pos.id,
+                        name: pos.position_name || pos.name,
+                        max_choices: pos.max_choices,
+                        candidates: pos.candidates || []
+                      }));
+                    } else if (electionData.positions) {
+                      positions = electionData.positions;
+                    }
+                    
+                    return {
+                      ...election,
+                      positions: positions,
+                      election_type: electionData.election_type || election.election_type
+                    };
+                  }
+                } catch (detailError) {
+                  console.error(`Error fetching details for election ${election.id}:`, detailError);
+                }
+                
+                return {
+                  ...election,
+                  positions: [],
+                  election_type: election.election_type
+                };
+              })
+            );
+            
+            allElections.push(...detailedElections);
           }
         } catch (error) {
           console.error(`Error fetching ${status} elections:`, error);
@@ -200,6 +245,31 @@ export default function Home() {
     fetchContent();
     fetchElections();
   }, [fetchContent, fetchElections]); // Added fetchContent and fetchElections dependency
+
+  // Auto-rotate through statuses every 10 seconds
+  useEffect(() => {
+    if (!isPlaying) return;
+
+    const interval = setInterval(() => {
+      nextStatus();
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [isPlaying, currentStatus]);
+
+  // Auto-rotate through elections within current status every 5 seconds
+  useEffect(() => {
+    if (!isPlaying) return;
+
+    const currentElections = getElectionsByStatus(currentStatus);
+    if (currentElections.length <= 1) return;
+
+    const interval = setInterval(() => {
+      nextElection();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [isPlaying, currentStatus, currentElectionIndex]);
 
 
   const formatImageUrl = (url) => {
@@ -291,28 +361,64 @@ export default function Home() {
   const getStatusConfig = (status) => {
     const configs = {
       ongoing: {
-        icon: <Clock className="w-4 h-4" />,
+        icon: <Clock className="w-5 h-5" />,
         color: 'bg-blue-100 text-blue-800',
-        label: 'Ongoing',
+        label: 'Ongoing Elections',
         bgColor: 'bg-blue-50 border-blue-200',
         textColor: 'text-blue-800'
       },
       upcoming: {
-        icon: <Calendar className="w-4 h-4" />,
+        icon: <Calendar className="w-5 h-5" />,
         color: 'bg-yellow-100 text-yellow-800',
-        label: 'Upcoming',
+        label: 'Upcoming Elections',
         bgColor: 'bg-yellow-50 border-yellow-200',
         textColor: 'text-yellow-800'
       },
       completed: {
-        icon: <CheckCircle className="w-4 h-4" />,
+        icon: <CheckCircle className="w-5 h-5" />,
         color: 'bg-green-100 text-green-800',
-        label: 'Completed',
+        label: 'Completed Elections',
         bgColor: 'bg-green-50 border-green-200',
         textColor: 'text-green-800'
       }
     };
     return configs[status] || configs.ongoing;
+  };
+
+  // Get elections by status
+  const getElectionsByStatus = (status) => {
+    return elections.filter(election => election.status === status);
+  };
+
+  // Carousel navigation functions
+  const nextStatus = () => {
+    const statuses = ['ongoing', 'upcoming', 'completed'];
+    const currentIndex = statuses.indexOf(currentStatus);
+    const nextIndex = (currentIndex + 1) % statuses.length;
+    setCurrentStatus(statuses[nextIndex]);
+    setCurrentElectionIndex(0);
+  };
+
+  const prevStatus = () => {
+    const statuses = ['ongoing', 'upcoming', 'completed'];
+    const currentIndex = statuses.indexOf(currentStatus);
+    const prevIndex = currentIndex === 0 ? statuses.length - 1 : currentIndex - 1;
+    setCurrentStatus(statuses[prevIndex]);
+    setCurrentElectionIndex(0);
+  };
+
+  const nextElection = () => {
+    const currentElections = getElectionsByStatus(currentStatus);
+    if (currentElections.length > 0) {
+      setCurrentElectionIndex((prev) => (prev + 1) % currentElections.length);
+    }
+  };
+
+  const prevElection = () => {
+    const currentElections = getElectionsByStatus(currentStatus);
+    if (currentElections.length > 0) {
+      setCurrentElectionIndex((prev) => prev === 0 ? currentElections.length - 1 : prev - 1);
+    }
   };
 
   const formatElectionType = (type) => {
@@ -342,6 +448,28 @@ export default function Home() {
     } catch (error) {
       return 'Time not available';
     }
+  };
+
+  const getCandidateImages = (election) => {
+    if (!election.positions || election.positions.length === 0) return [];
+    
+    const allCandidates = [];
+    election.positions.forEach(position => {
+      if (position.candidates && position.candidates.length > 0) {
+        position.candidates.forEach(candidate => {
+          if (candidate.image_url) {
+            allCandidates.push({
+              id: candidate.id,
+              name: candidate.name || `${candidate.first_name} ${candidate.last_name}`,
+              image_url: candidate.image_url,
+              position: position.name
+            });
+          }
+        });
+      }
+    });
+    
+    return allCandidates.slice(0, 8); // Limit to 8 candidate images
   };
 
   const renderImage = (url, alt, width, height, className, onErrorAction) => {
@@ -636,7 +764,7 @@ export default function Home() {
               </p>
             </div>
 
-            {/* Elections Display */}
+            {/* Elections Carousel Display */}
             {landingContent.callToAction.showElections && (
               <div className="mb-8">
                 <h3 
@@ -647,9 +775,10 @@ export default function Home() {
                 </h3>
                 
                 {(() => {
-                  const filteredElections = getFilteredElections();
+                  const currentElections = getElectionsByStatus(currentStatus);
+                  const statusConfig = getStatusConfig(currentStatus);
                   
-                  if (filteredElections.length === 0) {
+                  if (elections.length === 0) {
                     return (
                       <div className="text-center py-12">
                         <div className="text-6xl mb-6 text-white text-opacity-50">
@@ -666,175 +795,305 @@ export default function Home() {
                     );
                   }
 
+                  if (currentElections.length === 0) {
+                    return (
+                      <div className="text-center py-12">
+                        <div className="text-6xl mb-6 text-white text-opacity-50">
+                          {statusConfig.icon}
+                        </div>
+                        <h4 className="text-2xl font-bold text-white mb-4">No {statusConfig.label}</h4>
+                        <p className="text-lg text-white text-opacity-80">
+                          There are currently no {currentStatus} elections available
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  const currentElection = currentElections[currentElectionIndex];
+                  const participationRate = currentElection.voter_count > 0 
+                    ? Math.round((currentElection.vote_count / currentElection.voter_count) * 100) 
+                    : 0;
+                  const candidateImages = getCandidateImages(currentElection);
+
                   return (
-                    <div className="space-y-8">
-                      {filteredElections.slice(0, 3).map((election, index) => {
-                        const statusConfig = getStatusConfig(election.status);
-                        const participationRate = election.voter_count > 0 
-                          ? Math.round((election.vote_count / election.voter_count) * 100) 
-                          : 0;
-                        
-                        return (
-                          <div 
-                            key={election.id || index}
-                            className="bg-white bg-opacity-10 rounded-2xl p-8 backdrop-blur-sm hover:bg-opacity-15 transition-all duration-300 border border-white border-opacity-20"
-                          >
-                            {/* Header Section */}
-                            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between mb-6">
-                              <div className="flex-1">
-                                {/* Status and Type */}
-                                <div className="flex items-center gap-3 mb-4">
-                                  <div className={`flex items-center px-4 py-2 rounded-full text-sm font-medium ${statusConfig.color}`}>
-                                    {statusConfig.icon}
-                                    <span className="ml-2">{statusConfig.label}</span>
-                                  </div>
-                                  <div className="px-3 py-1 bg-white bg-opacity-20 rounded-full text-sm text-white">
-                                    {formatElectionType(election.election_type)}
-                                  </div>
-                                  <div className={`h-3 w-3 rounded-full ${election.ballot_exists ? 'bg-green-400' : 'bg-red-400'}`}></div>
+                    <div className="relative">
+                      {/* Status Tabs */}
+                      <div className="flex justify-center mb-8">
+                        <div className="flex bg-white bg-opacity-20 rounded-lg p-1">
+                          {['ongoing', 'upcoming', 'completed'].map((status) => {
+                            const config = getStatusConfig(status);
+                            const statusElections = getElectionsByStatus(status);
+                            
+                            return (
+                              <button
+                                key={status}
+                                onClick={() => {
+                                  setCurrentStatus(status);
+                                  setCurrentElectionIndex(0);
+                                }}
+                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                                  currentStatus === status
+                                    ? 'bg-white text-gray-900'
+                                    : 'text-white hover:bg-white hover:bg-opacity-10'
+                                }`}
+                              >
+                                <div className="flex items-center">
+                                  {config.icon}
+                                  <span className="ml-2">{config.label}</span>
+                                  {statusElections.length > 0 && (
+                                    <span className="ml-2 px-2 py-1 bg-white bg-opacity-20 rounded-full text-xs">
+                                      {statusElections.length}
+                                    </span>
+                                  )}
                                 </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
 
-                                {/* Title and Description */}
-                                <h4 className="text-2xl lg:text-3xl font-bold text-white mb-3 line-clamp-2">
-                                  {election.title}
-                                </h4>
-                                <p className="text-white text-opacity-90 text-lg line-clamp-3 mb-4">
-                                  {election.description}
-                                </p>
+                      {/* Election Display */}
+                      <div className="bg-white bg-opacity-10 rounded-2xl p-8 backdrop-blur-sm border border-white border-opacity-20">
+                        {/* Header Section */}
+                        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between mb-6">
+                          <div className="flex-1">
+                            {/* Status and Type */}
+                            <div className="flex items-center gap-3 mb-4">
+                              <div className={`flex items-center px-4 py-2 rounded-full text-sm font-medium ${statusConfig.color}`}>
+                                {statusConfig.icon}
+                                <span className="ml-2">{statusConfig.label}</span>
                               </div>
-
-                              {/* Time Remaining */}
-                              <div className="lg:ml-6 mb-4 lg:mb-0">
-                                <div className="text-right">
-                                  <div className="text-sm text-white text-opacity-80 mb-1">Time Status</div>
-                                  <div className="text-lg font-bold text-white">
-                                    {getTimeRemaining(election.date_from, election.start_time, election.date_to, election.end_time)}
-                                  </div>
-                                </div>
+                              <div className="px-3 py-1 bg-white bg-opacity-20 rounded-full text-sm text-white">
+                                {formatElectionType(currentElection.election_type)}
                               </div>
+                              <div className={`h-3 w-3 rounded-full ${currentElection.ballot_exists ? 'bg-green-400' : 'bg-red-400'}`}></div>
                             </div>
 
-                            {/* Stats Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-                              {/* Voter Count */}
-                              <div className="bg-white bg-opacity-10 rounded-xl p-4">
-                                <div className="flex items-center mb-2">
-                                  <Users className="w-5 h-5 text-white mr-2" />
-                                  <span className="text-white text-opacity-80 text-sm">Eligible Voters</span>
-                                </div>
-                                <div className="text-2xl font-bold text-white">
-                                  {Number(election.voter_count || 0).toLocaleString()}
-                                </div>
-                              </div>
+                            {/* Title and Description */}
+                            <h4 className="text-2xl lg:text-3xl font-bold text-white mb-3 line-clamp-2">
+                              {currentElection.title}
+                            </h4>
+                            <p className="text-white text-opacity-90 text-lg line-clamp-3 mb-4">
+                              {currentElection.description}
+                            </p>
+                          </div>
 
-                              {/* Vote Count */}
-                              <div className="bg-white bg-opacity-10 rounded-xl p-4">
-                                <div className="flex items-center mb-2">
-                                  <Vote className="w-5 h-5 text-white mr-2" />
-                                  <span className="text-white text-opacity-80 text-sm">Votes Cast</span>
-                                </div>
-                                <div className="text-2xl font-bold text-white">
-                                  {Number(election.vote_count || 0).toLocaleString()}
-                                </div>
-                              </div>
-
-                              {/* Participation Rate */}
-                              <div className="bg-white bg-opacity-10 rounded-xl p-4">
-                                <div className="flex items-center mb-2">
-                                  <BarChart3 className="w-5 h-5 text-white mr-2" />
-                                  <span className="text-white text-opacity-80 text-sm">Participation</span>
-                                </div>
-                                <div className="text-2xl font-bold text-white">
-                                  {participationRate}%
-                                </div>
-                                <div className="w-full bg-white bg-opacity-20 rounded-full h-2 mt-2">
-                                  <div 
-                                    className="bg-white h-2 rounded-full transition-all duration-500"
-                                    style={{ width: `${Math.min(participationRate, 100)}%` }}
-                                  ></div>
-                                </div>
-                              </div>
-
-                              {/* Election Type */}
-                              <div className="bg-white bg-opacity-10 rounded-xl p-4">
-                                <div className="flex items-center mb-2">
-                                  <Award className="w-5 h-5 text-white mr-2" />
-                                  <span className="text-white text-opacity-80 text-sm">Type</span>
-                                </div>
-                                <div className="text-lg font-semibold text-white line-clamp-2">
-                                  {formatElectionType(election.election_type)}
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Date Information */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              <div className="bg-white bg-opacity-10 rounded-xl p-4">
-                                <div className="flex items-center mb-3">
-                                  <Calendar className="w-5 h-5 text-white mr-2" />
-                                  <span className="text-white font-semibold">Election Period</span>
-                                </div>
-                                <div className="space-y-2">
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-white text-opacity-80">Starts:</span>
-                                    <span className="text-white font-medium">
-                                      {parseElectionDate(election.date_from, election.start_time)}
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-white text-opacity-80">Ends:</span>
-                                    <span className="text-white font-medium">
-                                      {parseElectionDate(election.date_to, election.end_time)}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="bg-white bg-opacity-10 rounded-xl p-4">
-                                <div className="flex items-center mb-3">
-                                  <Shield className="w-5 h-5 text-white mr-2" />
-                                  <span className="text-white font-semibold">Election Status</span>
-                                </div>
-                                <div className="space-y-2">
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-white text-opacity-80">Ballot Status:</span>
-                                    <span className={`font-medium ${election.ballot_exists ? 'text-green-300' : 'text-red-300'}`}>
-                                      {election.ballot_exists ? 'Ready' : 'Not Ready'}
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-white text-opacity-80">Status:</span>
-                                    <span className={`font-medium ${statusConfig.textColor}`}>
-                                      {statusConfig.label}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Call to Action */}
-                            <div className="mt-6 pt-6 border-t border-white border-opacity-20">
-                              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                                <div className="text-center sm:text-left">
-                                  <p className="text-white text-opacity-90 mb-1">
-                                    {election.status === 'ongoing' && 'Election is currently active - Cast your vote now!'}
-                                    {election.status === 'upcoming' && 'Election will start soon - Get ready to vote!'}
-                                    {election.status === 'completed' && `Election completed with ${participationRate}% participation`}
-                                  </p>
-                                </div>
-                                <Button
-                                  onClick={() => setShowLogin(true)}
-                                  className="px-6 py-2 bg-white text-blue-600 font-semibold rounded-lg shadow-lg hover:bg-gray-100 transition-colors"
-                                >
-                                  {election.status === 'ongoing' ? 'Vote Now' : 
-                                   election.status === 'upcoming' ? 'View Details' : 
-                                   'View Results'}
-                                </Button>
+                          {/* Time Remaining */}
+                          <div className="lg:ml-6 mb-4 lg:mb-0">
+                            <div className="text-right">
+                              <div className="text-sm text-white text-opacity-80 mb-1">Time Status</div>
+                              <div className="text-lg font-bold text-white">
+                                {getTimeRemaining(currentElection.date_from, currentElection.start_time, currentElection.date_to, currentElection.end_time)}
                               </div>
                             </div>
                           </div>
-                        );
-                      })}
+                        </div>
+
+                        {/* Candidate Images */}
+                        {candidateImages.length > 0 && (
+                          <div className="mb-6">
+                            <h5 className="text-lg font-semibold text-white mb-4 text-center">Candidates</h5>
+                            <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">
+                              {candidateImages.map((candidate, index) => (
+                                <div key={candidate.id || index} className="text-center">
+                                  <div className="w-16 h-16 mx-auto mb-2 rounded-full overflow-hidden border-2 border-white border-opacity-30">
+                                    <Image
+                                      src={getImageUrl(candidate.image_url)}
+                                      alt={candidate.name}
+                                      width={64}
+                                      height={64}
+                                      className="w-full h-full object-cover"
+                                      unoptimized={true}
+                                      onError={(e) => {
+                                        e.currentTarget.style.display = 'none';
+                                      }}
+                                    />
+                                  </div>
+                                  <p className="text-xs text-white text-opacity-80 line-clamp-2">
+                                    {candidate.name}
+                                  </p>
+                                  <p className="text-xs text-white text-opacity-60">
+                                    {candidate.position}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Stats Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                          {/* Voter Count */}
+                          <div className="bg-white bg-opacity-10 rounded-xl p-4">
+                            <div className="flex items-center mb-2">
+                              <Users className="w-5 h-5 text-white mr-2" />
+                              <span className="text-white text-opacity-80 text-sm">Eligible Voters</span>
+                            </div>
+                            <div className="text-2xl font-bold text-white">
+                              {Number(currentElection.voter_count || 0).toLocaleString()}
+                            </div>
+                          </div>
+
+                          {/* Vote Count */}
+                          <div className="bg-white bg-opacity-10 rounded-xl p-4">
+                            <div className="flex items-center mb-2">
+                              <Vote className="w-5 h-5 text-white mr-2" />
+                              <span className="text-white text-opacity-80 text-sm">Votes Cast</span>
+                            </div>
+                            <div className="text-2xl font-bold text-white">
+                              {Number(currentElection.vote_count || 0).toLocaleString()}
+                            </div>
+                          </div>
+
+                          {/* Participation Rate */}
+                          <div className="bg-white bg-opacity-10 rounded-xl p-4">
+                            <div className="flex items-center mb-2">
+                              <BarChart3 className="w-5 h-5 text-white mr-2" />
+                              <span className="text-white text-opacity-80 text-sm">Participation</span>
+                            </div>
+                            <div className="text-2xl font-bold text-white">
+                              {participationRate}%
+                            </div>
+                            <div className="w-full bg-white bg-opacity-20 rounded-full h-2 mt-2">
+                              <div 
+                                className="bg-white h-2 rounded-full transition-all duration-500"
+                                style={{ width: `${Math.min(participationRate, 100)}%` }}
+                              ></div>
+                            </div>
+                          </div>
+
+                          {/* Election Type */}
+                          <div className="bg-white bg-opacity-10 rounded-xl p-4">
+                            <div className="flex items-center mb-2">
+                              <Award className="w-5 h-5 text-white mr-2" />
+                              <span className="text-white text-opacity-80 text-sm">Type</span>
+                            </div>
+                            <div className="text-lg font-semibold text-white line-clamp-2">
+                              {formatElectionType(currentElection.election_type)}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Date Information */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                          <div className="bg-white bg-opacity-10 rounded-xl p-4">
+                            <div className="flex items-center mb-3">
+                              <Calendar className="w-5 h-5 text-white mr-2" />
+                              <span className="text-white font-semibold">Election Period</span>
+                            </div>
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-center">
+                                <span className="text-white text-opacity-80">Starts:</span>
+                                <span className="text-white font-medium">
+                                  {parseElectionDate(currentElection.date_from, currentElection.start_time)}
+                                </span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-white text-opacity-80">Ends:</span>
+                                <span className="text-white font-medium">
+                                  {parseElectionDate(currentElection.date_to, currentElection.end_time)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="bg-white bg-opacity-10 rounded-xl p-4">
+                            <div className="flex items-center mb-3">
+                              <Shield className="w-5 h-5 text-white mr-2" />
+                              <span className="text-white font-semibold">Election Status</span>
+                            </div>
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-center">
+                                <span className="text-white text-opacity-80">Ballot Status:</span>
+                                <span className={`font-medium ${currentElection.ballot_exists ? 'text-green-300' : 'text-red-300'}`}>
+                                  {currentElection.ballot_exists ? 'Ready' : 'Not Ready'}
+                                </span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-white text-opacity-80">Status:</span>
+                                <span className={`font-medium ${statusConfig.textColor}`}>
+                                  {statusConfig.label}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Call to Action */}
+                        <div className="mt-6 pt-6 border-t border-white border-opacity-20">
+                          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                            <div className="text-center sm:text-left">
+                              <p className="text-white text-opacity-90 mb-1">
+                                {currentElection.status === 'ongoing' && 'Election is currently active - Cast your vote now!'}
+                                {currentElection.status === 'upcoming' && 'Election will start soon - Get ready to vote!'}
+                                {currentElection.status === 'completed' && `Election completed with ${participationRate}% participation`}
+                              </p>
+                            </div>
+                            <Button
+                              onClick={() => setShowLogin(true)}
+                              className="px-6 py-2 bg-white text-blue-600 font-semibold rounded-lg shadow-lg hover:bg-gray-100 transition-colors"
+                            >
+                              {currentElection.status === 'ongoing' ? 'Vote Now' : 
+                               currentElection.status === 'upcoming' ? 'View Details' : 
+                               'View Results'}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Navigation Controls */}
+                      <div className="flex justify-center items-center gap-4 mt-6">
+                        <button
+                          onClick={prevStatus}
+                          className="p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-colors"
+                          title="Previous status"
+                        >
+                          <ChevronLeft className="w-5 h-5 text-white" />
+                        </button>
+                        
+                        <button
+                          onClick={prevElection}
+                          disabled={currentElections.length <= 1}
+                          className="p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Previous election"
+                        >
+                          <ChevronLeft className="w-4 h-4 text-white" />
+                        </button>
+                        
+                        <div className="flex items-center gap-2">
+                          <div className="text-white text-sm">
+                            {currentElectionIndex + 1} of {currentElections.length}
+                          </div>
+                          <div className="flex space-x-1">
+                            {currentElections.map((_, index) => (
+                              <button
+                                key={index}
+                                onClick={() => setCurrentElectionIndex(index)}
+                                className={`w-2 h-2 rounded-full transition-colors ${
+                                  index === currentElectionIndex ? 'bg-white' : 'bg-white bg-opacity-50'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        
+                        <button
+                          onClick={nextElection}
+                          disabled={currentElections.length <= 1}
+                          className="p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Next election"
+                        >
+                          <ChevronRight className="w-4 h-4 text-white" />
+                        </button>
+                        
+                        <button
+                          onClick={nextStatus}
+                          className="p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-colors"
+                          title="Next status"
+                        >
+                          <ChevronRight className="w-5 h-5 text-white" />
+                        </button>
+                      </div>
                     </div>
                   );
                 })()}
