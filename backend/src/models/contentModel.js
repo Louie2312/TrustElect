@@ -6,6 +6,8 @@ const pool = require('../config/db');
  */
 async function getAllContent() {
   try {
+    console.log('Querying database for all content...');
+    
     const result = await pool.query(
       `SELECT id, section_key, content_data, section_order, 
               to_char(created_at, 'YYYY-MM-DD HH24:MI:SS') as created_at, 
@@ -14,11 +16,14 @@ async function getAllContent() {
        ORDER BY section_order ASC`
     );
     
+    console.log(`Database query result: ${result.rows.length} rows found`);
+    
     // Transform the results into a more usable format for the frontend
     if (result.rows.length > 0) {
       const contentObj = {};
       
       result.rows.forEach(row => {
+        console.log(`Processing section: ${row.section_key}`);
         contentObj[row.section_key] = row.content_data;
       });
       
@@ -29,9 +34,11 @@ async function getAllContent() {
         };
       }
       
+      console.log('Final content object:', contentObj);
       return contentObj;
     }
     
+    console.log('No content found, returning default logo');
     return {
       logo: {
         imageUrl: null
@@ -39,6 +46,7 @@ async function getAllContent() {
     };
   } catch (error) {
     console.error('Error in getAllContent:', error);
+    console.error('Error details:', error);
     throw error;
   }
 }
@@ -50,6 +58,8 @@ async function getAllContent() {
  */
 async function getSectionContent(sectionKey) {
   try {
+    console.log(`Querying database for section: ${sectionKey}`);
+    
     const result = await pool.query(
       `SELECT id, section_key, content_data, section_order, 
               to_char(created_at, 'YYYY-MM-DD HH24:MI:SS') as created_at, 
@@ -59,7 +69,10 @@ async function getSectionContent(sectionKey) {
       [sectionKey]
     );
     
+    console.log(`Database query result for ${sectionKey}:`, result.rows.length, 'rows found');
+    
     if (result.rows.length > 0) {
+      console.log(`Content data for ${sectionKey}:`, result.rows[0].content_data);
       return {
         content: result.rows[0].content_data
       };
