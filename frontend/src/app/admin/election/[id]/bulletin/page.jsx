@@ -341,7 +341,7 @@ export default function ElectionBulletinPage() {
                 <button
                   onClick={() => setCurrentVoterPage(prev => Math.max(prev - 1, 1))}
                   disabled={currentVoterPage === 1}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-black"
                 >
                   Previous
                 </button>
@@ -351,7 +351,7 @@ export default function ElectionBulletinPage() {
                 <button
                   onClick={() => setCurrentVoterPage(prev => Math.min(prev + 1, totalVoterPages))}
                   disabled={currentVoterPage === totalVoterPages}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-black"
                 >
                   Next
                 </button>
