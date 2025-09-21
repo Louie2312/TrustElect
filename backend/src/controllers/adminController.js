@@ -39,7 +39,6 @@ exports.registerAdmin = async (req, res) => {
     if (!token) return res.status(401).json({ message: "Unauthorized. Token is missing." });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    // Permission check is handled by middleware, no need for hardcoded Super Admin check
     const createdBy = decoded.id || 1; 
 
     if (!email.endsWith("@novaliches.sti.edu.ph") && !email.endsWith("@novaliches.sti.edu")) {
@@ -181,8 +180,15 @@ exports.softDeleteAdmin = async (req, res) => {
   try {
     const { id } = req.params;
 
+    // Check if user is trying to delete themselves
     if (req.user.id === parseInt(id)) {
-      return res.status(403).json({ message: "You cannot delete your own Super Admin account." });
+      return res.status(403).json({ message: "You cannot delete your own account." });
+    }
+
+    // Check if the admin being deleted is a Super Admin and the current user is not a Super Admin
+    const adminToDelete = await getAdminById(id);
+    if (adminToDelete && adminToDelete.role_id === 1 && req.user.role_id !== 1) {
+      return res.status(403).json({ message: "Only Super Admins can delete other Super Admins." });
     }
 
     const deletedAdmin = await softDeleteAdmin(id);

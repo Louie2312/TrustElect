@@ -82,10 +82,24 @@ export default function AdminsPage() {
   };
 
   const deleteAdmin = async (id) => {
+    // Check if user is trying to delete themselves
+    const currentUserId = Cookies.get("userId");
+    if (currentUserId && parseInt(currentUserId) === parseInt(id)) {
+      alert("You cannot delete your own account.");
+      return;
+    }
+
     if (!confirm("Are you sure you want to delete this Admin?")) return;
     try {
       const token = Cookies.get("token");
-      await axios.delete(`/api/superadmin/admins/${id}`, {
+      const userRole = Cookies.get("role");
+      
+      // Use the correct endpoint based on user role
+      const endpoint = userRole === 'Super Admin' 
+        ? `/api/superadmin/admins/${id}`
+        : `/api/admin/manage-admins/${id}`;
+      
+      await axios.delete(endpoint, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });

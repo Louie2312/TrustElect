@@ -95,6 +95,13 @@ export default function ManageAdminsPage() {
       return;
     }
 
+    // Check if user is trying to delete themselves
+    const currentUserId = Cookies.get("userId");
+    if (currentUserId && parseInt(currentUserId) === parseInt(adminId)) {
+      toast.error("You cannot delete your own account.");
+      return;
+    }
+
     if (window.confirm("Are you sure you want to delete this admin?")) {
       try {
         const token = Cookies.get("token");

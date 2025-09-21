@@ -288,6 +288,7 @@ app.use("/api/superadmin", superAdminRoutes);
 app.use("/api/superadmin", adminRoutes); 
 app.use("/api/admin", adminRoutes);
 app.use("/api/admin", checkEmailRoutes);
+app.use("/api/admin", departmentRoutes);
 app.use("/api/superadmin", superAdminCheckEmailRoutes);
 app.use("/api/superadmin", studentRoutes);
 app.use("/api/auth", require("./routes/authRoutes"));
