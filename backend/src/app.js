@@ -38,6 +38,8 @@ const electionReportRoutes = require('./routes/electionReportRoutes');
 const voterParticipationRoutes = require('./routes/voterParticipationRoutes');
 const candidateListReportRoutes = require('./routes/candidateListReportRoutes');
 const adminActivityRoutes = require('./routes/adminActivityRoutes');
+const checkEmailRoutes = require('./routes/checkEmailRoutes');
+const superAdminCheckEmailRoutes = require('./routes/superAdminCheckEmailRoutes');
 require('./cron/cron');
 app.use(cookieParser());
 app.use(helmet());
@@ -285,6 +287,8 @@ app.put('/api/candidates/:candidateId', (req, res) => {
 app.use("/api/superadmin", superAdminRoutes);
 app.use("/api/superadmin", adminRoutes); 
 app.use("/api/admin", adminRoutes);
+app.use("/api/admin", checkEmailRoutes);
+app.use("/api/superadmin", superAdminCheckEmailRoutes);
 app.use("/api/superadmin", studentRoutes);
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/elections", electionRoutes);

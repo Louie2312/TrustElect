@@ -29,11 +29,12 @@ export default function AddAdminModal({ onClose }) {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [errors, setErrors] = useState({});
   const [currentStep, setCurrentStep] = useState(1);
+  const [checkingEmail, setCheckingEmail] = useState(false);
 
-  const handleKeyDownNumeric = (e) => {
+  const handleKeyDownAlphanumeric = (e) => {
     const allowedKeys = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'];
     if (allowedKeys.includes(e.key)) return;
-    if (!/^[0-9]$/.test(e.key)) {
+    if (!/^[a-zA-Z0-9]$/.test(e.key)) {
       e.preventDefault();
     }
   };
@@ -43,6 +44,38 @@ export default function AddAdminModal({ onClose }) {
     if (allowedKeys.includes(e.key)) return;
     if (!/^[a-zA-Z]$/.test(e.key)) {
       e.preventDefault();
+    }
+  };
+
+  // Function to check if email already exists
+  const checkEmailExists = async (email) => {
+    if (!email || (!email.endsWith("@novaliches.sti.edu.ph") && !email.endsWith("@novaliches.sti.edu"))) {
+      return false;
+    }
+
+    try {
+      setCheckingEmail(true);
+      const token = Cookies.get("token");
+      
+      // Try admin endpoint first, fallback to superadmin
+      let res;
+      try {
+        res = await axios.get(`/api/admin/check-email?email=${encodeURIComponent(email)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch (error) {
+        // Fallback to superadmin endpoint
+        res = await axios.get(`/api/superadmin/check-email?email=${encodeURIComponent(email)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      }
+      
+      return res.data.exists || false;
+    } catch (error) {
+      console.error("Error checking email:", error);
+      return false; // Assume email is available if check fails
+    } finally {
+      setCheckingEmail(false);
     }
   };
 
@@ -120,21 +153,42 @@ export default function AddAdminModal({ onClose }) {
     fetchDepartmentsWithAdmins();
   }, []);
 
-  const handleChange = (e) => {
+  const handleChange = async (e) => {
     const { name, value } = e.target;
 
     let newValue = value;
     if (name === 'employeeNumber') {
-      // numeric only
-      newValue = value.replace(/[^0-9]/g, '');
+      // alphanumeric only, max 8 characters
+      newValue = value.replace(/[^a-zA-Z0-9]/g, '').substring(0, 8);
     }
     if (name === 'firstName' || name === 'lastName') {
-      // letters and spaces only
-      newValue = value.replace(/[^A-Za-z\s]/g, '');
+      // letters and spaces only, max 35 characters
+      newValue = value.replace(/[^A-Za-z\s]/g, '').substring(0, 35);
+    }
+    if (name === 'email') {
+      // Check email domain and length
+      if (value.length > 50) {
+        newValue = value.substring(0, 50);
+      } else {
+        newValue = value;
+      }
     }
 
     const updated = { ...formData, [name]: newValue };
     setFormData(updated);
+
+    // Clear email error when user starts typing
+    if (name === 'email' && errors.email) {
+      setErrors(prev => ({ ...prev, email: '' }));
+    }
+
+    // Check email existence when user finishes typing
+    if (name === 'email' && newValue && (newValue.endsWith("@novaliches.sti.edu.ph") || newValue.endsWith("@novaliches.sti.edu"))) {
+      const emailExists = await checkEmailExists(newValue);
+      if (emailExists) {
+        setErrors(prev => ({ ...prev, email: 'Email already exists. Please use a different email.' }));
+      }
+    }
 
     if ((name === 'lastName' || name === 'employeeNumber')) {
       if (updated.lastName && (updated.employeeNumber || '').length >= 3) {
@@ -143,15 +197,57 @@ export default function AddAdminModal({ onClose }) {
     }
   };
 
-  const validateInputs = () => {
+  const validateInputs = async () => {
     let newErrors = {};
-    if (!formData.firstName.trim()) newErrors.firstName = "First Name is required.";
-    if (!/^[A-Za-z\s]+$/.test(formData.firstName.trim())) newErrors.firstName = "First Name must contain letters only.";
-    if (!formData.lastName.trim()) newErrors.lastName = "Last Name is required.";
-    if (!/^[A-Za-z\s]+$/.test(formData.lastName.trim())) newErrors.lastName = "Last Name must contain letters only.";
-    if (!formData.email.trim() || (!formData.email.endsWith("@novaliches.sti.edu.ph") && !formData.email.endsWith("@novaliches.sti.edu"))) newErrors.email = "Invalid STI email. Must end with @novaliches.sti.edu.ph or @novaliches.sti.edu";
-    if (!formData.employeeNumber.match(/^\d{4,}$/)) newErrors.employeeNumber = "Employee Number must be numeric and at least 4 digits.";
-    if (!formData.department) newErrors.department = "Select a department.";
+    
+    // First Name validation
+    if (!formData.firstName.trim()) {
+      newErrors.firstName = "First Name is required.";
+    } else if (!/^[A-Za-z\s]+$/.test(formData.firstName.trim())) {
+      newErrors.firstName = "First Name must contain letters only.";
+    } else if (formData.firstName.trim().length > 35) {
+      newErrors.firstName = "First Name must not exceed 35 characters.";
+    }
+    
+    // Last Name validation
+    if (!formData.lastName.trim()) {
+      newErrors.lastName = "Last Name is required.";
+    } else if (!/^[A-Za-z\s]+$/.test(formData.lastName.trim())) {
+      newErrors.lastName = "Last Name must contain letters only.";
+    } else if (formData.lastName.trim().length > 35) {
+      newErrors.lastName = "Last Name must not exceed 35 characters.";
+    }
+    
+    // Email validation
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required.";
+    } else if (!formData.email.endsWith("@novaliches.sti.edu.ph") && !formData.email.endsWith("@novaliches.sti.edu")) {
+      newErrors.email = "Invalid STI email. Must end with @novaliches.sti.edu.ph or @novaliches.sti.edu";
+    } else if (formData.email.length > 50) {
+      newErrors.email = "Email must not exceed 50 characters.";
+    } else {
+      // Check if email already exists
+      const emailExists = await checkEmailExists(formData.email);
+      if (emailExists) {
+        newErrors.email = "Email already exists. Please use a different email.";
+      }
+    }
+    
+    // Employee Number validation
+    if (!formData.employeeNumber.trim()) {
+      newErrors.employeeNumber = "Employee Number is required.";
+    } else if (!/^[a-zA-Z0-9]+$/.test(formData.employeeNumber)) {
+      newErrors.employeeNumber = "Employee Number must contain only letters and numbers.";
+    } else if (formData.employeeNumber.length < 3) {
+      newErrors.employeeNumber = "Employee Number must be at least 3 characters.";
+    } else if (formData.employeeNumber.length > 8) {
+      newErrors.employeeNumber = "Employee Number must not exceed 8 characters.";
+    }
+    
+    // Department validation
+    if (!formData.department) {
+      newErrors.department = "Select a department.";
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -205,8 +301,9 @@ export default function AddAdminModal({ onClose }) {
     }));
   };
 
-  const handleNextStep = () => {
-    if (!validateInputs()) return;
+  const handleNextStep = async () => {
+    const isValid = await validateInputs();
+    if (!isValid) return;
     setCurrentStep(2);
   };
 
@@ -214,8 +311,9 @@ export default function AddAdminModal({ onClose }) {
     setCurrentStep(1);
   };
 
-  const handleRegister = () => {
-    if (!validateInputs()) return;
+  const handleRegister = async () => {
+    const isValid = await validateInputs();
+    if (!isValid) return;
     const autoPassword = generatePassword(formData.lastName, formData.employeeNumber);
     setGeneratedPassword(autoPassword);
     setShowPasswordModal(true);
@@ -255,7 +353,8 @@ export default function AddAdminModal({ onClose }) {
   };
 
   const submitRegistration = async (adminId, token) => {
-    if (!validateInputs()) {
+    const isValid = await validateInputs();
+    if (!isValid) {
       setShowPasswordModal(false);
       return;
     }
@@ -302,21 +401,63 @@ export default function AddAdminModal({ onClose }) {
             <>
               <form className="space-y-3">
 
-                <label name="studentNumber" className="text-black font-bold">Employee Number:</label>
-                <input type="text" name="employeeNumber" placeholder="Employee Number" value={formData.employeeNumber} onChange={handleChange} onKeyDown={handleKeyDownNumeric} required className="border w-full p-2 rounded text-black" inputMode="numeric" pattern="\\d*" />
+                <label name="employeeNumber" className="text-black font-bold">Employee Number:</label>
+                <input 
+                  type="text" 
+                  name="employeeNumber" 
+                  placeholder="Employee Number (3-8 characters, letters and numbers only)" 
+                  value={formData.employeeNumber} 
+                  onChange={handleChange} 
+                  onKeyDown={handleKeyDownAlphanumeric} 
+                  required 
+                  className="border w-full p-2 rounded text-black" 
+                  maxLength={8}
+                />
                 {errors.employeeNumber && <p className="text-red-500 text-sm">{errors.employeeNumber}</p>}
 
 
                 <label name="firstName" className="text-black font-bold">First Name:</label>
-                <input type="text" name="firstName" placeholder="First Name" value={formData.firstName} onChange={handleChange} onKeyDown={handleKeyDownLetters} required className="border w-full p-2 rounded text-black" pattern="[A-Za-z\\s]+" />
+                <input 
+                  type="text" 
+                  name="firstName" 
+                  placeholder="First Name (max 35 characters)" 
+                  value={formData.firstName} 
+                  onChange={handleChange} 
+                  onKeyDown={handleKeyDownLetters} 
+                  required 
+                  className="border w-full p-2 rounded text-black" 
+                  pattern="[A-Za-z\\s]+" 
+                  maxLength={35}
+                />
                 {errors.firstName && <p className="text-red-500 text-sm">{errors.firstName}</p>}
 
                 <label name="lastName" className="text-black font-bold">Last Name:</label>
-                <input type="text" name="lastName" placeholder="Last Name" value={formData.lastName} onChange={handleChange} onKeyDown={handleKeyDownLetters} required className="border w-full p-2 rounded text-black" pattern="[A-Za-z\\s]+" />
+                <input 
+                  type="text" 
+                  name="lastName" 
+                  placeholder="Last Name (max 35 characters)" 
+                  value={formData.lastName} 
+                  onChange={handleChange} 
+                  onKeyDown={handleKeyDownLetters} 
+                  required 
+                  className="border w-full p-2 rounded text-black" 
+                  pattern="[A-Za-z\\s]+" 
+                  maxLength={35}
+                />
                 {errors.lastName && <p className="text-red-500 text-sm">{errors.lastName}</p>}
 
                 <label name="email" className="text-black font-bold">Email:</label>
-                <input type="email" name="email" placeholder="Email" onChange={handleChange} required className="border w-full p-2 rounded text-black" />
+                <input 
+                  type="email" 
+                  name="email" 
+                  placeholder="Email (@novaliches.sti.edu.ph or @novaliches.sti.edu)" 
+                  value={formData.email}
+                  onChange={handleChange} 
+                  required 
+                  className="border w-full p-2 rounded text-black" 
+                  maxLength={50}
+                />
+                {checkingEmail && <p className="text-blue-500 text-sm">Checking email availability...</p>}
                 {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
 
                 {/* Department Dropdown */}
