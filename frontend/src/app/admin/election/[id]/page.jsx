@@ -128,6 +128,8 @@ export default function ElectionDetailsPage() {
   const [bulletinLoading, setBulletinLoading] = useState(false);
   const [currentBulletinSlide, setCurrentBulletinSlide] = useState(0);
   const bulletinIntervalRef = useRef(null);
+  const [currentPositionPage, setCurrentPositionPage] = useState(0);
+  const [currentDetailsPositionPage, setCurrentDetailsPositionPage] = useState(0);
 
   const toggleFullScreen = async () => {
     if (!document.fullscreenElement) {
@@ -693,6 +695,31 @@ export default function ElectionDetailsPage() {
     }
   };
 
+  // Pagination functions
+  const goToNextPosition = () => {
+    if (election?.positions && currentPositionPage < election.positions.length - 1) {
+      setCurrentPositionPage(prev => prev + 1);
+    }
+  };
+
+  const goToPreviousPosition = () => {
+    if (currentPositionPage > 0) {
+      setCurrentPositionPage(prev => prev - 1);
+    }
+  };
+
+  const goToNextDetailsPosition = () => {
+    if (election?.positions && currentDetailsPositionPage < election.positions.length - 1) {
+      setCurrentDetailsPositionPage(prev => prev + 1);
+    }
+  };
+
+  const goToPreviousDetailsPosition = () => {
+    if (currentDetailsPositionPage > 0) {
+      setCurrentDetailsPositionPage(prev => prev - 1);
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto p-4">
       {/* Header */}
@@ -985,19 +1012,44 @@ export default function ElectionDetailsPage() {
                 
                 {/* Positions and candidates */}
                 <div className="space-y-6 mt-4">
-                  <h3 className="text-lg font-medium text-black">Positions & Candidates</h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-medium text-black">Positions & Candidates</h3>
+                    {election.positions && election.positions.length > 1 && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600">
+                          {currentDetailsPositionPage + 1} of {election.positions.length}
+                        </span>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={goToPreviousDetailsPosition}
+                            disabled={currentDetailsPositionPage === 0}
+                            className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Previous
+                          </button>
+                          <button
+                            onClick={goToNextDetailsPosition}
+                            disabled={currentDetailsPositionPage === election.positions.length - 1}
+                            className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Next
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   
-                  {election.positions?.map((position) => (
-                    <div key={position.id} className="border rounded-lg p-4">
+                  {election.positions && election.positions[currentDetailsPositionPage] && (
+                    <div key={election.positions[currentDetailsPositionPage].id} className="border rounded-lg p-4">
                       <div className="flex justify-between items-center mb-3">
-                        <h4 className="text-md font-semibold text-black">{position.name}</h4>
+                        <h4 className="text-md font-semibold text-black">{election.positions[currentDetailsPositionPage].name}</h4>
                         <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
-                          {position.max_choices > 1 ? `Select up to ${position.max_choices}` : 'Single choice'}
+                          {election.positions[currentDetailsPositionPage].max_choices > 1 ? `Select up to ${election.positions[currentDetailsPositionPage].max_choices}` : 'Single choice'}
                         </span>
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {position.candidates?.map((candidate) => (
+                        {election.positions[currentDetailsPositionPage].candidates?.map((candidate) => (
                           <div key={candidate.id} className="border rounded p-3 flex items-start">
                             <div className="relative w-32 h-40 mr-4">
                               {candidate.image_url && !imageErrors[candidate.id] ? (
@@ -1035,7 +1087,7 @@ export default function ElectionDetailsPage() {
                         ))}
                       </div>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             ) : (
@@ -1097,7 +1149,42 @@ export default function ElectionDetailsPage() {
             </div>
             
             {election.positions && election.positions.length > 0 ? (
-              formatResultsData(election.positions).map(position => (
+              <>
+                {/* Pagination controls for results */}
+                {election.positions.length > 1 && (
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600">
+                        Position {currentPositionPage + 1} of {election.positions.length}
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={goToPreviousPosition}
+                        disabled={currentPositionPage === 0}
+                        className="flex items-center px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <ChevronLeft className="w-4 h-4 mr-1" />
+                        Previous
+                      </button>
+                      <button
+                        onClick={goToNextPosition}
+                        disabled={currentPositionPage === election.positions.length - 1}
+                        className="flex items-center px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Next
+                        <ChevronRight className="w-4 h-4 ml-1" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Current position results */}
+                {(() => {
+                  const position = formatResultsData(election.positions)[currentPositionPage];
+                  if (!position) return null;
+                  
+                  return (
                 <div key={position.id} className="mb-8 border-b pb-6">
                   <h3 className="text-lg font-medium text-black mb-4">{position.name}</h3>
                   
@@ -1270,7 +1357,9 @@ export default function ElectionDetailsPage() {
                     ))}
                   </div>
                 </div>
-              ))
+                  );
+                })()}
+              </>
             ) : (
               <div className="text-center py-8 text-gray-500">
                 No results available yet
