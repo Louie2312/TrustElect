@@ -83,27 +83,32 @@ export default function AddAdminModal({ onClose }) {
     const fetchDepartments = async () => {
       try {
         const token = Cookies.get("token");
-        // Try admin endpoint first, fallback to superadmin
-        let res;
-        try {
-          res = await axios.get("/api/admin/departments", {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-        } catch (error) {
-          // Fallback to superadmin endpoint
-          res = await axios.get("/api/superadmin/department-names", {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-        }
+        const userRole = Cookies.get("role");
+        
+        // Use the correct endpoint based on user role
+        const endpoint = userRole === 'Super Admin' 
+          ? "/api/superadmin/department-names"
+          : "/api/admin/department-names";
+        
+        const res = await axios.get(endpoint, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         
         if (res.data && Array.isArray(res.data)) {
-          setDepartments(res.data);
+          // Ensure Administration department is included
+          let departments = res.data;
+          if (!departments.includes("Administration")) {
+            departments = ["Administration", ...departments];
+          }
+          
+          setDepartments(departments);
 
-          if (res.data.length > 0) {
-            setFormData(prev => ({ ...prev, department: res.data[0] }));
+          if (departments.length > 0) {
+            setFormData(prev => ({ ...prev, department: departments[0] }));
           }
         } else {
           setDepartments([
+            "Administrator",
             "Information and Communication Technology (ICT)",
             "Tourism and Hospitality Management (THM)",
             "Business Administration and Accountancy"
@@ -112,6 +117,7 @@ export default function AddAdminModal({ onClose }) {
       } catch (error) {
         console.error("Error fetching departments:", error);
         setDepartments([
+          "Administrator",
           "Information and Communication Technology (ICT)",
           "Tourism and Hospitality Management (THM)",
           "Business Administration and Accountancy"
