@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Calendar, Clock, Users, CheckCircle, XCircle, AlertCircle, Trash2, Lock, BarChart, PieChart, RefreshCw, Download, X, Activity, BarChart2, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
@@ -202,7 +202,7 @@ export default function AdminDashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('ongoing');
   
-  const statusTabs = [
+  const getStatusTabs = () => [
     { id: 'ongoing', name: 'Ongoing Elections', icon: <Clock className="w-4 h-4" /> },
     { id: 'upcoming', name: 'Upcoming Elections', icon: <Calendar className="w-4 h-4" /> },
     { id: 'completed', name: 'Completed Elections', icon: <CheckCircle className="w-4 h-4" /> },
@@ -240,6 +240,7 @@ export default function AdminDashboard() {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [isDataReset, setIsDataReset] = useState(false);
+  const isRefreshingRef = useRef(false);
 
   // Load UI design - simplified and memoized
   const loadUIDesign = useCallback(async () => {
@@ -369,8 +370,9 @@ export default function AdminDashboard() {
 
   // Refresh all data with loading indicator
   const refreshAllData = useCallback(async () => {
-    if (isRefreshing) return; // Prevent multiple simultaneous refreshes
+    if (isRefreshingRef.current) return; // Prevent multiple simultaneous refreshes
     
+    isRefreshingRef.current = true;
     setIsRefreshing(true);
     try {
       await Promise.allSettled([
@@ -382,9 +384,10 @@ export default function AdminDashboard() {
     } catch (err) {
       console.error('Error refreshing data:', err);
     } finally {
+      isRefreshingRef.current = false;
       setIsRefreshing(false);
     }
-  }, [isRefreshing, loadAllElections, loadStats, loadTotalUniqueVoters, loadLiveVoteCount]);
+  }, [loadAllElections, loadStats, loadTotalUniqueVoters, loadLiveVoteCount]);
 
   // Load stats - memoized
   const loadStats = useCallback(async () => {
@@ -487,23 +490,15 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  // Single initialization effect - OPTIMIZED
+  // Initialize dashboard data
   useEffect(() => {
     let isMounted = true;
     
     const initializeDashboard = async () => {
-      // Wait for permissions to load
-      if (permissionsLoading) {
+      if (permissionsLoading || dataLoaded) {
         return;
       }
       
-      // Check if already loaded
-      if (dataLoaded) {
-        setIsLoading(false);
-        return;
-      }
-      
-      // Check permissions
       if (!hasPermission('elections', 'view')) {
         setIsLoading(false);
         return;
@@ -513,7 +508,7 @@ export default function AdminDashboard() {
         setIsLoading(true);
         setError(null);
         
-        // Load only critical data first
+        // Load critical data
         await Promise.all([
           loadAllElections(),
           loadStats(),
@@ -526,22 +521,14 @@ export default function AdminDashboard() {
           setIsInitialLoad(false);
         }
         
-        // Load optional data in background (non-blocking) after critical data is loaded
+        // Load optional data in background
         setTimeout(() => {
           if (isMounted) {
-            Promise.allSettled([
-              loadTotalUniqueVoters().catch(err => {
-                console.log("[Admin] Total unique voters not available:", err.message);
-              }),
-              loadLiveVoteCount().catch(err => {
-                console.log("[Admin] Live vote count not available:", err.message);
-              }),
-              loadSystemLoadData('24h').catch(err => {
-                console.log("[Admin] System load data not available:", err.message);
-              })
-            ]);
+            loadTotalUniqueVoters().catch(() => {});
+            loadLiveVoteCount().catch(() => {});
+            loadSystemLoadData('24h').catch(() => {});
           }
-        }, 1000); // 1 second delay to ensure UI is rendered first
+        }, 1000);
         
       } catch (error) {
         console.error('Error loading dashboard data:', error);
@@ -554,41 +541,10 @@ export default function AdminDashboard() {
     
     initializeDashboard();
     
-    // Set up intervals for auto-refresh (only after initial load)
-    const intervals = [];
-    
-    // Refresh pending approvals every 30 seconds (reduced frequency)
-    intervals.push(setInterval(() => {
-      if (isMounted && dataLoaded) {
-        loadAllElections().catch(err => {
-          console.log("[Admin] Error refreshing elections:", err.message);
-        });
-      }
-    }, 30000));
-    
-    // Refresh stats every 2 minutes (reduced frequency)
-    intervals.push(setInterval(() => {
-      if (isMounted && dataLoaded) {
-        loadStats().catch(err => {
-          console.log("[Admin] Error refreshing stats:", err.message);
-        });
-      }
-    }, 120000));
-    
-    // Refresh optional data every 5 minutes (reduced frequency)
-    intervals.push(setInterval(() => {
-      if (isMounted && dataLoaded) {
-        loadTotalUniqueVoters().catch(err => {
-          console.log("[Admin] Total unique voters not available:", err.message);
-        });
-      }
-    }, 300000)); // 5 minutes
-    
     return () => {
       isMounted = false;
-      intervals.forEach(interval => clearInterval(interval));
     };
-  }, [permissionsLoading, hasPermission, dataLoaded, loadAllElections, loadStats, loadUIDesign, loadTotalUniqueVoters, loadLiveVoteCount, loadSystemLoadData]);
+  }, [permissionsLoading, hasPermission, dataLoaded]);
 
   // Handle tab change - update elections when tab or allElections change
   useEffect(() => {
@@ -596,6 +552,27 @@ export default function AdminDashboard() {
       setElections(allElections[activeTab] || []);
     }
   }, [activeTab, allElections]);
+
+  // Background refresh intervals
+  useEffect(() => {
+    if (!dataLoaded) return;
+    
+    const intervals = [];
+    
+    // Refresh elections every 30 seconds
+    intervals.push(setInterval(() => {
+      loadAllElections().catch(() => {});
+    }, 30000));
+    
+    // Refresh stats every 2 minutes
+    intervals.push(setInterval(() => {
+      loadStats().catch(() => {});
+    }, 120000));
+    
+    return () => {
+      intervals.forEach(interval => clearInterval(interval));
+    };
+  }, [dataLoaded]);
 
   // Ensure user ID is available from token - run once
   useEffect(() => {
@@ -1008,7 +985,7 @@ export default function AdminDashboard() {
       {/* Status Tabs */}
       <div className="bg-white rounded-lg shadow mb-6 p-1">
         <div className="flex">
-          {statusTabs.map(tab => {
+          {getStatusTabs().map(tab => {
             const count = getStatValue(tab.id, 'count');
             const hasPending = tab.id === 'to_approve' && count > 0;
             
