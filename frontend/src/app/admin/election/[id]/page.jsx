@@ -1450,7 +1450,7 @@ export default function ElectionDetailsPage() {
           </div>
         </>
       ) : tab === 'partial' ? (
-        <div ref={partialCountingRef} className="fixed inset-0 bg-gray-100 z-50 overflow-y-auto">
+        <div ref={partialCountingRef} className={`${isFullScreen ? 'fixed inset-0 bg-gray-100 z-50 overflow-y-auto' : ''}`}>
           {/* Vote Summary Section */}
           <div className={`bg-white rounded-lg shadow-lg ${isFullScreen ? 'sticky top-0 z-10 mx-6 mt-6 mb-8 p-8' : 'p-4 mb-6'}`}>
             <div className="flex items-center justify-between">
