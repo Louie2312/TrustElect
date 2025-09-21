@@ -106,12 +106,14 @@ export default function EditAdminModal({ admin, onClose }) {
   const handleChange = (e) => {
     const { name, value } = e.target;
     
-    // Apply character limits
+    // Apply character limits and validation
     let processedValue = value;
     if (name === 'firstName' || name === 'lastName') {
-      processedValue = value.substring(0, 35);
+      // Only allow letters and spaces, max 35 characters
+      processedValue = value.replace(/[^a-zA-Z\s]/g, '').substring(0, 35);
     } else if (name === 'employeeNumber') {
-      processedValue = value.substring(0, 8);
+      // Only allow alphanumeric characters, max 8 characters
+      processedValue = value.replace(/[^a-zA-Z0-9]/g, '').substring(0, 8);
     } else if (name === 'email') {
       processedValue = value.substring(0, 50);
     }
@@ -143,6 +145,8 @@ export default function EditAdminModal({ admin, onClose }) {
       newErrors.firstName = "First Name is required.";
     } else if (!/^[A-Za-z\s]+$/.test(formData.firstName.trim())) {
       newErrors.firstName = "First Name must contain letters only.";
+    } else if (formData.firstName.trim().length < 1) {
+      newErrors.firstName = "First Name is required.";
     } else if (formData.firstName.trim().length > 35) {
       newErrors.firstName = "First Name must not exceed 35 characters.";
     }
@@ -152,6 +156,8 @@ export default function EditAdminModal({ admin, onClose }) {
       newErrors.lastName = "Last Name is required.";
     } else if (!/^[A-Za-z\s]+$/.test(formData.lastName.trim())) {
       newErrors.lastName = "Last Name must contain letters only.";
+    } else if (formData.lastName.trim().length < 1) {
+      newErrors.lastName = "Last Name is required.";
     } else if (formData.lastName.trim().length > 35) {
       newErrors.lastName = "Last Name must not exceed 35 characters.";
     }
@@ -208,10 +214,10 @@ export default function EditAdminModal({ admin, onClose }) {
       
       // Prepare data in the format expected by the API
       const updateData = {
-        first_name: formData.firstName,
-        last_name: formData.lastName,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
         email: formData.email,
-        employee_number: formData.employeeNumber,
+        employeeNumber: formData.employeeNumber,
         department: formData.department
       };
       

@@ -73,7 +73,36 @@ router.post(
   registerAdmin
 );
 
-router.put("/admins/:id", verifyToken, isSuperAdmin, updateAdmin);
+router.put(
+  "/admins/:id",
+  verifyToken,
+  isSuperAdmin,
+  [
+    check("firstName", "First Name must be 1-35 characters and contain only letters.")
+      .optional()
+      .isLength({ min: 1, max: 35 })
+      .matches(/^[a-zA-Z\s]+$/),
+    check("lastName", "Last Name must be 1-35 characters and contain only letters.")
+      .optional()
+      .isLength({ min: 1, max: 35 })
+      .matches(/^[a-zA-Z\s]+$/),
+    check("email", "Valid email is required")
+      .optional()
+      .isEmail()
+      .custom((value) => {
+        if (value && !value.endsWith("@novaliches.sti.edu.ph") && !value.endsWith("@novaliches.sti.edu")) {
+          throw new Error("Email must end with @novaliches.sti.edu.ph or @novaliches.sti.edu");
+        }
+        return true;
+      }),
+    check("employeeNumber", "Employee Number must be 3-8 alphanumeric characters.")
+      .optional()
+      .isLength({ min: 3, max: 8 })
+      .matches(/^[a-zA-Z0-9]+$/),
+    check("department", "Department is required.").optional().not().isEmpty(),
+  ],
+  updateAdmin
+);
 router.delete("/admins/:id", verifyToken, isSuperAdmin, softDeleteAdmin);
 router.patch("/admins/:id/restore", verifyToken, isSuperAdmin, restoreAdmin);
 router.delete("/admins/:id/permanent-delete", verifyToken, isSuperAdmin, permanentlyDeleteAdmin);
@@ -83,7 +112,37 @@ router.post("/admins/reset-password", verifyToken, isSuperAdmin, resetAdminPassw
 
 // Admin management routes for regular admins with permissions
 router.get("/manage-admins", verifyToken, isAdmin, checkPermission('adminManagement', 'view'), getAllAdmins);
-router.put("/manage-admins/:id", verifyToken, isAdmin, checkPermission('adminManagement', 'edit'), updateAdmin);
+router.put(
+  "/manage-admins/:id",
+  verifyToken,
+  isAdmin,
+  checkPermission('adminManagement', 'edit'),
+  [
+    check("firstName", "First Name must be 1-35 characters and contain only letters.")
+      .optional()
+      .isLength({ min: 1, max: 35 })
+      .matches(/^[a-zA-Z\s]+$/),
+    check("lastName", "Last Name must be 1-35 characters and contain only letters.")
+      .optional()
+      .isLength({ min: 1, max: 35 })
+      .matches(/^[a-zA-Z\s]+$/),
+    check("email", "Valid email is required")
+      .optional()
+      .isEmail()
+      .custom((value) => {
+        if (value && !value.endsWith("@novaliches.sti.edu.ph") && !value.endsWith("@novaliches.sti.edu")) {
+          throw new Error("Email must end with @novaliches.sti.edu.ph or @novaliches.sti.edu");
+        }
+        return true;
+      }),
+    check("employeeNumber", "Employee Number must be 3-8 alphanumeric characters.")
+      .optional()
+      .isLength({ min: 3, max: 8 })
+      .matches(/^[a-zA-Z0-9]+$/),
+    check("department", "Department is required.").optional().not().isEmpty(),
+  ],
+  updateAdmin
+);
 router.post(
   "/manage-admins",
   verifyToken,
