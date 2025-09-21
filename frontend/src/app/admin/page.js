@@ -235,9 +235,6 @@ export default function AdminDashboard() {
   const [showSystemLoadModal, setShowSystemLoadModal] = useState(false);
   const [isSystemLoadLoading, setIsSystemLoadLoading] = useState(false);
   const [selectedTimeframe, setSelectedTimeframe] = useState('24h');
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const [isResetting, setIsResetting] = useState(false);
-  const [isDataReset, setIsDataReset] = useState(false);
 
   // Load UI design - simplified and memoized
   const loadUIDesign = useCallback(async () => {
@@ -752,46 +749,6 @@ export default function AdminDashboard() {
   };
 
 
-  const handleResetSystemLoadData = async () => {
-    // Check if user has permission to reset system load data
-    if (!hasPermission('system', 'reset')) {
-      toast.error('You do not have permission to reset system load data');
-      setShowResetConfirm(false);
-      return;
-    }
-
-    setIsResetting(true);
-    try {
-      const response = await fetch(`${API_BASE}/reports/system-load/reset`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${Cookies.get('token')}`
-        }
-      });
-
-      if (response.ok) {
-        toast.success('System load data has been reset successfully!');
-        setShowResetConfirm(false);
-        // Set data reset flag to show empty state immediately
-        setIsDataReset(true);
-        
-        // Refresh the data after a short delay
-        setTimeout(() => {
-          loadSystemLoadData(selectedTimeframe);
-          setIsDataReset(false);
-        }, 1500);
-      } else {
-        const errorData = await response.json();
-        toast.error(errorData.message || 'Failed to reset system load data');
-      }
-    } catch (error) {
-      console.error('Error resetting system load data:', error);
-      toast.error('Failed to reset system load data. Please try again.');
-    } finally {
-      setIsResetting(false);
-    }
-  };
 
   const getStatValue = (status, field = 'count') => {
     if (!stats || !Array.isArray(stats)) {
@@ -1116,36 +1073,24 @@ export default function AdminDashboard() {
 
       {/* System Load Reports - Direct Display */}
       <div className="mt-8 bg-white rounded-lg shadow-lg p-6 border border-gray-200">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold text-black flex items-center">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-bold text-black flex items-center">
             <BarChart className="mr-2 text-black" />
             System Load Reports
             <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
               Analytics
             </span>
           </h2>
-          <div className="flex items-center gap-2">
-            <select
-              value={selectedTimeframe}
-              onChange={(e) => loadSystemLoadData(e.target.value)}
-              className="px-3 py-2 border rounded-md text-sm text-black"
-              disabled={isSystemLoadLoading}
-            >
-              <option value="24h" className="text-black">Last 24 Hours</option>
-              <option value="7d" className="text-black">Last 7 Days</option>
-              <option value="30d" className="text-black">Last 30 Days</option>
-            </select>
-            {hasPermission('system', 'reset') && (
-              <button 
-                onClick={() => setShowResetConfirm(true)}
-                className="flex items-center gap-2 px-3 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors text-sm font-medium"
-                title="Reset system load data for fresh testing"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Reset Data
-              </button>
-            )}
-          </div>
+          <select
+            value={selectedTimeframe}
+            onChange={(e) => loadSystemLoadData(e.target.value)}
+            className="px-3 py-2 border rounded-md text-sm text-black"
+            disabled={isSystemLoadLoading}
+          >
+            <option value="24h" className="text-black">Last 24 Hours</option>
+            <option value="7d" className="text-black">Last 7 Days</option>
+            <option value="30d" className="text-black">Last 30 Days</option>
+          </select>
         </div>
 
         {/* Loading Indicator */}
@@ -1158,27 +1103,13 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Empty State Message */}
-        {isDataReset && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-full">
-                <RefreshCw className="w-5 h-5 text-green-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-green-800">Data Reset Successfully!</h3>
-                <p className="text-green-700">All system load data has been cleared. Fresh data collection will begin for tomorrow&apos;s testing.</p>
-              </div>
-            </div>
-          </div>
-        )}
 
         {systemLoadData ? (
           <>
             {/* Process data */}
             {(() => {
-              const processedLoginData = isDataReset ? [] : validateData(systemLoadData.login_activity || []);
-              const processedVotingData = isDataReset ? [] : validateData(systemLoadData.voting_activity || []);
+              const processedLoginData = validateData(systemLoadData.login_activity || []);
+              const processedVotingData = validateData(systemLoadData.voting_activity || []);
               
               const loginPeak = findPeakHour(processedLoginData);
               const votingPeak = findPeakHour(processedVotingData);
@@ -1223,91 +1154,79 @@ export default function AdminDashboard() {
               return (
                 <>
                   {/* Summary Cards */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200 shadow-sm">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="p-2 bg-blue-500 rounded-lg">
-                          <Clock className="w-5 h-5 text-white" />
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="p-1.5 bg-blue-500 rounded">
+                          <Clock className="w-4 h-4 text-white" />
                         </div>
                         <h3 className="text-sm font-semibold text-black">Peak Login Hour</h3>
                       </div>
-                      <p className="text-3xl font-bold text-black mb-1">
+                      <p className="text-2xl font-bold text-black mb-1">
                         {formatTime(chartConfig.login.peak.hour)}
                       </p>
-                      <p className="text-sm text-black">
+                      <p className="text-xs text-black">
                         {formatNumber(chartConfig.login.peak.count)} logins
                       </p>
-                      <div className="mt-2 text-xs text-blue-600">
-                        Total: {formatNumber(chartConfig.login.total)} | Avg: {formatNumber(chartConfig.login.average)}/hour
-                      </div>
                     </div>
-                    <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl border border-green-200 shadow-sm">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="p-2 bg-green-500 rounded-lg">
-                          <Activity className="w-5 h-5 text-white" />
+                    <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="p-1.5 bg-green-500 rounded">
+                          <Activity className="w-4 h-4 text-white" />
                         </div>
                         <h3 className="text-sm font-semibold text-black">Peak Voting Hour</h3>
                       </div>
-                      <p className="text-3xl font-bold text-black mb-1">
+                      <p className="text-2xl font-bold text-black mb-1">
                         {formatTime(chartConfig.voting.peak.hour)}
                       </p>
-                      <p className="text-sm text-black">
+                      <p className="text-xs text-black">
                         {formatNumber(chartConfig.voting.peak.count)} votes
                       </p>
-                      <div className="mt-2 text-xs text-green-600">
-                        Total: {formatNumber(chartConfig.voting.total)} | Avg: {formatNumber(chartConfig.voting.average)}/hour
-                      </div>
                     </div>
-                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200 shadow-sm">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="p-2 bg-purple-500 rounded-lg">
-                          <Users className="w-5 h-5 text-white" />
+                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="p-1.5 bg-purple-500 rounded">
+                          <Users className="w-4 h-4 text-white" />
                         </div>
                         <h3 className="text-sm font-semibold text-black">Total Activity</h3>
                       </div>
-                      <p className="text-3xl font-bold text-black mb-1">
+                      <p className="text-2xl font-bold text-black mb-1">
                         {formatNumber(chartConfig.login.total + chartConfig.voting.total)}
                       </p>
-                      <p className="text-sm text-black">
-                        total actions in the last {selectedTimeframe === '24h' ? '24 hours' : selectedTimeframe === '7d' ? '7 days' : '30 days'}
+                      <p className="text-xs text-black">
+                        {selectedTimeframe === '24h' ? '24 hours' : selectedTimeframe === '7d' ? '7 days' : '30 days'}
                       </p>
-                      <div className="mt-2 text-xs text-purple-600">
-                        Logins: {formatNumber(chartConfig.login.total)} | Votes: {formatNumber(chartConfig.voting.total)}
-                      </div>
                     </div>
                   </div>
 
                   {/* Usage Charts */}
-                  <div className="space-y-6">
+                  <div className="space-y-4">
                     {/* Login Activity Chart */}
-                    <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                      {isDataReset || processedLoginData.length === 0 ? (
-                        <div className="h-[350px] flex items-center justify-center">
+                    <div className="bg-white p-4 rounded-lg border border-gray-200">
+                      {processedLoginData.length === 0 ? (
+                        <div className="h-[200px] flex items-center justify-center">
                           <div className="text-center">
-                            <div className="p-4 bg-gray-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                              <BarChart2 className="w-8 h-8 text-gray-400" />
+                            <div className="p-3 bg-gray-100 rounded-full w-12 h-12 mx-auto mb-3 flex items-center justify-center">
+                              <BarChart2 className="w-6 h-6 text-gray-400" />
                             </div>
-                            <h3 className="text-lg font-semibold text-gray-600 mb-2">
-                              {isDataReset ? 'No Login Data Available' : 'No Login Data for Selected Period'}
+                            <h3 className="text-sm font-semibold text-gray-600 mb-1">
+                              No Login Data for Selected Period
                             </h3>
-                            <p className="text-gray-500">
-                              {isDataReset 
-                                ? 'Data has been reset. New login activity will be tracked during testing.'
-                                : `No login activity found for the last ${selectedTimeframe === '24h' ? '24 hours' : selectedTimeframe === '7d' ? '7 days' : '30 days'}.`
-                              }
+                            <p className="text-xs text-gray-500">
+                              No login activity found for the last {selectedTimeframe === '24h' ? '24 hours' : selectedTimeframe === '7d' ? '7 days' : '30 days'}.
                             </p>
                           </div>
                         </div>
                       ) : (
                         <>
-                          <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-xl text-black font-bold">Login Activity</h3>
-                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                              <span>Peak: {formatTime(chartConfig.login.peak.hour)} ({formatNumber(chartConfig.login.peak.count)} logins)</span>
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-lg text-black font-bold">Login Activity</h3>
+                            <div className="flex items-center gap-2 text-xs text-gray-600">
+                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                              <span>Peak: {formatTime(chartConfig.login.peak.hour)}</span>
                             </div>
                           </div>
-                          <div className="h-[350px]">
+                          <div className="h-[200px]">
                             <ResponsiveContainer width="100%" height="100%">
                               <RechartsBarChart data={chartConfig.login.data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                                 <defs>
@@ -1361,34 +1280,31 @@ export default function AdminDashboard() {
                     </div>
 
                     {/* Voting Activity Chart */}
-                    <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                      {isDataReset || processedVotingData.length === 0 ? (
-                        <div className="h-[350px] flex items-center justify-center">
+                    <div className="bg-white p-4 rounded-lg border border-gray-200">
+                      {processedVotingData.length === 0 ? (
+                        <div className="h-[200px] flex items-center justify-center">
                           <div className="text-center">
-                            <div className="p-4 bg-gray-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                              <Activity className="w-8 h-8 text-gray-400" />
+                            <div className="p-3 bg-gray-100 rounded-full w-12 h-12 mx-auto mb-3 flex items-center justify-center">
+                              <Activity className="w-6 h-6 text-gray-400" />
                             </div>
-                            <h3 className="text-lg font-semibold text-gray-600 mb-2">
-                              {isDataReset ? 'No Voting Data Available' : 'No Voting Data for Selected Period'}
+                            <h3 className="text-sm font-semibold text-gray-600 mb-1">
+                              No Voting Data for Selected Period
                             </h3>
-                            <p className="text-gray-500">
-                              {isDataReset 
-                                ? 'Data has been reset. New voting activity will be tracked during testing.'
-                                : `No voting activity found for the last ${selectedTimeframe === '24h' ? '24 hours' : selectedTimeframe === '7d' ? '7 days' : '30 days'}.`
-                              }
+                            <p className="text-xs text-gray-500">
+                              No voting activity found for the last {selectedTimeframe === '24h' ? '24 hours' : selectedTimeframe === '7d' ? '7 days' : '30 days'}.
                             </p>
                           </div>
                         </div>
                       ) : (
                         <>
-                          <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-xl text-black font-bold">Voting Activity</h3>
-                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                              <span>Peak: {formatTime(chartConfig.voting.peak.hour)} ({formatNumber(chartConfig.voting.peak.count)} votes)</span>
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-lg text-black font-bold">Voting Activity</h3>
+                            <div className="flex items-center gap-2 text-xs text-gray-600">
+                              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                              <span>Peak: {formatTime(chartConfig.voting.peak.hour)}</span>
                             </div>
                           </div>
-                          <div className="h-[350px]">
+                          <div className="h-[200px]">
                             <ResponsiveContainer width="100%" height="100%">
                               <RechartsBarChart data={chartConfig.voting.data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                                 <defs>
@@ -1608,63 +1524,6 @@ export default function AdminDashboard() {
       )}
 
 
-      {/* Reset Confirmation Modal */}
-      {showResetConfirm && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-red-100 rounded-full">
-                  <AlertTriangle className="w-6 h-6 text-red-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-black">Reset System Load Data</h3>
-              </div>
-              
-              <div className="mb-6">
-                <p className="text-gray-700 mb-3">
-                  Are you sure you want to reset all system load data? This action will:
-                </p>
-                <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-                  <li>Clear all login activity records</li>
-                  <li>Clear all voting activity records</li>
-                  <li>Reset peak hour calculations</li>
-                  <li>Start fresh data collection for tomorrow&apos;s testing</li>
-                </ul>
-                <p className="text-red-600 font-medium mt-3">
-                  ⚠️ This action cannot be undone!
-                </p>
-              </div>
-
-              <div className="flex gap-3 justify-end">
-                <button
-                  onClick={() => setShowResetConfirm(false)}
-                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-                  disabled={isResetting}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleResetSystemLoadData}
-                  disabled={isResetting}
-                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isResetting ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      Resetting...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="w-4 h-4" />
-                      Reset Data
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
