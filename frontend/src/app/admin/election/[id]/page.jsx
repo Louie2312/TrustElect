@@ -1521,7 +1521,7 @@ export default function ElectionDetailsPage() {
             </div>
 
             {election.positions && election.positions.length > 0 ? (
-              isFullScreen && election.positions.length > 1 ? (
+              election.positions.length > 1 ? (
                 // Carousel mode for fullscreen with multiple positions
                 <div className="space-y-8">
                   {/* Position indicator */}
