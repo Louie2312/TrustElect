@@ -1104,7 +1104,7 @@ function EditDepartmentModal({ department, onClose, onSuccess }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 flex items-center justify-center z-50">
       <div className="bg-white p-6 rounded-lg shadow-lg w-96 text-black">
         <h2 className="text-xl font-bold mb-4">Edit Department</h2>
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
