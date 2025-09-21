@@ -6,7 +6,7 @@ import {
   ChevronLeft, List, User, PieChart,
   AlertTriangle as ExclamationTriangle,
   Lock, Award, ArrowDown, ArrowUp, Edit, Plus, AlertCircle, X,
-  Maximize2, Minimize2, ChevronRight, Play, Pause, Timer, FileText
+  Maximize2, Minimize2, ChevronRight, Play, Pause, Timer, FileText, Trophy
 } from 'lucide-react';
 import Link from 'next/link';
 import Cookies from 'js-cookie';
@@ -708,6 +708,16 @@ export default function ElectionDetailsPage() {
       case 2: return '3rd';
       default: return '';
     }
+  };
+
+  const getTop3Winners = (candidates) => {
+    if (!candidates || candidates.length === 0) return [];
+    
+    const sortedCandidates = [...candidates].sort((a, b) => 
+      (b.vote_count || 0) - (a.vote_count || 0)
+    );
+    
+    return sortedCandidates.slice(0, 3);
   };
 
   // Pagination functions
@@ -1440,7 +1450,7 @@ export default function ElectionDetailsPage() {
           </div>
         </>
       ) : tab === 'partial' ? (
-        <div ref={partialCountingRef} className={`${isFullScreen ? 'fixed inset-0 bg-gray-100 z-50 overflow-y-auto' : ''}`}>
+        <div ref={partialCountingRef} className="fixed inset-0 bg-gray-100 z-50 overflow-y-auto">
           {/* Vote Summary Section */}
           <div className={`bg-white rounded-lg shadow-lg ${isFullScreen ? 'sticky top-0 z-10 mx-6 mt-6 mb-8 p-8' : 'p-4 mb-6'}`}>
             <div className="flex items-center justify-between">
@@ -1480,15 +1490,6 @@ export default function ElectionDetailsPage() {
                   </div>
                 )}
               </div>
-              {!isFullScreen && (
-                <button
-                  onClick={toggleFullScreen}
-                  className="flex items-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  <Maximize2 className="w-4 h-4 mr-2" />
-                  Full Screen
-                </button>
-              )}
             </div>
           </div>
 
@@ -1874,22 +1875,13 @@ export default function ElectionDetailsPage() {
               Election Bulletin
             </h2>
             <div className="flex items-center gap-3">
-              {!isBulletinFullScreen && (
-                <button
-                  onClick={toggleBulletinFullScreen}
-                  className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  <Maximize2 className="w-4 h-4 mr-2" />
-                  Full Screen
-                </button>
-              )}
-              <Link
-                href={`/admin/election/${params.id}/bulletin`}
+              <button
+                onClick={toggleBulletinFullScreen}
                 className="flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
               >
                 <FileText className="w-4 h-4 mr-2" />
-                View Public Bulletin
-              </Link>
+                View Bulletin
+              </button>
             </div>
           </div>
 

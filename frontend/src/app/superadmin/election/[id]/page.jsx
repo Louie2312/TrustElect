@@ -7,7 +7,7 @@ import {
   AlertTriangle as ExclamationTriangle,
   Lock, Award, ArrowDown, ArrowUp, PieChart,
   AlertCircle, XCircle, Check, X, Maximize2, Minimize2,
-  ChevronRight, Play, Pause, Timer, FileText
+  ChevronRight, Play, Pause, Timer, FileText, Trophy
 } from 'lucide-react';
 import Link from 'next/link';
 import Cookies from 'js-cookie';
@@ -671,6 +671,16 @@ export default function ElectionDetailsPage() {
       case 2: return '3rd';
       default: return '';
     }
+  };
+
+  const getTop3Winners = (candidates) => {
+    if (!candidates || candidates.length === 0) return [];
+    
+    const sortedCandidates = [...candidates].sort((a, b) => 
+      (b.vote_count || 0) - (a.vote_count || 0)
+    );
+    
+    return sortedCandidates.slice(0, 3);
   };
 
   // Pagination functions
@@ -2025,22 +2035,13 @@ export default function ElectionDetailsPage() {
               Election Bulletin
             </h2>
             <div className="flex items-center gap-3">
-              {!isBulletinFullScreen && (
-                <button
-                  onClick={toggleBulletinFullScreen}
-                  className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  <Maximize2 className="w-4 h-4 mr-2" />
-                  Full Screen
-                </button>
-              )}
-              <Link
-                href={`/superadmin/election/${params.id}/bulletin`}
+              <button
+                onClick={toggleBulletinFullScreen}
                 className="flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
               >
                 <FileText className="w-4 h-4 mr-2" />
-                View Public Bulletin
-              </Link>
+                View Bulletin
+              </button>
             </div>
           </div>
 
