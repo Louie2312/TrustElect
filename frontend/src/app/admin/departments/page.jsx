@@ -730,7 +730,6 @@ function AddDepartmentModal({ onClose, onSuccess }) {
               value={formData.department_name}
               onChange={handleChange}
               className="w-full p-2 border rounded"
-              placeholder="e.g. Information and Communication Technology"
             />
           </div>
 
