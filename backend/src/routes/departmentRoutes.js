@@ -24,9 +24,31 @@ const isAdminOrSuperAdmin = (req, res, next) => {
 };
 
 // Get all departments - allow both admin and super admin
-router.get("/departments", verifyToken, isAdminOrSuperAdmin, departmentController.getAllDepartments);
+router.get("/departments", verifyToken, (req, res, next) => {
+  console.log("=== DEPARTMENT ROUTE HIT ===");
+  console.log("Path:", req.path);
+  console.log("Method:", req.method);
+  console.log("User info:", {
+    id: req.user?.id,
+    role_id: req.user?.role_id,
+    normalizedRole: req.user?.normalizedRole,
+    role: req.user?.role
+  });
+  next();
+}, isAdminOrSuperAdmin, departmentController.getAllDepartments);
 
-router.get("/departments/archived", verifyToken, isAdminOrSuperAdmin, departmentController.getArchivedDepartments);
+router.get("/departments/archived", verifyToken, (req, res, next) => {
+  console.log("=== ARCHIVED DEPARTMENTS ROUTE HIT ===");
+  console.log("Path:", req.path);
+  console.log("Method:", req.method);
+  console.log("User info:", {
+    id: req.user?.id,
+    role_id: req.user?.role_id,
+    normalizedRole: req.user?.normalizedRole,
+    role: req.user?.role
+  });
+  next();
+}, isAdminOrSuperAdmin, departmentController.getArchivedDepartments);
 
 router.get("/department-names", verifyToken, departmentController.getDepartmentNames);
 
