@@ -993,75 +993,7 @@ export default function Home() {
                     </div>
                   )}
                   
-                  {/* Debug Info */}
-                  <div className="mt-4 p-3 bg-black bg-opacity-10 rounded-lg text-xs text-black">
-                    <div><strong>Debug Info:</strong></div>
-                    <div>API_BASE: {API_BASE || 'empty'}</div>
-                    <div>Current Status: {currentStatus}</div>
-                    <div>Current Index: {currentElectionIndex}</div>
-                    <div>Total Elections: {Object.values(elections).flat().length}</div>
-                    <div>Ongoing: {elections.ongoing.length}, Upcoming: {elections.upcoming.length}, Completed: {elections.completed.length}</div>
-                    {currentElection && (
-                      <div>Current Election ID: {currentElection.id} - {currentElection.title}</div>
-                    )}
-                    <div className="mt-2 space-x-2">
-                      <button 
-                        onClick={() => {
-                          console.log('Current elections state:', elections);
-                          console.log('Current election:', currentElection);
-                        }}
-                        className="px-2 py-1 bg-blue-500 text-white rounded text-xs"
-                      >
-                        Log to Console
-                      </button>
-                      <button 
-                        onClick={async () => {
-                          console.log('Testing API endpoints...');
-                          try {
-                            // Test healthcheck first
-                            console.log('Testing healthcheck...');
-                            const healthResponse = await fetch('/api/healthcheck');
-                            console.log('Health check response:', healthResponse.status, healthResponse.statusText);
-                            if (healthResponse.ok) {
-                              const healthData = await healthResponse.json();
-                              console.log('Health check data:', healthData);
-                            }
-                            
-                            // Test completed elections - try authenticated first
-                            console.log('Testing authenticated completed elections...');
-                            const authResponse = await fetch('/api/elections/status/completed');
-                            console.log('Auth endpoint response:', authResponse.status, authResponse.statusText);
-                            if (authResponse.ok) {
-                              const authData = await authResponse.json();
-                              console.log('Auth endpoint data:', authData);
-                            } else {
-                              console.log('Auth endpoint failed, trying public...');
-                              const publicResponse = await fetch('/api/elections/public/status/completed');
-                              console.log('Public endpoint response:', publicResponse.status, publicResponse.statusText);
-                              if (publicResponse.ok) {
-                                const publicData = await publicResponse.json();
-                                console.log('Public endpoint data:', publicData);
-                              }
-                            }
-                          } catch (err) {
-                            console.error('API test error:', err);
-                          }
-                        }}
-                        className="px-2 py-1 bg-green-500 text-white rounded text-xs"
-                      >
-                        Test API
-                      </button>
-                      <button 
-                        onClick={() => {
-                          console.log('Manually refreshing elections...');
-                          fetchElections();
-                        }}
-                        className="px-2 py-1 bg-purple-500 text-white rounded text-xs"
-                      >
-                        Refresh Elections
-                      </button>
-                    </div>
-                  </div>
+              
 
                 </div>
               );
