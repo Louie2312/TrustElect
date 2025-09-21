@@ -130,6 +130,10 @@ export default function ElectionDetailsPage() {
   const bulletinIntervalRef = useRef(null);
   const [currentPositionPage, setCurrentPositionPage] = useState(0);
   const [currentDetailsPositionPage, setCurrentDetailsPositionPage] = useState(0);
+  const [currentCodesPage, setCurrentCodesPage] = useState(0);
+  const [currentCandidatesPage, setCurrentCandidatesPage] = useState(0);
+  const [isBulletinFullScreen, setIsBulletinFullScreen] = useState(false);
+  const bulletinFullScreenRef = useRef(null);
 
   const toggleFullScreen = async () => {
     if (!document.fullscreenElement) {
@@ -717,6 +721,49 @@ export default function ElectionDetailsPage() {
   const goToPreviousDetailsPosition = () => {
     if (currentDetailsPositionPage > 0) {
       setCurrentDetailsPositionPage(prev => prev - 1);
+    }
+  };
+
+  // Bulletin pagination functions
+  const goToNextCodesPage = () => {
+    const codesPerPage = 20; // 4 columns * 5 rows
+    const totalPages = Math.ceil(bulletinData.voterCodes.length / codesPerPage);
+    if (currentCodesPage < totalPages - 1) {
+      setCurrentCodesPage(prev => prev + 1);
+    }
+  };
+
+  const goToPreviousCodesPage = () => {
+    if (currentCodesPage > 0) {
+      setCurrentCodesPage(prev => prev - 1);
+    }
+  };
+
+  const goToNextCandidatesPage = () => {
+    if (election?.positions && currentCandidatesPage < election.positions.length - 1) {
+      setCurrentCandidatesPage(prev => prev + 1);
+    }
+  };
+
+  const goToPreviousCandidatesPage = () => {
+    if (currentCandidatesPage > 0) {
+      setCurrentCandidatesPage(prev => prev - 1);
+    }
+  };
+
+  const toggleBulletinFullScreen = async () => {
+    if (!document.fullscreenElement) {
+      try {
+        await bulletinFullScreenRef.current.requestFullscreen();
+        setIsBulletinFullScreen(true);
+      } catch (err) {
+        console.error('Error attempting to enable full-screen mode:', err);
+      }
+    } else {
+      if (document.exitFullscreen) {
+        await document.exitFullscreen();
+        setIsBulletinFullScreen(false);
+      }
     }
   };
 
@@ -1791,24 +1838,28 @@ export default function ElectionDetailsPage() {
           </div>
         </div>
       ) : tab === 'bulletin' ? (
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-black flex items-center">
-              <FileText className="w-5 h-5 mr-2" />
+        <div ref={bulletinFullScreenRef} className={`bg-white rounded-lg shadow p-6 ${isBulletinFullScreen ? 'fixed inset-0 bg-gray-100 z-50 overflow-y-auto' : ''}`}>
+          <div className={`flex items-center justify-between mb-6 ${isBulletinFullScreen ? 'sticky top-0 z-10 bg-white p-4 rounded-lg shadow-lg' : ''}`}>
+            <h2 className={`text-xl font-semibold text-black flex items-center ${isBulletinFullScreen ? 'text-3xl' : ''}`}>
+              <FileText className={`w-5 h-5 mr-2 ${isBulletinFullScreen ? 'w-8 h-8' : ''}`} />
               Election Bulletin
             </h2>
             <div className="flex items-center gap-3">
-              {bulletinData.voterCodes.length > 0 && bulletinData.candidateVotes.length > 0 && (
-                <div className="flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-800 rounded-full">
-                  <Play className="w-4 h-4" />
-                </div>
+              {!isBulletinFullScreen && (
+                <button
+                  onClick={toggleBulletinFullScreen}
+                  className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  <Maximize2 className="w-4 h-4 mr-2" />
+                  Full Screen
+                </button>
               )}
               <Link
                 href={`/admin/election/${params.id}/bulletin`}
-                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                className="flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
               >
                 <FileText className="w-4 h-4 mr-2" />
-                View Full Bulletin
+                View Public Bulletin
               </Link>
             </div>
           </div>
@@ -1838,132 +1889,146 @@ export default function ElectionDetailsPage() {
               </div>
             </div>
           ) : (
-            <div className="relative">
-              {/* Carousel indicators */}
-              <div className="flex justify-center items-center gap-4 mb-6">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setCurrentBulletinSlide(0)}
-                    className={`w-3 h-3 rounded-full transition-colors ${
-                      currentBulletinSlide === 0 ? 'bg-blue-500' : 'bg-gray-300'
-                    }`}
-                  />
-                  <button
-                    onClick={() => setCurrentBulletinSlide(1)}
-                    className={`w-3 h-3 rounded-full transition-colors ${
-                      currentBulletinSlide === 1 ? 'bg-blue-500' : 'bg-gray-300'
-                    }`}
-                  />
-                </div>
-                <div className="text-gray-600 text-sm">
-                  {currentBulletinSlide === 0 ? 'Voter Codes' : 'Candidate Votes'} ({currentBulletinSlide + 1} of 2)
-                </div>
-              </div>
-
-              {/* Carousel content */}
-              <div className="transition-all duration-500 ease-in-out">
-                {currentBulletinSlide === 0 ? (
-                  // Voter Codes Slide
-                  <div className="bg-gray-50 rounded-lg p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-black flex items-center">
-                        <Users className="w-5 h-5 mr-2" />
-                        Voter Verification Codes
-                      </h3>
-                      <div className="text-sm text-gray-500">
-                        Total: {bulletinData.voterCodes.length} voters
-                      </div>
+            <div className="space-y-8">
+              {/* Voter Codes Section */}
+              <div className="bg-gray-50 rounded-lg p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className={`font-semibold text-black flex items-center ${isBulletinFullScreen ? 'text-2xl' : 'text-lg'}`}>
+                    <Users className={`w-5 h-5 mr-2 ${isBulletinFullScreen ? 'w-8 h-8' : ''}`} />
+                    Voter Verification Codes
+                  </h3>
+                  <div className="flex items-center gap-4">
+                    <div className="text-sm text-gray-500">
+                      Total: {bulletinData.voterCodes.length} voters
                     </div>
-                    
-                    {bulletinData.voterCodes.length === 0 ? (
-                      <div className="text-center py-8">
-                        <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                        <p className="text-gray-500">No voters yet</p>
-                      </div>
-                    ) : (
-                      <div className="max-h-96 overflow-y-auto">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                          {bulletinData.voterCodes.slice(0, 12).map((voter, index) => (
-                            <div key={voter.voteToken || index} className="bg-white rounded-lg p-3 border">
-                              <div className="flex items-center justify-between">
-                                <span className="font-mono text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                  {voter.verificationCode}
-                                </span>
-                                <span className="text-xs text-gray-500">
-                                  {new Date(voter.voteDate).toLocaleDateString()}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
+                    {bulletinData.voterCodes.length > 20 && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600">
+                          Page {currentCodesPage + 1} of {Math.ceil(bulletinData.voterCodes.length / 20)}
+                        </span>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={goToPreviousCodesPage}
+                            disabled={currentCodesPage === 0}
+                            className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Previous
+                          </button>
+                          <button
+                            onClick={goToNextCodesPage}
+                            disabled={currentCodesPage >= Math.ceil(bulletinData.voterCodes.length / 20) - 1}
+                            className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Next
+                          </button>
                         </div>
-                        {bulletinData.voterCodes.length > 12 && (
-                          <div className="text-center mt-4">
-                            <p className="text-sm text-gray-500">
-                              Showing 12 of {bulletinData.voterCodes.length} voters
-                            </p>
-                          </div>
-                        )}
                       </div>
                     )}
                   </div>
+                </div>
+                
+                {bulletinData.voterCodes.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                    <p className="text-gray-500">No voters yet</p>
+                  </div>
                 ) : (
-                  // Candidate Votes Slide
-                  <div className="bg-gray-50 rounded-lg p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-black flex items-center">
-                        <User className="w-5 h-5 mr-2" />
-                        Votes Per Candidate
-                      </h3>
-                      <div className="text-sm text-gray-500">
-                        {bulletinData.candidateVotes.length} positions
+                  <div className={`overflow-y-auto ${isBulletinFullScreen ? 'max-h-96' : 'max-h-96'}`}>
+                    <div className="grid grid-cols-4 gap-3">
+                      {bulletinData.voterCodes.slice(currentCodesPage * 20, (currentCodesPage + 1) * 20).map((voter, index) => (
+                        <div key={voter.voteToken || index} className="bg-white rounded-lg p-3 border">
+                          <div className="flex flex-col items-center">
+                            <span className="font-mono text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded mb-2">
+                              {voter.verificationCode}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {new Date(voter.voteDate).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Candidates Section */}
+              <div className="bg-gray-50 rounded-lg p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className={`font-semibold text-black flex items-center ${isBulletinFullScreen ? 'text-2xl' : 'text-lg'}`}>
+                    <User className={`w-5 h-5 mr-2 ${isBulletinFullScreen ? 'w-8 h-8' : ''}`} />
+                    Candidates Per Position
+                  </h3>
+                  {election?.positions && election.positions.length > 1 && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600">
+                        Position {currentCandidatesPage + 1} of {election.positions.length}
+                      </span>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={goToPreviousCandidatesPage}
+                          disabled={currentCandidatesPage === 0}
+                          className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Previous
+                        </button>
+                        <button
+                          onClick={goToNextCandidatesPage}
+                          disabled={currentCandidatesPage === election.positions.length - 1}
+                          className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Next
+                        </button>
                       </div>
                     </div>
-                    
-                    {bulletinData.candidateVotes.length === 0 ? (
-                      <div className="text-center py-8">
-                        <User className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                        <p className="text-gray-500">No positions found</p>
-                      </div>
-                    ) : (
-                      <div className="max-h-96 overflow-y-auto space-y-4">
-                        {bulletinData.candidateVotes.slice(0, 3).map((position) => (
-                          <div key={position.id} className="bg-white rounded-lg p-4 border">
-                            <h4 className="font-medium text-black mb-3">{position.title}</h4>
-                            <div className="space-y-2">
-                              {position.candidates.slice(0, 3).map((candidate) => (
-                                <div key={candidate.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                                  <div>
-                                    <span className="font-medium text-black">
-                                      {candidate.firstName} {candidate.lastName}
-                                    </span>
-                                    {candidate.partylistName && (
-                                      <span className="text-sm text-gray-500 ml-2">
-                                        ({candidate.partylistName})
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span className="px-2 py-1 bg-green-100 text-green-800 text-sm font-medium rounded">
-                                    {candidate.voteCount} votes
-                                  </span>
-                                </div>
-                              ))}
-                              {position.candidates.length > 3 && (
-                                <p className="text-xs text-gray-500 text-center">
-                                  +{position.candidates.length - 3} more candidates
-                                </p>
-                              )}
+                  )}
+                </div>
+                
+                {election?.positions && election.positions[currentCandidatesPage] ? (
+                  <div className="bg-white rounded-lg p-4">
+                    <h4 className={`font-medium text-black mb-4 ${isBulletinFullScreen ? 'text-xl' : ''}`}>
+                      {election.positions[currentCandidatesPage].name}
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {election.positions[currentCandidatesPage].candidates?.map((candidate) => (
+                        <div key={candidate.id} className="flex items-center p-3 bg-gray-50 rounded-lg border">
+                          <div className="relative w-16 h-20 mr-3">
+                            {candidate.image_url && !imageErrors[candidate.id] ? (
+                              <Image
+                                src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
+                                alt={`${candidate.first_name} ${candidate.last_name}`}
+                                fill
+                                sizes="64px"
+                                className="object-cover rounded-lg"
+                                onError={() => handleImageError(candidate.id)}
+                              />
+                            ) : (
+                              <div className="w-16 h-20 rounded-lg bg-gray-200 flex items-center justify-center">
+                                <User className="w-8 h-8 text-gray-400" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-medium text-black">
+                              {candidate.first_name} {candidate.last_name}
+                            </div>
+                            {candidate.party && (
+                              <div className="text-sm text-gray-500">
+                                {candidate.party}
+                              </div>
+                            )}
+                            <div className="text-sm text-blue-600 font-medium">
+                              {candidate.vote_count || 0} votes
                             </div>
                           </div>
-                        ))}
-                        {bulletinData.candidateVotes.length > 3 && (
-                          <div className="text-center">
-                            <p className="text-sm text-gray-500">
-                              Showing 3 of {bulletinData.candidateVotes.length} positions
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <User className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                    <p className="text-gray-500">No positions found</p>
                   </div>
                 )}
               </div>

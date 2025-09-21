@@ -1,12 +1,48 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ChevronLeft, Users, User, List, ArrowLeft } from 'lucide-react';
+import { ChevronLeft, Users, User, List, ArrowLeft, Award, Trophy, Medal } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import Cookies from 'js-cookie';
 import toast from 'react-hot-toast';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || '';
+
+const getImageUrl = (imageUrl) => {
+  if (!imageUrl) return '/default-candidate.png';
+  
+  if (imageUrl.startsWith('http')) {
+    return imageUrl;
+  }
+  
+  if (imageUrl.startsWith('/uploads')) {
+    return `${BASE_URL}${imageUrl}`;
+  }
+
+  if (!imageUrl.startsWith('/')) {
+    return `${BASE_URL}/uploads/candidates/${imageUrl}`;
+  }
+
+  return `${BASE_URL}${imageUrl}`;
+};
+
+function formatNameSimple(lastName, firstName, fallback) {
+  const cap = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
+  if ((!lastName && !firstName) && fallback) {
+    const words = fallback.trim().split(/\s+/);
+    if (words.length === 1) {
+      return cap(words[0]);
+    } else {
+      const last = cap(words[words.length - 1]);
+      const first = words.slice(0, -1).map(cap).join(' ');
+      return `${last}, ${first}`;
+    }
+  }
+  if (!lastName && !firstName) return 'No Name';
+  return `${cap(lastName)}, ${cap(firstName)}`;
+}
 
 async function fetchWithAuth(url) {
   const token = Cookies.get('token');

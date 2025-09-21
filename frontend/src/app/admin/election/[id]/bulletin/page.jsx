@@ -1,12 +1,48 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ChevronLeft, Users, User, List, ArrowLeft } from 'lucide-react';
+import { ChevronLeft, Users, User, List, ArrowLeft, Award, Trophy, Medal } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import Cookies from 'js-cookie';
 import toast from 'react-hot-toast';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || '';
+
+const getImageUrl = (imageUrl) => {
+  if (!imageUrl) return '/default-candidate.png';
+  
+  if (imageUrl.startsWith('http')) {
+    return imageUrl;
+  }
+  
+  if (imageUrl.startsWith('/uploads')) {
+    return `${BASE_URL}${imageUrl}`;
+  }
+
+  if (!imageUrl.startsWith('/')) {
+    return `${BASE_URL}/uploads/candidates/${imageUrl}`;
+  }
+
+  return `${BASE_URL}${imageUrl}`;
+};
+
+function formatNameSimple(lastName, firstName, fallback) {
+  const cap = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
+  if ((!lastName && !firstName) && fallback) {
+    const words = fallback.trim().split(/\s+/);
+    if (words.length === 1) {
+      return cap(words[0]);
+    } else {
+      const last = cap(words[words.length - 1]);
+      const first = words.slice(0, -1).map(cap).join(' ');
+      return `${last}, ${first}`;
+    }
+  }
+  if (!lastName && !firstName) return 'No Name';
+  return `${cap(lastName)}, ${cap(firstName)}`;
+}
 
 async function fetchWithAuth(url) {
   const token = Cookies.get('token');
@@ -59,6 +95,8 @@ export default function ElectionBulletinPage() {
   const [candidateVotes, setCandidateVotes] = useState([]);
   const [loadingCandidateVotes, setLoadingCandidateVotes] = useState(false);
   const [candidateSearchTerm, setCandidateSearchTerm] = useState('');
+  const [candidateImages, setCandidateImages] = useState({});
+  const [imageErrors, setImageErrors] = useState({});
   
   // Pagination states for voters
   const [currentVoterPage, setCurrentVoterPage] = useState(1);
@@ -67,6 +105,43 @@ export default function ElectionBulletinPage() {
   // Pagination states for candidates
   const [currentCandidatePage, setCurrentCandidatePage] = useState(1);
   const [candidatesPerPage] = useState(50);
+
+  const handleImageError = (candidateId) => {
+    if (!imageErrors[candidateId]) {
+      setImageErrors(prev => ({
+        ...prev,
+        [candidateId]: true
+      }));
+    }
+  };
+
+  const getTop3Winners = (candidates) => {
+    if (!candidates || candidates.length === 0) return [];
+    
+    const sortedCandidates = [...candidates].sort((a, b) => 
+      (b.vote_count || 0) - (a.vote_count || 0)
+    );
+    
+    return sortedCandidates.slice(0, 3);
+  };
+
+  const getRankIcon = (index) => {
+    switch(index) {
+      case 0: return <Trophy className="w-6 h-6 text-yellow-500" />;
+      case 1: return <Medal className="w-6 h-6 text-gray-400" />;
+      case 2: return <Award className="w-6 h-6 text-orange-500" />;
+      default: return null;
+    }
+  };
+
+  const getRankLabel = (index) => {
+    switch(index) {
+      case 0: return '1st Place';
+      case 1: return '2nd Place';
+      case 2: return '3rd Place';
+      default: return '';
+    }
+  };
 
   const loadVoterCodes = async () => {
     try {
@@ -95,19 +170,33 @@ export default function ElectionBulletinPage() {
   };
 
   useEffect(() => {
-    const loadElectionDetails = async () => {
-      try {
-        setIsLoading(true);
-        const data = await fetchWithAuth(`/elections/${params.id}/details`);
-        setElection(data.election);
-      } catch (err) {
-        console.error('Error loading election details:', err);
-        setError(err.message);
-        toast.error(`Error: ${err.message}`);
-      } finally {
-        setIsLoading(false);
+  const loadElectionDetails = async () => {
+    try {
+      setIsLoading(true);
+      const data = await fetchWithAuth(`/elections/${params.id}/details`);
+      setElection(data.election);
+      
+      // Load candidate images
+      const imageCache = {};
+      if (data.election?.positions) {
+        data.election.positions.forEach(position => {
+          position.candidates?.forEach(candidate => {
+            if (candidate.image_url) {
+              const processedUrl = getImageUrl(candidate.image_url);
+              imageCache[candidate.id] = processedUrl;
+            }
+          });
+        });
       }
-    };
+      setCandidateImages(imageCache);
+    } catch (err) {
+      console.error('Error loading election details:', err);
+      setError(err.message);
+      toast.error(`Error: ${err.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
     if (params.id) {
       loadElectionDetails();
@@ -231,6 +320,17 @@ export default function ElectionBulletinPage() {
       <div className="mb-6 border-b border-gray-200">
         <div className="flex space-x-8">
           <button
+            onClick={() => setActiveSubTab('winners')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeSubTab === 'winners'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <Trophy className="w-4 h-4 inline mr-2" />
+            Top 3 Winners
+          </button>
+          <button
             onClick={() => setActiveSubTab('all-voters')}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
               activeSubTab === 'all-voters'
@@ -256,7 +356,119 @@ export default function ElectionBulletinPage() {
       </div>
 
       {/* Content */}
-      {activeSubTab === 'all-voters' ? (
+      {activeSubTab === 'winners' ? (
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-black mb-2">{election.title}</h2>
+            <p className="text-lg text-gray-600 mb-4">{election.description}</p>
+            <div className="flex items-center justify-center gap-4 text-sm text-gray-500">
+              <span>Status: <span className={`font-medium ${election.status === 'completed' ? 'text-green-600' : election.status === 'ongoing' ? 'text-blue-600' : 'text-yellow-600'}`}>{election.status.toUpperCase()}</span></span>
+              <span>•</span>
+              <span>Total Voters: {election.voter_count || 0}</span>
+              <span>•</span>
+              <span>Votes Cast: {election.vote_count || 0}</span>
+            </div>
+          </div>
+
+          {election.positions && election.positions.length > 0 ? (
+            <div className="space-y-8">
+              {election.positions.map((position) => {
+                const top3Winners = getTop3Winners(position.candidates || []);
+                
+                return (
+                  <div key={position.id} className="border rounded-lg p-6 bg-gradient-to-r from-blue-50 to-indigo-50">
+                    <h3 className="text-2xl font-bold text-black mb-6 text-center">{position.name}</h3>
+                    
+                    {top3Winners.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {top3Winners.map((winner, index) => (
+                          <div 
+                            key={winner.id} 
+                            className={`relative bg-white rounded-xl p-6 shadow-lg border-2 ${
+                              index === 0 ? 'border-yellow-400 bg-gradient-to-b from-yellow-50 to-yellow-100' :
+                              index === 1 ? 'border-gray-300 bg-gradient-to-b from-gray-50 to-gray-100' :
+                              'border-orange-300 bg-gradient-to-b from-orange-50 to-orange-100'
+                            }`}
+                          >
+                            {/* Rank Badge */}
+                            <div className={`absolute -top-3 -right-3 w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg ${
+                              index === 0 ? 'bg-yellow-500' :
+                              index === 1 ? 'bg-gray-500' :
+                              'bg-orange-500'
+                            }`}>
+                              {index + 1}
+                            </div>
+                            
+                            {/* Winner Image */}
+                            <div className="flex justify-center mb-4">
+                              <div className="relative w-32 h-40">
+                                {winner.image_url && !imageErrors[winner.id] ? (
+                                  <Image
+                                    src={candidateImages[winner.id] || getImageUrl(winner.image_url)}
+                                    alt={`${winner.first_name} ${winner.last_name}`}
+                                    fill
+                                    sizes="128px"
+                                    className="object-cover rounded-lg shadow-md"
+                                    onError={() => handleImageError(winner.id)}
+                                  />
+                                ) : (
+                                  <div className="w-32 h-40 rounded-lg bg-gray-200 flex items-center justify-center shadow-md">
+                                    <User className="w-16 h-16 text-gray-400" />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {/* Winner Details */}
+                            <div className="text-center">
+                              <h4 className="text-xl font-bold text-black mb-2">
+                                {formatNameSimple(winner.last_name, winner.first_name, winner.name)}
+                              </h4>
+                              
+                              {winner.party && (
+                                <div className="mb-3">
+                                  <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">
+                                    {winner.party}
+                                  </span>
+                                </div>
+                              )}
+                              
+                              <div className="mb-3">
+                                <div className="text-2xl font-bold text-blue-600">
+                                  {Number(winner.vote_count || 0).toLocaleString()} votes
+                                </div>
+                                <div className="text-sm text-gray-600">
+                                  {election.voter_count ? ((winner.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}% of total votes
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center justify-center gap-2 text-sm font-medium text-gray-700">
+                                {getRankIcon(index)}
+                                <span>{getRankLabel(index)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <Trophy className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                        <p className="text-gray-500 text-lg">No votes cast for this position yet</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <Trophy className="w-20 h-20 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-xl font-medium text-gray-600 mb-2">No Positions Available</h3>
+              <p className="text-gray-500">This election doesn't have any positions yet.</p>
+            </div>
+          )}
+        </div>
+      ) : activeSubTab === 'all-voters' ? (
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-black flex items-center">
