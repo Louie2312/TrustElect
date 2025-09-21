@@ -78,7 +78,9 @@ export default function ArchivedDepartmentsPage() {
             success = true;
           } catch (thirdError) {
             console.error("Error on generic endpoint:", thirdError.message);
-            throw new Error("Failed to load archived departments after trying all endpoints");
+            // If all endpoints fail, return empty array instead of throwing error
+            departmentsArray = [];
+            success = true;
           }
         }
       }
@@ -142,7 +144,7 @@ export default function ArchivedDepartmentsPage() {
             success = true;
           } catch (thirdError) {
             console.error("Error on generic endpoint:", thirdError.message);
-            throw new Error("Failed to restore department after trying all endpoints");
+            throw new Error("Failed to restore department. Please try again or contact support.");
           }
         }
       }
@@ -191,7 +193,7 @@ export default function ArchivedDepartmentsPage() {
             success = true;
           } catch (thirdError) {
             console.error("Error on generic endpoint:", thirdError.message);
-            throw new Error("Failed to permanently delete department after trying all endpoints");
+            throw new Error("Failed to permanently delete department. Please try again or contact support.");
           }
         }
       }

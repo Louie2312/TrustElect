@@ -1,12 +1,24 @@
 const express = require("express");
 const router = express.Router();
-const { verifyToken, isSuperAdmin } = require("../middlewares/authMiddleware");
+const { verifyToken, isSuperAdmin, isAdmin } = require("../middlewares/authMiddleware");
 const departmentController = require("../controllers/departmentController");
 
-// Get all departments
-router.get("/departments", verifyToken, departmentController.getAllDepartments);
+// Get all departments - allow both admin and super admin
+router.get("/departments", verifyToken, (req, res, next) => {
+  if (req.user.normalizedRole === 'Admin' || req.user.normalizedRole === 'Super Admin') {
+    next();
+  } else {
+    return res.status(403).json({ message: "Access denied. Admin or Super Admin required." });
+  }
+}, departmentController.getAllDepartments);
 
-router.get("/departments/archived", verifyToken, isSuperAdmin, departmentController.getArchivedDepartments);
+router.get("/departments/archived", verifyToken, (req, res, next) => {
+  if (req.user.normalizedRole === 'Admin' || req.user.normalizedRole === 'Super Admin') {
+    next();
+  } else {
+    return res.status(403).json({ message: "Access denied. Admin or Super Admin required." });
+  }
+}, departmentController.getArchivedDepartments);
 
 router.get("/department-names", verifyToken, departmentController.getDepartmentNames);
 
@@ -20,8 +32,20 @@ router.put("/departments/:id", verifyToken, isSuperAdmin, departmentController.u
 
 router.delete("/departments/:id", verifyToken, isSuperAdmin, departmentController.deleteDepartment);
 
-router.patch("/departments/:id/restore", verifyToken, isSuperAdmin, departmentController.restoreDepartment);
+router.patch("/departments/:id/restore", verifyToken, (req, res, next) => {
+  if (req.user.normalizedRole === 'Admin' || req.user.normalizedRole === 'Super Admin') {
+    next();
+  } else {
+    return res.status(403).json({ message: "Access denied. Admin or Super Admin required." });
+  }
+}, departmentController.restoreDepartment);
 
-router.delete("/departments/:id/permanent", verifyToken, isSuperAdmin, departmentController.permanentDelete);
+router.delete("/departments/:id/permanent", verifyToken, (req, res, next) => {
+  if (req.user.normalizedRole === 'Admin' || req.user.normalizedRole === 'Super Admin') {
+    next();
+  } else {
+    return res.status(403).json({ message: "Access denied. Admin or Super Admin required." });
+  }
+}, departmentController.permanentDelete);
 
 module.exports = router;  
