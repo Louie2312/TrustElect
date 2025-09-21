@@ -716,7 +716,7 @@ function AddDepartmentModal({ onClose, onSuccess }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 flex items-center justify-center z-50">
       <div className="bg-white p-6 rounded-lg shadow-lg w-96 text-black">
         <h2 className="text-xl font-bold mb-4">Add New Department</h2>
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
@@ -979,7 +979,7 @@ function AssignAdminModal({ department, admins: initialAdmins, onClose, onSucces
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 flex items-center justify-center z-50">
       <div className="bg-white p-6 rounded-lg shadow-lg w-[600px] text-black max-w-md mx-auto">
         <h2 className="text-xl font-bold mb-4">Manage Department Admins</h2>
         <p className="mb-4 text-sm">Department: <strong>{department.department_name}</strong></p>

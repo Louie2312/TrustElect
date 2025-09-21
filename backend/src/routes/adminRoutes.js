@@ -209,4 +209,19 @@ router.get('/permissions', verifyToken, async (req, res) => {
   }
 });
 
+// Admin department routes - allow admins to manage departments
+const departmentController = require("../controllers/departmentController");
+
+// Get all departments for admin
+router.get("/departments", verifyToken, isAdmin, departmentController.getAllDepartments);
+
+// Create department for admin
+router.post("/departments", verifyToken, isAdmin, departmentController.createDepartment);
+
+// Update department for admin
+router.put("/departments/:id", verifyToken, isAdmin, departmentController.updateDepartment);
+
+// Delete department for admin
+router.delete("/departments/:id", verifyToken, isAdmin, departmentController.deleteDepartment);
+
 module.exports = router;
