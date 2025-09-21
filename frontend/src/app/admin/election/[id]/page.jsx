@@ -1612,7 +1612,38 @@ export default function ElectionDetailsPage() {
               ) : (
                 // Regular mode for non-fullscreen or single position
                 <div className="space-y-10">
-                  {election.positions.map(position => {
+                  {/* Pagination controls for partial counting */}
+                  {election.positions.length > 1 && (
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600">
+                          Position {currentPositionPage + 1} of {election.positions.length}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={goToPreviousPosition}
+                          disabled={currentPositionPage === 0}
+                          className="flex items-center px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <ChevronLeft className="w-4 h-4 mr-1" />
+                          Previous
+                        </button>
+                        <button
+                          onClick={goToNextPosition}
+                          disabled={currentPositionPage === election.positions.length - 1}
+                          className="flex items-center px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Next
+                          <ChevronRight className="w-4 h-4 ml-1" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Current position display */}
+                  {election.positions[currentPositionPage] && (() => {
+                    const position = election.positions[currentPositionPage];
                     const { top3, others } = getTop3AndOtherCandidates(position.candidates || []);
                     
                     return (
@@ -1749,7 +1780,7 @@ export default function ElectionDetailsPage() {
                         )}
                       </div>
                     );
-                  })}
+                  })()}
                 </div>
               )
             ) : (
