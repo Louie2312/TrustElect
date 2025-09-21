@@ -286,6 +286,7 @@ app.put('/api/candidates/:candidateId', (req, res) => {
 
 app.use("/api/superadmin", superAdminRoutes);
 app.use("/api/superadmin", adminRoutes); 
+app.use("/api/superadmin", departmentRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/admin", checkEmailRoutes);
 app.use("/api/admin", departmentRoutes);
