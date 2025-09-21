@@ -172,7 +172,6 @@ router.post(
   ],
   registerAdmin
 );
-router.put("/manage-admins/:id", verifyToken, isAdmin, checkPermission('adminManagement', 'edit'), updateAdmin);
 router.delete("/manage-admins/:id", verifyToken, isAdmin, checkPermission('adminManagement', 'delete'), softDeleteAdmin);
 router.patch("/manage-admins/:id/restore", verifyToken, isAdmin, checkPermission('adminManagement', 'edit'), restoreAdmin);
 router.patch("/manage-admins/:id/unlock", verifyToken, isAdmin, checkPermission('adminManagement', 'edit'), unlockAdminAccount);

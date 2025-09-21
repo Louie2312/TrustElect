@@ -48,9 +48,9 @@ const isSystemAccount = async (email) => {
     return true;
   }
   
-  const systemPatternResult = /^(systemadmin|admin)\.\d+@novaliches\.sti\.edu\.ph$/i.test(email);
-  const namePatternResult = /@novaliches\.sti\.edu\.ph$/i.test(email) && email.includes('.');
-  const employeeNumberPattern = /^[a-zA-Z]+\.\d{6}@novaliches\.sti\.edu\.ph$/i.test(email);
+  const systemPatternResult = /^(systemadmin|admin)\.\d+@novaliches\.sti\.edu(\.ph)?$/i.test(email);
+  const namePatternResult = /@novaliches\.sti\.edu(\.ph)?$/i.test(email) && email.includes('.');
+  const employeeNumberPattern = /^[a-zA-Z]+\.\d{6}@novaliches\.sti\.edu(\.ph)?$/i.test(email);
 
   // All other admin and student patterns should receive directly to their outlook
   return false;

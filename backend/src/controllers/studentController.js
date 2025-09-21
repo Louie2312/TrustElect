@@ -28,8 +28,9 @@ const generateStudentPassword = (lastName, studentNumber) => {
 
 const isValidStudentEmail = (email, studentNumber, lastName) => {
   const lastSixDigits = studentNumber.slice(-6); 
-  const expectedEmail = `${lastName.toLowerCase()}.${lastSixDigits}@novaliches.sti.edu.ph`;
-  return email.toLowerCase() === expectedEmail;
+  const expectedEmailLong = `${lastName.toLowerCase()}.${lastSixDigits}@novaliches.sti.edu.ph`;
+  const expectedEmailShort = `${lastName.toLowerCase()}.${lastSixDigits}@novaliches.sti.edu`;
+  return email.toLowerCase() === expectedEmailLong || email.toLowerCase() === expectedEmailShort;
 };
 
 const normalizeForEmail = (text) => {
