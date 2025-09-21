@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Calendar, Clock, Users, CheckCircle, XCircle, AlertCircle, Trash2, Lock, BarChart, PieChart, RefreshCw, Download, X, Activity, BarChart2, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
@@ -26,12 +26,6 @@ async function fetchWithAuth(url, options = {}) {
   return response.json();
 }
 
-const statusTabs = [
-  { id: 'ongoing', name: 'Ongoing Elections', icon: <Clock className="w-4 h-4" /> },
-  { id: 'upcoming', name: 'Upcoming Elections', icon: <Calendar className="w-4 h-4" /> },
-  { id: 'completed', name: 'Completed Elections', icon: <CheckCircle className="w-4 h-4" /> },
-  { id: 'to_approve', name: 'To Approve', icon: <AlertCircle className="w-4 h-4" /> }
-];
 
 const DeleteConfirmationModal = ({ isOpen, election, onCancel, onConfirm, isDeleting }) => {
   if (!isOpen) return null;
@@ -207,6 +201,13 @@ const ElectionCard = ({ election, onClick, onDeleteClick, canDelete, activeTab }
 export default function AdminDashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('ongoing');
+  
+  const statusTabs = [
+    { id: 'ongoing', name: 'Ongoing Elections', icon: <Clock className="w-4 h-4" /> },
+    { id: 'upcoming', name: 'Upcoming Elections', icon: <Calendar className="w-4 h-4" /> },
+    { id: 'completed', name: 'Completed Elections', icon: <CheckCircle className="w-4 h-4" /> },
+    { id: 'to_approve', name: 'To Approve', icon: <AlertCircle className="w-4 h-4" /> }
+  ];
   const [elections, setElections] = useState([]);
   const [allElections, setAllElections] = useState({
     ongoing: [],
@@ -708,6 +709,22 @@ export default function AdminDashboard() {
     }
   };
 
+  // Render election cards
+  const renderElectionCards = () => {
+    if (!elections || elections.length === 0) return null;
+    
+    return elections.map((election, index) => (
+      <ElectionCard 
+        key={`${election.id}-${index}`} 
+        election={election} 
+        onClick={handleElectionClick}
+        onDeleteClick={handleDeleteClick}
+        canDelete={hasPermission ? hasPermission('elections', 'delete') : false}
+        activeTab={activeTab}
+      />
+    ));
+  };
+
   // Handle live vote count modal
   const handleViewLiveVoteCount = async (election) => {
     setSelectedElection(election);
@@ -842,21 +859,6 @@ export default function AdminDashboard() {
     return 0;
   };
 
-  // Memoize election cards to prevent unnecessary re-renders
-  const electionCards = useMemo(() => {
-    if (!elections || elections.length === 0) return null;
-    
-    return elections.map((election, index) => (
-      <ElectionCard 
-        key={`${election.id}-${index}`} 
-        election={election} 
-        onClick={handleElectionClick}
-        onDeleteClick={handleDeleteClick}
-        canDelete={hasPermission('elections', 'delete')}
-        activeTab={activeTab}
-      />
-    ));
-  }, [elections, handleElectionClick, handleDeleteClick, hasPermission, activeTab]);
 
   // Format image URL helper function
   const formatImageUrl = (url) => {
@@ -1083,7 +1085,7 @@ export default function AdminDashboard() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {elections.length > 0 ? (
-            electionCards
+            renderElectionCards()
           ) : (
             <div className="col-span-full text-center py-12 bg-white rounded-lg shadow">
               <div className="text-gray-400 mb-4">
