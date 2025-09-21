@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Calendar, Clock, Users, CheckCircle, XCircle, AlertCircle, Trash2, Lock, BarChart, PieChart, RefreshCw, Download, X, Activity, BarChart2, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
@@ -26,6 +26,12 @@ async function fetchWithAuth(url, options = {}) {
   return response.json();
 }
 
+const statusTabs = [
+  { id: 'ongoing', name: 'Ongoing Elections', icon: <Clock className="w-4 h-4" /> },
+  { id: 'upcoming', name: 'Upcoming Elections', icon: <Calendar className="w-4 h-4" /> },
+  { id: 'completed', name: 'Completed Elections', icon: <CheckCircle className="w-4 h-4" /> },
+  { id: 'to_approve', name: 'To Approve', icon: <AlertCircle className="w-4 h-4" /> }
+];
 
 const DeleteConfirmationModal = ({ isOpen, election, onCancel, onConfirm, isDeleting }) => {
   if (!isOpen) return null;
@@ -201,14 +207,6 @@ const ElectionCard = ({ election, onClick, onDeleteClick, canDelete, activeTab }
 export default function AdminDashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('ongoing');
-  
-  const getStatusTabs = () => [
-    { id: 'ongoing', name: 'Ongoing Elections', icon: <Clock className="w-4 h-4" /> },
-    { id: 'upcoming', name: 'Upcoming Elections', icon: <Calendar className="w-4 h-4" /> },
-    { id: 'completed', name: 'Completed Elections', icon: <CheckCircle className="w-4 h-4" /> },
-    { id: 'to_approve', name: 'To Approve', icon: <AlertCircle className="w-4 h-4" /> }
-  ];
-  
   const [elections, setElections] = useState([]);
   const [allElections, setAllElections] = useState({
     ongoing: [],
@@ -218,7 +216,6 @@ export default function AdminDashboard() {
   });
   const [stats, setStats] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [error, setError] = useState(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [electionToDelete, setElectionToDelete] = useState(null);
@@ -241,7 +238,6 @@ export default function AdminDashboard() {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [isDataReset, setIsDataReset] = useState(false);
-  const isRefreshingRef = useRef(false);
 
   // Load UI design - simplified and memoized
   const loadUIDesign = useCallback(async () => {
@@ -369,27 +365,6 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  // Refresh all data with loading indicator
-  const refreshAllData = useCallback(async () => {
-    if (isRefreshingRef.current) return; // Prevent multiple simultaneous refreshes
-    
-    isRefreshingRef.current = true;
-    setIsRefreshing(true);
-    try {
-      await Promise.allSettled([
-        loadAllElections(),
-        loadStats(),
-        loadTotalUniqueVoters(),
-        loadLiveVoteCount()
-      ]);
-    } catch (err) {
-      console.error('Error refreshing data:', err);
-    } finally {
-      isRefreshingRef.current = false;
-      setIsRefreshing(false);
-    }
-  }, [loadAllElections, loadStats, loadTotalUniqueVoters, loadLiveVoteCount]);
-
   // Load stats - memoized
   const loadStats = useCallback(async () => {
     try {
@@ -491,15 +466,23 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  // Initialize dashboard data - OPTIMIZED
+  // Single initialization effect - OPTIMIZED
   useEffect(() => {
     let isMounted = true;
     
     const initializeDashboard = async () => {
-      if (permissionsLoading || dataLoaded) {
+      // Wait for permissions to load
+      if (permissionsLoading) {
         return;
       }
       
+      // Check if already loaded
+      if (dataLoaded) {
+        setIsLoading(false);
+        return;
+      }
+      
+      // Check permissions
       if (!hasPermission('elections', 'view')) {
         setIsLoading(false);
         return;
@@ -509,7 +492,7 @@ export default function AdminDashboard() {
         setIsLoading(true);
         setError(null);
         
-        // Load critical data first
+        // Load only critical data first
         await Promise.all([
           loadAllElections(),
           loadStats(),
@@ -519,17 +502,24 @@ export default function AdminDashboard() {
         if (isMounted) {
           setDataLoaded(true);
           setIsLoading(false);
-          setIsInitialLoad(false);
         }
         
-        // Load optional data in background
+        // Load optional data in background (non-blocking) after critical data is loaded
         setTimeout(() => {
           if (isMounted) {
-            loadTotalUniqueVoters().catch(() => {});
-            loadLiveVoteCount().catch(() => {});
-            loadSystemLoadData('24h').catch(() => {});
+            Promise.allSettled([
+              loadTotalUniqueVoters().catch(err => {
+                console.log("[Admin] Total unique voters not available:", err.message);
+              }),
+              loadLiveVoteCount().catch(err => {
+                console.log("[Admin] Live vote count not available:", err.message);
+              }),
+              loadSystemLoadData('24h').catch(err => {
+                console.log("[Admin] System load data not available:", err.message);
+              })
+            ]);
           }
-        }, 500); // Reduced delay for faster loading
+        }, 1000); // 1 second delay to ensure UI is rendered first
         
       } catch (error) {
         console.error('Error loading dashboard data:', error);
@@ -542,31 +532,41 @@ export default function AdminDashboard() {
     
     initializeDashboard();
     
-    return () => {
-      isMounted = false;
-    };
-  }, [permissionsLoading, hasPermission, dataLoaded]);
-
-  // Background refresh intervals
-  useEffect(() => {
-    if (!dataLoaded) return;
-    
+    // Set up intervals for auto-refresh (only after initial load)
     const intervals = [];
     
-    // Refresh elections every 30 seconds
+    // Refresh pending approvals every 30 seconds (reduced frequency)
     intervals.push(setInterval(() => {
-      loadAllElections().catch(() => {});
+      if (isMounted && dataLoaded) {
+        loadAllElections().catch(err => {
+          console.log("[Admin] Error refreshing elections:", err.message);
+        });
+      }
     }, 30000));
     
-    // Refresh stats every 2 minutes
+    // Refresh stats every 2 minutes (reduced frequency)
     intervals.push(setInterval(() => {
-      loadStats().catch(() => {});
+      if (isMounted && dataLoaded) {
+        loadStats().catch(err => {
+          console.log("[Admin] Error refreshing stats:", err.message);
+        });
+      }
     }, 120000));
     
+    // Refresh optional data every 5 minutes (reduced frequency)
+    intervals.push(setInterval(() => {
+      if (isMounted && dataLoaded) {
+        loadTotalUniqueVoters().catch(err => {
+          console.log("[Admin] Total unique voters not available:", err.message);
+        });
+      }
+    }, 300000)); // 5 minutes
+    
     return () => {
+      isMounted = false;
       intervals.forEach(interval => clearInterval(interval));
     };
-  }, [dataLoaded]);
+  }, [permissionsLoading, hasPermission, dataLoaded, loadAllElections, loadStats, loadUIDesign, loadTotalUniqueVoters, loadLiveVoteCount, loadSystemLoadData]);
 
   // Handle tab change - update elections when tab or allElections change
   useEffect(() => {
@@ -821,22 +821,6 @@ export default function AdminDashboard() {
     return 0;
   };
 
-  // Memoize election cards for better performance
-  const electionCards = useMemo(() => {
-    if (!elections || elections.length === 0) return null;
-    
-    return elections.map((election, index) => (
-      <ElectionCard 
-        key={`${election.id}-${index}`} 
-        election={election} 
-        onClick={handleElectionClick}
-        onDeleteClick={handleDeleteClick}
-        canDelete={hasPermission ? hasPermission('elections', 'delete') : false}
-        activeTab={activeTab}
-      />
-    ));
-  }, [elections, handleElectionClick, handleDeleteClick, hasPermission, activeTab]);
-
   // Format image URL helper function
   const formatImageUrl = (url) => {
     if (!url) return null;
@@ -891,7 +875,7 @@ export default function AdminDashboard() {
     );
   };
 
-  if (isInitialLoad || permissionsLoading) {
+  if (isLoading || permissionsLoading) {
     return (
       <div className="flex h-full w-full items-center justify-center p-20">
         <div className="text-center">
@@ -929,26 +913,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="container mx-auto px-4 py-8 min-h-screen">
-      <div className="flex items-center justify-between mb-2">
-        <h1 className="text-3xl font-bold text-black">Dashboard</h1>
-        <div className="flex items-center gap-3">
-          {isRefreshing && (
-            <div className="flex items-center text-sm text-gray-500">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-2"></div>
-              Refreshing data...
-            </div>
-          )}
-          <button
-            onClick={refreshAllData}
-            disabled={isRefreshing}
-            className="flex items-center px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Refresh all data"
-          >
-            <RefreshCw className={`w-4 h-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
-        </div>
-      </div>
+      <h1 className="text-3xl font-bold mb-2 text-black">Dashboard</h1>
       
       {actionMessage && (
         <div className={`mb-4 p-4 rounded-lg shadow ${
@@ -985,7 +950,7 @@ export default function AdminDashboard() {
       {/* Status Tabs */}
       <div className="bg-white rounded-lg shadow mb-6 p-1">
         <div className="flex">
-          {getStatusTabs().map(tab => {
+          {statusTabs.map(tab => {
             const count = getStatValue(tab.id, 'count');
             const hasPending = tab.id === 'to_approve' && count > 0;
             
@@ -1062,7 +1027,16 @@ export default function AdminDashboard() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {elections.length > 0 ? (
-            electionCards
+            elections.map((election, index) => (
+              <ElectionCard 
+                key={`${election.id}-${index}`} 
+                election={election} 
+                onClick={handleElectionClick}
+                onDeleteClick={handleDeleteClick}
+                canDelete={hasPermission('elections', 'delete')}
+                activeTab={activeTab}
+              />
+            ))
           ) : (
             <div className="col-span-full text-center py-12 bg-white rounded-lg shadow">
               <div className="text-gray-400 mb-4">
