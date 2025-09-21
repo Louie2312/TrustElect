@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Cookies from 'js-cookie';
@@ -51,7 +51,7 @@ const formatNameSimple = (lastName, firstName, positionName) => {
 };
 
 const ElectionResultReport = () => {
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [data, setData] = useState({
     elections: [],
@@ -67,14 +67,17 @@ const ElectionResultReport = () => {
   });
   const [selectedElectionId, setSelectedElectionId] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [electionsLoading, setElectionsLoading] = useState(false);
+  const [resultsLoading, setResultsLoading] = useState(false);
 
-  // Fetch completed elections
-  const fetchElections = async () => {
+  // Fetch completed elections - optimized
+  const fetchElections = useCallback(async () => {
     try {
-      setLoading(true);
+      setElectionsLoading(true);
       const token = Cookies.get('token');
       const response = await axios.get(`${API_BASE}/elections/status/completed`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 10000 // 10 second timeout
       });
 
       if (response.data) {
@@ -88,20 +91,20 @@ const ElectionResultReport = () => {
       console.error('Error fetching elections:', err);
       setError(err.response?.data?.message || 'Failed to fetch elections');
     } finally {
-      setLoading(false);
+      setElectionsLoading(false);
     }
-  };
+  }, []);
 
-  // Fetch election results
-  const fetchResults = async (electionId) => {
+  // Fetch election results - optimized
+  const fetchResults = useCallback(async (electionId) => {
     try {
-      setLoading(true);
+      setResultsLoading(true);
       setError(null);
       const token = Cookies.get('token');
       
       const response = await axios.get(`${API_BASE}/elections/completed/${electionId}/results`, {
         headers: { Authorization: `Bearer ${token}` },
-        timeout: 30000 // 30 second timeout
+        timeout: 15000 // Reduced to 15 second timeout
       });
 
       if (!response.data.success) {
@@ -110,7 +113,7 @@ const ElectionResultReport = () => {
 
       const { election, positions } = response.data.data;
       
-      // Group candidates by position and sort by vote count
+      // Optimize data processing
       const groupedPositions = positions.map(position => {
         const sortedCandidates = [...position.candidates].sort((a, b) => b.vote_count - a.vote_count);
         return {
@@ -120,22 +123,19 @@ const ElectionResultReport = () => {
         };
       });
 
-      // Flatten positions and candidates for table display (for pagination)
-      const results = [];
-      positions.forEach(position => {
-        position.candidates.forEach(candidate => {
-          results.push({
-            position: position.position_name,
-            candidate_id: candidate.id,
-            candidate_name: `${candidate.first_name} ${candidate.last_name}`,
-            image_url: candidate.image_url,
-            partylist: candidate.partylist_name || '-',
-            vote_count: candidate.vote_count,
-            vote_percentage: candidate.vote_percentage || 0,
-            is_winner: candidate.is_winner
-          });
-        });
-      });
+      // Simplified results for pagination (only if needed)
+      const results = positions.flatMap(position => 
+        position.candidates.map(candidate => ({
+          position: position.position_name,
+          candidate_id: candidate.id,
+          candidate_name: `${candidate.first_name} ${candidate.last_name}`,
+          image_url: candidate.image_url,
+          partylist: candidate.partylist_name || '-',
+          vote_count: candidate.vote_count,
+          vote_percentage: candidate.vote_percentage || 0,
+          is_winner: candidate.is_winner
+        }))
+      );
 
       setData(prev => ({
         ...prev,
@@ -152,14 +152,14 @@ const ElectionResultReport = () => {
     } catch (err) {
       console.error('Error fetching election results:', err);
       if (err.code === 'ECONNABORTED') {
-        setError('Request timeout. The election results are taking too long to load. Please try again.');
+        setError('Request timeout. Please try again.');
       } else {
         setError(err.response?.data?.message || err.message || 'Failed to fetch election results');
       }
     } finally {
-      setLoading(false);
+      setResultsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchElections();
@@ -244,7 +244,7 @@ const ElectionResultReport = () => {
     return data.positions.slice(startIndex, endIndex);
   };
 
-  if (loading && !data.elections.length) return (
+  if (electionsLoading && !data.elections.length) return (
     <div className="flex items-center justify-center p-8">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#01579B]"></div>
     </div>
@@ -301,7 +301,7 @@ const ElectionResultReport = () => {
         </div>
       )}
 
-      {selectedElectionId && loading ? (
+      {selectedElectionId && resultsLoading ? (
         <div className="flex items-center justify-center p-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#01579B]"></div>
         </div>

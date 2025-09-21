@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { format } from 'date-fns';
 import { useAuth } from '@/context/AuthContext';
@@ -53,13 +53,14 @@ const formatNameSimple = (lastName, firstName, fallback) => {
 
 export default function ElectionSummaryReport() {
   const [summaryData, setSummaryData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("summary");
   const [selectedElection, setSelectedElection] = useState(null);
   const [electionDetails, setElectionDetails] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [dateRange, setDateRange] = useState({ start: null, end: null });
+  const [summaryLoading, setSummaryLoading] = useState(false);
   const { token } = useAuth();
 
   useEffect(() => {
@@ -107,11 +108,12 @@ export default function ElectionSummaryReport() {
     return (votes / voters) * 100;
   };
 
-  const fetchSummaryData = async () => {
+  const fetchSummaryData = useCallback(async () => {
     try {
-      setLoading(true);
+      setSummaryLoading(true);
       const response = await axios.get(`${API_BASE}/reports/admin/summary`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 10000 // 10 second timeout
       });
 
       if (response.data.success) {
@@ -125,15 +127,16 @@ export default function ElectionSummaryReport() {
       console.error('Error fetching election summary data:', error);
       setError('Failed to fetch election summary data');
     } finally {
-      setLoading(false);
+      setSummaryLoading(false);
     }
-  };
+  }, [token]);
 
-  const fetchElectionDetails = async (electionId) => {
+  const fetchElectionDetails = useCallback(async (electionId) => {
     setLoadingDetails(true);
     try {
       const response = await axios.get(`${API_BASE}/elections/${electionId}/details`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 10000 // 10 second timeout
       });
       setElectionDetails(response.data.election);
     } catch (error) {
@@ -142,7 +145,7 @@ export default function ElectionSummaryReport() {
     } finally {
       setLoadingDetails(false);
     }
-  };
+  }, [token]);
 
   const handleViewDetails = (election) => {
     setSelectedElection(election);
@@ -254,7 +257,7 @@ export default function ElectionSummaryReport() {
     }
   };
 
-  if (loading) {
+  if (summaryLoading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#01579B]"></div>

@@ -106,7 +106,8 @@ export default function AdminReportsPage() {
           // Department Voter Report
           endpoint = '/reports/department-voter';
           const departmentResponse = await axios.get(`${API_BASE}${endpoint}`, {
-            headers: { Authorization: `Bearer ${token}` }
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 10000
           });
           transformedData = departmentResponse.data;
           break;
@@ -115,7 +116,8 @@ export default function AdminReportsPage() {
           // Election Result Report - using admin summary for now
           endpoint = '/reports/admin/summary';
           const resultResponse = await axios.get(`${API_BASE}${endpoint}`, {
-            headers: { Authorization: `Bearer ${token}` }
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 10000
           });
           transformedData = resultResponse.data;
           break;
@@ -124,7 +126,8 @@ export default function AdminReportsPage() {
           // Voting Time Report
           endpoint = '/reports/voting-time';
           const timeResponse = await axios.get(`${API_BASE}${endpoint}`, {
-            headers: { Authorization: `Bearer ${token}` }
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 10000
           });
           transformedData = timeResponse.data;
           break;
@@ -133,7 +136,8 @@ export default function AdminReportsPage() {
           // Election Summary Report
           endpoint = '/reports/admin/summary';
           const summaryResponse = await axios.get(`${API_BASE}${endpoint}`, {
-            headers: { Authorization: `Bearer ${token}` }
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 10000
           });
           console.log('Election Summary Response:', summaryResponse.data);
           transformedData = summaryResponse.data;
@@ -143,7 +147,8 @@ export default function AdminReportsPage() {
           // Voter Participation Report
           endpoint = '/reports/admin/voter-participation';
           const participationResponse = await axios.get(`${API_BASE}${endpoint}`, {
-            headers: { Authorization: `Bearer ${token}` }
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 10000
           });
           transformedData = participationResponse.data;
           break;
@@ -152,7 +157,8 @@ export default function AdminReportsPage() {
           // Candidate List Report
           endpoint = '/reports/candidate-list/admin/candidate-list';
           const candidateResponse = await axios.get(`${API_BASE}${endpoint}`, {
-            headers: { Authorization: `Bearer ${token}` }
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 10000
           });
           transformedData = candidateResponse.data;
           break;
@@ -161,7 +167,8 @@ export default function AdminReportsPage() {
           // Admin Activity Report
           endpoint = '/reports/admin-activity/summary';
           const activityResponse = await axios.get(`${API_BASE}${endpoint}`, {
-            headers: { Authorization: `Bearer ${token}` }
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 10000
           });
           transformedData = activityResponse.data;
           break;
@@ -170,7 +177,8 @@ export default function AdminReportsPage() {
           // System Load Report
           endpoint = '/reports/system-load?timeframe=24h';
           const systemLoadResponse = await axios.get(`${API_BASE}${endpoint}`, {
-            headers: { Authorization: `Bearer ${token}` }
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 10000
           });
           transformedData = systemLoadResponse.data;
           break;
@@ -192,6 +200,12 @@ export default function AdminReportsPage() {
   };
 
   const handleViewReport = async (report) => {
+    // Show the report immediately for election reports (2 and 4)
+    if (report.id === 2 || report.id === 4) {
+      setSelectedReport({ ...report, data: null });
+    }
+    
+    // Fetch data in background
     const data = await fetchReportData(report.id);
     if (data) {
       setSelectedReport({ ...report, data });
