@@ -128,6 +128,12 @@ class Department {
     const { rows } = await pool.query(query, [departmentId]);
     return rows;
   }
+
+  static async permanentDelete(id) {
+    const query = `DELETE FROM departments WHERE id = $1 RETURNING *`;
+    const { rows } = await pool.query(query, [id]);
+    return rows[0];
+  }
 }
 
 module.exports = Department;

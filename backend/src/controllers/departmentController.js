@@ -251,3 +251,28 @@ exports.getAdminsByDepartment = async (req, res) => {
     });
   }
 };
+
+exports.permanentDelete = async (req, res) => {
+  try {
+    const department = await Department.permanentDelete(req.params.id);
+    
+    if (!department) {
+      return res.status(404).json({ 
+        success: false,
+        message: "Department not found" 
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: "Department permanently deleted successfully",
+      department
+    });
+  } catch (error) {
+    console.error("Error permanently deleting department:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Failed to permanently delete department" 
+    });
+  }
+};

@@ -224,4 +224,9 @@ router.put("/departments/:id", verifyToken, isAdmin, departmentController.update
 // Delete department for admin
 router.delete("/departments/:id", verifyToken, isAdmin, departmentController.deleteDepartment);
 
+// Archive routes for admin
+router.get("/departments/archived", verifyToken, isAdmin, departmentController.getArchivedDepartments);
+router.patch("/departments/:id/restore", verifyToken, isAdmin, departmentController.restoreDepartment);
+router.delete("/departments/:id/permanent", verifyToken, isAdmin, departmentController.permanentDelete);
+
 module.exports = router;

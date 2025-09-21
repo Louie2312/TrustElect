@@ -6,6 +6,7 @@ import Cookies from "js-cookie";
 import { RotateCcw, Trash2, ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
+import usePermissions from "@/hooks/usePermissions";
 
 export default function ArchivedDepartmentsPage() {
   const router = useRouter();
@@ -14,6 +15,7 @@ export default function ArchivedDepartmentsPage() {
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("All");
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   const fetchArchivedDepartments = async () => {
     setLoading(true);
@@ -25,19 +27,52 @@ export default function ArchivedDepartmentsPage() {
         throw new Error("No authentication token found");
       }
 
-      const res = await axios.get("/api/superadmin/departments/archived", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        withCredentials: true
-      });
+      // Try multiple endpoints to get archived departments
+      let departmentsArray = [];
+      let success = false;
 
-      const departmentsArray = res.data.departments || res.data || [];
-      setArchivedDepartments(departmentsArray);
+      try {
+        // First try admin endpoint
+        const res = await axios.get("/api/admin/departments/archived", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          withCredentials: true
+        });
+        
+        console.log("Admin archived departments API response:", res.data);
+        departmentsArray = res.data.departments || res.data || [];
+        success = true;
+      } catch (firstError) {
+        console.warn("Error on admin endpoint, trying fallback:", firstError.message);
+        
+        try {
+          // Try superadmin endpoint as fallback
+          const res = await axios.get("/api/superadmin/departments/archived", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            withCredentials: true
+          });
+          
+          console.log("SuperAdmin archived departments API response:", res.data);
+          departmentsArray = res.data.departments || res.data || [];
+          success = true;
+        } catch (secondError) {
+          console.error("Error on superadmin endpoint:", secondError.message);
+          throw new Error("Failed to load archived departments after trying all endpoints");
+        }
+      }
+      
+      if (success) {
+        console.log(`Successfully loaded ${departmentsArray.length} archived departments:`, departmentsArray);
+        setArchivedDepartments(departmentsArray);
+      }
     } catch (error) {
       console.error("Error fetching archived departments:", error);
-      setError("Failed to load archived departments");
+      setError("Failed to load archived departments. " + (error.response?.data?.message || error.message));
       setArchivedDepartments([]);
     } finally {
       setLoading(false);
@@ -59,11 +94,33 @@ export default function ArchivedDepartmentsPage() {
     
     try {
       const token = Cookies.get("token");
-      const res = await axios.patch(`/api/superadmin/departments/${id}/restore`, {}, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
       
-      toast.success(res.data.message || "Department restored successfully");
+      // Try multiple API endpoints
+      let success = false;
+      let response;
+      
+      try {
+        // First try admin endpoint
+        response = await axios.patch(`/api/admin/departments/${id}/restore`, {}, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        success = true;
+      } catch (firstError) {
+        console.warn("Error on first restore endpoint, trying fallback:", firstError.message);
+        
+        try {
+          // Try superadmin endpoint as fallback
+          response = await axios.patch(`/api/superadmin/departments/${id}/restore`, {}, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          success = true;
+        } catch (secondError) {
+          console.error("Error on superadmin endpoint:", secondError.message);
+          throw new Error("Failed to restore department after trying all endpoints");
+        }
+      }
+      
+      toast.success(response.data.message || "Department restored successfully");
       fetchArchivedDepartments();
     } catch (error) {
       console.error("Error restoring department:", error);
@@ -76,11 +133,33 @@ export default function ArchivedDepartmentsPage() {
     
     try {
       const token = Cookies.get("token");
-      const res = await axios.delete(`/api/superadmin/departments/${id}/permanent`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
       
-      toast.success(res.data.message || "Department permanently deleted");
+      // Try multiple API endpoints
+      let success = false;
+      let response;
+      
+      try {
+        // First try admin endpoint
+        response = await axios.delete(`/api/admin/departments/${id}/permanent`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        success = true;
+      } catch (firstError) {
+        console.warn("Error on first permanent delete endpoint, trying fallback:", firstError.message);
+        
+        try {
+          // Try superadmin endpoint as fallback
+          response = await axios.delete(`/api/superadmin/departments/${id}/permanent`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          success = true;
+        } catch (secondError) {
+          console.error("Error on superadmin endpoint:", secondError.message);
+          throw new Error("Failed to permanently delete department after trying all endpoints");
+        }
+      }
+      
+      toast.success(response.data.message || "Department permanently deleted");
       fetchArchivedDepartments();
     } catch (error) {
       console.error("Error permanently deleting department:", error);
@@ -125,7 +204,6 @@ export default function ArchivedDepartmentsPage() {
           <option value="Academic">Academic</option>
           <option value="Administrative">Administrative</option>
           <option value="Organization">Organization</option>
-          <option value="System">System</option>
         </select>
       </div>
 

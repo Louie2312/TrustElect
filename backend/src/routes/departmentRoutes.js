@@ -22,4 +22,6 @@ router.delete("/departments/:id", verifyToken, isSuperAdmin, departmentControlle
 
 router.patch("/departments/:id/restore", verifyToken, isSuperAdmin, departmentController.restoreDepartment);
 
+router.delete("/departments/:id/permanent", verifyToken, isSuperAdmin, departmentController.permanentDelete);
+
 module.exports = router;  

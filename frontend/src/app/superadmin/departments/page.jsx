@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import Cookies from "js-cookie";
-import { PlusCircle, Edit, Trash, UserPlus } from "lucide-react";
+import { PlusCircle, Edit, Trash, UserPlus, Archive } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 
@@ -92,8 +92,8 @@ export default function DepartmentsPage() {
     return matchesSearch && matchesFilter;
   });
 
-  const handleDelete = async (id) => {
-    if (!confirm("Are you sure you want to delete this department?")) return;
+  const handleArchive = async (id) => {
+    if (!confirm("Are you sure you want to archive this department? It will be moved to the archive.")) return;
     
     try {
       const token = Cookies.get("token");
@@ -101,10 +101,10 @@ export default function DepartmentsPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       
-      toast.success(res.data.message || "Department deleted successfully");
+      toast.success(res.data.message || "Department archived successfully");
       fetchDepartments();
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to delete department");
+      toast.error(error.response?.data?.message || "Failed to archive department");
     }
   };
 
@@ -152,14 +152,22 @@ export default function DepartmentsPage() {
         </select>
       </div>
 
-      {/* Add Department Button */}
-      <div className="mb-4">
+      {/* Add Department Button and Archive Button */}
+      <div className="mb-4 flex gap-4">
         <button
           onClick={() => setShowAddModal(true)}
           className="flex items-center text-white bg-[#01579B] px-4 py-2 rounded hover:bg-[#01416E]"
         >
           <PlusCircle className="w-5 h-5 mr-2" />
           Add Department
+        </button>
+        
+        <button
+          onClick={() => router.push("/superadmin/departments/archive")}
+          className="flex items-center text-white bg-gray-600 px-4 py-2 rounded hover:bg-gray-700"
+        >
+          <Archive className="w-5 h-5 mr-2" />
+          Archived Departments
         </button>
       </div>
 
@@ -255,11 +263,12 @@ export default function DepartmentsPage() {
                           Manage Admins
                         </button>
                         <button
-                          onClick={() => handleDelete(department.id)}
-                          className="bg-red-500 text-white px-3 py-1 rounded text-sm"
-                          title="Delete Department"
+                          onClick={() => handleArchive(department.id)}
+                          className="bg-orange-500 text-white px-3 py-1 rounded text-sm flex items-center"
+                          title="Archive Department"
                         >
-                          Delete
+                          <Archive className="w-4 h-4 mr-1" />
+                          Archive
                         </button>
                       </div>
                     </td>
@@ -274,12 +283,6 @@ export default function DepartmentsPage() {
           <p>No departments found. Create one to get started.</p>
         </div>
       )}
-     <button
-        onClick={() => router.push("/superadmin/departments/archive")}
-        className="mt-7 bg-gray-600 text-white px-4 py-2 rounded"
-      >
-        Archived Departments
-      </button>
 
       {showAddModal && <AddDepartmentModal onClose={() => setShowAddModal(false)} onSuccess={fetchDepartments} />}
       {showAssignModal && 
