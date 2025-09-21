@@ -104,7 +104,7 @@ export default function AdminReportsPage() {
       switch(reportId) {
         case 1: 
           // Department Voter Report
-          endpoint = '/api/reports/department-voter';
+          endpoint = '/reports/department-voter';
           const departmentResponse = await axios.get(`${API_BASE}${endpoint}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
@@ -113,7 +113,7 @@ export default function AdminReportsPage() {
 
         case 2: 
           // Election Result Report - using admin summary for now
-          endpoint = '/api/reports/admin/summary';
+          endpoint = '/reports/admin/summary';
           const resultResponse = await axios.get(`${API_BASE}${endpoint}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
@@ -122,7 +122,7 @@ export default function AdminReportsPage() {
 
         case 3: 
           // Voting Time Report
-          endpoint = '/api/reports/voting-time';
+          endpoint = '/reports/voting-time';
           const timeResponse = await axios.get(`${API_BASE}${endpoint}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
@@ -131,7 +131,7 @@ export default function AdminReportsPage() {
 
         case 4: 
           // Election Summary Report
-          endpoint = '/api/reports/admin/summary';
+          endpoint = '/reports/admin/summary';
           const summaryResponse = await axios.get(`${API_BASE}${endpoint}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
@@ -141,7 +141,7 @@ export default function AdminReportsPage() {
 
         case 5: 
           // Voter Participation Report
-          endpoint = '/api/reports/voter-participation';
+          endpoint = '/reports/admin/voter-participation';
           const participationResponse = await axios.get(`${API_BASE}${endpoint}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
@@ -150,7 +150,7 @@ export default function AdminReportsPage() {
 
         case 6: 
           // Candidate List Report
-          endpoint = '/api/reports/candidate-list/admin/candidate-list';
+          endpoint = '/reports/candidate-list/admin/candidate-list';
           const candidateResponse = await axios.get(`${API_BASE}${endpoint}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
@@ -159,7 +159,7 @@ export default function AdminReportsPage() {
 
         case 7: 
           // Admin Activity Report
-          endpoint = '/api/reports/admin-activity/summary';
+          endpoint = '/reports/admin-activity/summary';
           const activityResponse = await axios.get(`${API_BASE}${endpoint}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
@@ -168,7 +168,7 @@ export default function AdminReportsPage() {
 
         case 8: 
           // System Load Report
-          endpoint = '/api/reports/system-load?timeframe=24h';
+          endpoint = '/reports/system-load?timeframe=24h';
           const systemLoadResponse = await axios.get(`${API_BASE}${endpoint}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
@@ -192,12 +192,6 @@ export default function AdminReportsPage() {
   };
 
   const handleViewReport = async (report) => {
-    // Show the report immediately for election reports (2 and 4)
-    if (report.id === 2 || report.id === 4) {
-      setSelectedReport({ ...report, data: null });
-    }
-    
-    // Fetch data in background
     const data = await fetchReportData(report.id);
     if (data) {
       setSelectedReport({ ...report, data });
