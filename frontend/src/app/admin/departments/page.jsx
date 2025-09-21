@@ -211,7 +211,7 @@ export default function AdminDepartmentsPage() {
 
       try {
         // First try the admin endpoint
-        const res = await axios.get("/api/departments", {
+        const res = await axios.get("/api/admin/departments", {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'

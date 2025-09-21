@@ -62,7 +62,24 @@ export default function ArchivedDepartmentsPage() {
           success = true;
         } catch (secondError) {
           console.error("Error on superadmin endpoint:", secondError.message);
-          throw new Error("Failed to load archived departments after trying all endpoints");
+          
+          // Try generic endpoint as last resort
+          try {
+            const res = await axios.get("/api/departments/archived", {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+              withCredentials: true
+            });
+            
+            console.log("Generic archived departments API response:", res.data);
+            departmentsArray = res.data.departments || res.data || [];
+            success = true;
+          } catch (thirdError) {
+            console.error("Error on generic endpoint:", thirdError.message);
+            throw new Error("Failed to load archived departments after trying all endpoints");
+          }
         }
       }
       
@@ -116,7 +133,17 @@ export default function ArchivedDepartmentsPage() {
           success = true;
         } catch (secondError) {
           console.error("Error on superadmin endpoint:", secondError.message);
-          throw new Error("Failed to restore department after trying all endpoints");
+          
+          // Try generic endpoint as last resort
+          try {
+            response = await axios.patch(`/api/departments/${id}/restore`, {}, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            success = true;
+          } catch (thirdError) {
+            console.error("Error on generic endpoint:", thirdError.message);
+            throw new Error("Failed to restore department after trying all endpoints");
+          }
         }
       }
       
@@ -155,7 +182,17 @@ export default function ArchivedDepartmentsPage() {
           success = true;
         } catch (secondError) {
           console.error("Error on superadmin endpoint:", secondError.message);
-          throw new Error("Failed to permanently delete department after trying all endpoints");
+          
+          // Try generic endpoint as last resort
+          try {
+            response = await axios.delete(`/api/departments/${id}/permanent`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            success = true;
+          } catch (thirdError) {
+            console.error("Error on generic endpoint:", thirdError.message);
+            throw new Error("Failed to permanently delete department after trying all endpoints");
+          }
         }
       }
       

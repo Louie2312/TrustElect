@@ -92,7 +92,7 @@ export default function DepartmentsPage() {
     return matchesSearch && matchesFilter;
   });
 
-  const handleArchive = async (id) => {
+  const handleDelete = async (id) => {
     if (!confirm("Are you sure you want to archive this department? It will be moved to the archive.")) return;
     
     try {
@@ -104,6 +104,7 @@ export default function DepartmentsPage() {
       toast.success(res.data.message || "Department archived successfully");
       fetchDepartments();
     } catch (error) {
+      console.error("Error archiving department:", error);
       toast.error(error.response?.data?.message || "Failed to archive department");
     }
   };
@@ -264,10 +265,11 @@ export default function DepartmentsPage() {
                         </button>
                         <button
                           onClick={() => handleDelete(department.id)}
-                          className="bg-red-500 text-white px-3 py-1 rounded text-sm"
-                          title="Delete Department"
+                          className="bg-orange-500 text-white px-3 py-1 rounded text-sm flex items-center"
+                          title="Archive Department"
                         >
-                          Delete
+                          <Archive className="w-4 h-4 mr-1" />
+                          Archive
                         </button>
                       </div>
                     </td>
@@ -282,12 +284,6 @@ export default function DepartmentsPage() {
           <p>No departments found. Create one to get started.</p>
         </div>
       )}
-     <button
-        onClick={() => router.push("/superadmin/departments/archive")}
-        className="mt-7 bg-gray-600 text-white px-4 py-2 rounded"
-      >
-        Archived Departments
-      </button>
 
       {showAddModal && <AddDepartmentModal onClose={() => setShowAddModal(false)} onSuccess={fetchDepartments} />}
       {showAssignModal && 
