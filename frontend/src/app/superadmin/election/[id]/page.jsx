@@ -194,7 +194,9 @@ export default function ElectionDetailsPage() {
 
   useEffect(() => {
     const handleFullScreenChange = () => {
-      setIsFullScreen(!!document.fullscreenElement);
+      const isFullscreen = !!document.fullscreenElement;
+      setIsFullScreen(isFullscreen);
+      setIsBulletinFullScreen(isFullscreen);
     };
 
     document.addEventListener('fullscreenchange', handleFullScreenChange);
@@ -739,15 +741,6 @@ export default function ElectionDetailsPage() {
     }
   };
 
-  // Handle fullscreen change events
-  useEffect(() => {
-    const handleFullScreenChange = () => {
-      setIsBulletinFullScreen(!!document.fullscreenElement);
-    };
-
-    document.addEventListener('fullscreenchange', handleFullScreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullScreenChange);
-  }, []);
 
   return (
     <div className="max-w-6xl mx-auto p-4">
