@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Calendar, Clock, Users, CheckCircle, XCircle, AlertCircle, Trash2, Lock, BarChart, PieChart, RefreshCw, Download, X, Activity, BarChart2, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
@@ -216,6 +216,7 @@ export default function AdminDashboard() {
   });
   const [stats, setStats] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [error, setError] = useState(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [electionToDelete, setElectionToDelete] = useState(null);
@@ -343,6 +344,47 @@ export default function AdminDashboard() {
     }
   }, []);
 
+  // Load pending approvals only (for background refresh)
+  const loadPendingApprovals = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/elections/admin-pending-approval`, {
+        headers: {
+          'Authorization': `Bearer ${Cookies.get('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setAllElections(prev => ({
+          ...prev,
+          'to_approve': data || []
+        }));
+      }
+    } catch (err) {
+      console.error('Error fetching pending approval elections:', err);
+    }
+  }, []);
+
+  // Refresh all data with loading indicator
+  const refreshAllData = useCallback(async () => {
+    if (isRefreshing) return; // Prevent multiple simultaneous refreshes
+    
+    setIsRefreshing(true);
+    try {
+      await Promise.allSettled([
+        loadAllElections(),
+        loadStats(),
+        loadTotalUniqueVoters(),
+        loadLiveVoteCount()
+      ]);
+    } catch (err) {
+      console.error('Error refreshing data:', err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isRefreshing, loadAllElections, loadStats, loadTotalUniqueVoters, loadLiveVoteCount]);
+
   // Load stats - memoized
   const loadStats = useCallback(async () => {
     try {
@@ -444,7 +486,7 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  // Single initialization effect - FIXED
+  // Single initialization effect - OPTIMIZED
   useEffect(() => {
     let isMounted = true;
     
@@ -456,6 +498,7 @@ export default function AdminDashboard() {
       
       // Check if already loaded
       if (dataLoaded) {
+        setIsLoading(false);
         return;
       }
       
@@ -476,23 +519,29 @@ export default function AdminDashboard() {
           loadUIDesign()
         ]);
         
-        // Load optional data in background (non-blocking)
-        Promise.allSettled([
-          loadTotalUniqueVoters().catch(err => {
-            console.log("[Admin] Total unique voters not available:", err.message);
-          }),
-          loadLiveVoteCount().catch(err => {
-            console.log("[Admin] Live vote count not available:", err.message);
-          }),
-          loadSystemLoadData('24h').catch(err => {
-            console.log("[Admin] System load data not available:", err.message);
-          })
-        ]);
-        
         if (isMounted) {
           setDataLoaded(true);
           setIsLoading(false);
+          setIsInitialLoad(false);
         }
+        
+        // Load optional data in background (non-blocking) after critical data is loaded
+        setTimeout(() => {
+          if (isMounted) {
+            Promise.allSettled([
+              loadTotalUniqueVoters().catch(err => {
+                console.log("[Admin] Total unique voters not available:", err.message);
+              }),
+              loadLiveVoteCount().catch(err => {
+                console.log("[Admin] Live vote count not available:", err.message);
+              }),
+              loadSystemLoadData('24h').catch(err => {
+                console.log("[Admin] System load data not available:", err.message);
+              })
+            ]);
+          }
+        }, 1000); // 1 second delay to ensure UI is rendered first
+        
       } catch (error) {
         console.error('Error loading dashboard data:', error);
         if (isMounted) {
@@ -502,47 +551,37 @@ export default function AdminDashboard() {
       }
     };
     
-    const initialLoad = async () => {
-      if (isMounted) {
-        await initializeDashboard();
-      }
-    };
+    initializeDashboard();
     
-    initialLoad();
-    
-    // Set up intervals for auto-refresh
+    // Set up intervals for auto-refresh (only after initial load)
     const intervals = [];
     
-    // Refresh pending approvals every 15 seconds
+    // Refresh pending approvals every 30 seconds (reduced frequency)
     intervals.push(setInterval(() => {
-      if (isMounted) {
-        loadPendingApprovals();
-      }
-    }, 15000));
-    
-    // Refresh stats every 30 seconds
-    intervals.push(setInterval(() => {
-      if (isMounted) {
-        loadStats();
+      if (isMounted && dataLoaded) {
+        loadAllElections().catch(err => {
+          console.log("[Admin] Error refreshing elections:", err.message);
+        });
       }
     }, 30000));
     
-    // Refresh optional data every 2 minutes (non-critical)
+    // Refresh stats every 2 minutes (reduced frequency)
     intervals.push(setInterval(() => {
-      if (isMounted) {
+      if (isMounted && dataLoaded) {
+        loadStats().catch(err => {
+          console.log("[Admin] Error refreshing stats:", err.message);
+        });
+      }
+    }, 120000));
+    
+    // Refresh optional data every 5 minutes (reduced frequency)
+    intervals.push(setInterval(() => {
+      if (isMounted && dataLoaded) {
         loadTotalUniqueVoters().catch(err => {
           console.log("[Admin] Total unique voters not available:", err.message);
         });
       }
-    }, 120000)); // 2 minutes
-    
-    // Refresh election data every 1 minute to sync with backend status updates
-    intervals.push(setInterval(() => {
-      if (isMounted) {
-        console.log('[FRONTEND] Auto-refreshing election data...');
-        loadElections();
-      }
-    }, 60000)); // 1 minute instead of 300000 (5 minutes)
+    }, 300000)); // 5 minutes
     
     return () => {
       isMounted = false;
@@ -803,6 +842,22 @@ export default function AdminDashboard() {
     return 0;
   };
 
+  // Memoize election cards to prevent unnecessary re-renders
+  const electionCards = useMemo(() => {
+    if (!elections || elections.length === 0) return null;
+    
+    return elections.map((election, index) => (
+      <ElectionCard 
+        key={`${election.id}-${index}`} 
+        election={election} 
+        onClick={handleElectionClick}
+        onDeleteClick={handleDeleteClick}
+        canDelete={hasPermission('elections', 'delete')}
+        activeTab={activeTab}
+      />
+    ));
+  }, [elections, handleElectionClick, handleDeleteClick, hasPermission, activeTab]);
+
   // Format image URL helper function
   const formatImageUrl = (url) => {
     if (!url) return null;
@@ -857,7 +912,7 @@ export default function AdminDashboard() {
     );
   };
 
-  if (isLoading || permissionsLoading) {
+  if (isInitialLoad || permissionsLoading) {
     return (
       <div className="flex h-full w-full items-center justify-center p-20">
         <div className="text-center">
@@ -895,7 +950,26 @@ export default function AdminDashboard() {
 
   return (
     <div className="container mx-auto px-4 py-8 min-h-screen">
-      <h1 className="text-3xl font-bold mb-2 text-black">Dashboard</h1>
+      <div className="flex items-center justify-between mb-2">
+        <h1 className="text-3xl font-bold text-black">Dashboard</h1>
+        <div className="flex items-center gap-3">
+          {isRefreshing && (
+            <div className="flex items-center text-sm text-gray-500">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-2"></div>
+              Refreshing data...
+            </div>
+          )}
+          <button
+            onClick={refreshAllData}
+            disabled={isRefreshing}
+            className="flex items-center px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Refresh all data"
+          >
+            <RefreshCw className={`w-4 h-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
+      </div>
       
       {actionMessage && (
         <div className={`mb-4 p-4 rounded-lg shadow ${
@@ -1009,16 +1083,7 @@ export default function AdminDashboard() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {elections.length > 0 ? (
-            elections.map((election, index) => (
-              <ElectionCard 
-                key={`${election.id}-${index}`} 
-                election={election} 
-                onClick={handleElectionClick}
-                onDeleteClick={handleDeleteClick}
-                canDelete={hasPermission('elections', 'delete')}
-                activeTab={activeTab}
-              />
-            ))
+            electionCards
           ) : (
             <div className="col-span-full text-center py-12 bg-white rounded-lg shadow">
               <div className="text-gray-400 mb-4">
