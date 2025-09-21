@@ -71,7 +71,12 @@ router.post(
     check("lastName", "Last Name is required").not().isEmpty(),
     check("email", "Valid email is required")
       .isEmail()
-      .matches(/^[a-zA-Z0-9._%+-]+@novaliches\.sti\.edu(\.ph)?$/),
+      .custom((value) => {
+        if (!value.endsWith("@novaliches.sti.edu.ph") && !value.endsWith("@novaliches.sti.edu")) {
+          throw new Error("Email must end with @novaliches.sti.edu.ph or @novaliches.sti.edu");
+        }
+        return true;
+      }),
     check("studentNumber", "Student Number must be 11 digits and start with '02000'")
       .matches(/^02000[0-9]{6}$/),
     check("courseName", "Course name is required unless Course ID is provided")

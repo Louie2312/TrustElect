@@ -49,12 +49,25 @@ router.post(
   verifyToken,
   isSuperAdmin,
   [
-    check("firstName", "First Name is required").not().isEmpty(),
-    check("lastName", "Last Name is required").not().isEmpty(),
+    check("firstName", "First Name is required and must be 1-35 characters.")
+      .not().isEmpty()
+      .isLength({ min: 1, max: 35 })
+      .matches(/^[a-zA-Z\s]+$/),
+    check("lastName", "Last Name is required and must be 1-35 characters.")
+      .not().isEmpty()
+      .isLength({ min: 1, max: 35 })
+      .matches(/^[a-zA-Z\s]+$/),
     check("email", "Valid email is required")
       .isEmail()
-      .matches(/^[a-zA-Z0-9._%+-]+@novaliches\.sti\.edu(\.ph)?$/),
-    check("employeeNumber", "Employee Number must be at least 4 digits.").isLength({ min: 4 }),
+      .custom((value) => {
+        if (!value.endsWith("@novaliches.sti.edu.ph") && !value.endsWith("@novaliches.sti.edu")) {
+          throw new Error("Email must end with @novaliches.sti.edu.ph or @novaliches.sti.edu");
+        }
+        return true;
+      }),
+    check("employeeNumber", "Employee Number must be 3-8 alphanumeric characters.")
+      .isLength({ min: 3, max: 8 })
+      .matches(/^[a-zA-Z0-9]+$/),
     check("department", "Department is required.").not().isEmpty(),
   ],
   registerAdmin
@@ -76,12 +89,25 @@ router.post(
   isAdmin,
   checkPermission('adminManagement', 'create'),
   [
-    check("firstName", "First Name is required").not().isEmpty(),
-    check("lastName", "Last Name is required").not().isEmpty(),
+    check("firstName", "First Name is required and must be 1-35 characters.")
+      .not().isEmpty()
+      .isLength({ min: 1, max: 35 })
+      .matches(/^[a-zA-Z\s]+$/),
+    check("lastName", "Last Name is required and must be 1-35 characters.")
+      .not().isEmpty()
+      .isLength({ min: 1, max: 35 })
+      .matches(/^[a-zA-Z\s]+$/),
     check("email", "Valid email is required")
       .isEmail()
-      .matches(/^[a-zA-Z0-9._%+-]+@novaliches\.sti\.edu(\.ph)?$/),
-    check("employeeNumber", "Employee Number must be at least 4 digits.").isLength({ min: 4 }),
+      .custom((value) => {
+        if (!value.endsWith("@novaliches.sti.edu.ph") && !value.endsWith("@novaliches.sti.edu")) {
+          throw new Error("Email must end with @novaliches.sti.edu.ph or @novaliches.sti.edu");
+        }
+        return true;
+      }),
+    check("employeeNumber", "Employee Number must be 3-8 alphanumeric characters.")
+      .isLength({ min: 3, max: 8 })
+      .matches(/^[a-zA-Z0-9]+$/),
     check("department", "Department is required.").not().isEmpty(),
   ],
   registerAdmin

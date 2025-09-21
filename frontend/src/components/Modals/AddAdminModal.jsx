@@ -405,7 +405,6 @@ export default function AddAdminModal({ onClose }) {
                 <input 
                   type="text" 
                   name="employeeNumber" 
-                  placeholder="Employee Number (3-8 characters, letters and numbers only)" 
                   value={formData.employeeNumber} 
                   onChange={handleChange} 
                   onKeyDown={handleKeyDownAlphanumeric} 
@@ -420,7 +419,6 @@ export default function AddAdminModal({ onClose }) {
                 <input 
                   type="text" 
                   name="firstName" 
-                  placeholder="First Name (max 35 characters)" 
                   value={formData.firstName} 
                   onChange={handleChange} 
                   onKeyDown={handleKeyDownLetters} 
@@ -435,7 +433,6 @@ export default function AddAdminModal({ onClose }) {
                 <input 
                   type="text" 
                   name="lastName" 
-                  placeholder="Last Name (max 35 characters)" 
                   value={formData.lastName} 
                   onChange={handleChange} 
                   onKeyDown={handleKeyDownLetters} 
@@ -450,7 +447,6 @@ export default function AddAdminModal({ onClose }) {
                 <input 
                   type="email" 
                   name="email" 
-                  placeholder="Email (@novaliches.sti.edu.ph or @novaliches.sti.edu)" 
                   value={formData.email}
                   onChange={handleChange} 
                   required 
