@@ -104,40 +104,36 @@ export default function AdminReportsPage() {
       switch(reportId) {
         case 1: 
           // Department Voter Report
-          endpoint = '/reports/department-voter';
+          endpoint = '/api/reports/department-voter';
           const departmentResponse = await axios.get(`${API_BASE}${endpoint}`, {
-            headers: { Authorization: `Bearer ${token}` },
-            timeout: 10000
+            headers: { Authorization: `Bearer ${token}` }
           });
           transformedData = departmentResponse.data;
           break;
 
         case 2: 
           // Election Result Report - using admin summary for now
-          endpoint = '/reports/admin/summary';
+          endpoint = '/api/reports/admin/summary';
           const resultResponse = await axios.get(`${API_BASE}${endpoint}`, {
-            headers: { Authorization: `Bearer ${token}` },
-            timeout: 10000
+            headers: { Authorization: `Bearer ${token}` }
           });
           transformedData = resultResponse.data;
           break;
 
         case 3: 
           // Voting Time Report
-          endpoint = '/reports/voting-time';
+          endpoint = '/api/reports/voting-time';
           const timeResponse = await axios.get(`${API_BASE}${endpoint}`, {
-            headers: { Authorization: `Bearer ${token}` },
-            timeout: 10000
+            headers: { Authorization: `Bearer ${token}` }
           });
           transformedData = timeResponse.data;
           break;
 
         case 4: 
           // Election Summary Report
-          endpoint = '/reports/admin/summary';
+          endpoint = '/api/reports/admin/summary';
           const summaryResponse = await axios.get(`${API_BASE}${endpoint}`, {
-            headers: { Authorization: `Bearer ${token}` },
-            timeout: 10000
+            headers: { Authorization: `Bearer ${token}` }
           });
           console.log('Election Summary Response:', summaryResponse.data);
           transformedData = summaryResponse.data;
@@ -145,40 +141,36 @@ export default function AdminReportsPage() {
 
         case 5: 
           // Voter Participation Report
-          endpoint = '/reports/admin/voter-participation';
+          endpoint = '/api/reports/voter-participation';
           const participationResponse = await axios.get(`${API_BASE}${endpoint}`, {
-            headers: { Authorization: `Bearer ${token}` },
-            timeout: 10000
+            headers: { Authorization: `Bearer ${token}` }
           });
           transformedData = participationResponse.data;
           break;
 
         case 6: 
           // Candidate List Report
-          endpoint = '/reports/candidate-list/admin/candidate-list';
+          endpoint = '/api/reports/candidate-list/admin/candidate-list';
           const candidateResponse = await axios.get(`${API_BASE}${endpoint}`, {
-            headers: { Authorization: `Bearer ${token}` },
-            timeout: 10000
+            headers: { Authorization: `Bearer ${token}` }
           });
           transformedData = candidateResponse.data;
           break;
 
         case 7: 
           // Admin Activity Report
-          endpoint = '/reports/admin-activity/summary';
+          endpoint = '/api/reports/admin-activity/summary';
           const activityResponse = await axios.get(`${API_BASE}${endpoint}`, {
-            headers: { Authorization: `Bearer ${token}` },
-            timeout: 10000
+            headers: { Authorization: `Bearer ${token}` }
           });
           transformedData = activityResponse.data;
           break;
 
         case 8: 
           // System Load Report
-          endpoint = '/reports/system-load?timeframe=24h';
+          endpoint = '/api/reports/system-load?timeframe=24h';
           const systemLoadResponse = await axios.get(`${API_BASE}${endpoint}`, {
-            headers: { Authorization: `Bearer ${token}` },
-            timeout: 10000
+            headers: { Authorization: `Bearer ${token}` }
           });
           transformedData = systemLoadResponse.data;
           break;

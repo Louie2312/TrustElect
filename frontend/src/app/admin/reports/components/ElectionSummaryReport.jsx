@@ -111,9 +111,8 @@ export default function ElectionSummaryReport() {
   const fetchSummaryData = useCallback(async () => {
     try {
       setSummaryLoading(true);
-      const response = await axios.get(`${API_BASE}/reports/admin/summary`, {
-        headers: { Authorization: `Bearer ${token}` },
-        timeout: 10000 // 10 second timeout
+      const response = await axios.get(`${API_BASE}/api/reports/admin/summary`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
 
       if (response.data.success) {
@@ -135,8 +134,7 @@ export default function ElectionSummaryReport() {
     setLoadingDetails(true);
     try {
       const response = await axios.get(`${API_BASE}/elections/${electionId}/details`, {
-        headers: { Authorization: `Bearer ${token}` },
-        timeout: 10000 // 10 second timeout
+        headers: { Authorization: `Bearer ${token}` }
       });
       setElectionDetails(response.data.election);
     } catch (error) {

@@ -76,8 +76,7 @@ const ElectionResultReport = () => {
       setElectionsLoading(true);
       const token = Cookies.get('token');
       const response = await axios.get(`${API_BASE}/elections/status/completed`, {
-        headers: { Authorization: `Bearer ${token}` },
-        timeout: 10000 // 10 second timeout
+        headers: { Authorization: `Bearer ${token}` }
       });
 
       if (response.data) {
@@ -103,8 +102,7 @@ const ElectionResultReport = () => {
       const token = Cookies.get('token');
       
       const response = await axios.get(`${API_BASE}/elections/completed/${electionId}/results`, {
-        headers: { Authorization: `Bearer ${token}` },
-        timeout: 15000 // Reduced to 15 second timeout
+        headers: { Authorization: `Bearer ${token}` }
       });
 
       if (!response.data.success) {
@@ -151,11 +149,7 @@ const ElectionResultReport = () => {
       setError(null);
     } catch (err) {
       console.error('Error fetching election results:', err);
-      if (err.code === 'ECONNABORTED') {
-        setError('Request timeout. Please try again.');
-      } else {
-        setError(err.response?.data?.message || err.message || 'Failed to fetch election results');
-      }
+      setError(err.response?.data?.message || err.message || 'Failed to fetch election results');
     } finally {
       setResultsLoading(false);
     }
