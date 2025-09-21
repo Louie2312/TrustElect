@@ -5,10 +5,19 @@ exports.createDepartment = async (req, res) => {
   try {
     const { department_name, department_type, admin_id } = req.body;
     
+    console.log("Creating department with data:", { department_name, department_type, admin_id, created_by: req.user?.id });
+    
     if (!department_name || !department_type) {
       return res.status(400).json({ 
         success: false,
         message: "Department name and type are required" 
+      });
+    }
+    
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        message: "User authentication required"
       });
     }
 
@@ -26,6 +35,12 @@ exports.createDepartment = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating department:", error);
+    console.error("Error details:", {
+      message: error.message,
+      code: error.code,
+      constraint: error.constraint,
+      detail: error.detail
+    });
     
     // Handle specific error for admin already assigned
     if (error.message && error.message.includes("Admin is already assigned")) {
@@ -35,9 +50,26 @@ exports.createDepartment = async (req, res) => {
       });
     }
     
+    // Handle foreign key constraint errors
+    if (error.code === '23503') {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid admin ID or user ID. Please check the selected admin exists."
+      });
+    }
+    
+    // Handle unique constraint errors
+    if (error.code === '23505') {
+      return res.status(400).json({
+        success: false,
+        message: "Department name already exists. Please choose a different name."
+      });
+    }
+    
     res.status(500).json({ 
       success: false,
-      message: "Failed to create department" 
+      message: "Failed to create department",
+      error: process.env.NODE_ENV === 'development' ? error.message : "Internal server error"
     });
   }
 };

@@ -95,33 +95,17 @@ export default function AddAdminModal({ onClose }) {
         });
         
         if (res.data && Array.isArray(res.data)) {
-          // Ensure Administration department is included
-          let departments = res.data;
-          if (!departments.includes("Administration")) {
-            departments = ["Administration", ...departments];
-          }
-          
-          setDepartments(departments);
+          setDepartments(res.data);
 
-          if (departments.length > 0) {
-            setFormData(prev => ({ ...prev, department: departments[0] }));
+          if (res.data.length > 0) {
+            setFormData(prev => ({ ...prev, department: res.data[0] }));
           }
         } else {
-          setDepartments([
-            "Administrator",
-            "Information and Communication Technology (ICT)",
-            "Tourism and Hospitality Management (THM)",
-            "Business Administration and Accountancy"
-          ]);
+          setDepartments([]);
         }
       } catch (error) {
         console.error("Error fetching departments:", error);
-        setDepartments([
-          "Administrator",
-          "Information and Communication Technology (ICT)",
-          "Tourism and Hospitality Management (THM)",
-          "Business Administration and Accountancy"
-        ]);
+        setDepartments([]);
       } finally {
         setLoadingDepartments(false);
       }
