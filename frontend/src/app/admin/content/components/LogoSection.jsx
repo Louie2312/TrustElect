@@ -17,8 +17,7 @@ const LogoSection = ({
     if (landingContent?.logo?.imageUrl) {
       setCurrentLogo(formatImageUrl(landingContent.logo.imageUrl));
     } else {
-      // If no logo in landing content, check if there's a default logo
-      const defaultLogo = '/images/sti-logo.png'; // Default STI logo path
+      const defaultLogo = '/images/sti-logo.png'; 
       setCurrentLogo(defaultLogo);
     }
   }, [landingContent?.logo?.imageUrl, formatImageUrl]);
