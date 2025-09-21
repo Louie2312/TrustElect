@@ -83,6 +83,7 @@ router.post("/admins/reset-password", verifyToken, isSuperAdmin, resetAdminPassw
 
 // Admin management routes for regular admins with permissions
 router.get("/manage-admins", verifyToken, isAdmin, checkPermission('adminManagement', 'view'), getAllAdmins);
+router.put("/manage-admins/:id", verifyToken, isAdmin, checkPermission('adminManagement', 'edit'), updateAdmin);
 router.post(
   "/manage-admins",
   verifyToken,

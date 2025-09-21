@@ -20,6 +20,7 @@ export default function EditAdminModal({ admin, onClose }) {
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [departmentsWithAdmins, setDepartmentsWithAdmins] = useState([]);
+  const [checkingEmail, setCheckingEmail] = useState(false);
 
   // Fetch departments when component mounts
   useEffect(() => {
@@ -76,33 +77,112 @@ export default function EditAdminModal({ admin, onClose }) {
     fetchDepartmentsWithAdmins();
   }, [admin.id]);
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  // Check if email already exists
+  const checkEmailExists = async (email) => {
+    if (!email || email === admin.email) return false; // Don't check if it's the same email
+    
+    try {
+      setCheckingEmail(true);
+      const token = Cookies.get("token");
+      const userRole = Cookies.get("role");
+      
+      // Use the correct endpoint based on user role
+      const endpoint = userRole === 'Super Admin' 
+        ? `/api/superadmin/check-email?email=${encodeURIComponent(email)}`
+        : `/api/admin/check-email?email=${encodeURIComponent(email)}`;
+      
+      const res = await axios.get(endpoint, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return res.data.exists;
+    } catch (error) {
+      console.error("Error checking email:", error);
+      return false;
+    } finally {
+      setCheckingEmail(false);
+    }
   };
 
-  const validateInputs = () => {
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    
+    // Apply character limits
+    let processedValue = value;
+    if (name === 'firstName' || name === 'lastName') {
+      processedValue = value.substring(0, 35);
+    } else if (name === 'employeeNumber') {
+      processedValue = value.substring(0, 8);
+    } else if (name === 'email') {
+      processedValue = value.substring(0, 50);
+    }
+    
+    setFormData({ ...formData, [name]: processedValue });
+    
+    // Clear error for this field when user starts typing
+    if (errors[name]) {
+      setErrors({ ...errors, [name]: "" });
+    }
+    
+    // Check email if it's an email field and has changed
+    if (name === 'email' && processedValue !== admin.email) {
+      if (processedValue.endsWith("@novaliches.sti.edu.ph") || processedValue.endsWith("@novaliches.sti.edu")) {
+        checkEmailExists(processedValue).then(exists => {
+          if (exists) {
+            setErrors(prev => ({ ...prev, email: "Email already exists. Please use a different email." }));
+          }
+        });
+      }
+    }
+  };
+
+  const validateInputs = async () => {
     let newErrors = {};
     
-    if (formData.firstName.trim() === "") {
+    // First Name validation
+    if (!formData.firstName.trim()) {
       newErrors.firstName = "First Name is required.";
+    } else if (!/^[A-Za-z\s]+$/.test(formData.firstName.trim())) {
+      newErrors.firstName = "First Name must contain letters only.";
+    } else if (formData.firstName.trim().length > 35) {
+      newErrors.firstName = "First Name must not exceed 35 characters.";
     }
     
-    if (formData.lastName.trim() === "") {
+    // Last Name validation
+    if (!formData.lastName.trim()) {
       newErrors.lastName = "Last Name is required.";
+    } else if (!/^[A-Za-z\s]+$/.test(formData.lastName.trim())) {
+      newErrors.lastName = "Last Name must contain letters only.";
+    } else if (formData.lastName.trim().length > 35) {
+      newErrors.lastName = "Last Name must not exceed 35 characters.";
     }
     
-    if (formData.email.trim() === "") {
+    // Email validation
+    if (!formData.email.trim()) {
       newErrors.email = "Email is required.";
     } else if (!formData.email.endsWith("@novaliches.sti.edu.ph") && !formData.email.endsWith("@novaliches.sti.edu")) {
       newErrors.email = "Invalid STI email. Must end with @novaliches.sti.edu.ph or @novaliches.sti.edu";
+    } else if (formData.email.length > 50) {
+      newErrors.email = "Email must not exceed 50 characters.";
+    } else if (formData.email !== admin.email) {
+      // Check if email already exists (only if it's different from current email)
+      const emailExists = await checkEmailExists(formData.email);
+      if (emailExists) {
+        newErrors.email = "Email already exists. Please use a different email.";
+      }
     }
     
-    if (formData.employeeNumber.trim() === "") {
+    // Employee Number validation
+    if (!formData.employeeNumber.trim()) {
       newErrors.employeeNumber = "Employee Number is required.";
-    } else if (!formData.employeeNumber.match(/^\d{4,}$/)) {
-      newErrors.employeeNumber = "Employee Number must be at least 4 digits.";
+    } else if (!/^[a-zA-Z0-9]+$/.test(formData.employeeNumber)) {
+      newErrors.employeeNumber = "Employee Number must contain only letters and numbers.";
+    } else if (formData.employeeNumber.length < 3) {
+      newErrors.employeeNumber = "Employee Number must be at least 3 characters.";
+    } else if (formData.employeeNumber.length > 8) {
+      newErrors.employeeNumber = "Employee Number must not exceed 8 characters.";
     }
     
+    // Department validation
     if (!formData.department) {
       newErrors.department = "Select a department.";
     } else if (
@@ -117,12 +197,14 @@ export default function EditAdminModal({ admin, onClose }) {
   };
 
   const handleSubmit = async () => {
-    if (!validateInputs()) return;
+    const isValid = await validateInputs();
+    if (!isValid) return;
     
     setIsSubmitting(true);
 
     try {
       const token = Cookies.get("token");
+      const userRole = Cookies.get("role");
       
       // Prepare data in the format expected by the API
       const updateData = {
@@ -135,7 +217,12 @@ export default function EditAdminModal({ admin, onClose }) {
       
       console.log("Sending update for admin ID:", admin.id, updateData);
       
-      await axios.put(`/api/superadmin/admins/${admin.id}`, updateData, {
+      // Use the correct endpoint based on user role
+      const endpoint = userRole === 'Super Admin' 
+        ? `/api/superadmin/admins/${admin.id}`
+        : `/api/admin/manage-admins/${admin.id}`;
+      
+      await axios.put(endpoint, updateData, {
         headers: { Authorization: `Bearer ${token}` },
       });
       
@@ -172,6 +259,8 @@ export default function EditAdminModal({ admin, onClose }) {
             name="firstName"
             value={formData.firstName}
             onChange={handleChange}
+            maxLength={35}
+            placeholder="Enter first name (max 35 characters)"
             className="border w-full p-2 rounded text-black"
           />
           {errors.firstName && <p className="text-red-500 text-sm">{errors.firstName}</p>}
@@ -182,6 +271,8 @@ export default function EditAdminModal({ admin, onClose }) {
             name="lastName"
             value={formData.lastName}
             onChange={handleChange}
+            maxLength={35}
+            placeholder="Enter last name (max 35 characters)"
             className="border w-full p-2 rounded text-black"
           />
           {errors.lastName && <p className="text-red-500 text-sm">{errors.lastName}</p>}
@@ -192,9 +283,12 @@ export default function EditAdminModal({ admin, onClose }) {
             name="email"
             value={formData.email}
             onChange={handleChange}
+            maxLength={50}
+            placeholder="Enter STI email (@novaliches.sti.edu.ph or @novaliches.sti.edu)"
             className="border w-full p-2 rounded text-black"
           />
           {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
+          {checkingEmail && <p className="text-blue-500 text-sm">Checking email availability...</p>}
 
           <label className="text-black font-bold">Employee Number:</label>
           <input
@@ -202,6 +296,8 @@ export default function EditAdminModal({ admin, onClose }) {
             name="employeeNumber"
             value={formData.employeeNumber}
             onChange={handleChange}
+            maxLength={8}
+            placeholder="Enter employee number (3-8 alphanumeric characters)"
             className="border w-full p-2 rounded text-black"
           />
           {errors.employeeNumber && <p className="text-red-500 text-sm">{errors.employeeNumber}</p>}
