@@ -33,8 +33,8 @@ export default function AdminDepartmentsPage() {
       // Super admins have all permissions
       return true;
     } else if (role === 'Admin') {
-      // Admins should at least have view permissions
-      if (action === 'view') return true;
+      // Admins can view, create, and edit departments
+      if (action === 'view' || action === 'create' || action === 'edit') return true;
  
       return false;
     }
@@ -716,7 +716,7 @@ function AddDepartmentModal({ onClose, onSuccess }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white p-6 rounded-lg shadow-lg w-96 text-black">
         <h2 className="text-xl font-bold mb-4">Add New Department</h2>
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
@@ -979,7 +979,7 @@ function AssignAdminModal({ department, admins: initialAdmins, onClose, onSucces
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white p-6 rounded-lg shadow-lg w-[600px] text-black max-w-md mx-auto">
         <h2 className="text-xl font-bold mb-4">Manage Department Admins</h2>
         <p className="mb-4 text-sm">Department: <strong>{department.department_name}</strong></p>
@@ -1104,7 +1104,7 @@ function EditDepartmentModal({ department, onClose, onSuccess }) {
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white p-6 rounded-lg shadow-lg w-96 text-black">
         <h2 className="text-xl font-bold mb-4">Edit Department</h2>
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
