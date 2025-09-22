@@ -211,7 +211,7 @@ export default function ArchivedDepartmentsPage() {
       <div className="flex items-center mb-4">
         <button
           onClick={() => router.back()}
-          className="mr-4 p-2 hover:bg-gray-100 rounded"
+          className="mr-4 p-2 bg-gray-800 text-white hover:bg-gray-700 rounded transition-colors"
           title="Go Back"
         >
           <ArrowLeft className="w-5 h-5" />
