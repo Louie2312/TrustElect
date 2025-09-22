@@ -1,15 +1,24 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import axios from "axios";
 import Cookies from "js-cookie";
 
 export default function Sidebar() {
   const router = useRouter();
+  const pathname = usePathname();
   const [profilePic, setProfilePic] = useState("https://via.placeholder.com/80");
   const [studentName, setStudentName] = useState("Student");
   const [showImageModal, setShowImageModal] = useState(false);
+
+  // Function to check if a route is active
+  const isActiveRoute = (route) => {
+    if (route === "/student") {
+      return pathname === "/student";
+    }
+    return pathname.startsWith(route);
+  };
 
   const fetchProfile = async () => {
     try {
@@ -86,13 +95,34 @@ export default function Sidebar() {
         
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-4 overflow-y-auto">
-          <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/student")}>
+          <button 
+            className={`block w-full text-left p-3 rounded transition-colors ${
+              isActiveRoute("/student") 
+                ? "bg-[#01579B] text-white shadow-md" 
+                : "hover:bg-[#01579B] hover:text-white"
+            }`} 
+            onClick={() => router.push("/student")}
+          >
             Home
           </button>
-          <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/student/profile")}>
+          <button 
+            className={`block w-full text-left p-3 rounded transition-colors ${
+              isActiveRoute("/student/profile") 
+                ? "bg-[#01579B] text-white shadow-md" 
+                : "hover:bg-[#01579B] hover:text-white"
+            }`} 
+            onClick={() => router.push("/student/profile")}
+          >
             Profile
           </button>
-          <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/student/elections")}>
+          <button 
+            className={`block w-full text-left p-3 rounded transition-colors ${
+              isActiveRoute("/student/elections") 
+                ? "bg-[#01579B] text-white shadow-md" 
+                : "hover:bg-[#01579B] hover:text-white"
+            }`} 
+            onClick={() => router.push("/student/elections")}
+          >
             Elections
           </button>
           

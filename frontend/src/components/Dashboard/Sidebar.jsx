@@ -1,15 +1,24 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import axios from "axios";
 import Cookies from "js-cookie";
 
 export default function Sidebar() {
   const router = useRouter();
+  const pathname = usePathname();
   const [profilePic, setProfilePic] = useState("https://via.placeholder.com/80");
   const [superAdminName, setSuperAdminName] = useState("Super Admin");
   const [showImageModal, setShowImageModal] = useState(false);
+
+  // Function to check if a route is active
+  const isActiveRoute = (route) => {
+    if (route === "/superadmin") {
+      return pathname === "/superadmin";
+    }
+    return pathname.startsWith(route);
+  };
 
   const fetchProfile = async () => {
     try {
@@ -77,37 +86,107 @@ export default function Sidebar() {
         )}
  
         <nav className="flex-1 p-4 space-y-4 overflow-y-auto">
-          <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/superadmin")}>
+          <button 
+            className={`block w-full text-left p-3 rounded transition-colors ${
+              isActiveRoute("/superadmin") 
+                ? "bg-[#01579B] text-white shadow-md" 
+                : "hover:bg-[#01579B] hover:text-white"
+            }`} 
+            onClick={() => router.push("/superadmin")}
+          >
             Home
           </button>
-          <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/superadmin/profile")}>
+          <button 
+            className={`block w-full text-left p-3 rounded transition-colors ${
+              isActiveRoute("/superadmin/profile") 
+                ? "bg-[#01579B] text-white shadow-md" 
+                : "hover:bg-[#01579B] hover:text-white"
+            }`} 
+            onClick={() => router.push("/superadmin/profile")}
+          >
             Profile
           </button>
-          <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/superadmin/election")}>
+          <button 
+            className={`block w-full text-left p-3 rounded transition-colors ${
+              isActiveRoute("/superadmin/election") 
+                ? "bg-[#01579B] text-white shadow-md" 
+                : "hover:bg-[#01579B] hover:text-white"
+            }`} 
+            onClick={() => router.push("/superadmin/election")}
+          >
             Elections
           </button>
-          <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/superadmin/departments")}>
+          <button 
+            className={`block w-full text-left p-3 rounded transition-colors ${
+              isActiveRoute("/superadmin/departments") 
+                ? "bg-[#01579B] text-white shadow-md" 
+                : "hover:bg-[#01579B] hover:text-white"
+            }`} 
+            onClick={() => router.push("/superadmin/departments")}
+          >
             Departments Management
           </button>
-          <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/superadmin/admins")}>
+          <button 
+            className={`block w-full text-left p-3 rounded transition-colors ${
+              isActiveRoute("/superadmin/admins") 
+                ? "bg-[#01579B] text-white shadow-md" 
+                : "hover:bg-[#01579B] hover:text-white"
+            }`} 
+            onClick={() => router.push("/superadmin/admins")}
+          >
             Admins Management
           </button> 
-          <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/superadmin/students")}>
+          <button 
+            className={`block w-full text-left p-3 rounded transition-colors ${
+              isActiveRoute("/superadmin/students") 
+                ? "bg-[#01579B] text-white shadow-md" 
+                : "hover:bg-[#01579B] hover:text-white"
+            }`} 
+            onClick={() => router.push("/superadmin/students")}
+          >
             Students Management
           </button>   
-          <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/superadmin/content")}>
+          <button 
+            className={`block w-full text-left p-3 rounded transition-colors ${
+              isActiveRoute("/superadmin/content") 
+                ? "bg-[#01579B] text-white shadow-md" 
+                : "hover:bg-[#01579B] hover:text-white"
+            }`} 
+            onClick={() => router.push("/superadmin/content")}
+          >
             Content Management
           </button>
           
-          <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/superadmin/audit-logs")}>
+          <button 
+            className={`block w-full text-left p-3 rounded transition-colors ${
+              isActiveRoute("/superadmin/audit-logs") 
+                ? "bg-[#01579B] text-white shadow-md" 
+                : "hover:bg-[#01579B] hover:text-white"
+            }`} 
+            onClick={() => router.push("/superadmin/audit-logs")}
+          >
             Audit logs
           </button>
 
-          <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/superadmin/maintenance")}>
+          <button 
+            className={`block w-full text-left p-3 rounded transition-colors ${
+              isActiveRoute("/superadmin/maintenance") 
+                ? "bg-[#01579B] text-white shadow-md" 
+                : "hover:bg-[#01579B] hover:text-white"
+            }`} 
+            onClick={() => router.push("/superadmin/maintenance")}
+          >
             Maintenance
           </button>
 
-           <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/superadmin/reports")}>
+           <button 
+            className={`block w-full text-left p-3 rounded transition-colors ${
+              isActiveRoute("/superadmin/reports") 
+                ? "bg-[#01579B] text-white shadow-md" 
+                : "hover:bg-[#01579B] hover:text-white"
+            }`} 
+            onClick={() => router.push("/superadmin/reports")}
+          >
             Reports
           </button>
         </nav>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import axios from "axios";
 import Cookies from "js-cookie";
 import usePermissions from "../../hooks/usePermissions";
@@ -10,10 +10,19 @@ import usePermissions from "../../hooks/usePermissions";
 
 export default function Sidebar() {
   const router = useRouter();
+  const pathname = usePathname();
   const [profilePic, setProfilePic] = useState("https://via.placeholder.com/80");
   const [adminName, setAdminName] = useState("Admin");
   const [showImageModal, setShowImageModal] = useState(false);
   const { hasPermission, permissionsLoading } = usePermissions();
+
+  // Function to check if a route is active
+  const isActiveRoute = (route) => {
+    if (route === "/admin") {
+      return pathname === "/admin";
+    }
+    return pathname.startsWith(route);
+  };
 
   const fetchProfile = async () => {
     try {
@@ -93,46 +102,106 @@ export default function Sidebar() {
       
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-4">
-          <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/admin")}>
+          <button 
+            className={`block w-full text-left p-3 rounded transition-colors ${
+              isActiveRoute("/admin") 
+                ? "bg-[#01579B] text-white shadow-md" 
+                : "hover:bg-[#01579B] hover:text-white"
+            }`} 
+            onClick={() => router.push("/admin")}
+          >
             Home
           </button>
-          <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/admin/profile")}>
+          <button 
+            className={`block w-full text-left p-3 rounded transition-colors ${
+              isActiveRoute("/admin/profile") 
+                ? "bg-[#01579B] text-white shadow-md" 
+                : "hover:bg-[#01579B] hover:text-white"
+            }`} 
+            onClick={() => router.push("/admin/profile")}
+          >
             Profile
           </button>
           
           {/* Only show Elections if user has permission */}
           {!permissionsLoading && hasPermission('elections', 'view') && (
-            <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/admin/election")}>
+            <button 
+              className={`block w-full text-left p-3 rounded transition-colors ${
+                isActiveRoute("/admin/election") 
+                  ? "bg-[#01579B] text-white shadow-md" 
+                  : "hover:bg-[#01579B] hover:text-white"
+              }`} 
+              onClick={() => router.push("/admin/election")}
+            >
               Elections
             </button>
           )}
           
           {/* Only show Students if user has permission */}
           {!permissionsLoading && hasPermission('users', 'view') && (
-            <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/admin/students")}>
+            <button 
+              className={`block w-full text-left p-3 rounded transition-colors ${
+                isActiveRoute("/admin/students") 
+                  ? "bg-[#01579B] text-white shadow-md" 
+                  : "hover:bg-[#01579B] hover:text-white"
+              }`} 
+              onClick={() => router.push("/admin/students")}
+            >
               Students
             </button>
           )}
           
           {/* Only show Departments if user has permission */}
           {!permissionsLoading && hasPermission('departments', 'view') && (
-            <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/admin/departments")}>
+            <button 
+              className={`block w-full text-left p-3 rounded transition-colors ${
+                isActiveRoute("/admin/departments") 
+                  ? "bg-[#01579B] text-white shadow-md" 
+                  : "hover:bg-[#01579B] hover:text-white"
+              }`} 
+              onClick={() => router.push("/admin/departments")}
+            >
               Departments
             </button>
           )}
           
           {/* Only show Content Management if user has permission */}
           {!permissionsLoading && hasPermission('cms', 'view') && (
-            <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/admin/content")}>Content Management</button>
+            <button 
+              className={`block w-full text-left p-3 rounded transition-colors ${
+                isActiveRoute("/admin/content") 
+                  ? "bg-[#01579B] text-white shadow-md" 
+                  : "hover:bg-[#01579B] hover:text-white"
+              }`} 
+              onClick={() => router.push("/admin/content")}
+            >
+              Content Management
+            </button>
           )}
           {/* Only show Audit Logs if user has permission */}
           {!permissionsLoading && hasPermission('auditLog', 'view') && (
-            <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/admin/audit-logs")}>Audit Logs</button>
+            <button 
+              className={`block w-full text-left p-3 rounded transition-colors ${
+                isActiveRoute("/admin/audit-logs") 
+                  ? "bg-[#01579B] text-white shadow-md" 
+                  : "hover:bg-[#01579B] hover:text-white"
+              }`} 
+              onClick={() => router.push("/admin/audit-logs")}
+            >
+              Audit Logs
+            </button>
           )}
 
           {/* Only show Admin Management if user has permission */}
           {!permissionsLoading && hasPermission('adminManagement', 'view') && (
-            <button className="block w-full text-left hover:bg-[#01579B] p-3 rounded" onClick={() => router.push("/admin/manage-admins")}>
+            <button 
+              className={`block w-full text-left p-3 rounded transition-colors ${
+                isActiveRoute("/admin/manage-admins") 
+                  ? "bg-[#01579B] text-white shadow-md" 
+                  : "hover:bg-[#01579B] hover:text-white"
+              }`} 
+              onClick={() => router.push("/admin/manage-admins")}
+            >
               Admin Management
             </button>
           )}
@@ -140,7 +209,11 @@ export default function Sidebar() {
           {/* Only show Reports if user has permission */}
           {/* Reports button - always visible for admins */}
             <button 
-              className="block w-full text-left hover:bg-[#01579B] p-3 rounded" 
+              className={`block w-full text-left p-3 rounded transition-colors ${
+                isActiveRoute("/admin/reports") 
+                  ? "bg-[#01579B] text-white shadow-md" 
+                  : "hover:bg-[#01579B] hover:text-white"
+              }`} 
               onClick={() => router.push("/admin/reports")}
             >
               Reports
