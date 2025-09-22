@@ -1966,11 +1966,11 @@ export default function ElectionDetailsPage() {
                       <p className="text-gray-500">No voters yet</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-5 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2">
+                    <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3">
                       {bulletinData.voterCodes.slice(currentCodesPage * 50, (currentCodesPage + 1) * 50).map((voter, index) => (
-                        <div key={voter.voteToken || index} className="bg-white rounded-lg p-2 border hover:shadow-md transition-shadow">
+                        <div key={voter.voteToken || index} className="bg-white rounded-lg p-3 border hover:shadow-md transition-shadow">
                           <div className="flex flex-col items-center">
-                            <span className="font-mono text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded mb-1 text-center break-all">
+                            <span className="font-mono text-base bg-blue-100 text-blue-800 px-3 py-1.5 rounded mb-1 text-center whitespace-nowrap">
                               {voter.verificationCode}
                             </span>
                             <span className="text-xs text-gray-500 text-center">
@@ -2067,14 +2067,14 @@ export default function ElectionDetailsPage() {
                                   ?.candidates?.find(c => c.id === candidate.id)
                                   ?.voters?.length || 0}):
                               </h5>
-                              <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-2">
+                              <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
                                 {bulletinData.candidateVotes
                                   .find(pos => pos.id === election.positions[currentCandidatesPage].id)
                                   ?.candidates?.find(c => c.id === candidate.id)
                                   ?.voters?.map((voter, voterIndex) => (
-                                    <div key={voterIndex} className="bg-white rounded p-2 border text-center hover:shadow-md transition-shadow">
+                                    <div key={voterIndex} className="bg-white rounded p-3 border text-center hover:shadow-md transition-shadow">
                                       <div className="flex flex-col space-y-1">
-                                        <span className="font-mono text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded break-all">
+                                        <span className="font-mono text-base bg-blue-100 text-blue-800 px-3 py-1.5 rounded whitespace-nowrap">
                                           {voter.verificationCode}
                                         </span>
                                         <span className="text-xs text-gray-500">
