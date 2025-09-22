@@ -787,117 +787,34 @@ export default function SuperAdminDashboard() {
     setDeleteModalOpen(true);
   };
 
-  const handleArchiveConfirm = async () => {
-    if (!electionToArchive) return;
-    
-    try {
-      setIsArchiving(true);
-      
-      if (electionToArchive.status !== 'completed') {
-        setActionMessage({
-          type: 'error',
-          text: 'Only completed elections can be archived'
-        });
-        setArchiveModalOpen(false);
-        return;
-      }
-      
-      await fetchWithAuth(`/elections/${electionToArchive.id}/archive`, {
-        method: 'PATCH'
-      });
-      
-      setElections(elections.filter(e => e.id !== electionToArchive.id));
-      loadStats();
-      
-      setActionMessage({
-        type: 'success',
-        text: `Election "${electionToArchive.title}" was successfully archived.`
-      });
-      
-    } catch (error) {
-      setActionMessage({
-        type: 'error',
-        text: `Failed to archive election: ${error.message}`
-      });
-    } finally {
-      setIsArchiving(false);
-      setArchiveModalOpen(false);
-      setElectionToArchive(null);
-      
-      setTimeout(() => {
-        setActionMessage(null);
-      }, 5000);
-    }
-  };
-
-  const handleRestoreConfirm = async () => {
-    if (!electionToRestore) return;
-    
-    try {
-      setIsRestoring(true);
-      
-      if (electionToRestore.status !== 'archived') {
-        setActionMessage({
-          type: 'error',
-          text: 'Only archived elections can be restored'
-        });
-        setRestoreModalOpen(false);
-        return;
-      }
-      
-      await fetchWithAuth(`/elections/${electionToRestore.id}/restore`, {
-        method: 'PATCH'
-      });
-      
-      setElections(elections.filter(e => e.id !== electionToRestore.id));
-      loadStats();
-      
-      setActionMessage({
-        type: 'success',
-        text: `Election "${electionToRestore.title}" was successfully restored.`
-      });
-      
-    } catch (error) {
-      setActionMessage({
-        type: 'error',
-        text: `Failed to restore election: ${error.message}`
-      });
-    } finally {
-      setIsRestoring(false);
-      setRestoreModalOpen(false);
-      setElectionToRestore(null);
-      
-      setTimeout(() => {
-        setActionMessage(null);
-      }, 5000);
-    }
-  };
-
   const handleDeleteConfirm = async () => {
     if (!electionToDelete) return;
     
     try {
       setIsDeleting(true);
       
-      if (electionToDelete.status !== 'archived') {
+      if (electionToDelete.status !== 'completed') {
         setActionMessage({
           type: 'error',
-          text: 'Only archived elections can be permanently deleted'
+          text: 'Only completed elections can be deleted'
         });
         setDeleteModalOpen(false);
         return;
       }
       
+     
       await fetchWithAuth(`/elections/${electionToDelete.id}`, {
         method: 'DELETE'
       });
       
+   
       setElections(elections.filter(e => e.id !== electionToDelete.id));
+
       loadStats();
       
       setActionMessage({
         type: 'success',
-        text: `Election "${electionToDelete.title}" was permanently deleted.`
+        text: `Election "${electionToDelete.title}" was successfully deleted.`
       });
       
     } catch (error) {
@@ -1013,7 +930,6 @@ export default function SuperAdminDashboard() {
           {activeTab === 'upcoming' && 'Upcoming Elections'}
           {activeTab === 'completed' && 'Completed Elections'}
           {activeTab === 'to_approve' && 'Elections Pending Approval'}
-          {activeTab === 'archived' && 'Archived Elections'}
         </h2>
         <Link 
           href="/superadmin/election/create"
@@ -1050,8 +966,6 @@ export default function SuperAdminDashboard() {
                 election={election} 
                 onClick={handleElectionClick}
                 onDeleteClick={handleDeleteClick}
-                onArchiveClick={handleArchiveClick}
-                onRestoreClick={handleRestoreClick}
                 activeTab={activeTab}
               />
             ))
@@ -1062,17 +976,15 @@ export default function SuperAdminDashboard() {
                 {activeTab === 'upcoming' && <Calendar className="w-16 h-16 mx-auto" />}
                 {activeTab === 'completed' && <CheckCircle className="w-16 h-16 mx-auto" />}
                 {activeTab === 'to_approve' && <AlertCircle className="w-16 h-16 mx-auto" />}
-                {activeTab === 'archived' && <Archive className="w-16 h-16 mx-auto" />}
               </div>
               <h3 className="text-xl font-medium text-gray-900 mb-2">
-                No {activeTab === 'to_approve' ? 'elections pending approval' : activeTab === 'archived' ? 'archived elections' : `${activeTab} elections`}
+                No {activeTab === 'to_approve' ? 'elections pending approval' : `${activeTab} elections`}
               </h3>
               <p className="text-black max-w-md mx-auto">
                 {activeTab === 'ongoing' && 'There are currently no ongoing elections.'}
                 {activeTab === 'upcoming' && 'No upcoming elections scheduled.'}
                 {activeTab === 'completed' && 'No completed elections yet. Elections that have ended will be shown here.'}
                 {activeTab === 'to_approve' && 'No elections waiting for your approval.'}
-                {activeTab === 'archived' && 'No archived elections. Completed elections that have been archived will be shown here.'}
               </p>
             </div>
           )}
@@ -1476,28 +1388,6 @@ export default function SuperAdminDashboard() {
       </div>
       
     
-      <ArchiveConfirmationModal 
-        isOpen={archiveModalOpen}
-        election={electionToArchive}
-        onCancel={() => {
-          setArchiveModalOpen(false);
-          setElectionToArchive(null);
-        }}
-        onConfirm={handleArchiveConfirm}
-        isArchiving={isArchiving}
-      />
-
-      <RestoreConfirmationModal 
-        isOpen={restoreModalOpen}
-        election={electionToRestore}
-        onCancel={() => {
-          setRestoreModalOpen(false);
-          setElectionToRestore(null);
-        }}
-        onConfirm={handleRestoreConfirm}
-        isRestoring={isRestoring}
-      />
-
       <DeleteConfirmationModal 
         isOpen={deleteModalOpen}
         election={electionToDelete}
