@@ -183,20 +183,22 @@ export default function Home() {
       const isAbsolute = /^https?:\/\//i.test(baseUrl);
       
       if (isAbsolute) {
-        // Extract the path from absolute URL
-        const urlObj = new URL(baseUrl);
-        const path = urlObj.pathname;
-        console.log('Formatting absolute URL:', url, '->', path);
-        return path; // Return relative path for same-origin requests
+        // For absolute URLs, return as-is
+        console.log('Formatting absolute URL:', url, '->', baseUrl);
+        return baseUrl;
       }
 
-      // For relative URLs, ensure they start with /
+      // For relative URLs, ensure they start with / and include BASE_URL if needed
       const path = baseUrl.startsWith('/') ? baseUrl : `/${baseUrl}`;
       
-      // Log the URL for debugging
-      console.log('Formatting image URL:', url, '->', path);
+      // Check if we need to prepend the API base URL
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+      const fullUrl = API_BASE ? `${API_BASE}${path}` : path;
       
-      return path; // Return relative path for same-origin requests
+      // Log the URL for debugging
+      console.log('Formatting image URL:', url, '->', fullUrl);
+      
+      return fullUrl;
     } catch (error) {
       console.error('Error formatting URL:', error, url);
       return null;
@@ -242,19 +244,35 @@ export default function Home() {
                 console.error("Error loading logo:", landingContent.logo.imageUrl);
                 console.error("Formatted URL:", formatImageUrl(landingContent.logo.imageUrl));
                 
-                // Try alternative URL format
-                const altUrl = landingContent.logo.imageUrl.replace('/uploads/images/', '/api/uploads/images/');
-                console.log('Trying alternative logo URL:', altUrl);
+                // Try multiple fallback URLs for logo
+                const fallbackUrls = [
+                  landingContent.logo.imageUrl.replace('/uploads/images/', '/api/uploads/images/'),
+                  landingContent.logo.imageUrl.replace('/uploads/', '/api/uploads/'),
+                  landingContent.logo.imageUrl.replace('/uploads/images/', '/uploads/'),
+                  landingContent.logo.imageUrl
+                ];
                 
                 const img = e.currentTarget;
-                img.src = `${altUrl}?timestamp=${new Date().getTime()}`;
-                img.onload = () => {
-                  console.log('Alternative logo URL worked:', altUrl);
+                const tryNextFallback = (index) => {
+                  if (index >= fallbackUrls.length) {
+                    console.error('All logo fallback URLs failed, hiding logo');
+                    img.style.display = 'none';
+                    return;
+                  }
+                  
+                  const fallbackUrl = fallbackUrls[index];
+                  console.log('Trying logo fallback URL:', fallbackUrl);
+                  img.src = `${fallbackUrl}?timestamp=${new Date().getTime()}`;
+                  img.onload = () => {
+                    console.log('Logo fallback URL worked:', fallbackUrl);
+                  };
+                  img.onerror = () => {
+                    console.error('Logo fallback URL failed:', fallbackUrl);
+                    tryNextFallback(index + 1);
+                  };
                 };
-                img.onerror = () => {
-                  console.log('Alternative logo URL also failed, hiding logo');
-                  img.style.display = 'none';
-                };
+                
+                tryNextFallback(0);
               }}
               onLoad={() => {
                 console.log('Logo loaded successfully:', landingContent.logo.imageUrl);
@@ -358,25 +376,43 @@ export default function Home() {
                     console.error("Error loading hero poster image:", posterWithTimestamp);
                     console.error("Original URL:", heroPosterUrl);
                     
-                    const altUrl = heroPosterUrl.replace('/uploads/images/', '/api/uploads/images/');                  
+                    // Try multiple fallback URLs
+                    const fallbackUrls = [
+                      heroPosterUrl.replace('/uploads/images/', '/api/uploads/images/'),
+                      heroPosterUrl.replace('/uploads/', '/api/uploads/'),
+                      heroPosterUrl.replace('/uploads/images/', '/uploads/'),
+                      heroPosterUrl
+                    ];
+                    
                     const container = e.currentTarget.closest('div');
                     if (container) {
-                      const img = document.createElement('img');
-                      img.src = `${altUrl}?timestamp=${new Date().getTime()}`;
-                      img.className = 'w-full h-full object-cover';
-                      img.onload = () => {
-                        console.log('Alternative URL worked:', altUrl); 
-                        container.innerHTML = '';
-                        container.appendChild(img);
+                      const tryNextFallback = (index) => {
+                        if (index >= fallbackUrls.length) {
+                          console.error('All fallback URLs failed');
+                          container.innerHTML = `
+                            <div class="w-full h-full flex items-center justify-center bg-blue-700">
+                              <span class="text-xl text-white/70">Demo Video</span>
+                            </div>
+                          `;
+                          return;
+                        }
+                        
+                        const fallbackUrl = fallbackUrls[index];
+                        const img = document.createElement('img');
+                        img.src = `${fallbackUrl}?timestamp=${new Date().getTime()}`;
+                        img.className = 'w-full h-full object-cover';
+                        img.onload = () => {
+                          console.log('Fallback URL worked:', fallbackUrl); 
+                          container.innerHTML = '';
+                          container.appendChild(img);
+                        };
+                        img.onerror = () => {
+                          console.error('Fallback URL failed:', fallbackUrl);
+                          tryNextFallback(index + 1);
+                        };
                       };
-                      img.onerror = () => {
-                        console.log('Alternative URL also failed, showing fallback');
-                        container.innerHTML = `
-                          <div class="w-full h-full flex items-center justify-center bg-blue-700">
-                            <span class="text-xl text-white/70">Demo Video</span>
-                          </div>
-                        `;
-                      };
+                      
+                      tryNextFallback(0);
                     }
                   }}
                   onLoad={() => {
