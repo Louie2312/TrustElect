@@ -156,12 +156,13 @@ export default function StudentsListPage() {
         }
       });
   
+      
       setUploadStatus('success');
       setBatchResults(res.data);
      
       if (res.data.success > 0) {
         fetchStudents(); 
-      }
+      }  
       setSelectedFile(null); 
     } catch (error) {
       console.error('Batch upload error:', error);
