@@ -412,20 +412,36 @@ export default function SuperAdminDashboard() {
     const hourNum = parseInt(hour);
     if (isNaN(hourNum)) return '12 AM';
     
+    // For daily data (7d/30d), only show date, not time
+    if (selectedTimeframe !== '24h' && hourNum === 0) {
+      if (date) {
+        const dateObj = new Date(date);
+        return dateObj.toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: 'numeric' 
+        });
+      }
+      return 'Date';
+    }
+    
     let timeStr = '';
     if (hourNum === 0) timeStr = '12 AM';
     else if (hourNum < 12) timeStr = `${hourNum} AM`;
     else if (hourNum === 12) timeStr = '12 PM';
     else timeStr = `${hourNum - 12} PM`;
     
-    // Add date if provided and timeframe is more than 24h
-    if (date && selectedTimeframe !== '24h') {
+    // For 24h, only show time
+    if (selectedTimeframe === '24h') {
+      return timeStr;
+    }
+    
+    // For other timeframes, show date only (since we're showing daily data)
+    if (date) {
       const dateObj = new Date(date);
-      const dateStr = dateObj.toLocaleDateString('en-US', { 
+      return dateObj.toLocaleDateString('en-US', { 
         month: 'short', 
         day: 'numeric' 
       });
-      return `${dateStr} ${timeStr}`;
     }
     
     return timeStr;
@@ -486,18 +502,19 @@ export default function SuperAdminDashboard() {
       }));
     } else if (timeframe === '7d') {
       // For 7d, backend returns hourly data but we need to aggregate by day
-      // Generate last 7 days and map data to them
+      // Since we don't have actual timestamps, we'll distribute the data across the last 7 days
       const dailyData = {};
       
-      // Aggregate data by day
-      data.forEach(item => {
-        const dayOffset = Math.floor((now.getTime() - (item.hour * 60 * 60 * 1000)) / (24 * 60 * 60 * 1000));
-        const dayKey = Math.max(0, Math.min(6, dayOffset)); // Ensure it's within 0-6 range
+      // Distribute data across 7 days based on data index
+      data.forEach((item, index) => {
+        const count = item.count || 0;
+        // Distribute data across 7 days (0-6)
+        const dayIndex = index % 7;
         
-        if (!dailyData[dayKey]) {
-          dailyData[dayKey] = 0;
+        if (!dailyData[dayIndex]) {
+          dailyData[dayIndex] = 0;
         }
-        dailyData[dayKey] += item.count || 0;
+        dailyData[dayIndex] += count;
       });
       
       // Generate 7 days of data
@@ -518,16 +535,28 @@ export default function SuperAdminDashboard() {
       // Map backend data to day offsets
       data.forEach(item => {
         const dayOfMonth = item.hour || 0;
+        const count = item.count || 0;
+        
+        // Calculate which day this represents in the last 30 days
+        // Since backend returns day of month, we need to map it to our 30-day range
         const currentDay = now.getDate();
         const currentMonth = now.getMonth();
         const currentYear = now.getFullYear();
         
-        // Calculate the actual date for this day of month
-        const itemDate = new Date(currentYear, currentMonth, dayOfMonth);
-        const dayOffset = Math.floor((now.getTime() - itemDate.getTime()) / (24 * 60 * 60 * 1000));
+        // Try to find the correct day offset
+        let dayOffset = -1;
+        
+        // Check if this day of month is within the last 30 days
+        for (let i = 0; i < 30; i++) {
+          const checkDate = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+          if (checkDate.getDate() === dayOfMonth) {
+            dayOffset = i;
+            break;
+          }
+        }
         
         if (dayOffset >= 0 && dayOffset < 30) {
-          dailyData[dayOffset] = item.count || 0;
+          dailyData[dayOffset] = count;
         }
       });
       
