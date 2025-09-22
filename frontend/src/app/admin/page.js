@@ -862,8 +862,9 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 min-h-screen">
-      <h1 className="text-3xl font-bold mb-2 text-black">Dashboard</h1>
+    <div className="min-h-screen bg-white">
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-2 text-black">Dashboard</h1>
       
       {actionMessage && (
         <div className={`mb-4 p-4 rounded-lg shadow ${
@@ -1523,7 +1524,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-
+      </div>
     </div>
   );
 }

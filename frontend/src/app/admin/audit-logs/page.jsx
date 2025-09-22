@@ -325,10 +325,11 @@ export default function AuditLogsPage() {
   };
   
   return (
-    <div className="p-4">
-      <Toaster position="bottom-center" />
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-xl font-bold text-black">Activity Logs</h1>
+    <div className="min-h-screen bg-white">
+      <div className="p-4">
+        <Toaster position="bottom-center" />
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-xl font-bold text-black">Activity Logs</h1>
         
         <div className="flex space-x-2">
           <button 
@@ -626,6 +627,7 @@ export default function AuditLogsPage() {
           )}
         </>
       )}
+      </div>
     </div>
   );
 } 

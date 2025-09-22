@@ -141,17 +141,17 @@ export default function AdminLayout({children}){
 
   return(
     <AuthProvider>
-      <div style={containerStyle}>
+      <div style={containerStyle} className="min-h-screen">
         {(uiDesign?.type === "landing" || uiDesign?.use_landing_design) && landingContent && (
           <div className="absolute inset-0 z-0 overflow-auto">
             <LandingPageLayout />
           </div>
         )}
-        <div className="relative z-10 h-screen flex flex-col">
+        <div className="relative z-10 min-h-screen flex flex-col bg-white">
           <Header />
-          <div className="flex flex-1">
+          <div className="flex flex-1 min-h-0">
             <Sidebar />
-            <main className="flex-1 p-6">{children}</main>
+            <main className="flex-1 p-6 bg-white overflow-auto">{children}</main>
           </div>
         </div>
       </div>

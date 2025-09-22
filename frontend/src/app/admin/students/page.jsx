@@ -452,8 +452,9 @@ export default function StudentsListPage() {
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4 text-black">Student Management</h1>
+    <div className="min-h-screen bg-white">
+      <div className="p-6">
+        <h1 className="text-2xl font-bold mb-4 text-black">Student Management</h1>
 
       {(loading || permissionsLoading) && (
         <div className="mb-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 flex items-center">
@@ -866,6 +867,7 @@ export default function StudentsListPage() {
           departmentCourses={departmentCourses}
         />
       )}
+      </div>
     </div>
   );
 } 

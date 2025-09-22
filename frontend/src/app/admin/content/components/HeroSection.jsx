@@ -124,7 +124,6 @@ const HeroSection = ({
               Poster Image
             </label>
             <div className="flex items-center">
-            // Around line 130, add id to the hero poster input:
             <input 
               id="hero-poster-input"
               type="file" 

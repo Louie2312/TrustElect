@@ -203,8 +203,9 @@ export default function ManageAdminsPage() {
   }
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4 text-black">Admin Management</h1>
+    <div className="min-h-screen bg-white">
+      <div className="p-6">
+        <h1 className="text-2xl font-bold mb-4 text-black">Admin Management</h1>
 
       <div className="flex gap-4 mb-4 text-black">
         {/*Search Bar */}
@@ -427,6 +428,7 @@ export default function ManageAdminsPage() {
           }}
         />
       )}
+      </div>
     </div>
   );
 }

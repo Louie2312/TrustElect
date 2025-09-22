@@ -128,10 +128,11 @@ export default function AdminProfilePage() {
   };
 
   return (
-    <div className="max-w-lg mx-auto p-6 bg-white shadow-lg rounded-lg mt-10">
-      <button onClick={() => router.push("/admin")} className="flex items-center text-blue-900 hover:text-blue-700 mb-4">
-        <ArrowLeft className="w-6 h-6 mr-2" />
-      </button>
+    <div className="min-h-screen bg-white">
+      <div className="max-w-lg mx-auto p-6 bg-white shadow-lg rounded-lg mt-10">
+        <button onClick={() => router.push("/admin")} className="flex items-center text-blue-900 hover:text-blue-700 mb-4">
+          <ArrowLeft className="w-6 h-6 mr-2" />
+        </button>
 
       <h1 className="text-black font-bold text-2xl mb-4 text-center">Admin Profile</h1>
 
@@ -222,6 +223,7 @@ export default function AdminProfilePage() {
           </div>
         </>
       )}
+      </div>
     </div>
   );
 }
