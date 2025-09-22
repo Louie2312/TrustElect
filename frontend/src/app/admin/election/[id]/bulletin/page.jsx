@@ -237,9 +237,9 @@ export default function ElectionBulletinPage() {
       ...candidate,
       positionTitle: position.title,
       positionId: position.id,
-      voters: candidate.voters.filter(voter => 
+      voters: (candidate.voters || []).filter(voter => 
         voter.verificationCode.toLowerCase().includes(candidateSearchTerm.toLowerCase()) ||
-        `${candidate.firstName} ${candidate.lastName}`.toLowerCase().includes(candidateSearchTerm.toLowerCase())
+        `${candidate.firstName || candidate.first_name} ${candidate.lastName || candidate.last_name}`.toLowerCase().includes(candidateSearchTerm.toLowerCase())
       )
     }))
   );
@@ -610,23 +610,23 @@ export default function ElectionBulletinPage() {
                   <div className="flex items-center justify-between mb-3">
                     <div>
                       <h4 className="font-medium text-gray-900">
-                        {candidate.firstName} {candidate.lastName}
+                        {candidate.firstName || candidate.first_name} {candidate.lastName || candidate.last_name}
                       </h4>
                       <p className="text-sm text-gray-500">
                         Position: {candidate.positionTitle}
                       </p>
-                      {candidate.partylistName && (
+                      {(candidate.partylistName || candidate.party) && (
                         <p className="text-sm text-gray-500">
-                          Party: {candidate.partylistName}
+                          Party: {candidate.partylistName || candidate.party}
                         </p>
                       )}
                     </div>
                     <span className="px-2 py-1 bg-green-100 text-green-800 text-sm font-medium rounded">
-                      {candidate.voteCount} votes
+                      {candidate.voteCount || candidate.vote_count || 0} votes
                     </span>
                   </div>
 
-                  {candidate.voters.length === 0 ? (
+                  {(!candidate.voters || candidate.voters.length === 0) ? (
                     <p className="text-gray-500 text-sm">No votes yet</p>
                   ) : (
                     <div>
@@ -641,7 +641,7 @@ export default function ElectionBulletinPage() {
                                 {voter.verificationCode}
                               </span>
                               <span className="text-xs text-gray-500 text-center">
-                                {new Date(voter.voteDate).toLocaleDateString()}
+                                {new Date(voter.voteDate || voter.vote_date).toLocaleDateString()}
                               </span>
                             </div>
                           </div>

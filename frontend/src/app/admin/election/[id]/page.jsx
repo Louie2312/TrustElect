@@ -2069,16 +2069,26 @@ export default function ElectionDetailsPage() {
                             
                             {/* Voter Codes for this candidate */}
                             <div className="mt-3">
-                              <h5 className="text-sm font-medium text-gray-700 mb-2">Voter Codes:</h5>
-                              <div className="grid grid-cols-4 gap-2">
+                              <h5 className="text-sm font-medium text-gray-700 mb-2">
+                                Voter Codes ({bulletinData.candidateVotes
+                                  .find(pos => pos.id === election.positions[currentCandidatesPage].id)
+                                  ?.candidates?.find(c => c.id === candidate.id)
+                                  ?.voters?.length || 0}):
+                              </h5>
+                              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-40 overflow-y-auto">
                                 {bulletinData.candidateVotes
                                   .find(pos => pos.id === election.positions[currentCandidatesPage].id)
                                   ?.candidates?.find(c => c.id === candidate.id)
-                                  ?.voters?.slice(0, 8).map((voter, voterIndex) => (
+                                  ?.voters?.map((voter, voterIndex) => (
                                     <div key={voterIndex} className="bg-white rounded p-2 border text-center">
-                                      <span className="font-mono text-xs bg-blue-100 text-blue-800 px-1 py-0.5 rounded">
-                                        {voter.verificationCode}
-                                      </span>
+                                      <div className="flex flex-col space-y-1">
+                                        <span className="font-mono text-xs bg-blue-100 text-blue-800 px-1 py-0.5 rounded">
+                                          {voter.verificationCode}
+                                        </span>
+                                        <span className="text-xs text-gray-500">
+                                          {new Date(voter.voteDate || voter.vote_date).toLocaleDateString()}
+                                        </span>
+                                      </div>
                                     </div>
                                   )) || []}
                               </div>
