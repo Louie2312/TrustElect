@@ -1970,7 +1970,7 @@ export default function ElectionDetailsPage() {
                       {bulletinData.voterCodes.slice(currentCodesPage * 50, (currentCodesPage + 1) * 50).map((voter, index) => (
                         <div key={voter.voteToken || index} className="bg-white rounded-lg p-2 border hover:shadow-md transition-shadow">
                           <div className="flex flex-col items-center">
-                            <span className="font-mono text-xs bg-blue-100 text-blue-800 px-1 py-0.5 rounded mb-1 text-center break-all">
+                            <span className="font-mono text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded mb-1 text-center break-all">
                               {voter.verificationCode}
                             </span>
                             <span className="text-xs text-gray-500 text-center">
@@ -2074,7 +2074,7 @@ export default function ElectionDetailsPage() {
                                   ?.voters?.map((voter, voterIndex) => (
                                     <div key={voterIndex} className="bg-white rounded p-2 border text-center hover:shadow-md transition-shadow">
                                       <div className="flex flex-col space-y-1">
-                                        <span className="font-mono text-xs bg-blue-100 text-blue-800 px-1 py-0.5 rounded break-all">
+                                        <span className="font-mono text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded break-all">
                                           {voter.verificationCode}
                                         </span>
                                         <span className="text-xs text-gray-500">
