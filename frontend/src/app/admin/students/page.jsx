@@ -142,7 +142,7 @@ export default function StudentsListPage() {
       formData.append('file', selectedFile);
       formData.append('createdBy', adminId);
   
-      const res = await axios.post('/api/admin/students/batch', formData, {
+      const res = await axios.post('/api/students/batch', formData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -185,12 +185,24 @@ export default function StudentsListPage() {
     try {
       setLoading(true);
       const token = Cookies.get("token");
-      const res = await axios.get("/api/admin/students", {
+      
+      // Try the original endpoint that works for admins
+      const res = await axios.get("/api/students", {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
 
-      const activeStudents = res.data.students.filter((student) => student.is_active);
+      // Handle different response structures
+      let studentsData;
+      if (res.data && res.data.students && Array.isArray(res.data.students)) {
+        studentsData = res.data.students;
+      } else if (Array.isArray(res.data)) {
+        studentsData = res.data;
+      } else {
+        throw new Error("Unexpected response format");
+      }
+
+      const activeStudents = studentsData.filter((student) => student.is_active);
       setStudents(activeStudents);
  
       applyFilters(activeStudents);
@@ -264,7 +276,7 @@ export default function StudentsListPage() {
     if (!confirm("Are you sure you want to archive this student?")) return;
     try {
       const token = Cookies.get("token");
-      await axios.delete(`/api/admin/students/${id}`, {
+      await axios.delete(`/api/students/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -281,7 +293,7 @@ export default function StudentsListPage() {
     try {
       const token = Cookies.get("token");
       await axios.patch(
-        `/api/admin/students/${studentId}/unlock`,
+        `/api/students/${studentId}/unlock`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -335,8 +347,8 @@ export default function StudentsListPage() {
     try {
       const token = Cookies.get("token");
       const endpoint = deleteType === "archive" 
-        ? "/api/admin/students/bulk-delete-by-course"
-        : "/api/admin/students/bulk-permanent-delete-by-course";
+        ? "/api/students/bulk-delete-by-course"
+        : "/api/students/bulk-permanent-delete-by-course";
 
       const response = await axios.post(endpoint, 
         { courseName: selectedCourseForDelete },
@@ -374,8 +386,8 @@ export default function StudentsListPage() {
     try {
       const token = Cookies.get("token");
       const endpoint = deleteAllType === "archive" 
-        ? "/api/admin/students/delete-all"
-        : "/api/admin/students/permanent-delete-all";
+        ? "/api/students/delete-all"
+        : "/api/students/permanent-delete-all";
 
       const response = await axios.post(endpoint, {}, {
         headers: { Authorization: `Bearer ${token}` },
