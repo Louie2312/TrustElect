@@ -791,91 +791,77 @@ export default function AdminDashboard() {
     const now = new Date();
     let processedData = [];
     
-    // For 24h timeframe, use the original data structure if it exists
-    if (timeframe === '24h' && data.length > 0) {
-      // Check if data already has the correct structure
-      const firstItem = data[0];
-      if (firstItem && typeof firstItem.hour !== 'undefined' && typeof firstItem.count !== 'undefined') {
-        // Data is already in the correct format, just add dates
-        processedData = data.map(item => ({
-          hour: item.hour || 0,
-          count: typeof item.count === 'number' && !isNaN(item.count) ? item.count : 0,
-          date: item.date || item.timestamp ? new Date(item.timestamp || item.date).toISOString().split('T')[0] : now.toISOString().split('T')[0],
-          timestamp: item.timestamp || item.date || now.toISOString()
-        }));
-        console.log('Using existing 24h data structure:', processedData);
-        return processedData;
-      }
-    }
+    // The backend returns data with hour and count fields
+    // For 24h: hour represents actual hour (0-23)
+    // For 7d: hour represents hour (0-23) but we want to show daily data
+    // For 30d: hour represents day of month (1-31) but we want to show daily data
     
-    // Generate date range based on timeframe
-    const dateRange = [];
-    switch (timeframe) {
-      case '24h':
-        // For 24h, show hourly data for the last 24 hours
-        for (let i = 23; i >= 0; i--) {
-          const date = new Date(now.getTime() - i * 60 * 60 * 1000);
-          dateRange.push({
-            hour: date.getHours(),
-            date: date.toISOString().split('T')[0],
-            timestamp: date.toISOString()
-          });
-        }
-        break;
-      case '7d':
-        // For 7d, show daily data for the last 7 days
-        for (let i = 6; i >= 0; i--) {
-          const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-          dateRange.push({
-            hour: 0, // Use 0 as default hour for daily data
-            date: date.toISOString().split('T')[0],
-            timestamp: date.toISOString()
-          });
-        }
-        break;
-      case '30d':
-        // For 30d, show daily data for the last 30 days
-        for (let i = 29; i >= 0; i--) {
-          const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-          dateRange.push({
-            hour: 0, // Use 0 as default hour for daily data
-            date: date.toISOString().split('T')[0],
-            timestamp: date.toISOString()
-          });
-        }
-        break;
-    }
-    
-    // Map actual data to date range with more flexible matching
-    processedData = dateRange.map(rangeItem => {
-      const matchingData = data.find(item => {
-        // More flexible matching for different data structures
-        const itemHour = item.hour || item.hour_of_day || 0;
-        const itemDate = item.date || (item.timestamp ? new Date(item.timestamp).toISOString().split('T')[0] : null);
-        const itemCount = item.count || item.login_count || item.vote_count || item.activity_count || 0;
+    if (timeframe === '24h') {
+      // For 24h, use the data as-is since backend already provides hourly data
+      processedData = data.map(item => ({
+        hour: item.hour || 0,
+        count: typeof item.count === 'number' && !isNaN(item.count) ? item.count : 0,
+        date: now.toISOString().split('T')[0], // Use current date for 24h
+        timestamp: now.toISOString()
+      }));
+    } else if (timeframe === '7d') {
+      // For 7d, backend returns hourly data but we need to aggregate by day
+      // Generate last 7 days and map data to them
+      const dailyData = {};
+      
+      // Aggregate data by day
+      data.forEach(item => {
+        const dayOffset = Math.floor((now.getTime() - (item.hour * 60 * 60 * 1000)) / (24 * 60 * 60 * 1000));
+        const dayKey = Math.max(0, Math.min(6, dayOffset)); // Ensure it's within 0-6 range
         
-        if (timeframe === '24h') {
-          // For 24h, match by hour and date
-          return itemHour === rangeItem.hour && 
-                 (itemDate === rangeItem.date || 
-                  (item.timestamp && new Date(item.timestamp).toISOString().split('T')[0] === rangeItem.date));
-        } else {
-          // For 7d/30d, match by date only (ignore hour for daily aggregation)
-          return itemDate === rangeItem.date || 
-                 (item.timestamp && new Date(item.timestamp).toISOString().split('T')[0] === rangeItem.date);
+        if (!dailyData[dayKey]) {
+          dailyData[dayKey] = 0;
+        }
+        dailyData[dayKey] += item.count || 0;
+      });
+      
+      // Generate 7 days of data
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        processedData.push({
+          hour: 0, // Use 0 for daily data
+          count: dailyData[i] || 0,
+          date: date.toISOString().split('T')[0],
+          timestamp: date.toISOString()
+        });
+      }
+    } else if (timeframe === '30d') {
+      // For 30d, backend returns daily data (hour represents day of month)
+      // Generate last 30 days and map data to them
+      const dailyData = {};
+      
+      // Map backend data to day offsets
+      data.forEach(item => {
+        const dayOfMonth = item.hour || 0;
+        const currentDay = now.getDate();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+        
+        // Calculate the actual date for this day of month
+        const itemDate = new Date(currentYear, currentMonth, dayOfMonth);
+        const dayOffset = Math.floor((now.getTime() - itemDate.getTime()) / (24 * 60 * 60 * 1000));
+        
+        if (dayOffset >= 0 && dayOffset < 30) {
+          dailyData[dayOffset] = item.count || 0;
         }
       });
       
-      return {
-        hour: rangeItem.hour,
-        count: matchingData ? (typeof matchingData.count === 'number' && !isNaN(matchingData.count) ? matchingData.count : 
-                              typeof matchingData.login_count === 'number' && !isNaN(matchingData.login_count) ? matchingData.login_count :
-                              typeof matchingData.vote_count === 'number' && !isNaN(matchingData.vote_count) ? matchingData.vote_count :
-                              typeof matchingData.activity_count === 'number' && !isNaN(matchingData.activity_count) ? matchingData.activity_count : 0) : 0,
-        date: rangeItem.date,
-        timestamp: rangeItem.timestamp
-      };
-    });
+      // Generate 30 days of data
+      for (let i = 29; i >= 0; i--) {
+        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        processedData.push({
+          hour: 0, // Use 0 for daily data
+          count: dailyData[i] || 0,
+          date: date.toISOString().split('T')[0],
+          timestamp: date.toISOString()
+        });
+      }
+    }
     
     console.log('Processed data result:', processedData);
     return processedData;
