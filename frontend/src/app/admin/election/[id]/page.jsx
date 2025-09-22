@@ -1490,6 +1490,15 @@ export default function ElectionDetailsPage() {
                   </div>
                 )}
               </div>
+              {!isFullScreen && (
+                <button
+                  onClick={toggleFullScreen}
+                  className="flex items-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Maximize2 className="w-4 h-4 mr-2" />
+                  Full Screen
+                </button>
+              )}
             </div>
           </div>
 
@@ -1498,7 +1507,7 @@ export default function ElectionDetailsPage() {
             <div className="flex justify-between items-center mb-8">
               <div className="flex items-center gap-4">
                 <h2 className={`${isFullScreen ? 'text-4xl' : 'text-xl'} font-semibold text-black`}>
-                  {isFullScreen && election?.positions?.length > 1 ? 'Live Election Results' : 'Live Vote Counting'}
+                  {isFullScreen && election?.positions?.length > 1 ? 'Live Election Results' : 'Partial Vote Counting'}
                 </h2>
                 {isFullScreen && election?.positions?.length > 1 && (
                   <div className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-800 rounded-full">
@@ -1515,7 +1524,7 @@ export default function ElectionDetailsPage() {
                   </div>
                 )}
                 <div className={`px-4 py-2 bg-yellow-100 text-yellow-800 rounded-full ${isFullScreen ? 'text-base' : 'text-sm'} font-medium`}>
-                  Live Results
+                  Partial Results
                 </div>
               </div>
             </div>
@@ -1549,13 +1558,13 @@ export default function ElectionDetailsPage() {
                     
                     return (
                       <div className="transition-all duration-500 ease-in-out">
-                        <h3 className={`${isFullScreen ? 'text-5xl' : 'text-3xl'} font-bold text-center text-black mb-12`}>
+                        <h3 className="text-5xl font-bold text-center text-black mb-12">
                           {position.name}
                         </h3>
 
                         {/* Top 3 Candidates - Compact display */}
                         {top3.length > 0 && (
-                          <div className={`grid grid-cols-3 gap-8 mb-8`}>
+                          <div className="grid grid-cols-3 gap-8 mb-8">
                             {top3.map((candidate, index) => (
                               <div 
                                 key={candidate.id} 
@@ -1566,20 +1575,20 @@ export default function ElectionDetailsPage() {
                                 }`}
                               >
                                 <div className="relative mb-4">
-                                  <div className={`relative ${isFullScreen ? 'w-40 h-48' : 'w-32 h-40'}`}>
+                                  <div className="relative w-40 h-48">
                                     {candidate.image_url && !imageErrors[candidate.id] ? (
                                       <Image
                                         src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
                                         alt={`${candidate.first_name} ${candidate.last_name}`}
                                         fill
-                                        sizes={isFullScreen ? "160px" : "128px"}
+                                        sizes="160px"
                                         className="object-cover rounded-lg shadow-md"
                                         priority
                                         onError={() => handleImageError(candidate.id)}
                                       />
                                     ) : (
-                                      <div className={`${isFullScreen ? 'w-40 h-48' : 'w-32 h-40'} rounded-lg bg-gray-200 flex items-center justify-center shadow-md`}>
-                                        <User className={`${isFullScreen ? 'w-20 h-20' : 'w-16 h-16'} text-gray-400`} />
+                                      <div className="w-40 h-48 rounded-lg bg-gray-200 flex items-center justify-center shadow-md">
+                                        <User className="w-20 h-20 text-gray-400" />
                                       </div>
                                     )}
                                     <div className={`absolute -top-2 -right-2 rounded-full p-2 text-base font-bold shadow-lg ${
@@ -1593,16 +1602,16 @@ export default function ElectionDetailsPage() {
                                 </div>
                                 
                                 <div className="w-full">
-                                  <h4 className={`font-bold text-black ${isFullScreen ? 'text-2xl' : 'text-xl'} mb-2`}>
+                                  <h4 className="font-bold text-black text-2xl mb-2">
                                     {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
                                   </h4>
                                   {candidate.party && (
                                     <div className="px-3 py-1 bg-white rounded-full mb-3 shadow-sm">
-                                      <span className={`text-black font-medium ${isFullScreen ? 'text-base' : 'text-sm'}`}>{candidate.party}</span>
+                                      <span className="text-black font-medium text-base">{candidate.party}</span>
                                     </div>
                                   )}
                                   <div className="mt-3">
-                                    <div className={`${isFullScreen ? 'text-xl' : 'text-lg'} text-black mb-2 font-semibold`}>
+                                    <div className="text-xl text-black mb-2 font-semibold">
                                       {Number(candidate.vote_count || 0).toLocaleString()} Votes ({election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%)
                                     </div>
                                     <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -1623,147 +1632,14 @@ export default function ElectionDetailsPage() {
                         {/* Other Candidates - Compact grid */}
                         {others.length > 0 && (
                           <div>
-                            <h4 className={`font-bold text-black mb-6 ${isFullScreen ? 'text-2xl' : 'text-xl'} text-center`}>Other Candidates</h4>
-                            <div className={`grid ${isFullScreen ? 'grid-cols-5' : 'grid-cols-4'} gap-4`}>
+                            <h4 className="font-bold text-black mb-6 text-2xl text-center">Other Candidates</h4>
+                            <div className="grid grid-cols-5 gap-4">
                               {others.map(candidate => (
                                 <div 
                                   key={candidate.id} 
                                   className="flex flex-col items-center p-3 bg-gray-50 rounded-lg shadow-md hover:shadow-lg transition-shadow max-w-48"
                                 >
-                                  <div className={`relative ${isFullScreen ? 'w-32 h-40' : 'w-28 h-36'} mb-3`}>
-                                    {candidate.image_url && !imageErrors[candidate.id] ? (
-                                      <Image
-                                        src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
-                                        alt={`${candidate.first_name} ${candidate.last_name}`}
-                                        fill
-                                        sizes={isFullScreen ? "128px" : "112px"}
-                                        className="object-cover rounded-lg"
-                                        onError={() => handleImageError(candidate.id)}
-                                      />
-                                    ) : (
-                                      <div className={`${isFullScreen ? 'w-32 h-40' : 'w-28 h-36'} rounded-lg bg-gray-200 flex items-center justify-center`}>
-                                        <User className={`${isFullScreen ? 'w-16 h-16' : 'w-14 h-14'} text-gray-400`} />
-                                      </div>
-                                    )}
-                                  </div>
-                                  
-                                  <div className="text-center w-full">
-                                    <h4 className={`font-medium text-black ${isFullScreen ? 'text-base' : 'text-sm'} mb-1 line-clamp-2`}>
-                                      {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
-                                    </h4>
-                                    {candidate.party && (
-                                      <div className={`text-xs text-black mb-1 px-2 py-1 bg-white rounded-full`}>
-                                        {candidate.party}
-                                      </div>
-                                    )}
-                                    <div className={`${isFullScreen ? 'text-sm' : 'text-xs'} text-black font-semibold`}>
-                                      {Number(candidate.vote_count || 0).toLocaleString()} Votes ({election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%)
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-                </div>
-              ) : (
-                // Regular mode for single position
-                <div className="space-y-10">
-
-                  {/* Current position display */}
-                  {election.positions[0] && (() => {
-                    const position = election.positions[0];
-                    const { top3, others } = getTop3AndOtherCandidates(position.candidates || []);
-                    
-                    return (
-                      <div key={position.id} className={`border rounded-lg p-6 ${isFullScreen ? 'shadow-lg' : ''}`}>
-                        <h3 className={`${isFullScreen ? 'text-3xl' : 'text-xl'} font-medium text-black mb-6`}>
-                          {position.name}
-                        </h3>
-
-                        {/* Top 3 Candidates */}
-                        {top3.length > 0 && (
-                          <div className={`mb-8 ${isFullScreen ? 'grid grid-cols-3 gap-8' : 'space-y-3'}`}>
-                            {top3.map((candidate, index) => (
-                              <div 
-                                key={candidate.id} 
-                                className={`${isFullScreen ? 'flex flex-col items-center text-center p-6 rounded-xl shadow-lg' : 'flex items-center p-3'} 
-                                  bg-gray-50 ${!isFullScreen ? 'rounded-xl' : ''} border-2 ${index === 0 ? 'border-blue-400' : index === 1 ? 'border-gray-400' : 'border-gray-300'} 
-                                  ${isFullScreen && index === 0 ? 'bg-gradient-to-b from-blue-50 to-blue-100' : isFullScreen && index === 1 ? 'bg-gradient-to-b from-gray-50 to-gray-100' : isFullScreen ? 'bg-gradient-to-b from-orange-50 to-orange-100' : ''}`}
-                              >
-                                <div className={`relative ${isFullScreen ? 'mb-4' : ''}`}>
-                                  <div className={`relative ${isFullScreen ? 'w-40 h-48' : 'w-32 h-40'} ${!isFullScreen ? 'mr-4' : ''}`}>
-                                    {candidate.image_url && !imageErrors[candidate.id] ? (
-                                      <Image
-                                        src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
-                                        alt={`${candidate.first_name} ${candidate.last_name}`}
-                                        fill
-                                        sizes={isFullScreen ? "160px" : "128px"}
-                                        className="object-cover rounded-lg shadow-md"
-                                        priority
-                                        onError={() => handleImageError(candidate.id)}
-                                      />
-                                    ) : (
-                                      <div className={`${isFullScreen ? 'w-40 h-48' : 'w-32 h-40'} rounded-lg bg-gray-200 flex items-center justify-center shadow-md`}>
-                                        <User className={`${isFullScreen ? 'w-20 h-20' : 'w-16 h-16'} text-gray-400`} />
-                                      </div>
-                                    )}
-                                    <div className={`absolute -top-2 -right-2 rounded-full p-2 text-base font-bold shadow-lg ${
-                                      index === 0 ? 'bg-blue-500 text-white' :
-                                      index === 1 ? 'bg-gray-500 text-white' :
-                                      'bg-orange-500 text-white'
-                                    }`}>
-                                      {getRankLabel(index)}
-                                    </div>
-                                  </div>
-                                </div>
-                                
-                                <div className={`${isFullScreen ? 'w-full' : 'flex-1'}`}>
-                                  <div className={`${isFullScreen ? '' : 'flex items-center justify-between'}`}>
-                                    <div>
-                                      <h4 className={`font-bold text-black ${isFullScreen ? 'text-2xl mb-2' : 'font-medium'}`}>
-                                        {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
-                                      </h4>
-                                      {candidate.party && (
-                                        <div className={`${isFullScreen ? 'px-3 py-1 bg-white rounded-full mb-3 shadow-sm' : 'text-sm'}`}>
-                                          <span className={`text-black font-medium ${isFullScreen ? 'text-base' : 'text-sm'}`}>{candidate.party}</span>
-                                        </div>
-                                      )}
-                                    </div>
-                                    <div className={`${isFullScreen ? 'mt-3' : 'text-right'}`}>
-                                      <div className={`${isFullScreen ? 'text-xl font-semibold' : 'text-sm'} text-black`}>
-                                        {Number(candidate.vote_count || 0).toLocaleString()} Votes ({election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%)
-                                      </div>
-                                    </div>
-                                  </div>
-                                  {isFullScreen && (
-                                    <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden mt-3">
-                                      <div 
-                                        className={`h-full rounded-full transition-all duration-1000 ${index === 0 ? 'bg-blue-500' : index === 1 ? 'bg-gray-500' : 'bg-orange-500'}`}
-                                        style={{ width: `${election.voter_count ? (candidate.vote_count / election.voter_count * 100).toFixed(2) : 0}%` }}
-                                      />
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Other Candidates */}
-                        {others.length > 0 && (
-                          <div>
-                            <h4 className={`font-bold text-black mb-6 ${isFullScreen ? 'text-2xl' : 'text-lg'}`}>Other Candidates</h4>
-                            <div className={`${isFullScreen ? 'grid grid-cols-5 gap-4' : 'space-y-3'}`}>
-                              {others.map(candidate => (
-                                <div 
-                                  key={candidate.id} 
-                                  className={`${isFullScreen ? 'flex flex-col items-center p-3 bg-gray-50 rounded-lg shadow-md hover:shadow-lg transition-shadow max-w-48' : 'flex items-center p-6 bg-gray-50 rounded-xl'}`}
-                                >
-                                  <div className={`relative ${isFullScreen ? 'w-32 h-40 mb-3' : 'w-32 h-40 mr-4'}`}>
+                                  <div className="relative w-32 h-40 mb-3">
                                     {candidate.image_url && !imageErrors[candidate.id] ? (
                                       <Image
                                         src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
@@ -1780,10 +1656,171 @@ export default function ElectionDetailsPage() {
                                     )}
                                   </div>
                                   
+                                  <div className="text-center w-full">
+                                    <h4 className="font-medium text-black text-base mb-1 line-clamp-2">
+                                      {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
+                                    </h4>
+                                    {candidate.party && (
+                                      <div className="text-xs text-black mb-1 px-2 py-1 bg-white rounded-full">
+                                        {candidate.party}
+                                      </div>
+                                    )}
+                                    <div className="text-sm text-black font-semibold">
+                                      {Number(candidate.vote_count || 0).toLocaleString()} Votes ({election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%)
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : (
+                // Regular mode for non-fullscreen or single position
+                <div className="space-y-10">
+                  {/* Pagination controls for partial counting */}
+                  {election.positions.length > 1 && (
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600">
+                          Position {currentPositionPage + 1} of {election.positions.length}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={goToPreviousPosition}
+                          disabled={currentPositionPage === 0}
+                          className="flex items-center px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <ChevronLeft className="w-4 h-4 mr-1" />
+                          Previous
+                        </button>
+                        <button
+                          onClick={goToNextPosition}
+                          disabled={currentPositionPage === election.positions.length - 1}
+                          className="flex items-center px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Next
+                          <ChevronRight className="w-4 h-4 ml-1" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Current position display */}
+                  {election.positions[currentPositionPage] && (() => {
+                    const position = election.positions[currentPositionPage];
+                    const { top3, others } = getTop3AndOtherCandidates(position.candidates || []);
+                    
+                    return (
+                      <div key={position.id} className={`border rounded-lg p-6 ${isFullScreen ? 'shadow-lg' : ''}`}>
+                        <h3 className={`${isFullScreen ? 'text-2xl' : 'text-lg'} font-medium text-black mb-6`}>
+                          {position.name}
+                        </h3>
+
+                        {/* Top 3 Candidates */}
+                        {top3.length > 0 && (
+                          <div className={`mb-8 ${isFullScreen ? 'grid grid-cols-3 gap-12' : 'space-y-3'}`}>
+                            {top3.map((candidate, index) => (
+                              <div 
+                                key={candidate.id} 
+                                className={`${isFullScreen ? 'flex flex-col items-center text-center p-10' : 'flex items-center p-3'} 
+                                  bg-gray-50 rounded-xl border-2 ${index === 0 ? 'border-blue-400' : index === 1 ? 'border-gray-400' : 'border-gray-300'} 
+                                  ${isFullScreen && index === 0 ? 'shadow-xl bg-blue-50' : isFullScreen ? 'shadow-lg' : ''}`}
+                              >
+                                <div className={`relative ${isFullScreen ? 'mb-8' : ''}`}>
+                                  <div className={`relative ${isFullScreen ? 'w-56 h-64' : 'w-16 h-20'} ${!isFullScreen ? 'mr-4' : ''}`}>
+                                    {candidate.image_url && !imageErrors[candidate.id] ? (
+                                      <Image
+                                        src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
+                                        alt={`${candidate.first_name} ${candidate.last_name}`}
+                                        fill
+                                        sizes={isFullScreen ? "224px" : "80px"}
+                                        className="object-cover rounded-xl"
+                                        priority
+                                        onError={() => handleImageError(candidate.id)}
+                                      />
+                                    ) : (
+                                      <div className={`${isFullScreen ? 'w-56 h-64' : 'w-16 h-20'} rounded-xl bg-gray-200 flex items-center justify-center`}>
+                                        <User className={`${isFullScreen ? 'w-28 h-28' : 'w-8 h-8'} text-gray-400`} />
+                                      </div>
+                                    )}
+                                    <div className={`absolute -top-3 -right-3 rounded-full p-2 text-sm font-bold ${
+                                      index === 0 ? 'bg-blue-500 text-white' :
+                                      index === 1 ? 'bg-gray-500 text-white' :
+                                      'bg-gray-400 text-white'
+                                    } ${isFullScreen ? 'text-lg p-3' : ''}`}>
+                                      {getRankLabel(index)}
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                <div className={`${isFullScreen ? 'w-full' : 'flex-1'}`}>
+                                  <div className={`${isFullScreen ? '' : 'flex items-center justify-between'}`}>
+                                    <div>
+                                      <h4 className={`font-medium text-black ${isFullScreen ? 'text-xl mb-2' : ''}`}>
+                                        {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
+                                      </h4>
+                                      {candidate.party && (
+                                        <span className={`${isFullScreen ? 'block px-3 py-1 bg-gray-100 rounded-full mb-3' : 'text-sm'} text-black`}>
+                                          {candidate.party}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className={`${isFullScreen ? 'mt-4' : 'text-right'}`}>
+                                      <div className={`${isFullScreen ? 'text-base' : 'text-sm'} text-black`}>
+                                        {Number(candidate.vote_count || 0).toLocaleString()} Votes ({election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%)
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {isFullScreen && (
+                                    <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden mt-4">
+                                      <div 
+                                        className={`h-full rounded-full transition-all duration-1000 ${index === 0 ? 'bg-blue-500' : index === 1 ? 'bg-gray-500' : 'bg-gray-400'}`}
+                                        style={{ width: `${election.voter_count ? (candidate.vote_count / election.voter_count * 100).toFixed(2) : 0}%` }}
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Other Candidates */}
+                        {others.length > 0 && (
+                          <div>
+                            <h4 className={`font-bold text-black mb-6 ${isFullScreen ? 'text-xl' : ''}`}>Other Candidates</h4>
+                            <div className={`${isFullScreen ? 'grid grid-cols-4 gap-4' : 'space-y-3'}`}>
+                              {others.map(candidate => (
+                                <div 
+                                  key={candidate.id} 
+                                  className={`${isFullScreen ? 'flex flex-col items-center p-4 bg-gray-50 rounded-lg shadow-md hover:shadow-lg transition-shadow' : 'flex items-center p-6 bg-gray-50 rounded-xl'}`}
+                                >
+                                  <div className={`relative ${isFullScreen ? 'w-24 h-32 mb-3' : 'w-16 h-20 mr-4'}`}>
+                                    {candidate.image_url && !imageErrors[candidate.id] ? (
+                                      <Image
+                                        src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
+                                        alt={`${candidate.first_name} ${candidate.last_name}`}
+                                        fill
+                                        sizes={isFullScreen ? "96px" : "80px"}
+                                        className="object-cover rounded-lg"
+                                        onError={() => handleImageError(candidate.id)}
+                                      />
+                                    ) : (
+                                      <div className={`${isFullScreen ? 'w-24 h-32' : 'w-16 h-20'} rounded-lg bg-gray-200 flex items-center justify-center`}>
+                                        <User className={`${isFullScreen ? 'w-12 h-12' : 'w-8 h-8'} text-gray-400`} />
+                                      </div>
+                                    )}
+                                  </div>
+                                  
                                   <div className={`${isFullScreen ? 'text-center w-full' : 'flex-1'}`}>
                                     <div className={`${isFullScreen ? '' : 'flex items-center justify-between'}`}>
                                       <div>
-                                        <h4 className={`font-medium text-black ${isFullScreen ? 'text-base mb-1 line-clamp-2' : 'text-sm'}`}>
+                                        <h4 className={`font-medium text-black ${isFullScreen ? 'text-sm mb-1 line-clamp-2' : 'text-sm'}`}>
                                           {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
                                         </h4>
                                         {candidate.party && (
@@ -1793,7 +1830,7 @@ export default function ElectionDetailsPage() {
                                         )}
                                       </div>
                                       <div className={`${isFullScreen ? '' : 'text-right'}`}>
-                                        <div className={`${isFullScreen ? 'text-sm text-black font-semibold' : 'text-sm text-black'}`}>
+                                        <div className={`${isFullScreen ? 'text-xs text-black font-semibold' : 'text-sm text-black'}`}>
                                           {Number(candidate.vote_count || 0).toLocaleString()} Votes ({election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%)
                                         </div>
                                       </div>
