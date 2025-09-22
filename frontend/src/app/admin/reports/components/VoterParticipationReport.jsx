@@ -29,6 +29,7 @@ export default function VoterParticipationReport() {
   const [error, setError] = useState(null);
   const [selectedElection, setSelectedElection] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [voterFilter, setVoterFilter] = useState('all'); // 'all', 'voted', 'not_voted'
   const { token } = useAuth();
 
   // Process data for charts
@@ -70,7 +71,7 @@ export default function VoterParticipationReport() {
         percentage: 100 - parseFloat(overallTurnout), 
         color: '#DC2626' 
       }
-    ];
+    ].filter(item => item.value > 0); // Only show segments with data
 
     return {
       barChartData,
@@ -129,7 +130,7 @@ export default function VoterParticipationReport() {
     if (!selectedElection?.voters) return [];
     
     // Deduplicate voters by student_id, keeping the most recent entry
-    return selectedElection.voters.reduce((acc, voter) => {
+    let uniqueVoters = selectedElection.voters.reduce((acc, voter) => {
       const existingVoter = acc.find(v => v.student_id === voter.student_id);
       if (!existingVoter) {
         acc.push(voter);
@@ -142,6 +143,15 @@ export default function VoterParticipationReport() {
       }
       return acc;
     }, []);
+
+    // Apply voter filter
+    if (voterFilter === 'voted') {
+      uniqueVoters = uniqueVoters.filter(voter => voter.has_voted);
+    } else if (voterFilter === 'not_voted') {
+      uniqueVoters = uniqueVoters.filter(voter => !voter.has_voted);
+    }
+
+    return uniqueVoters;
   };
 
   const getPaginatedVoters = () => {
@@ -158,6 +168,11 @@ export default function VoterParticipationReport() {
     if (newPage >= 1 && newPage <= totalPages) {
       setCurrentPage(newPage);
     }
+  };
+
+  const handleFilterChange = (filter) => {
+    setVoterFilter(filter);
+    setCurrentPage(1); // Reset to first page when filter changes
   };
 
   const handleDownload = async () => {
@@ -361,12 +376,12 @@ export default function VoterParticipationReport() {
                     <Pie
                       data={chartData.pieChartData}
                       cx="50%"
-                      cy="50%"
+                      cy="45%"
                       labelLine={false}
-                      label={({ name, value, percentage }) => `${name}: ${formatNumber(value)} (${percentage.toFixed(1)}%)`}
+                      label={false}
                       outerRadius={120}
                       innerRadius={60}
-                      paddingAngle={2}
+                      paddingAngle={0}
                       dataKey="value"
                     >
                       {chartData.pieChartData.map((entry, index) => (
@@ -381,6 +396,20 @@ export default function VoterParticipationReport() {
                     />
                   </PieChart>
                 </ResponsiveContainer>
+                {/* Custom Legend Below Chart */}
+                <div className="flex justify-center gap-6 mt-4">
+                  {chartData.pieChartData.map((entry, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <div 
+                        className="w-4 h-4 rounded-full" 
+                        style={{ backgroundColor: entry.color }}
+                      ></div>
+                      <span className="text-sm text-black font-medium">
+                        {entry.name}: {formatNumber(entry.value)} ({entry.percentage.toFixed(1)}%)
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -430,6 +459,45 @@ export default function VoterParticipationReport() {
               <h3 className="text-lg font-semibold">Voter List</h3>
               <div className="text-sm text-gray-500">
                 Showing {((currentPage - 1) * VOTERS_PER_PAGE) + 1} to {Math.min(currentPage * VOTERS_PER_PAGE, getUniqueVoters().length)} of {getUniqueVoters().length} voters
+              </div>
+            </div>
+            
+            {/* Filter Buttons */}
+            <div className="px-6 py-3 border-b bg-gray-50">
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-medium text-gray-700">Filter by status:</span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleFilterChange('all')}
+                    className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                      voterFilter === 'all'
+                        ? 'bg-[#01579B] text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    All Voters
+                  </button>
+                  <button
+                    onClick={() => handleFilterChange('voted')}
+                    className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                      voterFilter === 'voted'
+                        ? 'bg-green-600 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    Voted Only
+                  </button>
+                  <button
+                    onClick={() => handleFilterChange('not_voted')}
+                    className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                      voterFilter === 'not_voted'
+                        ? 'bg-red-600 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    Not Voted Only
+                  </button>
+                </div>
               </div>
             </div>
             <div className="overflow-x-auto">
