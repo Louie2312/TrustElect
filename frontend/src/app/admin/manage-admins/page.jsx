@@ -60,8 +60,13 @@ export default function ManageAdminsPage() {
         department: admin.department === "Administration" ? "Administrator" : admin.department
       }));
 
-      setAdmins(updatedAdmins.filter((admin) => admin.is_active));
-      setFilteredAdmins(updatedAdmins.filter((admin) => admin.is_active));
+      // Filter out system admins/root admins and only show active admins
+      const filteredAdmins = updatedAdmins.filter((admin) => 
+        admin.is_active && !isSuperAdmin(admin)
+      );
+
+      setAdmins(filteredAdmins);
+      setFilteredAdmins(filteredAdmins);
     } catch (error) {
       console.error("Error fetching admins:", error);
       setError("Failed to fetch admins");
@@ -257,16 +262,14 @@ export default function ManageAdminsPage() {
         </thead>
         <tbody>
           {filteredAdmins.map((admin) => (
-            <tr key={admin.id} className={`text-center border-b ${isSuperAdmin(admin) ? 'bg-gray-50' : ''}`}>
+            <tr key={admin.id} className="text-center border-b">
               <td className="p-3">{`${admin.first_name} ${admin.last_name}`}</td>
               <td className="p-3">{admin.email}</td>
               <td className="p-3">{admin.employee_number || '-'}</td>
               <td className="p-3">{admin.department}</td>
               <td className="p-3">
-                <span className={`px-2 py-1 rounded-full text-xs ${
-                  isSuperAdmin(admin) ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
-                }`}>
-                  {isSuperAdmin(admin) ? 'System Admin' : 'Admin'}
+                <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                  Admin
                 </span>
               </td>
               <td className="p-3">
@@ -290,54 +293,45 @@ export default function ManageAdminsPage() {
               </td>
               <td className="p-2">
                 <div className="flex flex-wrap justify-center gap-1 min-w-[280px]">
-                  {!isSuperAdmin(admin) ? (
-                    <>
-                      {hasPermission('adminManagement', 'edit') && (
-                        <button
-                          onClick={() => handleEditAdmin(admin)}
-                          className="bg-green-500 text-white px-1.5 py-0.5 rounded text-xs whitespace-nowrap"
-                          disabled={isCurrentUser(admin)}
-                        >
-                          Edit
-                        </button>
-                      )}
-                      {hasPermission('adminManagement', 'edit') && (
-                        <button
-                          onClick={() => handleManagePermissions(admin)}
-                          className="bg-indigo-600 text-white px-1.5 py-0.5 rounded text-xs whitespace-nowrap"
-                          disabled={isCurrentUser(admin)}
-                        >
-                          Perms
-                        </button>
-                      )}
-                      {hasPermission('adminManagement', 'delete') && !isCurrentUser(admin) && (
-                        <button
-                          onClick={() => handleDeleteAdmin(admin.id)}
-                          className="bg-yellow-500 text-white px-1.5 py-0.5 rounded text-xs whitespace-nowrap"
-                        >
-                          Archive
-                        </button>
-                      )}
-                      {hasPermission('adminManagement', 'edit') && (
-                        <button
-                          onClick={() => handleResetPassword(admin)}
-                          className="bg-[#01579B] text-white px-1.5 py-0.5 rounded text-xs whitespace-nowrap"
-                          disabled={isCurrentUser(admin)}
-                        >
-                          Reset PW
-                        </button>
-                      )}
-                      {admin.is_locked && hasPermission('adminManagement', 'edit') && (
-                        <button 
-                          onClick={() => unlockAdminAccount(admin.id)} 
-                          className="bg-orange-500 text-white px-1.5 py-0.5 rounded text-xs whitespace-nowrap"
-                        >
-                          Unlock
-                        </button>
-                      )}
-                    </>
-                  ) : (
-                    <span className="text-gray-500 italic text-xs text-center py-1">System Admin account</span>
+                  {hasPermission('adminManagement', 'edit') && (
+                    <button
+                      onClick={() => handleEditAdmin(admin)}
+                      className="bg-green-500 text-white px-1.5 py-0.5 rounded text-xs whitespace-nowrap"
+                    >
+                      Edit
+                    </button>
+                  )}
+                  {hasPermission('adminManagement', 'edit') && (
+                    <button
+                      onClick={() => handleManagePermissions(admin)}
+                      className="bg-indigo-600 text-white px-1.5 py-0.5 rounded text-xs whitespace-nowrap"
+                    >
+                      Perms
+                    </button>
+                  )}
+                  {hasPermission('adminManagement', 'delete') && !isCurrentUser(admin) && (
+                    <button
+                      onClick={() => handleDeleteAdmin(admin.id)}
+                      className="bg-yellow-500 text-white px-1.5 py-0.5 rounded text-xs whitespace-nowrap"
+                    >
+                      Archive
+                    </button>
+                  )}
+                  {hasPermission('adminManagement', 'edit') && (
+                    <button
+                      onClick={() => handleResetPassword(admin)}
+                      className="bg-[#01579B] text-white px-1.5 py-0.5 rounded text-xs whitespace-nowrap"
+                    >
+                      Reset PW
+                    </button>
+                  )}
+                  {admin.is_locked && hasPermission('adminManagement', 'edit') && (
+                    <button 
+                      onClick={() => unlockAdminAccount(admin.id)} 
+                      className="bg-orange-500 text-white px-1.5 py-0.5 rounded text-xs whitespace-nowrap"
+                    >
+                      Unlock
+                    </button>
                   )}
                 </div>
               </td>
