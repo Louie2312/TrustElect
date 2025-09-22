@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Calendar, Clock, Users, CheckCircle, XCircle, AlertCircle, Trash2, BarChart, PieChart, RefreshCw, Download, X, Activity, BarChart2, AlertTriangle } from 'lucide-react';
+import { Calendar, Clock, Users, CheckCircle, XCircle, AlertCircle, Trash2, BarChart, PieChart, RefreshCw, Download, X, Activity, BarChart2, AlertTriangle, Archive, RotateCcw } from 'lucide-react';
 import Link from 'next/link';
 import Cookies from 'js-cookie';
 import axios from 'axios';
@@ -30,7 +30,94 @@ const statusTabs = [
   { id: 'upcoming', name: 'Upcoming Elections', icon: <Calendar className="w-4 h-4" /> },
   { id: 'completed', name: 'Completed Elections', icon: <CheckCircle className="w-4 h-4" /> },
   { id: 'to_approve', name: 'To Approve', icon: <AlertCircle className="w-4 h-4 text-purple" /> },
+  { id: 'archived', name: 'Archived Elections', icon: <Archive className="w-4 h-4" /> },
 ];
+
+const ArchiveConfirmationModal = ({ isOpen, election, onCancel, onConfirm, isArchiving }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-md w-full">
+        <h3 className="text-xl font-bold mb-4 text-black">Archive Election</h3>
+        <p className="mb-6 text-black">
+          Are you sure you want to archive the election <span className="font-semibold">{election?.title}</span>? 
+          This will move it to the archived section where it can be restored or permanently deleted later.
+        </p>  
+             
+        <div className="flex justify-end space-x-3">
+          <button
+            className="px-4 py-2 border rounded-md text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+            onClick={onCancel}
+            disabled={isArchiving}
+          >
+            Cancel
+          </button>
+          <button
+            className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 flex items-center disabled:opacity-50"
+            onClick={onConfirm}
+            disabled={isArchiving}
+          >
+            {isArchiving ? (
+              <>
+                <span className="mr-2">Archiving...</span>
+                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+              </>
+            ) : (
+              <>
+                <Archive className="w-4 h-4 mr-1" />
+                Archive Election
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const RestoreConfirmationModal = ({ isOpen, election, onCancel, onConfirm, isRestoring }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-md w-full">
+        <h3 className="text-xl font-bold mb-4 text-black">Restore Election</h3>
+        <p className="mb-6 text-black">
+          Are you sure you want to restore the election <span className="font-semibold">{election?.title}</span>? 
+          This will move it back to the completed elections section.
+        </p>  
+             
+        <div className="flex justify-end space-x-3">
+          <button
+            className="px-4 py-2 border rounded-md text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+            onClick={onCancel}
+            disabled={isRestoring}
+          >
+            Cancel
+          </button>
+          <button
+            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center disabled:opacity-50"
+            onClick={onConfirm}
+            disabled={isRestoring}
+          >
+            {isRestoring ? (
+              <>
+                <span className="mr-2">Restoring...</span>
+                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+              </>
+            ) : (
+              <>
+                <RotateCcw className="w-4 h-4 mr-1" />
+                Restore Election
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const DeleteConfirmationModal = ({ isOpen, election, onCancel, onConfirm, isDeleting }) => {
   if (!isOpen) return null;
@@ -38,9 +125,10 @@ const DeleteConfirmationModal = ({ isOpen, election, onCancel, onConfirm, isDele
   return (
     <div className="fixed inset-0  flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 max-w-md w-full">
-        <h3 className="text-xl font-bold mb-4 text-black">Confirm Delete</h3>
+        <h3 className="text-xl font-bold mb-4 text-black">Permanently Delete</h3>
         <p className="mb-6 text-black">
-          Are you sure you want to delete the election <span className="font-semibold">{election?.title}</span>?      
+          Are you sure you want to permanently delete the election <span className="font-semibold">{election?.title}</span>? 
+          This action cannot be undone.
         </p>  
              
         <div className="flex justify-end space-x-3">
@@ -64,7 +152,7 @@ const DeleteConfirmationModal = ({ isOpen, election, onCancel, onConfirm, isDele
             ) : (
               <>
                 <Trash2 className="w-4 h-4 mr-1" />
-                Delete Election
+                Delete Permanently
               </>
             )}
           </button>
@@ -74,7 +162,7 @@ const DeleteConfirmationModal = ({ isOpen, election, onCancel, onConfirm, isDele
   );
 };
 
-const ElectionCard = ({ election, onClick, onDeleteClick, activeTab }) => {
+const ElectionCard = ({ election, onClick, onDeleteClick, onArchiveClick, onRestoreClick, activeTab }) => {
   // Determine if the creator is a superadmin
   const isSuperAdminCreator =
     election.created_by === 1 ||
@@ -90,14 +178,16 @@ const ElectionCard = ({ election, onClick, onDeleteClick, activeTab }) => {
     ongoing: 'bg-blue-100 text-blue-800 border-blue-300',
     upcoming: 'bg-yellow-100 text-yellow-800 border-yellow-300',
     completed: 'bg-green-100 text-green-800 border-green-300',
-    to_approve: 'bg-purple-200 text-black border-purple-900'
+    to_approve: 'bg-purple-200 text-black border-purple-900',
+    archived: 'bg-gray-100 text-gray-800 border-gray-300'
   };
 
   const statusIcons = {
     ongoing: <Clock className="w-5 h-5" />,
     upcoming: <Calendar className="w-5 h-5" />,
     completed: <CheckCircle className="w-5 h-5" />,
-    to_approve: <AlertCircle className="w-5 h-5" />
+    to_approve: <AlertCircle className="w-5 h-5" />,
+    archived: <Archive className="w-5 h-5" />
   };
 
   const parseElectionDate = (dateStr, timeStr) => {
@@ -147,13 +237,38 @@ const ElectionCard = ({ election, onClick, onDeleteClick, activeTab }) => {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onDeleteClick(election);
+              onArchiveClick(election);
             }}
-            className="text-red-500 hover:text-red-700 p-1 hover:bg-white hover:bg-opacity-50 rounded-full"
-            title="Delete Election"
+            className="text-orange-500 hover:text-orange-700 p-1 hover:bg-white hover:bg-opacity-50 rounded-full"
+            title="Archive Election"
           >
-            <Trash2 className="w-5 h-5" />
+            <Archive className="w-5 h-5" />
           </button>
+        )}
+        
+        {displayStatus === 'archived' && (
+          <div className="flex space-x-1">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onRestoreClick(election);
+              }}
+              className="text-green-500 hover:text-green-700 p-1 hover:bg-white hover:bg-opacity-50 rounded-full"
+              title="Restore Election"
+            >
+              <RotateCcw className="w-5 h-5" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeleteClick(election);
+              }}
+              className="text-red-500 hover:text-red-700 p-1 hover:bg-white hover:bg-opacity-50 rounded-full"
+              title="Delete Permanently"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
+          </div>
         )}
       </div>
 
@@ -215,6 +330,12 @@ export default function SuperAdminDashboard() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [electionToDelete, setElectionToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [archiveModalOpen, setArchiveModalOpen] = useState(false);
+  const [electionToArchive, setElectionToArchive] = useState(null);
+  const [isArchiving, setIsArchiving] = useState(false);
+  const [restoreModalOpen, setRestoreModalOpen] = useState(false);
+  const [electionToRestore, setElectionToRestore] = useState(null);
+  const [isRestoring, setIsRestoring] = useState(false);
   const [actionMessage, setActionMessage] = useState(null);
   const [totalUniqueVoters, setTotalUniqueVoters] = useState(0);
   const [liveVoteData, setLiveVoteData] = useState(null);
@@ -651,9 +772,105 @@ export default function SuperAdminDashboard() {
     router.push(`/superadmin/election/${electionId}`);
   };
 
+  const handleArchiveClick = (election) => {
+    setElectionToArchive(election);
+    setArchiveModalOpen(true);
+  };
+
+  const handleRestoreClick = (election) => {
+    setElectionToRestore(election);
+    setRestoreModalOpen(true);
+  };
+
   const handleDeleteClick = (election) => {
     setElectionToDelete(election);
     setDeleteModalOpen(true);
+  };
+
+  const handleArchiveConfirm = async () => {
+    if (!electionToArchive) return;
+    
+    try {
+      setIsArchiving(true);
+      
+      if (electionToArchive.status !== 'completed') {
+        setActionMessage({
+          type: 'error',
+          text: 'Only completed elections can be archived'
+        });
+        setArchiveModalOpen(false);
+        return;
+      }
+      
+      await fetchWithAuth(`/elections/${electionToArchive.id}/archive`, {
+        method: 'PATCH'
+      });
+      
+      setElections(elections.filter(e => e.id !== electionToArchive.id));
+      loadStats();
+      
+      setActionMessage({
+        type: 'success',
+        text: `Election "${electionToArchive.title}" was successfully archived.`
+      });
+      
+    } catch (error) {
+      setActionMessage({
+        type: 'error',
+        text: `Failed to archive election: ${error.message}`
+      });
+    } finally {
+      setIsArchiving(false);
+      setArchiveModalOpen(false);
+      setElectionToArchive(null);
+      
+      setTimeout(() => {
+        setActionMessage(null);
+      }, 5000);
+    }
+  };
+
+  const handleRestoreConfirm = async () => {
+    if (!electionToRestore) return;
+    
+    try {
+      setIsRestoring(true);
+      
+      if (electionToRestore.status !== 'archived') {
+        setActionMessage({
+          type: 'error',
+          text: 'Only archived elections can be restored'
+        });
+        setRestoreModalOpen(false);
+        return;
+      }
+      
+      await fetchWithAuth(`/elections/${electionToRestore.id}/restore`, {
+        method: 'PATCH'
+      });
+      
+      setElections(elections.filter(e => e.id !== electionToRestore.id));
+      loadStats();
+      
+      setActionMessage({
+        type: 'success',
+        text: `Election "${electionToRestore.title}" was successfully restored.`
+      });
+      
+    } catch (error) {
+      setActionMessage({
+        type: 'error',
+        text: `Failed to restore election: ${error.message}`
+      });
+    } finally {
+      setIsRestoring(false);
+      setRestoreModalOpen(false);
+      setElectionToRestore(null);
+      
+      setTimeout(() => {
+        setActionMessage(null);
+      }, 5000);
+    }
   };
 
   const handleDeleteConfirm = async () => {
@@ -662,28 +879,25 @@ export default function SuperAdminDashboard() {
     try {
       setIsDeleting(true);
       
-      if (electionToDelete.status !== 'completed') {
+      if (electionToDelete.status !== 'archived') {
         setActionMessage({
           type: 'error',
-          text: 'Only completed elections can be deleted'
+          text: 'Only archived elections can be permanently deleted'
         });
         setDeleteModalOpen(false);
         return;
       }
       
-     
       await fetchWithAuth(`/elections/${electionToDelete.id}`, {
         method: 'DELETE'
       });
       
-   
       setElections(elections.filter(e => e.id !== electionToDelete.id));
-
       loadStats();
       
       setActionMessage({
         type: 'success',
-        text: `Election "${electionToDelete.title}" was successfully deleted.`
+        text: `Election "${electionToDelete.title}" was permanently deleted.`
       });
       
     } catch (error) {
@@ -799,6 +1013,7 @@ export default function SuperAdminDashboard() {
           {activeTab === 'upcoming' && 'Upcoming Elections'}
           {activeTab === 'completed' && 'Completed Elections'}
           {activeTab === 'to_approve' && 'Elections Pending Approval'}
+          {activeTab === 'archived' && 'Archived Elections'}
         </h2>
         <Link 
           href="/superadmin/election/create"
@@ -835,6 +1050,8 @@ export default function SuperAdminDashboard() {
                 election={election} 
                 onClick={handleElectionClick}
                 onDeleteClick={handleDeleteClick}
+                onArchiveClick={handleArchiveClick}
+                onRestoreClick={handleRestoreClick}
                 activeTab={activeTab}
               />
             ))
@@ -845,15 +1062,17 @@ export default function SuperAdminDashboard() {
                 {activeTab === 'upcoming' && <Calendar className="w-16 h-16 mx-auto" />}
                 {activeTab === 'completed' && <CheckCircle className="w-16 h-16 mx-auto" />}
                 {activeTab === 'to_approve' && <AlertCircle className="w-16 h-16 mx-auto" />}
+                {activeTab === 'archived' && <Archive className="w-16 h-16 mx-auto" />}
               </div>
               <h3 className="text-xl font-medium text-gray-900 mb-2">
-                No {activeTab === 'to_approve' ? 'elections pending approval' : `${activeTab} elections`}
+                No {activeTab === 'to_approve' ? 'elections pending approval' : activeTab === 'archived' ? 'archived elections' : `${activeTab} elections`}
               </h3>
               <p className="text-black max-w-md mx-auto">
                 {activeTab === 'ongoing' && 'There are currently no ongoing elections.'}
                 {activeTab === 'upcoming' && 'No upcoming elections scheduled.'}
                 {activeTab === 'completed' && 'No completed elections yet. Elections that have ended will be shown here.'}
                 {activeTab === 'to_approve' && 'No elections waiting for your approval.'}
+                {activeTab === 'archived' && 'No archived elections. Completed elections that have been archived will be shown here.'}
               </p>
             </div>
           )}
@@ -1257,6 +1476,28 @@ export default function SuperAdminDashboard() {
       </div>
       
     
+      <ArchiveConfirmationModal 
+        isOpen={archiveModalOpen}
+        election={electionToArchive}
+        onCancel={() => {
+          setArchiveModalOpen(false);
+          setElectionToArchive(null);
+        }}
+        onConfirm={handleArchiveConfirm}
+        isArchiving={isArchiving}
+      />
+
+      <RestoreConfirmationModal 
+        isOpen={restoreModalOpen}
+        election={electionToRestore}
+        onCancel={() => {
+          setRestoreModalOpen(false);
+          setElectionToRestore(null);
+        }}
+        onConfirm={handleRestoreConfirm}
+        isRestoring={isRestoring}
+      />
+
       <DeleteConfirmationModal 
         isOpen={deleteModalOpen}
         election={electionToDelete}
