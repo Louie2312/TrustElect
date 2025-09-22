@@ -856,12 +856,6 @@ export default function ElectionDetailsPage() {
               )}
             </>
           )}
-          {!(election.needs_approval || election.status === 'upcoming') && (
-            <div className="flex items-center px-4 py-2 bg-gray-200 text-gray-600 rounded cursor-not-allowed">
-              <Lock className="w-4 h-4 mr-2" />
-              {election.status === 'ongoing' ? 'Election In Progress' : 'Election Completed'}
-            </div>
-          )}
         </div>
       </div>
 
