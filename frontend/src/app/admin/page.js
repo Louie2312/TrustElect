@@ -444,9 +444,15 @@ export default function AdminDashboard() {
       
       const responseData = await response.json();
       
+      console.log('Raw system load response:', responseData);
+      
       // Extract the actual data from the response structure
       // Backend returns: { success: true, data: { summary: {...}, login_activity: [...], voting_activity: [...] } }
       const data = responseData.success ? responseData.data : responseData;
+      
+      console.log('Extracted system load data:', data);
+      console.log('Login activity data:', data?.login_activity);
+      console.log('Voting activity data:', data?.voting_activity);
       
       setSystemLoadData(data);
       setSelectedTimeframe(timeframe);
@@ -769,9 +775,12 @@ export default function AdminDashboard() {
   const validateData = (data) => {
     if (!Array.isArray(data)) return [];
     return data.map(item => ({
-      hour: item.hour || 0,
-      count: typeof item.count === 'number' && !isNaN(item.count) ? item.count : 0,
-      date: item.date || item.timestamp || null,
+      hour: item.hour || item.hour_of_day || 0,
+      count: typeof item.count === 'number' && !isNaN(item.count) ? item.count : 
+             typeof item.login_count === 'number' && !isNaN(item.login_count) ? item.login_count :
+             typeof item.vote_count === 'number' && !isNaN(item.vote_count) ? item.vote_count :
+             typeof item.activity_count === 'number' && !isNaN(item.activity_count) ? item.activity_count : 0,
+      date: item.date || (item.timestamp ? new Date(item.timestamp).toISOString().split('T')[0] : null),
       timestamp: item.timestamp || item.date || null
     }));
   };
@@ -779,8 +788,27 @@ export default function AdminDashboard() {
   const processDataWithDates = (data, timeframe) => {
     if (!Array.isArray(data)) return [];
     
+    console.log('Processing data with dates:', { data, timeframe });
+    
     const now = new Date();
     let processedData = [];
+    
+    // For 24h timeframe, use the original data structure if it exists
+    if (timeframe === '24h' && data.length > 0) {
+      // Check if data already has the correct structure
+      const firstItem = data[0];
+      if (firstItem && typeof firstItem.hour !== 'undefined' && typeof firstItem.count !== 'undefined') {
+        // Data is already in the correct format, just add dates
+        processedData = data.map(item => ({
+          hour: item.hour || 0,
+          count: typeof item.count === 'number' && !isNaN(item.count) ? item.count : 0,
+          date: item.date || item.timestamp ? new Date(item.timestamp || item.date).toISOString().split('T')[0] : now.toISOString().split('T')[0],
+          timestamp: item.timestamp || item.date || now.toISOString()
+        }));
+        console.log('Using existing 24h data structure:', processedData);
+        return processedData;
+      }
+    }
     
     // Generate date range based on timeframe
     const dateRange = [];
@@ -820,27 +848,38 @@ export default function AdminDashboard() {
         break;
     }
     
-    // Map actual data to date range
+    // Map actual data to date range with more flexible matching
     processedData = dateRange.map(rangeItem => {
       const matchingData = data.find(item => {
+        // More flexible matching for different data structures
+        const itemHour = item.hour || item.hour_of_day || 0;
+        const itemDate = item.date || (item.timestamp ? new Date(item.timestamp).toISOString().split('T')[0] : null);
+        const itemCount = item.count || item.login_count || item.vote_count || item.activity_count || 0;
+        
         if (timeframe === '24h') {
-          return item.hour === rangeItem.hour && 
-                 (item.date === rangeItem.date || 
+          // For 24h, match by hour and date
+          return itemHour === rangeItem.hour && 
+                 (itemDate === rangeItem.date || 
                   (item.timestamp && new Date(item.timestamp).toISOString().split('T')[0] === rangeItem.date));
         } else {
-          return item.date === rangeItem.date || 
+          // For 7d/30d, match by date only
+          return itemDate === rangeItem.date || 
                  (item.timestamp && new Date(item.timestamp).toISOString().split('T')[0] === rangeItem.date);
         }
       });
       
       return {
         hour: rangeItem.hour,
-        count: matchingData ? (typeof matchingData.count === 'number' && !isNaN(matchingData.count) ? matchingData.count : 0) : 0,
+        count: matchingData ? (typeof matchingData.count === 'number' && !isNaN(matchingData.count) ? matchingData.count : 
+                              typeof matchingData.login_count === 'number' && !isNaN(matchingData.login_count) ? matchingData.login_count :
+                              typeof matchingData.vote_count === 'number' && !isNaN(matchingData.vote_count) ? matchingData.vote_count :
+                              typeof matchingData.activity_count === 'number' && !isNaN(matchingData.activity_count) ? matchingData.activity_count : 0) : 0,
         date: rangeItem.date,
         timestamp: rangeItem.timestamp
       };
     });
     
+    console.log('Processed data result:', processedData);
     return processedData;
   };
 
@@ -1205,8 +1244,20 @@ export default function AdminDashboard() {
           <>
             {/* Process data */}
             {(() => {
-              const processedLoginData = processDataWithDates(systemLoadData.login_activity || [], selectedTimeframe);
-              const processedVotingData = processDataWithDates(systemLoadData.voting_activity || [], selectedTimeframe);
+              // Try the new date-aware processing first
+              let processedLoginData = processDataWithDates(systemLoadData.login_activity || [], selectedTimeframe);
+              let processedVotingData = processDataWithDates(systemLoadData.voting_activity || [], selectedTimeframe);
+              
+              // Fallback to original data structure if new processing returns empty data
+              if (processedLoginData.length === 0 && systemLoadData.login_activity && systemLoadData.login_activity.length > 0) {
+                console.log('Falling back to original login data structure');
+                processedLoginData = validateData(systemLoadData.login_activity);
+              }
+              
+              if (processedVotingData.length === 0 && systemLoadData.voting_activity && systemLoadData.voting_activity.length > 0) {
+                console.log('Falling back to original voting data structure');
+                processedVotingData = validateData(systemLoadData.voting_activity);
+              }
               
               const loginPeak = findPeakHour(processedLoginData);
               const votingPeak = findPeakHour(processedVotingData);
