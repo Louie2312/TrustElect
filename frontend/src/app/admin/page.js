@@ -234,7 +234,7 @@ export default function AdminDashboard() {
   const [systemLoadData, setSystemLoadData] = useState(null);
   const [showSystemLoadModal, setShowSystemLoadModal] = useState(false);
   const [isSystemLoadLoading, setIsSystemLoadLoading] = useState(false);
-  const [selectedTimeframe, setSelectedTimeframe] = useState('24h');
+  const [selectedTimeframe, setSelectedTimeframe] = useState('7d');
 
   // Load UI design - simplified and memoized
   const loadUIDesign = useCallback(async () => {
@@ -499,7 +499,8 @@ export default function AdminDashboard() {
         await Promise.all([
           loadAllElections(),
           loadStats(),
-          loadUIDesign()
+          loadUIDesign(),
+          loadSystemLoadData('7d') // Load system load data on initial load
         ]);
         
         if (isMounted) {
@@ -516,9 +517,6 @@ export default function AdminDashboard() {
               }),
               loadLiveVoteCount().catch(err => {
                 console.log("[Admin] Live vote count not available:", err.message);
-              }),
-              loadSystemLoadData('24h').catch(err => {
-                console.log("[Admin] System load data not available:", err.message);
               })
             ]);
           }
@@ -862,7 +860,7 @@ export default function AdminDashboard() {
                  (itemDate === rangeItem.date || 
                   (item.timestamp && new Date(item.timestamp).toISOString().split('T')[0] === rangeItem.date));
         } else {
-          // For 7d/30d, match by date only
+          // For 7d/30d, match by date only (ignore hour for daily aggregation)
           return itemDate === rangeItem.date || 
                  (item.timestamp && new Date(item.timestamp).toISOString().split('T')[0] === rangeItem.date);
         }

@@ -242,7 +242,7 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
                  (itemDate === rangeItem.date || 
                   (item.timestamp && new Date(item.timestamp).toISOString().split('T')[0] === rangeItem.date));
         } else {
-          // For 7d/30d, match by date only
+          // For 7d/30d, match by date only (ignore hour for daily aggregation)
           return itemDate === rangeItem.date || 
                  (item.timestamp && new Date(item.timestamp).toISOString().split('T')[0] === rangeItem.date);
         }

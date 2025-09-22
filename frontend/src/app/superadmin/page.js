@@ -225,7 +225,7 @@ export default function SuperAdminDashboard() {
   const [systemLoadData, setSystemLoadData] = useState(null);
   const [showSystemLoadModal, setShowSystemLoadModal] = useState(false);
   const [isSystemLoadLoading, setIsSystemLoadLoading] = useState(false);
-  const [selectedTimeframe, setSelectedTimeframe] = useState('24h');
+  const [selectedTimeframe, setSelectedTimeframe] = useState('7d');
 
   const loadElections = useCallback(async (status) => {
     try {
@@ -383,28 +383,52 @@ export default function SuperAdminDashboard() {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   };
 
-  const formatTime = (hour) => {
+  const formatTime = (hour, date = null) => {
     if (hour === undefined || hour === null) return '12:00 AM';
     const hourNum = parseInt(hour);
     if (isNaN(hourNum)) return '12:00 AM';
     
-    // Convert to 12-hour format
-    if (hourNum === 0) return '12:00 AM';
-    if (hourNum < 12) return `${hourNum}:00 AM`;
-    if (hourNum === 12) return '12:00 PM';
-    return `${hourNum - 12}:00 PM`;
+    let timeStr = '';
+    if (hourNum === 0) timeStr = '12:00 AM';
+    else if (hourNum < 12) timeStr = `${hourNum}:00 AM`;
+    else if (hourNum === 12) timeStr = '12:00 PM';
+    else timeStr = `${hourNum - 12}:00 PM`;
+    
+    // Add date if provided
+    if (date) {
+      const dateObj = new Date(date);
+      const dateStr = dateObj.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric' 
+      });
+      return `${dateStr} ${timeStr}`;
+    }
+    
+    return timeStr;
   };
 
-  const formatTimeForChart = (hour) => {
+  const formatTimeForChart = (hour, date = null) => {
     if (hour === undefined || hour === null) return '12 AM';
     const hourNum = parseInt(hour);
     if (isNaN(hourNum)) return '12 AM';
     
-    // Convert to 12-hour format for chart labels
-    if (hourNum === 0) return '12 AM';
-    if (hourNum < 12) return `${hourNum} AM`;
-    if (hourNum === 12) return '12 PM';
-    return `${hourNum - 12} PM`;
+    let timeStr = '';
+    if (hourNum === 0) timeStr = '12 AM';
+    else if (hourNum < 12) timeStr = `${hourNum} AM`;
+    else if (hourNum === 12) timeStr = '12 PM';
+    else timeStr = `${hourNum - 12} PM`;
+    
+    // Add date if provided and timeframe is more than 24h
+    if (date && selectedTimeframe !== '24h') {
+      const dateObj = new Date(date);
+      const dateStr = dateObj.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric' 
+      });
+      return `${dateStr} ${timeStr}`;
+    }
+    
+    return timeStr;
   };
 
   const calculateAverage = (data) => {
@@ -429,9 +453,112 @@ export default function SuperAdminDashboard() {
   const validateData = (data) => {
     if (!Array.isArray(data)) return [];
     return data.map(item => ({
-      hour: item.hour || 0,
-      count: typeof item.count === 'number' && !isNaN(item.count) ? item.count : 0
+      hour: item.hour || item.hour_of_day || 0,
+      count: typeof item.count === 'number' && !isNaN(item.count) ? item.count : 
+             typeof item.login_count === 'number' && !isNaN(item.login_count) ? item.login_count :
+             typeof item.vote_count === 'number' && !isNaN(item.vote_count) ? item.vote_count :
+             typeof item.activity_count === 'number' && !isNaN(item.activity_count) ? item.activity_count : 0,
+      date: item.date || (item.timestamp ? new Date(item.timestamp).toISOString().split('T')[0] : null),
+      timestamp: item.timestamp || item.date || null
     }));
+  };
+
+  const processDataWithDates = (data, timeframe) => {
+    if (!Array.isArray(data)) return [];
+    
+    console.log('SuperAdmin - Processing data with dates:', { data, timeframe });
+    
+    const now = new Date();
+    let processedData = [];
+    
+    // For 24h timeframe, use the original data structure if it exists
+    if (timeframe === '24h' && data.length > 0) {
+      // Check if data already has the correct structure
+      const firstItem = data[0];
+      if (firstItem && typeof firstItem.hour !== 'undefined' && typeof firstItem.count !== 'undefined') {
+        // Data is already in the correct format, just add dates
+        processedData = data.map(item => ({
+          hour: item.hour || 0,
+          count: typeof item.count === 'number' && !isNaN(item.count) ? item.count : 0,
+          date: item.date || item.timestamp ? new Date(item.timestamp || item.date).toISOString().split('T')[0] : now.toISOString().split('T')[0],
+          timestamp: item.timestamp || item.date || now.toISOString()
+        }));
+        console.log('SuperAdmin - Using existing 24h data structure:', processedData);
+        return processedData;
+      }
+    }
+    
+    // Generate date range based on timeframe
+    const dateRange = [];
+    switch (timeframe) {
+      case '24h':
+        // For 24h, show hourly data for the last 24 hours
+        for (let i = 23; i >= 0; i--) {
+          const date = new Date(now.getTime() - i * 60 * 60 * 1000);
+          dateRange.push({
+            hour: date.getHours(),
+            date: date.toISOString().split('T')[0],
+            timestamp: date.toISOString()
+          });
+        }
+        break;
+      case '7d':
+        // For 7d, show daily data for the last 7 days
+        for (let i = 6; i >= 0; i--) {
+          const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+          dateRange.push({
+            hour: 0, // Use 0 as default hour for daily data
+            date: date.toISOString().split('T')[0],
+            timestamp: date.toISOString()
+          });
+        }
+        break;
+      case '30d':
+        // For 30d, show daily data for the last 30 days
+        for (let i = 29; i >= 0; i--) {
+          const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+          dateRange.push({
+            hour: 0, // Use 0 as default hour for daily data
+            date: date.toISOString().split('T')[0],
+            timestamp: date.toISOString()
+          });
+        }
+        break;
+    }
+    
+    // Map actual data to date range with more flexible matching
+    processedData = dateRange.map(rangeItem => {
+      const matchingData = data.find(item => {
+        // More flexible matching for different data structures
+        const itemHour = item.hour || item.hour_of_day || 0;
+        const itemDate = item.date || (item.timestamp ? new Date(item.timestamp).toISOString().split('T')[0] : null);
+        const itemCount = item.count || item.login_count || item.vote_count || item.activity_count || 0;
+        
+        if (timeframe === '24h') {
+          // For 24h, match by hour and date
+          return itemHour === rangeItem.hour && 
+                 (itemDate === rangeItem.date || 
+                  (item.timestamp && new Date(item.timestamp).toISOString().split('T')[0] === rangeItem.date));
+        } else {
+          // For 7d/30d, match by date only (ignore hour for daily aggregation)
+          return itemDate === rangeItem.date || 
+                 (item.timestamp && new Date(item.timestamp).toISOString().split('T')[0] === rangeItem.date);
+        }
+      });
+      
+      return {
+        hour: rangeItem.hour,
+        count: matchingData ? (typeof matchingData.count === 'number' && !isNaN(matchingData.count) ? matchingData.count : 
+                              typeof matchingData.login_count === 'number' && !isNaN(matchingData.login_count) ? matchingData.login_count :
+                              typeof matchingData.vote_count === 'number' && !isNaN(matchingData.vote_count) ? matchingData.vote_count :
+                              typeof matchingData.activity_count === 'number' && !isNaN(matchingData.activity_count) ? matchingData.activity_count : 0) : 0,
+        date: rangeItem.date,
+        timestamp: rangeItem.timestamp
+      };
+    });
+    
+    console.log('SuperAdmin - Processed data result:', processedData);
+    return processedData;
   };
 
   const handleDownloadSystemLoad = async () => {
@@ -490,7 +617,7 @@ export default function SuperAdminDashboard() {
           loadElections(activeTab),
           loadTotalUniqueVoters(),
           loadLiveVoteCount(),
-          loadSystemLoadData('24h')
+          loadSystemLoadData('7d')
         ]);
       } catch (error) {
         console.error('[SuperAdmin] Error during initial load:', error);
@@ -855,8 +982,20 @@ export default function SuperAdminDashboard() {
           <>
             {/* Process data */}
             {(() => {
-              const processedLoginData = validateData(systemLoadData.login_activity || []);
-              const processedVotingData = validateData(systemLoadData.voting_activity || []);
+              // Try the new date-aware processing first
+              let processedLoginData = processDataWithDates(systemLoadData.login_activity || [], selectedTimeframe);
+              let processedVotingData = processDataWithDates(systemLoadData.voting_activity || [], selectedTimeframe);
+              
+              // Fallback to original data structure if new processing returns empty data
+              if (processedLoginData.length === 0 && systemLoadData.login_activity && systemLoadData.login_activity.length > 0) {
+                console.log('SuperAdmin - Falling back to original login data structure');
+                processedLoginData = validateData(systemLoadData.login_activity);
+              }
+              
+              if (processedVotingData.length === 0 && systemLoadData.voting_activity && systemLoadData.voting_activity.length > 0) {
+                console.log('SuperAdmin - Falling back to original voting data structure');
+                processedVotingData = validateData(systemLoadData.voting_activity);
+              }
               
               const loginPeak = findPeakHour(processedLoginData);
               const votingPeak = findPeakHour(processedVotingData);
@@ -881,9 +1020,11 @@ export default function SuperAdminDashboard() {
               const CustomTooltip = ({ active, payload, label }) => {
                 if (active && payload && payload.length) {
                   const value = payload[0].value || 0;
+                  const dataPoint = payload[0].payload;
+                  const displayTime = formatTime(label, dataPoint?.date);
                   return (
                     <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-xl">
-                      <p className="text-sm font-semibold mb-2 text-black">{formatTime(label)}</p>
+                      <p className="text-sm font-semibold mb-2 text-black">{displayTime}</p>
                       <div className="flex items-center gap-2">
                         <div className={`w-3 h-3 rounded-full ${
                           payload[0].name === 'Logins' ? 'bg-blue-500' : 'bg-green-500'
@@ -985,7 +1126,10 @@ export default function SuperAdminDashboard() {
                                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                                 <XAxis 
                                   dataKey="hour" 
-                                  tickFormatter={formatTimeForChart}
+                                  tickFormatter={(hour, index) => {
+                                    const dataPoint = chartConfig.login.data[index];
+                                    return formatTimeForChart(hour, dataPoint?.date);
+                                  }}
                                   stroke="#374151"
                                   tick={{ fill: '#374151', fontSize: 11 }}
                                   axisLine={{ stroke: '#d1d5db' }}
@@ -1063,7 +1207,10 @@ export default function SuperAdminDashboard() {
                                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                                 <XAxis 
                                   dataKey="hour" 
-                                  tickFormatter={formatTimeForChart}
+                                  tickFormatter={(hour, index) => {
+                                    const dataPoint = chartConfig.voting.data[index];
+                                    return formatTimeForChart(hour, dataPoint?.date);
+                                  }}
                                   stroke="#374151"
                                   tick={{ fill: '#374151', fontSize: 11 }}
                                   axisLine={{ stroke: '#d1d5db' }}
