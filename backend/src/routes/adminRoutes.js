@@ -41,8 +41,15 @@ const upload = multer({
 router.get("/profile", verifyToken, isAdmin, getAdminProfile);
 router.post("/upload", verifyToken, isAdmin, upload.single("profilePic"), uploadAdminProfilePicture);
 
-// Super admin routes
-router.get("/admins", verifyToken, isSuperAdmin, getAllAdmins);
+// Super admin routes (also accessible by admins for department management)
+router.get("/admins", verifyToken, (req, res, next) => {
+  // Allow both super admins and regular admins
+  if (req.user.role_id === 1 || req.user.role_id === 2) {
+    next();
+  } else {
+    return res.status(403).json({ message: "Access denied. Super Admin or Admin role required." });
+  }
+}, getAllAdmins);
 
 router.post(
   "/admins",
@@ -76,7 +83,14 @@ router.post(
 router.put(
   "/admins/:id",
   verifyToken,
-  isSuperAdmin,
+  (req, res, next) => {
+    // Allow both super admins and regular admins
+    if (req.user.role_id === 1 || req.user.role_id === 2) {
+      next();
+    } else {
+      return res.status(403).json({ message: "Access denied. Super Admin or Admin role required." });
+    }
+  },
   [
     check("firstName", "First Name must be 1-35 characters and contain only letters.")
       .optional()
@@ -106,7 +120,14 @@ router.put(
 router.delete("/admins/:id", verifyToken, isSuperAdmin, softDeleteAdmin);
 router.patch("/admins/:id/restore", verifyToken, isSuperAdmin, restoreAdmin);
 router.delete("/admins/:id/permanent-delete", verifyToken, isSuperAdmin, permanentlyDeleteAdmin);
-router.patch("/admins/:id/unlock", verifyToken, isSuperAdmin, unlockAdminAccount);
+router.patch("/admins/:id/unlock", verifyToken, (req, res, next) => {
+  // Allow both super admins and regular admins
+  if (req.user.role_id === 1 || req.user.role_id === 2) {
+    next();
+  } else {
+    return res.status(403).json({ message: "Access denied. Super Admin or Admin role required." });
+  }
+}, unlockAdminAccount);
 
 router.post("/admins/reset-password", verifyToken, isSuperAdmin, resetAdminPassword);
 
