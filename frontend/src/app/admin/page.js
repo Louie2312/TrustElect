@@ -699,26 +699,52 @@ export default function AdminDashboard() {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   };
 
-  const formatTime = (hour) => {
+  const formatTime = (hour, date = null) => {
     if (hour === undefined || hour === null) return '12:00 AM';
     const hourNum = parseInt(hour);
     if (isNaN(hourNum)) return '12:00 AM';
     
-    if (hourNum === 0) return '12:00 AM';
-    if (hourNum < 12) return `${hourNum}:00 AM`;
-    if (hourNum === 12) return '12:00 PM';
-    return `${hourNum - 12}:00 PM`;
+    let timeStr = '';
+    if (hourNum === 0) timeStr = '12:00 AM';
+    else if (hourNum < 12) timeStr = `${hourNum}:00 AM`;
+    else if (hourNum === 12) timeStr = '12:00 PM';
+    else timeStr = `${hourNum - 12}:00 PM`;
+    
+    // Add date if provided
+    if (date) {
+      const dateObj = new Date(date);
+      const dateStr = dateObj.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric' 
+      });
+      return `${dateStr} ${timeStr}`;
+    }
+    
+    return timeStr;
   };
 
-  const formatTimeForChart = (hour) => {
+  const formatTimeForChart = (hour, date = null) => {
     if (hour === undefined || hour === null) return '12 AM';
     const hourNum = parseInt(hour);
     if (isNaN(hourNum)) return '12 AM';
     
-    if (hourNum === 0) return '12 AM';
-    if (hourNum < 12) return `${hourNum} AM`;
-    if (hourNum === 12) return '12 PM';
-    return `${hourNum - 12} PM`;
+    let timeStr = '';
+    if (hourNum === 0) timeStr = '12 AM';
+    else if (hourNum < 12) timeStr = `${hourNum} AM`;
+    else if (hourNum === 12) timeStr = '12 PM';
+    else timeStr = `${hourNum - 12} PM`;
+    
+    // Add date if provided and timeframe is more than 24h
+    if (date && selectedTimeframe !== '24h') {
+      const dateObj = new Date(date);
+      const dateStr = dateObj.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric' 
+      });
+      return `${dateStr} ${timeStr}`;
+    }
+    
+    return timeStr;
   };
 
   const calculateAverage = (data) => {
@@ -744,8 +770,78 @@ export default function AdminDashboard() {
     if (!Array.isArray(data)) return [];
     return data.map(item => ({
       hour: item.hour || 0,
-      count: typeof item.count === 'number' && !isNaN(item.count) ? item.count : 0
+      count: typeof item.count === 'number' && !isNaN(item.count) ? item.count : 0,
+      date: item.date || item.timestamp || null,
+      timestamp: item.timestamp || item.date || null
     }));
+  };
+
+  const processDataWithDates = (data, timeframe) => {
+    if (!Array.isArray(data)) return [];
+    
+    const now = new Date();
+    let processedData = [];
+    
+    // Generate date range based on timeframe
+    const dateRange = [];
+    switch (timeframe) {
+      case '24h':
+        // For 24h, show hourly data for the last 24 hours
+        for (let i = 23; i >= 0; i--) {
+          const date = new Date(now.getTime() - i * 60 * 60 * 1000);
+          dateRange.push({
+            hour: date.getHours(),
+            date: date.toISOString().split('T')[0],
+            timestamp: date.toISOString()
+          });
+        }
+        break;
+      case '7d':
+        // For 7d, show daily data for the last 7 days
+        for (let i = 6; i >= 0; i--) {
+          const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+          dateRange.push({
+            hour: 0, // Use 0 as default hour for daily data
+            date: date.toISOString().split('T')[0],
+            timestamp: date.toISOString()
+          });
+        }
+        break;
+      case '30d':
+        // For 30d, show daily data for the last 30 days
+        for (let i = 29; i >= 0; i--) {
+          const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+          dateRange.push({
+            hour: 0, // Use 0 as default hour for daily data
+            date: date.toISOString().split('T')[0],
+            timestamp: date.toISOString()
+          });
+        }
+        break;
+    }
+    
+    // Map actual data to date range
+    processedData = dateRange.map(rangeItem => {
+      const matchingData = data.find(item => {
+        if (timeframe === '24h') {
+          return item.hour === rangeItem.hour && 
+                 (item.date === rangeItem.date || 
+                  (item.timestamp && new Date(item.timestamp).toISOString().split('T')[0] === rangeItem.date));
+        } else {
+          return item.date === rangeItem.date || 
+                 (item.timestamp && new Date(item.timestamp).toISOString().split('T')[0] === rangeItem.date);
+        }
+      });
+      
+      return {
+        hour: rangeItem.hour,
+        count: matchingData ? (typeof matchingData.count === 'number' && !isNaN(matchingData.count) ? matchingData.count : 0) : 0,
+        date: rangeItem.date,
+        timestamp: rangeItem.timestamp
+      };
+    });
+    
+    return processedData;
   };
 
 
@@ -1109,8 +1205,8 @@ export default function AdminDashboard() {
           <>
             {/* Process data */}
             {(() => {
-              const processedLoginData = validateData(systemLoadData.login_activity || []);
-              const processedVotingData = validateData(systemLoadData.voting_activity || []);
+              const processedLoginData = processDataWithDates(systemLoadData.login_activity || [], selectedTimeframe);
+              const processedVotingData = processDataWithDates(systemLoadData.voting_activity || [], selectedTimeframe);
               
               const loginPeak = findPeakHour(processedLoginData);
               const votingPeak = findPeakHour(processedVotingData);
@@ -1135,9 +1231,11 @@ export default function AdminDashboard() {
               const CustomTooltip = ({ active, payload, label }) => {
                 if (active && payload && payload.length) {
                   const value = payload[0].value || 0;
+                  const dataPoint = payload[0].payload;
+                  const displayTime = formatTime(label, dataPoint?.date);
                   return (
                     <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-xl">
-                      <p className="text-sm font-semibold mb-2 text-black">{formatTime(label)}</p>
+                      <p className="text-sm font-semibold mb-2 text-black">{displayTime}</p>
                       <div className="flex items-center gap-2">
                         <div className={`w-3 h-3 rounded-full ${
                           payload[0].name === 'Logins' ? 'bg-blue-500' : 'bg-green-500'
@@ -1239,7 +1337,10 @@ export default function AdminDashboard() {
                                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                                 <XAxis 
                                   dataKey="hour" 
-                                  tickFormatter={formatTimeForChart}
+                                  tickFormatter={(hour, index) => {
+                                    const dataPoint = chartConfig.login.data[index];
+                                    return formatTimeForChart(hour, dataPoint?.date);
+                                  }}
                                   stroke="#374151"
                                   tick={{ fill: '#374151', fontSize: 11 }}
                                   axisLine={{ stroke: '#d1d5db' }}
@@ -1317,7 +1418,10 @@ export default function AdminDashboard() {
                                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                                 <XAxis 
                                   dataKey="hour" 
-                                  tickFormatter={formatTimeForChart}
+                                  tickFormatter={(hour, index) => {
+                                    const dataPoint = chartConfig.voting.data[index];
+                                    return formatTimeForChart(hour, dataPoint?.date);
+                                  }}
                                   stroke="#374151"
                                   tick={{ fill: '#374151', fontSize: 11 }}
                                   axisLine={{ stroke: '#d1d5db' }}
