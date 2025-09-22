@@ -71,53 +71,12 @@ export default function AdminDepartmentsPage() {
         throw new Error("No authentication token found");
       }
 
-      // Get the current admin's profile first
-      const profileRes = await axios.get("/api/admin/profile", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        withCredentials: true
-      });
-      
-      console.log("Admin profile response:", profileRes.data);
-      
-      // Start with the current admin's data
+      // Try multiple endpoints to get all admins
       let adminsArray = [];
-      if (profileRes.data && profileRes.data.id) {
-        adminsArray = [{
-          id: profileRes.data.id,
-          first_name: profileRes.data.first_name || '',
-          last_name: profileRes.data.last_name || '',
-          email: profileRes.data.email || '',
-          department: profileRes.data.department || '',
-          is_active: true,
-          role_id: 2 // Regular admin
-        }];
-      }
+      let success = false;
 
-      // Try to get department admins from the departments data
-      const departmentAdmins = (departments || []).reduce((acc, dept) => {
-        if (dept.admin_id && dept.admin_name) {
-          // Only add if not already in the array
-          if (!acc.some(admin => admin.id === dept.admin_id)) {
-            acc.push({
-              id: dept.admin_id,
-              first_name: dept.admin_name.split(' ')[0] || '',
-              last_name: dept.admin_name.split(' ')[1] || '',
-              email: dept.admin_email || '',
-              department: dept.department_name || '',
-              is_active: true,
-              role_id: 2
-            });
-          }
-        }
-        return acc;
-      }, []);
-
-      // Try to get additional admin data from available endpoints
       try {
-        // Try admin-specific endpoint first
+        // First try the admin endpoint
         const adminRes = await axios.get("/api/admin/admins", {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -126,53 +85,75 @@ export default function AdminDepartmentsPage() {
           withCredentials: true
         });
         
-        const adminAdmins = adminRes.data.admins || adminRes.data || [];
-        const filteredAdminAdmins = adminAdmins.filter(admin => 
+        console.log("Admin admins API response:", adminRes.data);
+        adminsArray = adminRes.data.admins || adminRes.data || [];
+        success = true;
+      } catch (firstError) {
+        console.warn("Error on admin endpoint, trying fallback:", firstError.message);
+        
+        try {
+          // Try superadmin endpoint as fallback
+          const superAdminRes = await axios.get("/api/superadmin/admins", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            withCredentials: true
+          });
+          
+          console.log("SuperAdmin admins API response:", superAdminRes.data);
+          adminsArray = superAdminRes.data.admins || superAdminRes.data || [];
+          success = true;
+        } catch (secondError) {
+          console.error("Error on superadmin endpoint:", secondError.message);
+          
+          // Try getting admin profile as last resort
+          try {
+            const profileRes = await axios.get("/api/admin/profile", {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+              withCredentials: true
+            });
+            
+            console.log("Admin profile response:", profileRes.data);
+            
+            // Create a basic admin array from profile
+            if (profileRes.data && profileRes.data.id) {
+              adminsArray = [{
+                id: profileRes.data.id,
+                first_name: profileRes.data.first_name || '',
+                last_name: profileRes.data.last_name || '',
+                email: profileRes.data.email || '',
+                department: profileRes.data.department || '',
+                is_active: true,
+                role_id: 2
+              }];
+              success = true;
+            } else {
+              throw new Error("No admin profile data found");
+            }
+          } catch (thirdError) {
+            console.error("All admin API endpoints failed:", thirdError.message);
+            throw new Error("Failed to load admins after trying all endpoints");
+          }
+        }
+      }
+
+      if (success) {
+        // Filter out inactive admins and super admins (same logic as super admin)
+        const filteredAdmins = adminsArray.filter(admin => 
           admin.is_active && 
           !(admin.role_id === 1 || (admin.department === "Administration" && !admin.employee_number))
         );
         
-        // Merge with existing data
-        adminsArray = [...adminsArray, ...filteredAdminAdmins].filter((admin, index, self) =>
-          index === self.findIndex((a) => a.id === admin.id)
-        );
-      } catch (adminError) {
-        console.warn("Could not fetch from admin endpoint:", adminError.message);
-        
-        // If admin endpoint fails, try to get data from departments
-        if (departments && departments.length > 0) {
-          // Merge the arrays, removing duplicates
-          adminsArray = [...adminsArray, ...departmentAdmins].filter((admin, index, self) =>
-            index === self.findIndex((a) => a.id === admin.id)
-          );
-        }
-      }
-      
-      // Enhance admin data with department information
-      const enhancedAdmins = adminsArray.map(admin => ({
-        ...admin,
-        department: admin.department || ''
-      }));
-      
-      // If we still don't have enough admin data, create a basic entry from the current admin's profile
-      if (enhancedAdmins.length === 0 && profileRes.data) {
-        enhancedAdmins.push({
-          id: profileRes.data.id,
-          first_name: profileRes.data.first_name || '',
-          last_name: profileRes.data.last_name || '',
-          email: profileRes.data.email || '',
-          department: profileRes.data.department || '',
-          is_active: true,
-          role_id: 2
+        console.log(`Successfully loaded ${filteredAdmins.length} admins:`, filteredAdmins);
+        filteredAdmins.forEach(admin => {
+          console.log(`Admin: ${admin.first_name} ${admin.last_name}, Department: ${admin.department}`);
         });
+        setAdmins(filteredAdmins);
       }
-      
-      console.log("Enhanced admins:", enhancedAdmins);
-      console.log("Total admins found:", enhancedAdmins.length);
-      enhancedAdmins.forEach(admin => {
-        console.log(`Admin: ${admin.first_name} ${admin.last_name}, Department: ${admin.department}`);
-      });
-      setAdmins(enhancedAdmins);
     } catch (error) {
       console.error("Error fetching admins:", error);
       toast.error("Failed to load admin data");
@@ -185,15 +166,6 @@ export default function AdminDepartmentsPage() {
       fetchAdmins();
     }
   }, [departments]);
-
-  // Use both data sources to get admin details
-  const getAdminDetails = (adminId) => {
-    // Convert adminId to number for consistent comparison
-    const numericAdminId = Number(adminId);
-    const admin = admins.find(admin => admin.id === numericAdminId);
-    console.log(`Looking for admin with ID ${numericAdminId}`, admin ? "Found" : "Not found", admins.length ? `(${admins.length} admins available)` : "(No admins loaded)");
-    return admin;
-  };
   
   const fetchDepartments = async () => {
     setLoading(true);
@@ -303,32 +275,6 @@ export default function AdminDepartmentsPage() {
     }
   }, [permissionsLoading, hasPermission, checkRoleBasedPermission]);
 
-  // Add an effect to update departments when admins are loaded
-  useEffect(() => {
-    if (admins.length > 0 && departments.length > 0) {
-      console.log(`Updating departments with ${admins.length} admins data`);
-      const updatedDepartments = departments.map(dept => {
-        if (dept.admin_id) {
-          const adminData = admins.find(admin => admin.id === Number(dept.admin_id));
-          if (adminData && adminData.email) {
-            console.log(`Updating department ${dept.department_name} with admin ${adminData.first_name} email: ${adminData.email || 'none'}`);
-            return {
-              ...dept,
-              admin_name: dept.admin_name || `${adminData.first_name || ''} ${adminData.last_name || ''}`.trim(),
-              admin_email: dept.admin_email || adminData.email || ''
-            };
-          }
-        }
-        return dept;
-      });
-      
-      // Only update if we made changes
-      if (JSON.stringify(updatedDepartments) !== JSON.stringify(departments)) {
-        console.log("Departments updated with admin data");
-        setDepartments(updatedDepartments);
-      }
-    }
-  }, [admins]);
 
   const filteredDepartments = departments.filter(dept => {
     const matchesSearch = dept.department_name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -823,7 +769,22 @@ function AssignAdminModal({ department, admins: initialAdmins, onClose, onSucces
           console.warn("Error on admin endpoint, trying fallback:", firstError.message);
           
           try {
-            // Try to get admin profile as fallback
+            // Try superadmin endpoint as fallback
+            const res = await axios.get("/api/superadmin/admins", {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+              withCredentials: true
+            });
+            
+            console.log("Fetched fresh admin data from superadmin:", res.data);
+            adminsArray = res.data.admins || res.data || [];
+            success = true;
+          } catch (secondError) {
+            console.error("Error on superadmin endpoint:", secondError.message);
+            
+            // Try to get admin profile as last resort
             const profileRes = await axios.get("/api/admin/profile", {
               headers: {
                 Authorization: `Bearer ${token}`,
@@ -849,9 +810,6 @@ function AssignAdminModal({ department, admins: initialAdmins, onClose, onSucces
             } else {
               throw new Error("No admin profile data found");
             }
-          } catch (secondError) {
-            console.error("Error on profile endpoint:", secondError.message);
-            throw new Error("Failed to fetch admin data after trying all endpoints");
           }
         }
 
@@ -926,18 +884,42 @@ function AssignAdminModal({ department, admins: initialAdmins, onClose, onSucces
           currentDepartments.push(department.department_name);
         }
         
-        return axios.put(
-          `/api/admin/admins/${adminId}`,
-          { 
-            department: currentDepartments.join(', '),
-            first_name: admin.first_name,
-            last_name: admin.last_name,
-            email: admin.email
-          },
-          {
-            headers: { Authorization: `Bearer ${token}` },
+        // Try multiple endpoints for updating admin
+        const updateAdmin = async () => {
+          try {
+            // First try admin endpoint
+            return await axios.put(
+              `/api/admin/admins/${adminId}`,
+              { 
+                department: currentDepartments.join(', '),
+                first_name: admin.first_name,
+                last_name: admin.last_name,
+                email: admin.email
+              },
+              {
+                headers: { Authorization: `Bearer ${token}` },
+              }
+            );
+          } catch (firstError) {
+            console.warn("Error on admin update endpoint, trying fallback:", firstError.message);
+            
+            // Try superadmin endpoint as fallback
+            return await axios.put(
+              `/api/superadmin/admins/${adminId}`,
+              { 
+                department: currentDepartments.join(', '),
+                first_name: admin.first_name,
+                last_name: admin.last_name,
+                email: admin.email
+              },
+              {
+                headers: { Authorization: `Bearer ${token}` },
+              }
+            );
           }
-        ).then(res => {
+        };
+
+        return updateAdmin().then(res => {
           setProcessingAdminIds(prev => prev.filter(id => id !== adminId));
           return res;
         });
@@ -955,18 +937,42 @@ function AssignAdminModal({ department, admins: initialAdmins, onClose, onSucces
         const departments = admin.department ? admin.department.split(',').map(d => d.trim()) : [];
         const updatedDepartments = departments.filter(d => d !== department.department_name);
         
-        return axios.put(
-          `/api/admin/admins/${admin.id}`,
-          { 
-            department: updatedDepartments.join(', '),
-            first_name: admin.first_name,
-            last_name: admin.last_name,
-            email: admin.email
-          },
-          {
-            headers: { Authorization: `Bearer ${token}` },
+        // Try multiple endpoints for updating admin
+        const updateAdmin = async () => {
+          try {
+            // First try admin endpoint
+            return await axios.put(
+              `/api/admin/admins/${admin.id}`,
+              { 
+                department: updatedDepartments.join(', '),
+                first_name: admin.first_name,
+                last_name: admin.last_name,
+                email: admin.email
+              },
+              {
+                headers: { Authorization: `Bearer ${token}` },
+              }
+            );
+          } catch (firstError) {
+            console.warn("Error on admin update endpoint, trying fallback:", firstError.message);
+            
+            // Try superadmin endpoint as fallback
+            return await axios.put(
+              `/api/superadmin/admins/${admin.id}`,
+              { 
+                department: updatedDepartments.join(', '),
+                first_name: admin.first_name,
+                last_name: admin.last_name,
+                email: admin.email
+              },
+              {
+                headers: { Authorization: `Bearer ${token}` },
+              }
+            );
           }
-        ).then(res => {
+        };
+
+        return updateAdmin().then(res => {
           setProcessingAdminIds(prev => prev.filter(id => id !== admin.id));
           console.log(`Successfully updated admin ${admin.id} departments`, res.data);
           return res;
