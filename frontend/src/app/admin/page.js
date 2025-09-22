@@ -732,37 +732,12 @@ export default function AdminDashboard() {
     const hourNum = parseInt(hour);
     if (isNaN(hourNum)) return '12 AM';
     
-    // For daily data (7d/30d), only show date, not time
-    if (selectedTimeframe !== '24h' && hourNum === 0) {
-      if (date) {
-        const dateObj = new Date(date);
-        return dateObj.toLocaleDateString('en-US', { 
-          month: 'short', 
-          day: 'numeric' 
-        });
-      }
-      return 'Date';
-    }
-    
+    // Always show time on X-axis, regardless of timeframe
     let timeStr = '';
     if (hourNum === 0) timeStr = '12 AM';
     else if (hourNum < 12) timeStr = `${hourNum} AM`;
     else if (hourNum === 12) timeStr = '12 PM';
     else timeStr = `${hourNum - 12} PM`;
-    
-    // For 24h, only show time
-    if (selectedTimeframe === '24h') {
-      return timeStr;
-    }
-    
-    // For other timeframes, show date only (since we're showing daily data)
-    if (date) {
-      const dateObj = new Date(date);
-      return dateObj.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric' 
-      });
-    }
     
     return timeStr;
   };
@@ -821,75 +796,61 @@ export default function AdminDashboard() {
         timestamp: now.toISOString()
       }));
     } else if (timeframe === '7d') {
-      // For 7d, backend returns hourly data but we need to aggregate by day
-      // Since we don't have actual timestamps, we'll distribute the data across the last 7 days
-      const dailyData = {};
-      
-      // Distribute data across 7 days based on data index
+      // For 7d, backend returns hourly data - show all hours with their actual times
+      // Map each data point to a specific time slot
       data.forEach((item, index) => {
+        const hour = item.hour || 0;
         const count = item.count || 0;
-        // Distribute data across 7 days (0-6)
-        const dayIndex = index % 7;
         
-        if (!dailyData[dayIndex]) {
-          dailyData[dayIndex] = 0;
-        }
-        dailyData[dayIndex] += count;
-      });
-      
-      // Generate 7 days of data
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        // Calculate which day this hour belongs to (distribute across 7 days)
+        const dayOffset = index % 7;
+        const date = new Date(now.getTime() - dayOffset * 24 * 60 * 60 * 1000);
+        
         processedData.push({
-          hour: 0, // Use 0 for daily data
-          count: dailyData[i] || 0,
+          hour: hour, // Keep the actual hour
+          count: count,
           date: date.toISOString().split('T')[0],
           timestamp: date.toISOString()
         });
-      }
+      });
+      
+      // Sort by date and hour for proper display
+      processedData.sort((a, b) => {
+        const dateCompare = new Date(a.date).getTime() - new Date(b.date).getTime();
+        if (dateCompare === 0) {
+          return a.hour - b.hour;
+        }
+        return dateCompare;
+      });
     } else if (timeframe === '30d') {
       // For 30d, backend returns daily data (hour represents day of month)
-      // Generate last 30 days and map data to them
-      const dailyData = {};
-      
-      // Map backend data to day offsets
+      // Show each day with a representative hour (use the hour from backend or default to 12)
       data.forEach(item => {
         const dayOfMonth = item.hour || 0;
         const count = item.count || 0;
         
-        // Calculate which day this represents in the last 30 days
-        // Since backend returns day of month, we need to map it to our 30-day range
-        const currentDay = now.getDate();
-        const currentMonth = now.getMonth();
-        const currentYear = now.getFullYear();
-        
-        // Try to find the correct day offset
-        let dayOffset = -1;
-        
-        // Check if this day of month is within the last 30 days
+        // Find the correct date for this day of month
+        let targetDate = null;
         for (let i = 0; i < 30; i++) {
           const checkDate = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
           if (checkDate.getDate() === dayOfMonth) {
-            dayOffset = i;
+            targetDate = checkDate;
             break;
           }
         }
         
-        if (dayOffset >= 0 && dayOffset < 30) {
-          dailyData[dayOffset] = count;
+        if (targetDate) {
+          processedData.push({
+            hour: 12, // Use 12 PM as representative time for daily data
+            count: count,
+            date: targetDate.toISOString().split('T')[0],
+            timestamp: targetDate.toISOString()
+          });
         }
       });
       
-      // Generate 30 days of data
-      for (let i = 29; i >= 0; i--) {
-        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-        processedData.push({
-          hour: 0, // Use 0 for daily data
-          count: dailyData[i] || 0,
-          date: date.toISOString().split('T')[0],
-          timestamp: date.toISOString()
-        });
-      }
+      // Sort by date
+      processedData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     }
     
     console.log('Processed data result:', processedData);
