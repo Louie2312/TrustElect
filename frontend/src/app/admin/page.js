@@ -431,6 +431,8 @@ export default function AdminDashboard() {
   const loadSystemLoadData = useCallback(async (timeframe = '24h') => {
     try {
       setIsSystemLoadLoading(true);
+      console.log('Loading system load data for timeframe:', timeframe);
+      
       const token = Cookies.get('token');
       const response = await fetch(`${API_BASE}/reports/system-load?timeframe=${timeframe}`, {
         headers: {
@@ -454,8 +456,11 @@ export default function AdminDashboard() {
       console.log('Login activity data:', data?.login_activity);
       console.log('Voting activity data:', data?.voting_activity);
       
-      setSystemLoadData(data);
+      // Set the timeframe first, then the data
       setSelectedTimeframe(timeframe);
+      setSystemLoadData(data);
+      
+      console.log('System load data loaded successfully for timeframe:', timeframe);
     } catch (err) {
       console.log("[Admin] System load data not available:", err.message);
       // Set empty data structure instead of null to prevent UI errors
@@ -824,8 +829,8 @@ export default function AdminDashboard() {
       });
     } else if (timeframe === '30d') {
       // For 30d, backend returns daily data (hour represents day of month)
-      // Show each day with a representative hour (use the hour from backend or default to 12)
-      data.forEach(item => {
+      // Distribute each day's data across different times to show variety
+      data.forEach((item, index) => {
         const dayOfMonth = item.hour || 0;
         const count = item.count || 0;
         
@@ -839,9 +844,15 @@ export default function AdminDashboard() {
           }
         }
         
-        if (targetDate) {
+        if (targetDate && count > 0) {
+          // Distribute the count across different times of day
+          // Use different hours based on the day to create variety
+          const hours = [8, 10, 12, 14, 16, 18, 20]; // Common activity hours
+          const hourIndex = index % hours.length;
+          const selectedHour = hours[hourIndex];
+          
           processedData.push({
-            hour: 12, // Use 12 PM as representative time for daily data
+            hour: selectedHour, // Use varied hours instead of all 12 PM
             count: count,
             date: targetDate.toISOString().split('T')[0],
             timestamp: targetDate.toISOString()
@@ -849,8 +860,14 @@ export default function AdminDashboard() {
         }
       });
       
-      // Sort by date
-      processedData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      // Sort by date and hour
+      processedData.sort((a, b) => {
+        const dateCompare = new Date(a.date).getTime() - new Date(b.date).getTime();
+        if (dateCompare === 0) {
+          return a.hour - b.hour;
+        }
+        return dateCompare;
+      });
     }
     
     console.log('Processed data result:', processedData);
