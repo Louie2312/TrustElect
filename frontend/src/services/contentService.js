@@ -179,6 +179,14 @@ export const saveSectionContent = async (section, contentData, files = {}) => {
     return response.data;
   } catch (error) {
     console.error(`Error saving ${section} content:`, error);
+    
+    // Handle specific error cases
+    if (error.response?.status === 413) {
+      const enhancedError = new Error('File too large. Please try a smaller video file (max 200MB).');
+      enhancedError.status = 413;
+      throw enhancedError;
+    }
+    
     throw error;
   }
 };

@@ -132,8 +132,8 @@ app.use(cors({
 
 
 
-app.use(express.json({ limit: '50mb' })); 
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '200mb' })); 
+app.use(express.urlencoded({ extended: true, limit: '200mb' }));
 
 // Request logging middleware - log all incoming requests
 app.use((req, res, next) => {
@@ -533,7 +533,7 @@ app.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     return res.status(400).json({
       message: err.code === 'LIMIT_FILE_SIZE' 
-        ? 'File too large (max 20MB)' 
+        ? 'File too large (max 200MB)' 
         : 'File upload error: ' + err.message
     });
   }

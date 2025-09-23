@@ -290,8 +290,8 @@ export default function ContentManagement() {
     const localUrl = URL.createObjectURL(file);
     
     if (type === 'heroVideo') {
-      if (file.size > 50 * 1024 * 1024) {
-        alert("Video file is too large. Maximum size is 50MB.");
+      if (file.size > 200 * 1024 * 1024) {
+        alert("Video file is too large. Maximum size is 200MB.");
         e.target.value = '';
         return;
       }
@@ -465,7 +465,16 @@ export default function ContentManagement() {
       }
     } catch (error) {
       console.error("Error saving content:", error);
-      setSaveStatus("Error saving changes. Please try again.");
+      
+      // Handle specific error cases
+      let errorMessage = "Error saving changes. Please try again.";
+      if (error.status === 413 || error.response?.status === 413) {
+        errorMessage = 'File too large. Please try a smaller video file (max 200MB).';
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      setSaveStatus(errorMessage);
     } finally {
       setIsLoading(false);
       // Clear save status after 3 seconds
@@ -490,7 +499,16 @@ export default function ContentManagement() {
       setTimeout(() => setSaveStatus(""), 2000);
     } catch (error) {
       console.error("Error saving content:", error);
-      setSaveStatus(`Error: ${error.message || 'Failed to save all content'}`);
+      
+      // Handle specific error cases
+      let errorMessage = error.message || 'Failed to save all content';
+      if (error.status === 413 || error.response?.status === 413) {
+        errorMessage = 'File too large. Please try a smaller video file (max 200MB).';
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      setSaveStatus(`Error: ${errorMessage}`);
       setTimeout(() => setSaveStatus(""), 5000);
     }
   };

@@ -311,8 +311,11 @@ export default function ContentManagement() {
     const file = e.target.files[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      alert("File is too large. Maximum size is 5MB.");
+    // Check file size based on file type
+    const maxSize = file.type.startsWith('video/') ? 200 * 1024 * 1024 : 5 * 1024 * 1024; // 200MB for videos, 5MB for images
+    if (file.size > maxSize) {
+      const maxSizeMB = maxSize / (1024 * 1024);
+      alert(`File is too large. Maximum size is ${maxSizeMB}MB.`);
       e.target.value = '';
       return;
     }
@@ -895,7 +898,16 @@ export default function ContentManagement() {
       }
     } catch (error) {
       console.error(`Error saving ${section}:`, error);
-      setSaveStatus(`Error: ${error.response?.data?.message || error.message || 'Failed to save'}`);
+      
+      // Handle specific error cases
+      let errorMessage = error.message || 'Failed to save';
+      if (error.status === 413 || error.response?.status === 413) {
+        errorMessage = 'File too large. Please try a smaller video file (max 200MB).';
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      setSaveStatus(`Error: ${errorMessage}`);
       setTimeout(() => setSaveStatus(""), 5000);
     } finally {
       setIsLoading(false);
