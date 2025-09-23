@@ -758,8 +758,8 @@ export default function StudentsListPage() {
                     {hasPermission('users', 'edit') && (
                       <button onClick={() => { setSelectedStudent(student); setShowEditModal(true); }} className="bg-green-500 text-white px-3 py-1 rounded">Edit</button>
                     )}
-                    {/* Delete button - Only for superadmin */}
-                    {userRole === 'superadmin' && hasPermission('users', 'delete') && (
+                    {/* Delete button - Available for all users with delete permission (soft delete/archive) */}
+                    {hasPermission('users', 'delete') && (
                       <button onClick={() => deleteStudent(student.id)} className="bg-red-500 text-white px-3 py-1 rounded">Delete</button>
                     )}
                     {hasPermission('users', 'edit') && (
