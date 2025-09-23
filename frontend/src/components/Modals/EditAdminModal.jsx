@@ -236,13 +236,19 @@ export default function EditAdminModal({ admin, onClose, onSuccess }) {
       console.log("User role from token:", roleFromToken);
       
       // Use the correct endpoint based on user role (check both cookie and token)
-      const isSuperAdmin = userRole === 'Super Admin' || roleFromToken === 'superadmin' || roleFromToken === 'Super Admin';
+      const isSuperAdmin = userRole === 'Super Admin' || 
+                           roleFromToken === 'superadmin' || 
+                           roleFromToken === 'Super Admin' ||
+                           roleFromToken === 'super_admin';
+      
       const endpoint = isSuperAdmin 
         ? `/api/superadmin/admins/${admin.id}`
         : `/api/admin/manage-admins/${admin.id}`;
       
       console.log("Is super admin:", isSuperAdmin);
       console.log("Using endpoint:", endpoint);
+      console.log("User role from cookie:", userRole);
+      console.log("User role from token:", roleFromToken);
       
       const response = await axios.put(endpoint, updateData, {
         headers: { Authorization: `Bearer ${token}` },
@@ -250,29 +256,50 @@ export default function EditAdminModal({ admin, onClose, onSuccess }) {
       
       console.log("Update response:", response.data);
       
-      if (response.data.success) {
+      // Check if the request was successful (status 200-299)
+      if (response.status >= 200 && response.status < 300) {
+        // Check if the response explicitly indicates failure
+        if (response.data && response.data.success === false) {
+          toast.error(response.data.message || "Failed to update admin");
+          return;
+        }
+        
+        // If we get here, the request was successful
+        // Show success message
         toast.success(`${updateData.firstName} ${updateData.lastName} updated successfully!`);
         
-        // Call onSuccess callback if provided
-        if (onSuccess) {
-          onSuccess();
-        }
-        
-        onClose();
-        
-        // Trigger a callback function instead of reloading the page
-        if (typeof window !== 'undefined') {
-          // Create an event to notify that an admin was updated
-          const event = new CustomEvent('admin-updated', { 
-            detail: { 
-              adminId: admin.id,
-              updatedData: updateData
-            } 
-          });
-          window.dispatchEvent(event);
-        }
+        // Use setTimeout to ensure modal closes even if callbacks fail
+        setTimeout(() => {
+          // Call onSuccess callback if provided
+          if (onSuccess) {
+            try {
+              onSuccess();
+            } catch (callbackError) {
+              console.error("Error in onSuccess callback:", callbackError);
+            }
+          }
+          
+          // Close the modal
+          onClose();
+          
+          // Trigger a callback function instead of reloading the page
+          if (typeof window !== 'undefined') {
+            try {
+              // Create an event to notify that an admin was updated
+              const event = new CustomEvent('admin-updated', { 
+                detail: { 
+                  adminId: admin.id,
+                  updatedData: updateData
+                } 
+              });
+              window.dispatchEvent(event);
+            } catch (eventError) {
+              console.error("Error dispatching admin-updated event:", eventError);
+            }
+          }
+        }, 100); // Small delay to ensure toast is shown
       } else {
-        toast.error(response.data.message || "Failed to update admin");
+        toast.error(response.data?.message || "Failed to update admin");
         return;
       }
     } catch (error) {
