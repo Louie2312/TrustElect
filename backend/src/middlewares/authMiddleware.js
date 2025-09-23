@@ -159,11 +159,53 @@ const isSuperAdmin = allowRoles("Super Admin");
 const isAdmin = allowRoles("Admin");
 const isStudent = allowRoles("Student");
 
+// Middleware to allow both Super Admin and Admin with admin management permissions
+const canManageAdminPermissions = async (req, res, next) => {
+  try {
+    const user = req.user;
+    
+    // Super Admin always has access
+    if (user.normalizedRole === 'Super Admin') {
+      return next();
+    }
+    
+    // For Admin users, check if they have admin management permissions
+    if (user.normalizedRole === 'Admin') {
+      // Check if admin has admin management permissions
+      const { rows } = await pool.query(
+        'SELECT admin_management_can_edit, admin_management_can_create FROM user_permissions WHERE user_id = $1',
+        [user.id]
+      );
+      
+      if (rows.length > 0) {
+        const permissions = rows[0];
+        if (permissions.admin_management_can_edit || permissions.admin_management_can_create) {
+          return next();
+        }
+      }
+      
+      return res.status(403).json({ 
+        message: "You don't have permission to manage admin permissions. Please contact a superadmin." 
+      });
+    }
+    
+    // For other roles, deny access
+    return res.status(403).json({ 
+      message: "Access denied. Only Super Admin and Admin with proper permissions can manage admin permissions." 
+    });
+    
+  } catch (error) {
+    console.error("Admin permissions check error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 module.exports = { 
   verifyToken, 
   isSuperAdmin, 
   isAdmin, 
   isStudent, 
   verifyStudentRecord,
-  allowRoles
+  allowRoles,
+  canManageAdminPermissions
 };
