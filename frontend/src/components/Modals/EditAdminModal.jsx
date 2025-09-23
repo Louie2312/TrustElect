@@ -5,7 +5,7 @@ import axios from "axios";
 import Cookies from "js-cookie";
 import { toast } from "react-hot-toast";
 
-export default function EditAdminModal({ admin, onClose }) {
+export default function EditAdminModal({ admin, onClose, onSuccess }) {
   const [formData, setFormData] = useState({
     firstName: admin.first_name || "",
     lastName: admin.last_name || "",
@@ -240,21 +240,28 @@ export default function EditAdminModal({ admin, onClose }) {
       
       if (response.data.success) {
         toast.success(`${updateData.firstName} ${updateData.lastName} updated successfully!`);
+        
+        // Call onSuccess callback if provided
+        if (onSuccess) {
+          onSuccess();
+        }
+        
+        onClose();
+        
+        // Trigger a callback function instead of reloading the page
+        if (typeof window !== 'undefined') {
+          // Create an event to notify that an admin was updated
+          const event = new CustomEvent('admin-updated', { 
+            detail: { 
+              adminId: admin.id,
+              updatedData: updateData
+            } 
+          });
+          window.dispatchEvent(event);
+        }
       } else {
         toast.error(response.data.message || "Failed to update admin");
         return;
-      }
-      onClose();
-      // Trigger a callback function instead of reloading the page
-      if (typeof window !== 'undefined') {
-        // Create an event to notify that an admin was updated
-        const event = new CustomEvent('admin-updated', { 
-          detail: { 
-            adminId: admin.id,
-            updatedData: updateData
-          } 
-        });
-        window.dispatchEvent(event);
       }
     } catch (error) {
       console.error("Error updating admin:", error);
