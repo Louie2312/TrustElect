@@ -33,29 +33,28 @@ const CHART_COLORS = [
 function formatNameSimple(lastName, firstName, fallback) {
   const cap = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
   
-  // Check if this is a group/party name (no first name or fallback is being used)
-  const isGroupName = !firstName || (!lastName && !firstName && fallback);
-  
-  if ((!lastName && !firstName) && fallback) {
-    const words = fallback.trim().split(/\s+/);
-    if (words.length === 1) {
-      return cap(words[0]);
-    } else {
-      const last = cap(words[words.length - 1]);
-      const first = words.slice(0, -1).map(cap).join(' ');
-      // For group names, don't add comma
-      return isGroupName ? `${last} ${first}` : `${last}, ${first}`;
+  // Direct approach: If fallback exists and is a single word or short phrase, treat as group name
+  if (fallback && fallback.trim()) {
+    const fallbackWords = fallback.trim().split(/\s+/);
+    // If fallback is 1-2 words and doesn't contain common first/last name patterns, treat as group
+    if (fallbackWords.length <= 2 && !fallback.toLowerCase().includes(',')) {
+      return cap(fallback.trim());
     }
   }
-  if (!lastName && !firstName) return 'No Name';
   
-  // For group names (no first name), don't add comma
-  if (isGroupName) {
-    return cap(lastName);
+  // If no first name, treat as group name (no comma)
+  if (!firstName || firstName.trim() === '') {
+    return cap(lastName || fallback || 'No Name');
   }
   
-  // For individual candidates, add comma
-  return `${cap(lastName)}, ${cap(firstName)}`;
+  // For individual candidates with both names, add comma
+  if (lastName && firstName) {
+    return `${cap(lastName)}, ${cap(firstName)}`;
+  }
+  
+  // Fallback cases
+  if (!lastName && !firstName) return 'No Name';
+  return cap(lastName || firstName || fallback || 'No Name');
 }
 
 async function fetchWithAuth(url) {
