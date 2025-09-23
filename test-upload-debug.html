@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload Debug Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button { padding: 10px 15px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .result { margin-top: 10px; padding: 10px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>Upload Debug Test</h1>
+    <p>This page will help identify where the 413 error is coming from.</p>
+    
+    <div class="test-section">
+        <h3>Test 1: Basic Endpoint Test</h3>
+        <button onclick="testBasicEndpoint()">Test Basic Endpoint</button>
+        <div id="test1-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Test 2: Small File Upload</h3>
+        <input type="file" id="smallFile" accept="video/*">
+        <button onclick="testSmallFile()">Test Small File Upload</button>
+        <div id="test2-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Test 3: Large Payload Test</h3>
+        <button onclick="testLargePayload()">Test Large Payload (1MB)</button>
+        <div id="test3-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Test 4: Direct Hero Upload</h3>
+        <input type="file" id="heroFile" accept="video/*">
+        <button onclick="testHeroUpload()">Test Hero Upload</button>
+        <div id="test4-result" class="result"></div>
+    </div>
+
+    <script>
+        function showResult(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="${type}">${message}</div>`;
+        }
+
+        async function testBasicEndpoint() {
+            showResult('test1-result', 'Testing...', 'info');
+            
+            try {
+                const response = await fetch('/api/content/test-upload', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ test: 'basic data' })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    showResult('test1-result', `✅ Success: ${JSON.stringify(result)}`, 'success');
+                } else {
+                    const errorText = await response.text();
+                    showResult('test1-result', `❌ Failed (${response.status}): ${errorText}`, 'error');
+                }
+            } catch (error) {
+                showResult('test1-result', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testSmallFile() {
+            const fileInput = document.getElementById('smallFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showResult('test2-result', 'Please select a file first', 'error');
+                return;
+            }
+            
+            showResult('test2-result', `Testing file: ${file.name} (${(file.size/1024/1024).toFixed(2)}MB)`, 'info');
+            
+            try {
+                const formData = new FormData();
+                formData.append('testFile', file);
+                
+                const response = await fetch('/api/content/test-upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    showResult('test2-result', `✅ File upload successful: ${JSON.stringify(result)}`, 'success');
+                } else {
+                    const errorText = await response.text();
+                    showResult('test2-result', `❌ File upload failed (${response.status}): ${errorText}`, 'error');
+                }
+            } catch (error) {
+                showResult('test2-result', `❌ File upload error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testLargePayload() {
+            showResult('test3-result', 'Creating 1MB payload...', 'info');
+            
+            try {
+                // Create a 1MB payload
+                const largeData = 'x'.repeat(1024 * 1024); // 1MB
+                
+                const response = await fetch('/api/content/test-upload', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ data: largeData })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    showResult('test3-result', `✅ Large payload successful: ${JSON.stringify(result)}`, 'success');
+                } else {
+                    const errorText = await response.text();
+                    showResult('test3-result', `❌ Large payload failed (${response.status}): ${errorText}`, 'error');
+                }
+            } catch (error) {
+                showResult('test3-result', `❌ Large payload error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testHeroUpload() {
+            const fileInput = document.getElementById('heroFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showResult('test4-result', 'Please select a video file first', 'error');
+                return;
+            }
+            
+            showResult('test4-result', `Testing hero upload: ${file.name} (${(file.size/1024/1024).toFixed(2)}MB)`, 'info');
+            
+            try {
+                const formData = new FormData();
+                formData.append('heroVideo', file);
+                
+                const contentData = {
+                    title: 'Debug Test',
+                    subtitle: 'Testing hero upload',
+                    bgColor: '#1e40af',
+                    textColor: '#ffffff'
+                };
+                formData.append('content', JSON.stringify(contentData));
+                
+                const response = await fetch('/api/content/hero', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    showResult('test4-result', `✅ Hero upload successful: ${JSON.stringify(result)}`, 'success');
+                } else {
+                    const errorText = await response.text();
+                    showResult('test4-result', `❌ Hero upload failed (${response.status}): ${errorText}`, 'error');
+                }
+            } catch (error) {
+                showResult('test4-result', `❌ Hero upload error: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-run basic test on page load
+        window.onload = function() {
+            testBasicEndpoint();
+        };
+    </script>
+</body>
+</html>

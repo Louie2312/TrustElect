@@ -51,7 +51,10 @@ const upload = multer({
     }
   },
   limits: {
-    fileSize: 200 * 1024 * 1024 // 200MB limit for videos
+    fileSize: 200 * 1024 * 1024, // 200MB limit for videos
+    fieldSize: 200 * 1024 * 1024, // 200MB limit for field size
+    fieldNameSize: 100, // 100 bytes for field name
+    files: 10 // Maximum number of files
   }
 });
 
@@ -126,6 +129,13 @@ const getSectionContent = async (req, res) => {
  * @param {Object} res 
  */
 const updateSectionContent = async (req, res) => {
+  console.log('=== Content Upload Debug Info ===');
+  console.log('Section:', req.params.section);
+  console.log('Content-Type:', req.headers['content-type']);
+  console.log('Content-Length:', req.headers['content-length']);
+  console.log('User-Agent:', req.headers['user-agent']);
+  console.log('================================');
+  
   const uploadFields = [
     { name: 'logo', maxCount: 1 },
     { name: 'heroVideo', maxCount: 1 },
@@ -142,6 +152,22 @@ const updateSectionContent = async (req, res) => {
   uploadMiddleware(req, res, async (err) => {
     if (err) {
       console.error('Error during file upload:', err);
+      console.error('Error code:', err.code);
+      console.error('Error field:', err.field);
+      
+      // Handle specific multer errors
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({ 
+          error: 'File too large. Maximum size is 200MB.',
+          code: 'LIMIT_FILE_SIZE'
+        });
+      } else if (err.code === 'LIMIT_FIELD_SIZE') {
+        return res.status(413).json({ 
+          error: 'Field too large. Maximum size is 200MB.',
+          code: 'LIMIT_FIELD_SIZE'
+        });
+      }
+      
       return res.status(400).json({ error: err.message });
     }
     
