@@ -485,7 +485,7 @@ export default function VoterParticipationReport() {
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
                   >
-                    Voted Only
+                    Voted
                   </button>
                   <button
                     onClick={() => handleFilterChange('not_voted')}
@@ -495,7 +495,7 @@ export default function VoterParticipationReport() {
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
                   >
-                    Not Voted Only
+                    Not Voted
                   </button>
                 </div>
               </div>
