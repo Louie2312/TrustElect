@@ -176,7 +176,7 @@ export default function CandidateListReport() {
           position_name: position.position,
           candidates: position.candidates.map(candidate => ({
             name: `${candidate.first_name} ${candidate.last_name}`,
-            course: candidate.course || 'Mix-level/course students',
+            course: candidate.course === 'Not a student' ? 'Mix-level/Course Students' : (candidate.course || 'Mix-level/Course Students'),
             party: candidate.party || 'Independent',
             slogan: candidate.slogan || 'N/A',
             platform: candidate.platform || 'N/A',
@@ -452,7 +452,7 @@ export default function CandidateListReport() {
                       <h4 className="font-semibold text-gray-900">
                         {candidate.first_name} {candidate.last_name}
                       </h4>
-                      <p className="text-sm text-gray-600">Course: {candidate.course || 'Mix-level/course students'}</p>
+                      <p className="text-sm text-gray-600">Course: {candidate.course === 'Not a student' ? 'Mix-level/Course Students' : (candidate.course || 'Mix-level/Course Students')}</p>
                       <p className="text-sm text-gray-600">
                         Party: {candidate.party || 'Independent'}
                       </p>
