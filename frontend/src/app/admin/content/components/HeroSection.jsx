@@ -97,6 +97,7 @@ const HeroSection = ({
             </label>
             <div className="flex items-center">
             <input 
+              id="hero-video-input"
               type="file" 
               accept="video/mp4,video/webm"
               onChange={(e) => handleFileUpload('heroVideo', null, e)}

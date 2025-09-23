@@ -125,6 +125,7 @@ const CTASection = ({
           </label>
           <div className="flex items-center">
             <input 
+              id="cta-video-input"
               type="file" 
               accept="video/mp4,video/webm"
               onChange={(e) => handleFileUpload('ctaVideo', null, e)}

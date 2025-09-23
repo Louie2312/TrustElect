@@ -306,6 +306,15 @@ export default function ContentManagement() {
       }
       console.log("Updating hero poster image URL:", localUrl);
       updateHero('posterImage', localUrl);
+    }
+    else if (type === 'ctaVideo') {
+      if (file.size > 200 * 1024 * 1024) {
+        alert("Video file is too large. Maximum size is 200MB.");
+        e.target.value = '';
+        return;
+      }
+      console.log("Updating CTA video URL:", localUrl);
+      updateCTA('videoUrl', localUrl);
     } 
     else if (type === 'featureImage') {
       if (file.size > 5 * 1024 * 1024) {
@@ -342,6 +351,9 @@ export default function ContentManagement() {
     else if (type === 'heroPoster') {
       updateHero('posterImage', null);
     } 
+    else if (type === 'ctaVideo') {
+      updateCTA('videoUrl', null);
+    }
     else if (type === 'featureImage') {
       updateFeature(index, 'imageUrl', null);
     }
@@ -410,7 +422,7 @@ export default function ContentManagement() {
         };
   
         // Append hero video file if selected
-        const videoInput = document.querySelector('input[type="file"][accept*="video"]');
+        const videoInput = document.querySelector('#hero-video-input');
         if (videoInput && videoInput.files.length > 0) {
           formData.append('heroVideo', videoInput.files[0]);
         }
@@ -439,6 +451,29 @@ export default function ContentManagement() {
             formData.append(`featureImage${index}`, featureInput.files[0]);
           }
         });
+      } else if (section === 'callToAction') {
+        // Handle CTA section
+        contentData = {
+          title: landingContent.callToAction.title,
+          subtitle: landingContent.callToAction.subtitle,
+          buttonText: landingContent.callToAction.buttonText,
+          buttonUrl: landingContent.callToAction.buttonUrl,
+          enabled: landingContent.callToAction.enabled,
+          videoUrl: landingContent.callToAction.videoUrl,
+          bgColor: landingContent.callToAction.bgColor,
+          textColor: landingContent.callToAction.textColor,
+          purpose: landingContent.callToAction.purpose
+        };
+
+        // Append CTA video file if selected
+        const ctaVideoInput = document.querySelector('#cta-video-input');
+        if (ctaVideoInput && ctaVideoInput.files.length > 0) {
+          formData.append('ctaVideo', ctaVideoInput.files[0]);
+        }
+        
+        if (landingContent.callToAction.videoUrl === null) {
+          formData.append('removeCtaVideo', 'true');
+        }
       } else {
         // For other sections, just use the content as-is
         contentData = { ...landingContent[section] };
