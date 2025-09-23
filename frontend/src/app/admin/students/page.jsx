@@ -56,6 +56,7 @@ export default function StudentsListPage() {
   const [isDeletingAll, setIsDeletingAll] = useState(false);
 
   const { hasPermission, loading: permissionsLoading, refreshPermissions } = usePermissions();
+  const [userRole, setUserRole] = useState(null);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: {
@@ -73,6 +74,17 @@ export default function StudentsListPage() {
   useEffect(() => {
     console.log("Students page: Forcing permissions refresh");
     refreshPermissions();
+    
+    // Get user role from token
+    const token = Cookies.get('token');
+    if (token) {
+      try {
+        const tokenData = JSON.parse(atob(token.split('.')[1]));
+        setUserRole(tokenData.role);
+      } catch (error) {
+        console.error("Error parsing token:", error);
+      }
+    }
     
     try {
       const userId = Cookies.get('userId');
@@ -628,6 +640,7 @@ export default function StudentsListPage() {
           </button>
         )}
 
+        {/* Batch Upload - Available for both admin and superadmin with proper permissions */}
         {hasPermission('users', 'create') && (
           <button 
             onClick={() => setShowBatchModal(true)} 
@@ -637,7 +650,8 @@ export default function StudentsListPage() {
           </button>
         )}
 
-        {hasPermission('users', 'delete') && (
+        {/* Delete operations - Only for superadmin */}
+        {userRole === 'superadmin' && hasPermission('users', 'delete') && (
           <>
             <button 
               onClick={() => {
@@ -744,7 +758,8 @@ export default function StudentsListPage() {
                     {hasPermission('users', 'edit') && (
                       <button onClick={() => { setSelectedStudent(student); setShowEditModal(true); }} className="bg-green-500 text-white px-3 py-1 rounded">Edit</button>
                     )}
-                    {hasPermission('users', 'delete') && (
+                    {/* Delete button - Only for superadmin */}
+                    {userRole === 'superadmin' && hasPermission('users', 'delete') && (
                       <button onClick={() => deleteStudent(student.id)} className="bg-red-500 text-white px-3 py-1 rounded">Delete</button>
                     )}
                     {hasPermission('users', 'edit') && (
