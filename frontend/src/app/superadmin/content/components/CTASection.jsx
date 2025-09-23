@@ -192,31 +192,19 @@ const CTASection = ({
                             e.currentTarget.style.display = 'none';
                           }}
                         />
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                        <div className="absolute inset-0 bg-black/40 flex items-start justify-center pt-8">
                           <div className="text-center">
-                            <h3 className="text-2xl font-bold mb-4" style={{color: landingContent.callToAction.textColor || '#ffffff'}}>
+                            <h3 className="text-2xl font-bold drop-shadow-2xl" style={{color: landingContent.callToAction.textColor || '#ffffff'}}>
                               {landingContent.callToAction.title}
                             </h3>
-                            <p className="text-lg mb-6" style={{color: landingContent.callToAction.textColor || '#ffffff'}}>
-                              {landingContent.callToAction.subtitle}
-                            </p>
-                            <button className="px-6 py-3 bg-white rounded shadow-sm font-medium text-lg" style={{color: landingContent.callToAction.bgColor || '#1e3a8a'}}>
-                              {landingContent.callToAction.buttonText || "Contact Us"}
-                            </button>
                           </div>
                         </div>
                       </div>
                     ) : (
                       <div>
-                        <h3 className="text-2xl font-bold mb-4" style={{color: landingContent.callToAction.textColor || '#ffffff'}}>
+                        <h3 className="text-2xl font-bold" style={{color: landingContent.callToAction.textColor || '#ffffff'}}>
                           {landingContent.callToAction.title}
                         </h3>
-                        <p className="text-lg mb-6" style={{color: landingContent.callToAction.textColor || '#ffffff'}}>
-                          {landingContent.callToAction.subtitle}
-                        </p>
-                        <button className="px-6 py-3 bg-white rounded shadow-sm font-medium text-lg" style={{color: landingContent.callToAction.bgColor || '#1e3a8a'}}>
-                          {landingContent.callToAction.buttonText || "Contact Us"}
-                        </button>
                       </div>
                     )}
                   </div>

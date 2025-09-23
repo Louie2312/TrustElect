@@ -505,38 +505,22 @@ export default function Home() {
                       const fallback = document.createElement('div');
                       fallback.className = 'absolute inset-0 flex items-center justify-center bg-gradient-to-br from-blue-600 to-purple-700';
                       fallback.innerHTML = `
-                        <div class="text-center">
-                          <h2 class="text-5xl font-bold mb-6 text-white">${landingContent.callToAction.title}</h2>
-                          <p class="text-2xl mb-10 text-white">${landingContent.callToAction.subtitle}</p>
-                          <button class="px-8 py-4 bg-white rounded-lg shadow-lg font-semibold text-xl hover:bg-gray-100 transition-colors" style="color: ${landingContent.callToAction?.bgColor || '#1e3a8a'}">
-                            ${landingContent.callToAction.buttonText || "Contact Us"}
-                          </button>
+                        <div class="text-center pt-16">
+                          <h2 class="text-6xl font-bold drop-shadow-2xl text-white">${landingContent.callToAction.title}</h2>
                         </div>
                       `;
                       parent.appendChild(fallback);
                     }
                   }}
                 />
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                <div className="absolute inset-0 bg-black/40 flex items-start justify-center pt-16">
                   <div className="text-center max-w-5xl px-8">
                     <h2 
-                      className="text-6xl font-bold mb-8 drop-shadow-2xl"
+                      className="text-6xl font-bold drop-shadow-2xl"
                       style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
                     >
                       {landingContent.callToAction.title}
                     </h2>
-                    <p 
-                      className="text-3xl mb-12 drop-shadow-lg leading-relaxed"
-                      style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
-                    >
-                      {landingContent.callToAction.subtitle}
-                    </p>
-                    <button 
-                      className="px-12 py-6 bg-white rounded-xl shadow-2xl font-bold text-2xl hover:bg-gray-100 transition-all duration-300 transform hover:scale-105"
-                      style={{ color: landingContent.callToAction?.bgColor || '#1e3a8a' }}
-                    >
-                      {landingContent.callToAction.buttonText || "Contact Us"}
-                    </button>
                   </div>
                 </div>
               </div>
@@ -544,23 +528,11 @@ export default function Home() {
               <div className="text-center max-w-5xl mx-auto min-h-[600px] flex items-center justify-center">
                 <div>
                   <h2 
-                    className="text-6xl font-bold mb-8"
+                    className="text-6xl font-bold"
                     style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
                   >
                     {landingContent.callToAction.title}
                   </h2>
-                  <p 
-                    className="text-3xl mb-12 leading-relaxed"
-                    style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
-                  >
-                    {landingContent.callToAction.subtitle}
-                  </p>
-                  <button 
-                    className="px-12 py-6 bg-white rounded-xl shadow-2xl font-bold text-2xl hover:bg-gray-100 transition-all duration-300 transform hover:scale-105"
-                    style={{ color: landingContent.callToAction?.bgColor || '#1e3a8a' }}
-                  >
-                    {landingContent.callToAction.buttonText || "Contact Us"}
-                  </button>
                 </div>
               </div>
             )}
