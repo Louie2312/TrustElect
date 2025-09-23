@@ -46,7 +46,10 @@ export default function Home() {
       title: "Ready to Vote?",
       subtitle: "Start your experience with TrustElect",
       buttonText: "Contact Us",
-      enabled: true
+      enabled: true,
+      videoUrl: null,
+      bgColor: "#1e3a8a",
+      textColor: "#ffffff"
     }
   });
 
@@ -142,6 +145,7 @@ export default function Home() {
             buttonText: newCTA.buttonText || landingContent.callToAction.buttonText,
             buttonUrl: newCTA.buttonUrl || landingContent.callToAction.buttonUrl,
             enabled: typeof newCTA.enabled !== 'undefined' ? newCTA.enabled : true,
+            videoUrl: newCTA.videoUrl || null,
             bgColor: newCTA.bgColor || landingContent.callToAction.bgColor || "#1e3a8a",
             textColor: newCTA.textColor || landingContent.callToAction.textColor || "#ffffff"
           }
@@ -333,13 +337,24 @@ export default function Home() {
               const heroVideoUrl = landingContent.hero && landingContent.hero.videoUrl ? 
                 formatImageUrl(landingContent.hero.videoUrl) : null;
               
+              // Safety check: Ensure hero video is not accidentally using CTA video
+              if (heroVideoUrl && landingContent.callToAction?.videoUrl && 
+                  heroVideoUrl === formatImageUrl(landingContent.callToAction.videoUrl)) {
+                console.warn("WARNING: Hero video URL matches CTA video URL - this should not happen!");
+                console.warn("Hero video URL:", heroVideoUrl);
+                console.warn("CTA video URL:", formatImageUrl(landingContent.callToAction.videoUrl));
+              }
+              
               const heroPosterUrl = landingContent.hero && landingContent.hero.posterImage ? 
                 formatImageUrl(landingContent.hero.posterImage) : null;
 
               // Debug logging to ensure we're not mixing up videos
+              console.log("=== VIDEO DEBUG INFO ===");
               console.log("Hero section - Video URL:", heroVideoUrl);
               console.log("Hero section - Poster URL:", heroPosterUrl);
               console.log("CTA section - Video URL:", landingContent.callToAction?.videoUrl);
+              console.log("Full landing content:", landingContent);
+              console.log("=========================");
 
           if (heroVideoUrl) {
                 return (
@@ -449,7 +464,24 @@ export default function Home() {
           }}
         >
           <div className="container mx-auto max-w-8xl">
-            {landingContent.callToAction.videoUrl ? (
+            {(() => {
+              console.log("=== CTA SECTION DEBUG ===");
+              console.log("CTA video URL:", landingContent.callToAction?.videoUrl);
+              console.log("CTA enabled:", landingContent.callToAction?.enabled);
+              console.log("Formatted CTA video URL:", landingContent.callToAction?.videoUrl ? formatImageUrl(landingContent.callToAction.videoUrl) : null);
+              
+              // Safety check: Ensure CTA video is not accidentally using hero video
+              if (landingContent.callToAction?.videoUrl && landingContent.hero?.videoUrl && 
+                  formatImageUrl(landingContent.callToAction.videoUrl) === formatImageUrl(landingContent.hero.videoUrl)) {
+                console.warn("WARNING: CTA video URL matches Hero video URL - this should not happen!");
+                console.warn("CTA video URL:", formatImageUrl(landingContent.callToAction.videoUrl));
+                console.warn("Hero video URL:", formatImageUrl(landingContent.hero.videoUrl));
+              }
+              
+              console.log("========================");
+              
+              return landingContent.callToAction?.videoUrl;
+            })() ? (
               <div className="relative min-h-[800px] flex items-center justify-center rounded-3xl overflow-hidden shadow-2xl">
                 <video
                   src={formatImageUrl(landingContent.callToAction.videoUrl)}

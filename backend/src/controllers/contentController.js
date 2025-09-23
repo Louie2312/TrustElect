@@ -94,6 +94,11 @@ const isValidColorFormat = (color) => {
 const getAllContent = async (req, res) => {
   try {
     const content = await contentModel.getAllContent();
+    console.log('=== CONTENT RETRIEVAL DEBUG ===');
+    console.log('Retrieved content keys:', Object.keys(content));
+    console.log('CTA content:', content.callToAction);
+    console.log('Hero content:', content.hero);
+    console.log('===============================');
     res.status(200).json(content);
   } catch (error) {
     console.error('Error in getAllContent controller:', error);
@@ -359,6 +364,10 @@ const updateSectionContent = async (req, res) => {
           }
         }
       } else if (section === 'callToAction') {
+        console.log('=== CTA SECTION PROCESSING ===');
+        console.log('Request files:', Object.keys(req.files || {}));
+        console.log('Request body keys:', Object.keys(req.body || {}));
+        
         // Process CTA video if uploaded or handle removal
         const ctaVideoFile = req.files?.ctaVideo?.[0];
         if (ctaVideoFile) {
@@ -391,9 +400,12 @@ const updateSectionContent = async (req, res) => {
           }
 
           contentData.videoUrl = videoUrl;
+          console.log('CTA contentData after video processing:', contentData);
         } else if (req.body.removeCtaVideo === 'true') {
           console.log('Removing CTA video');
           contentData.videoUrl = null;
+        } else {
+          console.log('No CTA video file found in request');
         }
 
         if (contentData.bgColor && !isValidColorFormat(contentData.bgColor)) {

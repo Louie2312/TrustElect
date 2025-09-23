@@ -108,6 +108,7 @@ async function getSectionContent(sectionKey) {
         subtitle: "Start your experience with TrustElect.",
         buttonText: "Contact Us",
         enabled: true,
+        videoUrl: null,
         bgColor: "#1e3a8a",
         textColor: "#ffffff",
         mediaType: null,
