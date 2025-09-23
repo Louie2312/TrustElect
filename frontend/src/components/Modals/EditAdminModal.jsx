@@ -5,7 +5,7 @@ import axios from "axios";
 import Cookies from "js-cookie";
 import { toast } from "react-hot-toast";
 
-export default function EditAdminModal({ admin, onClose }) {
+export default function EditAdminModal({ admin, onClose, onSuccess }) {
   const [formData, setFormData] = useState({
     firstName: admin.first_name || "",
     lastName: admin.last_name || "",
@@ -232,8 +232,15 @@ export default function EditAdminModal({ admin, onClose }) {
         headers: { Authorization: `Bearer ${token}` },
       });
       
-      toast.success(`${updateData.first_name} ${updateData.last_name} updated successfully!`);
-      onClose();
+      toast.success(`${updateData.firstName} ${updateData.lastName} updated successfully!`);
+      
+      // Call onSuccess callback if provided
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        onClose();
+      }
+      
       // Trigger a callback function instead of reloading the page
       if (typeof window !== 'undefined') {
         // Create an event to notify that an admin was updated
