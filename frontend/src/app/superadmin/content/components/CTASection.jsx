@@ -170,44 +170,45 @@ const CTASection = ({
             </div>
             <div className="p-4">
               {landingContent.callToAction.enabled ? (
-                <div className="relative">
-                  <div 
-                    className="p-8 rounded-lg text-center shadow-sm relative min-h-[400px] flex items-center justify-center"
-                    style={{
-                      backgroundColor: landingContent.callToAction.bgColor || '#1e3a8a',
-                      color: landingContent.callToAction.textColor || '#ffffff'
-                    }}
-                  >
-                    {landingContent.callToAction.videoUrl ? (
-                      <div className="absolute inset-0 w-full h-full">
-                        <video
-                          src={formatImageUrl(landingContent.callToAction.videoUrl)}
-                          autoPlay
-                          muted
-                          loop
-                          playsInline
-                          className="w-full h-full object-cover rounded-lg"
-                          onError={(e) => {
-                            console.error("Error loading CTA video in preview:", landingContent.callToAction.videoUrl);
-                            e.currentTarget.style.display = 'none';
-                          }}
-                        />
-                        <div className="absolute inset-0 bg-black/40 flex items-start justify-center pt-8">
-                          <div className="text-center">
-                            <h3 className="text-2xl font-bold drop-shadow-2xl" style={{color: landingContent.callToAction.textColor || '#ffffff'}}>
-                              {landingContent.callToAction.title}
-                            </h3>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div>
-                        <h3 className="text-2xl font-bold" style={{color: landingContent.callToAction.textColor || '#ffffff'}}>
-                          {landingContent.callToAction.title}
-                        </h3>
-                      </div>
-                    )}
+                <div className="space-y-4">
+                  {/* Title above the video */}
+                  <div className="text-center">
+                    <h3 
+                      className="text-2xl font-bold drop-shadow-2xl"
+                      style={{color: landingContent.callToAction.textColor || '#ffffff'}}
+                    >
+                      {landingContent.callToAction.title}
+                    </h3>
                   </div>
+
+                  {/* Video container */}
+                  {landingContent.callToAction.videoUrl ? (
+                    <div 
+                      className="relative min-h-[300px] rounded-lg overflow-hidden shadow-sm"
+                      style={{
+                        backgroundColor: landingContent.callToAction.bgColor || '#1e3a8a'
+                      }}
+                    >
+                      <video
+                        src={formatImageUrl(landingContent.callToAction.videoUrl)}
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        className="w-full h-full object-cover rounded-lg"
+                        onError={(e) => {
+                          console.error("Error loading CTA video in preview:", landingContent.callToAction.videoUrl);
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div 
+                      className="min-h-[200px] flex items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-purple-700"
+                    >
+                      <p className="text-sm text-white">No video uploaded</p>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="flex items-center justify-center h-32 bg-gray-100 rounded-lg border-2 border-dashed">

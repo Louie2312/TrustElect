@@ -464,78 +464,74 @@ export default function Home() {
           }}
         >
           <div className="container mx-auto max-w-8xl">
-            {(() => {
-              console.log("=== CTA SECTION DEBUG ===");
-              console.log("CTA video URL:", landingContent.callToAction?.videoUrl);
-              console.log("CTA enabled:", landingContent.callToAction?.enabled);
-              console.log("Formatted CTA video URL:", landingContent.callToAction?.videoUrl ? formatImageUrl(landingContent.callToAction.videoUrl) : null);
-              
-              // Safety check: Ensure CTA video is not accidentally using hero video
-              if (landingContent.callToAction?.videoUrl && landingContent.hero?.videoUrl && 
-                  formatImageUrl(landingContent.callToAction.videoUrl) === formatImageUrl(landingContent.hero.videoUrl)) {
-                console.warn("WARNING: CTA video URL matches Hero video URL - this should not happen!");
-                console.warn("CTA video URL:", formatImageUrl(landingContent.callToAction.videoUrl));
-                console.warn("Hero video URL:", formatImageUrl(landingContent.hero.videoUrl));
-              }
-              
-              console.log("========================");
-              
-              return landingContent.callToAction?.videoUrl;
-            })() ? (
-              <div className="relative min-h-[800px] flex items-center justify-center rounded-3xl overflow-hidden shadow-2xl">
-                <video
-                  src={formatImageUrl(landingContent.callToAction.videoUrl)}
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  className="absolute inset-0 w-full h-full object-cover"
-                  onLoadStart={() => {
-                    console.log("CTA Video loading started:", landingContent.callToAction.videoUrl);
-                  }}
-                  onLoadedData={() => {
-                    console.log("CTA Video loaded successfully:", landingContent.callToAction.videoUrl);
-                  }}
-                  onError={(e) => {
-                    console.error("Error loading CTA video:", landingContent.callToAction.videoUrl);
-                    console.error("Formatted URL:", formatImageUrl(landingContent.callToAction.videoUrl));
-                    e.currentTarget.style.display = 'none';
-                    const parent = e.currentTarget.parentElement;
-                    if (parent) {
-                      const fallback = document.createElement('div');
-                      fallback.className = 'absolute inset-0 flex items-center justify-center bg-gradient-to-br from-blue-600 to-purple-700';
-                      fallback.innerHTML = `
-                        <div class="text-center pt-16">
-                          <h2 class="text-6xl font-bold drop-shadow-2xl text-white">${landingContent.callToAction.title}</h2>
-                        </div>
-                      `;
-                      parent.appendChild(fallback);
-                    }
-                  }}
-                />
-                <div className="absolute inset-0 bg-black/40 flex items-start justify-center pt-16">
-                  <div className="text-center max-w-5xl px-8">
-                    <h2 
-                      className="text-6xl font-bold drop-shadow-2xl"
-                      style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
-                    >
-                      {landingContent.callToAction.title}
-                    </h2>
-                  </div>
-                </div>
+            <div className="space-y-8">
+              {/* Title above the video */}
+              <div className="text-center">
+                <h2 
+                  className="text-6xl font-bold drop-shadow-2xl"
+                  style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
+                >
+                  {landingContent.callToAction.title}
+                </h2>
               </div>
-            ) : (
-              <div className="text-center max-w-5xl mx-auto min-h-[600px] flex items-center justify-center">
-                <div>
-                  <h2 
-                    className="text-6xl font-bold"
-                    style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
-                  >
-                    {landingContent.callToAction.title}
-                  </h2>
+
+              {/* Video container */}
+              {(() => {
+                console.log("=== CTA SECTION DEBUG ===");
+                console.log("CTA video URL:", landingContent.callToAction?.videoUrl);
+                console.log("CTA enabled:", landingContent.callToAction?.enabled);
+                console.log("Formatted CTA video URL:", landingContent.callToAction?.videoUrl ? formatImageUrl(landingContent.callToAction.videoUrl) : null);
+                
+                // Safety check: Ensure CTA video is not accidentally using hero video
+                if (landingContent.callToAction?.videoUrl && landingContent.hero?.videoUrl && 
+                    formatImageUrl(landingContent.callToAction.videoUrl) === formatImageUrl(landingContent.hero.videoUrl)) {
+                  console.warn("WARNING: CTA video URL matches Hero video URL - this should not happen!");
+                  console.warn("CTA video URL:", formatImageUrl(landingContent.callToAction.videoUrl));
+                  console.warn("Hero video URL:", formatImageUrl(landingContent.hero.videoUrl));
+                }
+                
+                console.log("========================");
+                
+                return landingContent.callToAction?.videoUrl;
+              })() ? (
+                <div className="relative min-h-[600px] flex items-center justify-center rounded-3xl overflow-hidden shadow-2xl">
+                  <video
+                    src={formatImageUrl(landingContent.callToAction.videoUrl)}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    className="w-full h-full object-cover"
+                    onLoadStart={() => {
+                      console.log("CTA Video loading started:", landingContent.callToAction.videoUrl);
+                    }}
+                    onLoadedData={() => {
+                      console.log("CTA Video loaded successfully:", landingContent.callToAction.videoUrl);
+                    }}
+                    onError={(e) => {
+                      console.error("Error loading CTA video:", landingContent.callToAction.videoUrl);
+                      console.error("Formatted URL:", formatImageUrl(landingContent.callToAction.videoUrl));
+                      e.currentTarget.style.display = 'none';
+                      const parent = e.currentTarget.parentElement;
+                      if (parent) {
+                        const fallback = document.createElement('div');
+                        fallback.className = 'absolute inset-0 flex items-center justify-center bg-gradient-to-br from-blue-600 to-purple-700';
+                        fallback.innerHTML = `
+                          <div class="text-center">
+                            <p class="text-2xl text-white">Video unavailable</p>
+                          </div>
+                        `;
+                        parent.appendChild(fallback);
+                      }
+                    }}
+                  />
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="min-h-[400px] flex items-center justify-center rounded-3xl bg-gradient-to-br from-blue-600 to-purple-700 shadow-2xl">
+                  <p className="text-2xl text-white">No video uploaded</p>
+                </div>
+              )}
+            </div>
           </div>
         </section>
       )}
