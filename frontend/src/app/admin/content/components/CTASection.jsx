@@ -5,6 +5,9 @@ const CTASection = ({
   landingContent, 
   updateCTA, 
   saveSectionContent, 
+  formatImageUrl,
+  handleFileUpload,
+  removeImage,
   showPreview
 }) => {
   return (
@@ -116,6 +119,34 @@ const CTASection = ({
           </div>
         </div>
 
+        <div>
+          <label className="block text-sm font-medium text-black mb-1">
+            Background Video
+          </label>
+          <div className="flex items-center">
+            <input 
+              type="file" 
+              accept="video/mp4,video/webm"
+              onChange={(e) => handleFileUpload('ctaVideo', null, e)}
+              className="w-full border rounded p-1 text-sm file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-blue-50 file:text-black text-black"
+            />
+            {landingContent.callToAction.videoUrl && (
+              <button
+                onClick={() => removeImage('ctaVideo')}
+                className="ml-2 bg-red-100 text-red-800 px-2 py-1 rounded text-xs hover:bg-red-200"
+                title="Remove video"
+              >
+                Remove
+              </button>
+            )}
+          </div>
+          {landingContent.callToAction.videoUrl && !landingContent.callToAction.videoUrl.startsWith('blob:') && (
+            <p className="mt-1 text-xs text-black truncate">
+              Current: {landingContent.callToAction.videoUrl}
+            </p>
+          )}
+        </div>
+
         <div className="flex items-center">
           <input
             type="checkbox"
@@ -140,23 +171,48 @@ const CTASection = ({
               {landingContent.callToAction.enabled ? (
                 <div className="relative">
                   <div 
-                    className="p-4 rounded-lg text-center shadow-sm relative"
+                    className="p-8 rounded-lg text-center shadow-sm relative min-h-[400px] flex items-center justify-center"
                     style={{
                       backgroundColor: landingContent.callToAction.bgColor || '#1e3a8a',
                       color: landingContent.callToAction.textColor || '#ffffff'
                     }}
                   >
-                    <div>
-                      <h3 className="text-lg font-bold mb-2" style={{color: landingContent.callToAction.textColor || '#ffffff'}}>
-                        {landingContent.callToAction.title}
-                      </h3>
-                      <p className="text-sm mb-3" style={{color: landingContent.callToAction.textColor || '#ffffff'}}>
-                        {landingContent.callToAction.subtitle}
-                      </p>
-                      <button className="px-4 py-2 bg-white rounded shadow-sm font-medium" style={{color: landingContent.callToAction.bgColor || '#1e3a8a'}}>
-                        {landingContent.callToAction.buttonText || "Contact Us"}
-                      </button>
-                    </div>
+                    {landingContent.callToAction.videoUrl ? (
+                      <div className="absolute inset-0 w-full h-full">
+                        <video
+                          src={formatImageUrl(landingContent.callToAction.videoUrl)}
+                          autoPlay
+                          muted
+                          loop
+                          className="w-full h-full object-cover rounded-lg"
+                        />
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                          <div className="text-center">
+                            <h3 className="text-2xl font-bold mb-4" style={{color: landingContent.callToAction.textColor || '#ffffff'}}>
+                              {landingContent.callToAction.title}
+                            </h3>
+                            <p className="text-lg mb-6" style={{color: landingContent.callToAction.textColor || '#ffffff'}}>
+                              {landingContent.callToAction.subtitle}
+                            </p>
+                            <button className="px-6 py-3 bg-white rounded shadow-sm font-medium text-lg" style={{color: landingContent.callToAction.bgColor || '#1e3a8a'}}>
+                              {landingContent.callToAction.buttonText || "Contact Us"}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <h3 className="text-2xl font-bold mb-4" style={{color: landingContent.callToAction.textColor || '#ffffff'}}>
+                          {landingContent.callToAction.title}
+                        </h3>
+                        <p className="text-lg mb-6" style={{color: landingContent.callToAction.textColor || '#ffffff'}}>
+                          {landingContent.callToAction.subtitle}
+                        </p>
+                        <button className="px-6 py-3 bg-white rounded shadow-sm font-medium text-lg" style={{color: landingContent.callToAction.bgColor || '#1e3a8a'}}>
+                          {landingContent.callToAction.buttonText || "Contact Us"}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (

@@ -143,7 +143,8 @@ const updateSectionContent = async (req, res) => {
   const uploadFields = [
     { name: 'logo', maxCount: 1 },
     { name: 'heroVideo', maxCount: 1 },
-    { name: 'heroPoster', maxCount: 1 }
+    { name: 'heroPoster', maxCount: 1 },
+    { name: 'ctaVideo', maxCount: 1 }
   ];
   
   // Support up to 10 feature cards
@@ -358,6 +359,43 @@ const updateSectionContent = async (req, res) => {
           }
         }
       } else if (section === 'callToAction') {
+        // Process CTA video if uploaded or handle removal
+        const ctaVideoFile = req.files?.ctaVideo?.[0];
+        if (ctaVideoFile) {
+          console.log('Processing CTA video:', {
+            filename: ctaVideoFile.filename,
+            originalname: ctaVideoFile.originalname,
+            mimetype: ctaVideoFile.mimetype,
+            size: ctaVideoFile.size,
+            path: ctaVideoFile.path
+          });
+          
+          const videoUrl = normalizeFilePath(`/uploads/videos/${ctaVideoFile.filename}`);
+          console.log('CTA Video URL:', videoUrl);
+          
+          // Save media to database
+          try {
+            const videoMedia = await contentModel.saveMedia({
+              filename: ctaVideoFile.filename,
+              originalFilename: ctaVideoFile.originalname,
+              fileType: 'video',
+              mimeType: ctaVideoFile.mimetype,
+              fileSize: ctaVideoFile.size,
+              path: ctaVideoFile.path,
+              url: videoUrl,
+              altText: 'CTA video'
+            });
+            console.log('CTA video media saved successfully:', videoMedia);
+          } catch (error) {
+            console.error('Error saving CTA video media:', error);
+          }
+
+          contentData.videoUrl = videoUrl;
+        } else if (req.body.removeCtaVideo === 'true') {
+          console.log('Removing CTA video');
+          contentData.videoUrl = null;
+        }
+
         if (contentData.bgColor && !isValidColorFormat(contentData.bgColor)) {
           contentData.bgColor = "#1e3a8a"; 
         }

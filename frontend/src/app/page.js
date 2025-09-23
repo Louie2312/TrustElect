@@ -434,7 +434,75 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Features Section */}
+      {/* Call to Action Section - Moved after Hero */}
+      {landingContent.callToAction.enabled && (
+        <section 
+          className="text-white py-24 px-6"
+          style={{
+            backgroundColor: landingContent.callToAction?.bgColor || '#1e3a8a',
+            color: landingContent.callToAction?.textColor || '#ffffff'
+          }}
+        >
+          <div className="container mx-auto max-w-7xl">
+            {landingContent.callToAction.videoUrl ? (
+              <div className="relative min-h-[600px] flex items-center justify-center rounded-2xl overflow-hidden">
+                <video
+                  src={formatImageUrl(landingContent.callToAction.videoUrl)}
+                  autoPlay
+                  muted
+                  loop
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                  <div className="text-center max-w-4xl">
+                    <h2 
+                      className="text-5xl font-bold mb-6"
+                      style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
+                    >
+                      {landingContent.callToAction.title}
+                    </h2>
+                    <p 
+                      className="text-2xl mb-10"
+                      style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
+                    >
+                      {landingContent.callToAction.subtitle}
+                    </p>
+                    <button 
+                      className="px-8 py-4 bg-white rounded-lg shadow-lg font-semibold text-xl hover:bg-gray-100 transition-colors"
+                      style={{ color: landingContent.callToAction?.bgColor || '#1e3a8a' }}
+                    >
+                      {landingContent.callToAction.buttonText || "Contact Us"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center max-w-4xl mx-auto">
+                <h2 
+                  className="text-5xl font-bold mb-6"
+                  style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
+                >
+                  {landingContent.callToAction.title}
+                </h2>
+                <p 
+                  className="text-2xl mb-10"
+                  style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
+                >
+                  {landingContent.callToAction.subtitle}
+                </p>
+                <button 
+                  className="px-8 py-4 bg-white rounded-lg shadow-lg font-semibold text-xl hover:bg-gray-100 transition-colors"
+                  style={{ color: landingContent.callToAction?.bgColor || '#1e3a8a' }}
+                >
+                  {landingContent.callToAction.buttonText || "Contact Us"}
+                </button>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* Features Section - Moved after CTA */}
       <section className="py-20 px-6 bg-gray-50">
         <div className="container mx-auto max-w-6xl">
           <h2 className="text-3xl font-bold text-center mb-12 text-gray-800">
@@ -509,32 +577,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      {/* Call to Action Section */}
-      {landingContent.callToAction.enabled && (
-        <section 
-          className="text-white py-16 px-6"
-          style={{
-            backgroundColor: landingContent.callToAction?.bgColor || '#1e3a8a',
-            color: landingContent.callToAction?.textColor || '#ffffff'
-          }}
-        >
-          <div className="container mx-auto max-w-4xl text-center">
-            <h2 
-              className="text-3xl font-bold mb-4"
-              style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
-            >
-              {landingContent.callToAction.title}
-            </h2>
-            <p 
-              className="text-xl mb-8"
-              style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
-            >
-              {landingContent.callToAction.subtitle}
-            </p>
-          </div>
-        </section>
-      )}
 
       {/* New About Us Section */}
       <section className="py-20 px-6 bg-white">

@@ -19,9 +19,14 @@ const contentUploadMiddleware = (req, res, next) => {
   console.log(`User-Agent: ${req.headers['user-agent']}`);
   console.log(`================================`);
   
-  // Skip body parsing for multipart/form-data to let multer handle it
+  // For multipart/form-data, we need to let multer handle everything
   if (req.headers['content-type'] && req.headers['content-type'].includes('multipart/form-data')) {
-    console.log('Skipping body parsing for multipart/form-data');
+    console.log('Multipart request detected - letting multer handle parsing');
+    
+    // Remove any existing body parsing middleware for this request
+    req._body = false;
+    req.body = {};
+    
     return next();
   }
   
