@@ -39,10 +39,12 @@ const storage = multer.diskStorage({
   }
 });
 
-// Configure multer upload
+// Configure multer upload with more specific settings
 const upload = multer({
   storage: storage,
   fileFilter: function (req, file, cb) {
+    console.log('Multer file filter - File:', file.originalname, 'Type:', file.mimetype, 'Size:', file.size);
+    
     // Accept images and videos
     if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
       cb(null, true);
@@ -54,7 +56,9 @@ const upload = multer({
     fileSize: 200 * 1024 * 1024, // 200MB limit for videos
     fieldSize: 200 * 1024 * 1024, // 200MB limit for field size
     fieldNameSize: 100, // 100 bytes for field name
-    files: 10 // Maximum number of files
+    files: 10, // Maximum number of files
+    parts: 20, // Maximum number of parts
+    headerPairs: 2000 // Maximum number of header key=>value pairs
   }
 });
 
@@ -151,24 +155,46 @@ const updateSectionContent = async (req, res) => {
   
   uploadMiddleware(req, res, async (err) => {
     if (err) {
+      console.error('=== MULTER ERROR ===');
       console.error('Error during file upload:', err);
       console.error('Error code:', err.code);
       console.error('Error field:', err.field);
+      console.error('Error message:', err.message);
+      console.error('Request headers:', req.headers);
+      console.error('Content-Type:', req.headers['content-type']);
+      console.error('Content-Length:', req.headers['content-length']);
+      console.error('==================');
       
       // Handle specific multer errors
       if (err.code === 'LIMIT_FILE_SIZE') {
         return res.status(413).json({ 
           error: 'File too large. Maximum size is 200MB.',
-          code: 'LIMIT_FILE_SIZE'
+          code: 'LIMIT_FILE_SIZE',
+          details: `File size: ${err.field}`
         });
       } else if (err.code === 'LIMIT_FIELD_SIZE') {
         return res.status(413).json({ 
           error: 'Field too large. Maximum size is 200MB.',
-          code: 'LIMIT_FIELD_SIZE'
+          code: 'LIMIT_FIELD_SIZE',
+          details: `Field: ${err.field}`
+        });
+      } else if (err.code === 'LIMIT_PART_COUNT') {
+        return res.status(413).json({ 
+          error: 'Too many parts in the request.',
+          code: 'LIMIT_PART_COUNT'
+        });
+      } else if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+        return res.status(400).json({ 
+          error: 'Unexpected file field.',
+          code: 'LIMIT_UNEXPECTED_FILE',
+          details: `Field: ${err.field}`
         });
       }
       
-      return res.status(400).json({ error: err.message });
+      return res.status(400).json({ 
+        error: err.message,
+        code: err.code || 'UNKNOWN_ERROR'
+      });
     }
     
     try {
@@ -223,28 +249,47 @@ const updateSectionContent = async (req, res) => {
           contentData.imageUrl = null;
         }
       } else if (section === 'hero') {
+        console.log('=== HERO SECTION PROCESSING ===');
+        console.log('Files received:', req.files);
+        console.log('Body data:', req.body);
+        
         // Process hero video if uploaded or handle removal
         const videoFile = req.files?.heroVideo?.[0];
         if (videoFile) {
+          console.log('Processing hero video:', {
+            filename: videoFile.filename,
+            originalname: videoFile.originalname,
+            mimetype: videoFile.mimetype,
+            size: videoFile.size,
+            path: videoFile.path
+          });
+          
           const videoUrl = normalizeFilePath(`/uploads/videos/${videoFile.filename}`);
-          console.log('Saving video media:', videoFile.filename);
+          console.log('Video URL:', videoUrl);
           
           // Save media to database
-          const videoMedia = await contentModel.saveMedia({
-            filename: videoFile.filename,
-            originalFilename: videoFile.originalname,
-            fileType: 'video',
-            mimeType: videoFile.mimetype,
-            fileSize: videoFile.size,
-            path: videoFile.path,
-            url: videoUrl,
-            altText: 'Hero video'
-          });
+          try {
+            const videoMedia = await contentModel.saveMedia({
+              filename: videoFile.filename,
+              originalFilename: videoFile.originalname,
+              fileType: 'video',
+              mimeType: videoFile.mimetype,
+              fileSize: videoFile.size,
+              path: videoFile.path,
+              url: videoUrl,
+              altText: 'Hero video'
+            });
+            console.log('Video media saved successfully:', videoMedia);
+          } catch (error) {
+            console.error('Error saving video media:', error);
+          }
 
           contentData.videoUrl = videoUrl;
         } else if (req.body.removeHeroVideo === 'true') {
           console.log('Removing hero video');
           contentData.videoUrl = null;
+        } else {
+          console.log('No hero video file found in request');
         }
 
         const imageFile = req.files?.heroPoster?.[0];

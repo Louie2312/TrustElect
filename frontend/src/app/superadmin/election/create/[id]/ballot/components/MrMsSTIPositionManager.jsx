@@ -3,21 +3,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import Cookies from "js-cookie";
 
-// Position order for Mr and Ms STI elections
-const mrMsSTIPositionOrder = {
-  "Mr. STI": 1,
-  "Ms. STI": 2,
-  "Mr. STI 1st Runner-up": 3,
-  "Ms. STI 1st Runner-up": 4,
-  "Mr. STI 2nd Runner-up": 5,
-  "Ms. STI 2nd Runner-up": 6,
-  "Mr. STI 3rd Runner-up": 7,
-  "Ms. STI 3rd Runner-up": 8,
-  "Mr. STI 4th Runner-up": 9,
-  "Ms. STI 4th Runner-up": 10,
-  "Mr. STI 5th Runner-up": 11,
-  "Ms. STI 5th Runner-up": 12
-};
+
 
 export const useMrMsSTIPositions = () => {
   const [mrMsSTIPositions, setMrMsSTIPositions] = useState([]);
@@ -46,7 +32,6 @@ export const useMrMsSTIPositions = () => {
         );
         if (mrMsSTIType) {
           mrMsSTITypeId = mrMsSTIType.id;
-          console.log("Found Mr/Ms STI election type ID:", mrMsSTITypeId);
         }
       }
 
@@ -162,7 +147,6 @@ export const useMrMsSTIPositions = () => {
       }
     } catch (error) {
       console.error("Error loading Mr/Ms STI positions from localStorage:", error);
-      // Fallback to default positions
       setMrMsSTIPositions([
         "Mr. STI",
         "Ms. STI",

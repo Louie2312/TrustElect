@@ -11,9 +11,19 @@ const contentUploadMiddleware = (req, res, next) => {
   res.setTimeout(300000); // 5 minutes
   
   // Log upload attempt
-  console.log(`Content upload attempt - Section: ${req.params.section}`);
+  console.log(`=== CONTENT UPLOAD MIDDLEWARE ===`);
+  console.log(`Section: ${req.params.section}`);
+  console.log(`Method: ${req.method}`);
   console.log(`Content-Type: ${req.headers['content-type']}`);
   console.log(`Content-Length: ${req.headers['content-length']}`);
+  console.log(`User-Agent: ${req.headers['user-agent']}`);
+  console.log(`================================`);
+  
+  // Skip body parsing for multipart/form-data to let multer handle it
+  if (req.headers['content-type'] && req.headers['content-type'].includes('multipart/form-data')) {
+    console.log('Skipping body parsing for multipart/form-data');
+    return next();
+  }
   
   next();
 };
