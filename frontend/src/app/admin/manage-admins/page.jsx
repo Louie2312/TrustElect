@@ -164,20 +164,6 @@ export default function ManageAdminsPage() {
     fetchAdmins();
   }, [refreshTrigger]);
 
-  // Listen for admin update events
-  useEffect(() => {
-    const handleAdminUpdate = () => {
-      console.log('Admin update event received, refreshing data...');
-      setRefreshTrigger(prev => prev + 1);
-    };
-
-    window.addEventListener('admin-updated', handleAdminUpdate);
-    
-    return () => {
-      window.removeEventListener('admin-updated', handleAdminUpdate);
-    };
-  }, []);
-
   const isSuperAdmin = (admin) => {
     return admin.role_id === 1 || (admin.department === "Administrator" && !admin.employee_number);
   };

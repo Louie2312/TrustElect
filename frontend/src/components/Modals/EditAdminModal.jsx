@@ -5,7 +5,7 @@ import axios from "axios";
 import Cookies from "js-cookie";
 import { toast } from "react-hot-toast";
 
-export default function EditAdminModal({ admin, onClose, onSuccess }) {
+export default function EditAdminModal({ admin, onClose }) {
   const [formData, setFormData] = useState({
     firstName: admin.first_name || "",
     lastName: admin.last_name || "",
@@ -212,15 +212,6 @@ export default function EditAdminModal({ admin, onClose, onSuccess }) {
       const token = Cookies.get("token");
       const userRole = Cookies.get("role");
       
-      // Also try to get role from token
-      let roleFromToken = null;
-      try {
-        const tokenData = JSON.parse(atob(token.split('.')[1]));
-        roleFromToken = tokenData.role;
-      } catch (error) {
-        console.error("Error parsing token:", error);
-      }
-      
       // Prepare data in the format expected by the API
       const updateData = {
         firstName: formData.firstName,
@@ -231,92 +222,32 @@ export default function EditAdminModal({ admin, onClose, onSuccess }) {
       };
       
       console.log("Sending update for admin ID:", admin.id, updateData);
-      console.log("Current admin data:", admin);
-      console.log("User role from cookie:", userRole);
-      console.log("User role from token:", roleFromToken);
       
-      // Use the correct endpoint based on user role (check both cookie and token)
-      const isSuperAdmin = userRole === 'Super Admin' || 
-                           roleFromToken === 'superadmin' || 
-                           roleFromToken === 'Super Admin' ||
-                           roleFromToken === 'super_admin';
-      
-      const endpoint = isSuperAdmin 
+      // Use the correct endpoint based on user role
+      const endpoint = userRole === 'Super Admin' 
         ? `/api/superadmin/admins/${admin.id}`
         : `/api/admin/manage-admins/${admin.id}`;
       
-      console.log("Is super admin:", isSuperAdmin);
-      console.log("Using endpoint:", endpoint);
-      console.log("User role from cookie:", userRole);
-      console.log("User role from token:", roleFromToken);
-      
-      const response = await axios.put(endpoint, updateData, {
+      await axios.put(endpoint, updateData, {
         headers: { Authorization: `Bearer ${token}` },
       });
       
-      console.log("Update response:", response.data);
-      
-      // Check if the request was successful (status 200-299)
-      if (response.status >= 200 && response.status < 300) {
-        // Check if the response explicitly indicates failure
-        if (response.data && response.data.success === false) {
-          toast.error(response.data.message || "Failed to update admin");
-          return;
-        }
-        
-        // If we get here, the request was successful
-        // Show success message
-        toast.success(`${updateData.firstName} ${updateData.lastName} updated successfully!`);
-        
-        // Use setTimeout to ensure modal closes even if callbacks fail
-        setTimeout(() => {
-          // Call onSuccess callback if provided
-          if (onSuccess) {
-            try {
-              onSuccess();
-            } catch (callbackError) {
-              console.error("Error in onSuccess callback:", callbackError);
-            }
-          }
-          
-          // Close the modal
-          onClose();
-          
-          // Trigger a callback function instead of reloading the page
-          if (typeof window !== 'undefined') {
-            try {
-              // Create an event to notify that an admin was updated
-              const event = new CustomEvent('admin-updated', { 
-                detail: { 
-                  adminId: admin.id,
-                  updatedData: updateData
-                } 
-              });
-              window.dispatchEvent(event);
-            } catch (eventError) {
-              console.error("Error dispatching admin-updated event:", eventError);
-            }
-          }
-        }, 100); // Small delay to ensure toast is shown
-      } else {
-        toast.error(response.data?.message || "Failed to update admin");
-        return;
+      toast.success(`${updateData.first_name} ${updateData.last_name} updated successfully!`);
+      onClose();
+      // Trigger a callback function instead of reloading the page
+      if (typeof window !== 'undefined') {
+        // Create an event to notify that an admin was updated
+        const event = new CustomEvent('admin-updated', { 
+          detail: { 
+            adminId: admin.id,
+            updatedData: updateData
+          } 
+        });
+        window.dispatchEvent(event);
       }
     } catch (error) {
       console.error("Error updating admin:", error);
-      console.error("Error response:", error.response);
-      console.error("Error status:", error.response?.status);
-      console.error("Error data:", error.response?.data);
-      
-      if (error.response?.status === 404) {
-        toast.error("Admin not found. Please refresh the page and try again.");
-      } else if (error.response?.status === 403) {
-        toast.error("You don't have permission to update this admin.");
-      } else if (error.response?.status === 400) {
-        toast.error(error.response?.data?.message || "Invalid data provided.");
-      } else {
-        toast.error(error.response?.data?.message || "Failed to update admin. Please try again.");
-      }
+      toast.error(error.response?.data?.message || "Failed to update admin");
     } finally {
       setIsSubmitting(false);
     }
