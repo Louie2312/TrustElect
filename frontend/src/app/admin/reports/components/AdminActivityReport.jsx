@@ -186,7 +186,7 @@ const AdminActivityReport = () => {
               setSelectedTimeframe(e.target.value);
               setCurrentPage(1);
             }}
-            className="border rounded p-2"
+            className="border rounded p-2 text-black"
           >
             {timeframes.map(timeframe => (
               <option key={timeframe.value} value={timeframe.value}>
@@ -201,7 +201,7 @@ const AdminActivityReport = () => {
               setSelectedAction(e.target.value);
               setCurrentPage(1);
             }}
-            className="border rounded p-2"
+            className="border rounded p-2 text-black"
           >
             {actionTypes.map(action => (
               <option key={action.value} value={action.value}>
