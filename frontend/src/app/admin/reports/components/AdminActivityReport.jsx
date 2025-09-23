@@ -94,7 +94,14 @@ const AdminActivityReport = () => {
     { value: 'UPDATE', label: 'Update' },
     { value: 'DELETE', label: 'Delete' },
     { value: 'LOGIN', label: 'Login' },
-    { value: 'LOGOUT', label: 'Logout' }
+    { value: 'LOGOUT', label: 'Logout' },
+    { value: 'APPROVE', label: 'Approve' },
+    { value: 'REJECT', label: 'Reject' },
+    { value: 'PUBLISH', label: 'Publish' },
+    { value: 'UNPUBLISH', label: 'Unpublish' },
+    { value: 'START', label: 'Start' },
+    { value: 'END', label: 'End' },
+    { value: 'CANCEL', label: 'Cancel' }
   ];
 
   const formatDate = (dateString) => {
@@ -114,8 +121,111 @@ const AdminActivityReport = () => {
         return 'bg-purple-100 text-purple-800';
       case 'LOGOUT':
         return 'bg-orange-100 text-orange-800';
+      case 'APPROVE':
+        return 'bg-emerald-100 text-emerald-800';
+      case 'REJECT':
+        return 'bg-rose-100 text-rose-800';
+      case 'PUBLISH':
+        return 'bg-indigo-100 text-indigo-800';
+      case 'UNPUBLISH':
+        return 'bg-slate-100 text-slate-800';
+      case 'START':
+        return 'bg-lime-100 text-lime-800';
+      case 'END':
+        return 'bg-amber-100 text-amber-800';
+      case 'CANCEL':
+        return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getActionDescription = (activity) => {
+    const { action, entity_type, admin_name, created_at } = activity;
+    const timestamp = new Date(created_at).toLocaleString();
+    
+    switch (action) {
+      case 'CREATE':
+        switch (entity_type) {
+          case 'election':
+            return `${admin_name} created a new election on ${timestamp}`;
+          case 'candidate':
+            return `${admin_name} added a new candidate on ${timestamp}`;
+          case 'user':
+            return `${admin_name} created a new user account on ${timestamp}`;
+          case 'ballot':
+            return `${admin_name} created a new ballot on ${timestamp}`;
+          case 'position':
+            return `${admin_name} created a new position on ${timestamp}`;
+          default:
+            return `${admin_name} created a new ${entity_type} on ${timestamp}`;
+        }
+      case 'UPDATE':
+        switch (entity_type) {
+          case 'election':
+            return `${admin_name} updated election details on ${timestamp}`;
+          case 'candidate':
+            return `${admin_name} modified candidate information on ${timestamp}`;
+          case 'user':
+            return `${admin_name} updated user profile on ${timestamp}`;
+          case 'ballot':
+            return `${admin_name} modified ballot configuration on ${timestamp}`;
+          case 'position':
+            return `${admin_name} updated position details on ${timestamp}`;
+          case 'content':
+            return `${admin_name} updated website content on ${timestamp}`;
+          default:
+            return `${admin_name} updated ${entity_type} on ${timestamp}`;
+        }
+      case 'DELETE':
+        switch (entity_type) {
+          case 'election':
+            return `${admin_name} deleted an election on ${timestamp}`;
+          case 'candidate':
+            return `${admin_name} removed a candidate on ${timestamp}`;
+          case 'user':
+            return `${admin_name} deleted a user account on ${timestamp}`;
+          case 'ballot':
+            return `${admin_name} deleted a ballot on ${timestamp}`;
+          case 'position':
+            return `${admin_name} removed a position on ${timestamp}`;
+          default:
+            return `${admin_name} deleted ${entity_type} on ${timestamp}`;
+        }
+      case 'LOGIN':
+        return `${admin_name} logged into the system on ${timestamp}`;
+      case 'LOGOUT':
+        return `${admin_name} logged out of the system on ${timestamp}`;
+      case 'APPROVE':
+        switch (entity_type) {
+          case 'election':
+            return `${admin_name} approved an election on ${timestamp}`;
+          case 'user':
+            return `${admin_name} approved a user account on ${timestamp}`;
+          default:
+            return `${admin_name} approved ${entity_type} on ${timestamp}`;
+        }
+      case 'REJECT':
+        switch (entity_type) {
+          case 'election':
+            return `${admin_name} rejected an election on ${timestamp}`;
+          case 'user':
+            return `${admin_name} rejected a user account on ${timestamp}`;
+          default:
+            return `${admin_name} rejected ${entity_type} on ${timestamp}`;
+        }
+      case 'PUBLISH':
+        return `${admin_name} published an election on ${timestamp}`;
+      case 'UNPUBLISH':
+        return `${admin_name} unpublished an election on ${timestamp}`;
+      case 'START':
+        return `${admin_name} started an election on ${timestamp}`;
+      case 'END':
+        return `${admin_name} ended an election on ${timestamp}`;
+      case 'CANCEL':
+        return `${admin_name} cancelled an election on ${timestamp}`;
+      default:
+        return `${admin_name} performed ${action} on ${entity_type} on ${timestamp}`;
     }
   };
 
@@ -231,13 +341,13 @@ const AdminActivityReport = () => {
                     Admin
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
-                    Action
+                    Action Details
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+                    Action Type
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
                     Entity Type
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
-                    Timestamp
                   </th>
                 </tr>
               </thead>
@@ -255,6 +365,11 @@ const AdminActivityReport = () => {
                         {activity.user_role}
                       </div>
                     </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-black">
+                        {getActionDescription(activity)}
+                      </div>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getActionColor(activity.action)}`}>
                         {activity.action}
@@ -262,9 +377,6 @@ const AdminActivityReport = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                       {activity.entity_type}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                      {formatDate(activity.created_at)}
                     </td>
                   </tr>
                 ))}
