@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { verifyToken, isSuperAdmin, canManageAdminPermissions } = require('../middlewares/authMiddleware');
+const { verifyToken, isSuperAdmin, isAdmin } = require('../middlewares/authMiddleware');
 const { getPermissions, updatePermissions, checkPermissions } = require('../controllers/adminPermissionController');
 
-router.get('/:adminId', verifyToken, canManageAdminPermissions, getPermissions);
+router.get('/:adminId', verifyToken, isSuperAdmin, isAdmin, getPermissions);
 
-router.put('/:adminId', verifyToken, canManageAdminPermissions, updatePermissions);
+router.put('/:adminId', verifyToken, isSuperAdmin, isAdmin, updatePermissions);
 
 router.get('/:adminId/check', verifyToken, checkPermissions);
 
