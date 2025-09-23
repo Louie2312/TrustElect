@@ -222,17 +222,28 @@ export default function EditAdminModal({ admin, onClose }) {
       };
       
       console.log("Sending update for admin ID:", admin.id, updateData);
+      console.log("Current admin data:", admin);
+      console.log("User role:", userRole);
       
       // Use the correct endpoint based on user role
       const endpoint = userRole === 'Super Admin' 
         ? `/api/superadmin/admins/${admin.id}`
         : `/api/admin/manage-admins/${admin.id}`;
       
-      await axios.put(endpoint, updateData, {
+      console.log("Using endpoint:", endpoint);
+      
+      const response = await axios.put(endpoint, updateData, {
         headers: { Authorization: `Bearer ${token}` },
       });
       
-      toast.success(`${updateData.first_name} ${updateData.last_name} updated successfully!`);
+      console.log("Update response:", response.data);
+      
+      if (response.data.success) {
+        toast.success(`${updateData.firstName} ${updateData.lastName} updated successfully!`);
+      } else {
+        toast.error(response.data.message || "Failed to update admin");
+        return;
+      }
       onClose();
       // Trigger a callback function instead of reloading the page
       if (typeof window !== 'undefined') {

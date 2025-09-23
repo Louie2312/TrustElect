@@ -137,7 +137,7 @@ export default function VotingTimeReport() {
           <select
             value={selectedElection}
             onChange={(e) => setSelectedElection(e.target.value)}
-            className="border rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-[#01579B]"
+            className="border rounded-md p-2 text-black focus:outline-none focus:ring-2 focus:ring-[#01579B]"
           >
             <option value="all">All Elections</option>
             {elections.map(election => (
