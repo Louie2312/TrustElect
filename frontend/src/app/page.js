@@ -358,7 +358,7 @@ export default function Home() {
 
           if (heroVideoUrl) {
                 return (
-            <div className="w-full max-w-6xl aspect-video bg-black/20 rounded-lg overflow-hidden relative">
+            <div className="w-full max-w-7xl aspect-video bg-black/20 rounded-lg overflow-hidden relative">
               <video
                 src={heroVideoUrl}
                 poster={heroPosterUrl}
@@ -384,12 +384,12 @@ export default function Home() {
               } else if (heroPosterUrl) {
                 const posterWithTimestamp = `${heroPosterUrl}?timestamp=${new Date().getTime()}`;
                 return (
-              <div className="w-full max-w-6xl aspect-video bg-black/20 rounded-lg overflow-hidden">
+              <div className="w-full max-w-7xl aspect-video bg-black/20 rounded-lg overflow-hidden">
                 <Image
                   src={posterWithTimestamp}
                   alt="TrustElect Platform"
-                  width={1920}
-                  height={1080}
+                  width={2560}
+                  height={1440}
                   className="w-full h-full object-cover"
                   unoptimized={true}
                   onError={(e) => {
@@ -457,25 +457,25 @@ export default function Home() {
       {/* Call to Action Section - Moved after Hero */}
       {landingContent.callToAction.enabled && (
         <section 
-          className="text-white py-32 px-6"
+          className="text-white py-16 px-6"
           style={{
             backgroundColor: landingContent.callToAction?.bgColor || '#1e3a8a',
             color: landingContent.callToAction?.textColor || '#ffffff'
           }}
         >
-          <div className="container mx-auto max-w-8xl">
-            <div className="space-y-8">
+          <div className="container mx-auto max-w-6xl">
+            <div className="space-y-6">
               {/* Title above the video */}
               <div className="text-center">
                 <h2 
-                  className="text-6xl font-bold drop-shadow-2xl"
+                  className="text-4xl md:text-5xl font-bold drop-shadow-2xl"
                   style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
                 >
                   {landingContent.callToAction.title}
                 </h2>
               </div>
 
-              {/* Video container */}
+              {/* Video container - Same size as hero poster */}
               {(() => {
                 console.log("=== CTA SECTION DEBUG ===");
                 console.log("CTA video URL:", landingContent.callToAction?.videoUrl);
@@ -494,7 +494,7 @@ export default function Home() {
                 
                 return landingContent.callToAction?.videoUrl;
               })() ? (
-                <div className="relative min-h-[600px] flex items-center justify-center rounded-3xl overflow-hidden shadow-2xl">
+                <div className="w-full max-w-6xl aspect-video bg-black/20 rounded-lg overflow-hidden relative mx-auto">
                   <video
                     src={formatImageUrl(landingContent.callToAction.videoUrl)}
                     autoPlay
@@ -527,7 +527,7 @@ export default function Home() {
                   />
                 </div>
               ) : (
-                <div className="min-h-[400px] flex items-center justify-center rounded-3xl bg-gradient-to-br from-blue-600 to-purple-700 shadow-2xl">
+                <div className="w-full max-w-6xl aspect-video flex items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-purple-700 mx-auto">
                   <p className="text-2xl text-white">No video uploaded</p>
                 </div>
               )}

@@ -181,10 +181,10 @@ const CTASection = ({
                     </h3>
                   </div>
 
-                  {/* Video container */}
+                  {/* Video container - Same aspect ratio as hero */}
                   {landingContent.callToAction.videoUrl ? (
                     <div 
-                      className="relative min-h-[300px] rounded-lg overflow-hidden shadow-sm"
+                      className="w-full aspect-video rounded-lg overflow-hidden shadow-sm"
                       style={{
                         backgroundColor: landingContent.callToAction.bgColor || '#1e3a8a'
                       }}
@@ -204,7 +204,7 @@ const CTASection = ({
                     </div>
                   ) : (
                     <div 
-                      className="min-h-[200px] flex items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-purple-700"
+                      className="w-full aspect-video flex items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-purple-700"
                     >
                       <p className="text-sm text-white">No video uploaded</p>
                     </div>
