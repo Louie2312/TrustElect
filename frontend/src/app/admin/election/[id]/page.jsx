@@ -39,11 +39,11 @@ function formatNameSimple(lastName, firstName, fallback) {
     } else {
       const last = cap(words[words.length - 1]);
       const first = words.slice(0, -1).map(cap).join(' ');
-      return `${last}, ${first}`;
+      return `${last} ${first}`;
     }
   }
   if (!lastName && !firstName) return 'No Name';
-  return `${cap(lastName)}, ${cap(firstName)}`;
+  return `${cap(lastName)} ${cap(firstName)}`;
 }
 
 async function fetchWithAuth(url) {
@@ -662,7 +662,7 @@ export default function ElectionDetailsPage() {
       const chartData = sortedCandidates.map((candidate, index) => ({
         name: formatNameSimple(candidate.last_name, candidate.first_name, candidate.name),
         votes: Number(candidate.vote_count || 0),
-        party: candidate.party || 'Independent',
+        party: candidate.party?.replace(/,/g, '') || 'Independent',
         percentage: election.voter_count ? ((candidate.vote_count || 0) / election.voter_count * 100).toFixed(2) : '0.00',
         color: CHART_COLORS[index % CHART_COLORS.length]
       }));
@@ -1220,7 +1220,7 @@ export default function ElectionDetailsPage() {
                                 <span className="">Full Name: </span>{candidate.first_name} {candidate.last_name}
                               </p>
                               {candidate.party && (
-                                <p className="text-sm text-black mb-1"><span className="font-bold">Partylist/Course: </span> {candidate.party}</p>
+                                <p className="text-sm text-black mb-1"><span className="font-bold">Partylist/Course: </span> {candidate.party?.replace(/,/g, '')}</p>
                               )}
                               {candidate.slogan && (
                                 <p className="text-sm italic text-black mb-1">
@@ -1372,18 +1372,17 @@ export default function ElectionDetailsPage() {
                             <div className="mt-1">
                               <span className="font-medium text-sm text-black">Partylist:</span>
                               <span className="ml-1 px-2 py-0.5 bg-blue-100 text-blue-800 text-sm rounded">
-                                {position.sortedCandidates[0].party}
+                                {position.sortedCandidates[0].party?.replace(/,/g, '')}
                               </span>
                             </div>
                           )}
-                          <div className="mt-2">
-                            <span className="font-medium text-sm text-black">Votes:</span>
-                            <span className="ml-1 text-black font-bold">
-                              {Number(position.sortedCandidates[0].vote_count || 0).toLocaleString()} 
-                            </span>
-                            <span className="ml-1 text-blue-600">
+                          <div className="mt-3">
+                            <div className="text-base text-black font-bold">
+                              {Number(position.sortedCandidates[0].vote_count || 0).toLocaleString()} votes
+                            </div>
+                            <div className="text-sm text-blue-600">
                               ({election.voter_count ? (position.sortedCandidates[0].vote_count / election.voter_count * 100).toFixed(2) : 0}% of eligible voters)
-                            </span>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1485,7 +1484,7 @@ export default function ElectionDetailsPage() {
                             </h4>
                             {candidate.party && (
                               <span className="ml-2 px-2 py-1 bg-gray-100 text-black text-xs rounded">
-                                {candidate.party}
+                                {candidate.party?.replace(/,/g, '')}
                               </span>
                             )}
                           </div>
@@ -1496,7 +1495,7 @@ export default function ElectionDetailsPage() {
                                 style={{ width: `${election.voter_count ? (candidate.vote_count / election.voter_count * 100).toFixed(2) : 0}%` }}
                               />
                             </div>
-                            <span className="ml-3 text-black">
+                            <span className="ml-3 text-black text-base font-semibold">
                               {Number(candidate.vote_count || 0).toLocaleString()} votes ({election.voter_count ? (candidate.vote_count / election.voter_count * 100).toFixed(2) : 0}%)
                             </span>
                           </div>
@@ -1686,7 +1685,7 @@ export default function ElectionDetailsPage() {
                                   </h4>
                                   {candidate.party && (
                                     <div className="px-3 py-1 bg-white rounded-full mb-3 shadow-sm">
-                                      <span className="text-black font-medium text-base">{candidate.party}</span>
+                                      <span className="text-black font-medium text-base">{candidate.party?.replace(/,/g, '')}</span>
                                     </div>
                                   )}
                                   <div className="mt-3">
@@ -1741,7 +1740,7 @@ export default function ElectionDetailsPage() {
                                     </h4>
                                     {candidate.party && (
                                       <div className="text-xs text-black mb-1 px-2 py-1 bg-white rounded-full">
-                                        {candidate.party}
+                                        {candidate.party?.replace(/,/g, '')}
                                       </div>
                                     )}
                                     <div className="text-sm text-black font-semibold">
@@ -1845,7 +1844,7 @@ export default function ElectionDetailsPage() {
                                       </h4>
                                       {candidate.party && (
                                         <span className={`${isFullScreen ? 'block px-3 py-1 bg-gray-100 rounded-full mb-3' : 'text-sm'} text-black`}>
-                                          {candidate.party}
+                                          {candidate.party?.replace(/,/g, '')}
                                         </span>
                                       )}
                                     </div>
@@ -1904,7 +1903,7 @@ export default function ElectionDetailsPage() {
                                         </h4>
                                         {candidate.party && (
                                           <div className={`${isFullScreen ? 'text-xs text-black mb-1 px-2 py-1 bg-white rounded-full' : 'text-sm text-black'}`}>
-                                            {candidate.party}
+                                            {candidate.party?.replace(/,/g, '')}
                                           </div>
                                         )}
                                       </div>
@@ -2090,7 +2089,7 @@ export default function ElectionDetailsPage() {
                             </div>
                             {candidate.party && (
                               <div className="text-sm text-gray-500">
-                                {candidate.party}
+                                          {candidate.party?.replace(/,/g, '')}
                               </div>
                             )}
                             <div className="text-sm text-blue-600 font-medium">
@@ -2338,7 +2337,7 @@ export default function ElectionDetailsPage() {
                                   </div>
                                   {candidate.party && (
                                     <div className="text-sm text-gray-500">
-                                      {candidate.party}
+                                          {candidate.party?.replace(/,/g, '')}
                                     </div>
                                   )}
                                   <div className="text-sm text-blue-600 font-medium">
