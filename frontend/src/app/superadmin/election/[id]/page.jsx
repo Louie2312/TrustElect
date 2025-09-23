@@ -1842,7 +1842,7 @@ export default function ElectionDetailsPage() {
                                   </h4>
                                   {candidate.party && (
                                     <div className="px-3 py-1 bg-white rounded-full mb-3 shadow-sm">
-                                      <span className="text-black font-medium text-base">{candidate.party}</span>
+                                      <span className="text-black font-medium text-base">{candidate.party?.replace(/,/g, '')}</span>
                                     </div>
                                   )}
                                   <div className="mt-3">
