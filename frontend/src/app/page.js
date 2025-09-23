@@ -336,6 +336,11 @@ export default function Home() {
               const heroPosterUrl = landingContent.hero && landingContent.hero.posterImage ? 
                 formatImageUrl(landingContent.hero.posterImage) : null;
 
+              // Debug logging to ensure we're not mixing up videos
+              console.log("Hero section - Video URL:", heroVideoUrl);
+              console.log("Hero section - Poster URL:", heroPosterUrl);
+              console.log("CTA section - Video URL:", landingContent.callToAction?.videoUrl);
+
           if (heroVideoUrl) {
                 return (
             <div className="w-full max-w-6xl aspect-video bg-black/20 rounded-lg overflow-hidden relative">
@@ -437,38 +442,65 @@ export default function Home() {
       {/* Call to Action Section - Moved after Hero */}
       {landingContent.callToAction.enabled && (
         <section 
-          className="text-white py-24 px-6"
+          className="text-white py-32 px-6"
           style={{
             backgroundColor: landingContent.callToAction?.bgColor || '#1e3a8a',
             color: landingContent.callToAction?.textColor || '#ffffff'
           }}
         >
-          <div className="container mx-auto max-w-7xl">
+          <div className="container mx-auto max-w-8xl">
             {landingContent.callToAction.videoUrl ? (
-              <div className="relative min-h-[600px] flex items-center justify-center rounded-2xl overflow-hidden">
+              <div className="relative min-h-[800px] flex items-center justify-center rounded-3xl overflow-hidden shadow-2xl">
                 <video
                   src={formatImageUrl(landingContent.callToAction.videoUrl)}
                   autoPlay
                   muted
                   loop
+                  playsInline
                   className="absolute inset-0 w-full h-full object-cover"
+                  onLoadStart={() => {
+                    console.log("CTA Video loading started:", landingContent.callToAction.videoUrl);
+                  }}
+                  onLoadedData={() => {
+                    console.log("CTA Video loaded successfully:", landingContent.callToAction.videoUrl);
+                  }}
+                  onError={(e) => {
+                    console.error("Error loading CTA video:", landingContent.callToAction.videoUrl);
+                    console.error("Formatted URL:", formatImageUrl(landingContent.callToAction.videoUrl));
+                    e.currentTarget.style.display = 'none';
+                    const parent = e.currentTarget.parentElement;
+                    if (parent) {
+                      const fallback = document.createElement('div');
+                      fallback.className = 'absolute inset-0 flex items-center justify-center bg-gradient-to-br from-blue-600 to-purple-700';
+                      fallback.innerHTML = `
+                        <div class="text-center">
+                          <h2 class="text-5xl font-bold mb-6 text-white">${landingContent.callToAction.title}</h2>
+                          <p class="text-2xl mb-10 text-white">${landingContent.callToAction.subtitle}</p>
+                          <button class="px-8 py-4 bg-white rounded-lg shadow-lg font-semibold text-xl hover:bg-gray-100 transition-colors" style="color: ${landingContent.callToAction?.bgColor || '#1e3a8a'}">
+                            ${landingContent.callToAction.buttonText || "Contact Us"}
+                          </button>
+                        </div>
+                      `;
+                      parent.appendChild(fallback);
+                    }
+                  }}
                 />
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                  <div className="text-center max-w-4xl">
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                  <div className="text-center max-w-5xl px-8">
                     <h2 
-                      className="text-5xl font-bold mb-6"
+                      className="text-6xl font-bold mb-8 drop-shadow-2xl"
                       style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
                     >
                       {landingContent.callToAction.title}
                     </h2>
                     <p 
-                      className="text-2xl mb-10"
+                      className="text-3xl mb-12 drop-shadow-lg leading-relaxed"
                       style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
                     >
                       {landingContent.callToAction.subtitle}
                     </p>
                     <button 
-                      className="px-8 py-4 bg-white rounded-lg shadow-lg font-semibold text-xl hover:bg-gray-100 transition-colors"
+                      className="px-12 py-6 bg-white rounded-xl shadow-2xl font-bold text-2xl hover:bg-gray-100 transition-all duration-300 transform hover:scale-105"
                       style={{ color: landingContent.callToAction?.bgColor || '#1e3a8a' }}
                     >
                       {landingContent.callToAction.buttonText || "Contact Us"}
@@ -477,25 +509,27 @@ export default function Home() {
                 </div>
               </div>
             ) : (
-              <div className="text-center max-w-4xl mx-auto">
-                <h2 
-                  className="text-5xl font-bold mb-6"
-                  style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
-                >
-                  {landingContent.callToAction.title}
-                </h2>
-                <p 
-                  className="text-2xl mb-10"
-                  style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
-                >
-                  {landingContent.callToAction.subtitle}
-                </p>
-                <button 
-                  className="px-8 py-4 bg-white rounded-lg shadow-lg font-semibold text-xl hover:bg-gray-100 transition-colors"
-                  style={{ color: landingContent.callToAction?.bgColor || '#1e3a8a' }}
-                >
-                  {landingContent.callToAction.buttonText || "Contact Us"}
-                </button>
+              <div className="text-center max-w-5xl mx-auto min-h-[600px] flex items-center justify-center">
+                <div>
+                  <h2 
+                    className="text-6xl font-bold mb-8"
+                    style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
+                  >
+                    {landingContent.callToAction.title}
+                  </h2>
+                  <p 
+                    className="text-3xl mb-12 leading-relaxed"
+                    style={{ color: landingContent.callToAction?.textColor || '#ffffff' }}
+                  >
+                    {landingContent.callToAction.subtitle}
+                  </p>
+                  <button 
+                    className="px-12 py-6 bg-white rounded-xl shadow-2xl font-bold text-2xl hover:bg-gray-100 transition-all duration-300 transform hover:scale-105"
+                    style={{ color: landingContent.callToAction?.bgColor || '#1e3a8a' }}
+                  >
+                    {landingContent.callToAction.buttonText || "Contact Us"}
+                  </button>
+                </div>
               </div>
             )}
           </div>

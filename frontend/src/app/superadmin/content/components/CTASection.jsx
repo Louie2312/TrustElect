@@ -184,7 +184,12 @@ const CTASection = ({
                           autoPlay
                           muted
                           loop
+                          playsInline
                           className="w-full h-full object-cover rounded-lg"
+                          onError={(e) => {
+                            console.error("Error loading CTA video in preview:", landingContent.callToAction.videoUrl);
+                            e.currentTarget.style.display = 'none';
+                          }}
                         />
                         <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                           <div className="text-center">
