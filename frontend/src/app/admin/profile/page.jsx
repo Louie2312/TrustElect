@@ -129,7 +129,7 @@ export default function AdminProfilePage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="max-w-lg mx-auto p-6 bg-white shadow-lg rounded-lg mt-10">
+      <div className="max-w-lg mx-auto p-6 bg-white shadow-2xl rounded-lg mt-10 border border-gray-200">
         <button onClick={() => router.push("/admin")} className="flex items-center text-blue-900 hover:text-blue-700 mb-4">
           <ArrowLeft className="w-6 h-6 mr-2" />
         </button>
