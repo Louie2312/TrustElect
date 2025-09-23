@@ -33,6 +33,10 @@ const CHART_COLORS = [
 
 function formatNameSimple(lastName, firstName, fallback) {
   const cap = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
+  
+  // Check if this is a group/party name (no first name or fallback is being used)
+  const isGroupName = !firstName || (!lastName && !firstName && fallback);
+  
   if ((!lastName && !firstName) && fallback) {
     const words = fallback.trim().split(/\s+/);
     if (words.length === 1) {
@@ -40,11 +44,19 @@ function formatNameSimple(lastName, firstName, fallback) {
     } else {
       const last = cap(words[words.length - 1]);
       const first = words.slice(0, -1).map(cap).join(' ');
-      return `${last} ${first}`;
+      // For group names, don't add comma
+      return isGroupName ? `${last} ${first}` : `${last}, ${first}`;
     }
   }
   if (!lastName && !firstName) return 'No Name';
-  return `${cap(lastName)} ${cap(firstName)}`;
+  
+  // For group names (no first name), don't add comma
+  if (isGroupName) {
+    return cap(lastName);
+  }
+  
+  // For individual candidates, add comma
+  return `${cap(lastName)}, ${cap(firstName)}`;
 }
 
 async function fetchWithAuth(url) {
@@ -630,7 +642,7 @@ export default function ElectionDetailsPage() {
       const chartData = sortedCandidates.map((candidate, index) => ({
         name: formatNameSimple(candidate.last_name, candidate.first_name, candidate.name),
         votes: Number(candidate.vote_count || 0), 
-        party: candidate.party?.replace(/,/g, '') || 'Independent',
+        party: candidate.party || 'Independent',
         percentage: election.voter_count ? ((candidate.vote_count || 0) / election.voter_count * 100).toFixed(2) : '0.00',
         color: CHART_COLORS[index % CHART_COLORS.length]
       }));
@@ -1307,7 +1319,7 @@ export default function ElectionDetailsPage() {
                                 </h4>
                                 {candidate.party && (
                                   <span className="text-sm text-black">
-                                    {candidate.party?.replace(/,/g, '')}
+                                    {candidate.party}
                                   </span>
                                 )}
                               </div>
@@ -1353,7 +1365,7 @@ export default function ElectionDetailsPage() {
                               </h4>
                               {candidate.party && (
                                 <span className="text-sm text-black">
-                                  {candidate.party?.replace(/,/g, '')}
+                                  {candidate.party}
                                 </span>
                               )}
                             </div>
@@ -1529,7 +1541,7 @@ export default function ElectionDetailsPage() {
                             <div className="mt-1">
                               <span className="font-medium text-sm text-black">Partylist:</span>
                               <span className="ml-1 px-2 py-0.5 bg-blue-100 text-blue-800 text-sm rounded">
-                                {position.sortedCandidates[0].party?.replace(/,/g, '')}
+                                {position.sortedCandidates[0].party}
                               </span>
                             </div>
                           )}
@@ -1641,7 +1653,7 @@ export default function ElectionDetailsPage() {
                             </h4>
                             {candidate.party && (
                               <span className="ml-2 px-2 py-1 bg-gray-100 text-black text-xs rounded">
-                                {candidate.party?.replace(/,/g, '')}
+                                {candidate.party}
                               </span>
                             )}
                           </div>
@@ -1842,7 +1854,7 @@ export default function ElectionDetailsPage() {
                                   </h4>
                                   {candidate.party && (
                                     <div className="px-3 py-1 bg-white rounded-full mb-3 shadow-sm">
-                                      <span className="text-black font-medium text-base">{candidate.party?.replace(/,/g, '')}</span>
+                                      <span className="text-black font-medium text-base">{candidate.party}</span>
                                     </div>
                                   )}
                                   <div className="mt-3">
@@ -1897,7 +1909,7 @@ export default function ElectionDetailsPage() {
                                     </h4>
                                     {candidate.party && (
                                       <div className="text-xs text-black mb-1 px-2 py-1 bg-white rounded-full">
-                                        {candidate.party?.replace(/,/g, '')}
+                                        {candidate.party}
                                       </div>
                                     )}
                                     <div className="text-sm text-black font-semibold">
@@ -2001,7 +2013,7 @@ export default function ElectionDetailsPage() {
                                       </h4>
                                       {candidate.party && (
                                         <span className={`${isFullScreen ? 'block px-3 py-1 bg-gray-100 rounded-full mb-3' : 'text-sm'} text-black`}>
-                                          {candidate.party?.replace(/,/g, '')}
+                                          {candidate.party}
                                         </span>
                                       )}
                                     </div>
@@ -2060,7 +2072,7 @@ export default function ElectionDetailsPage() {
                                         </h4>
                                         {candidate.party && (
                                           <span className="text-sm text-black">
-                                            {candidate.party?.replace(/,/g, '')}
+                                            {candidate.party}
                                           </span>
                                         )}
                                       </div>
@@ -2266,7 +2278,7 @@ export default function ElectionDetailsPage() {
                             </div>
                             {candidate.party && (
                               <div className="text-sm text-gray-500">
-                                {candidate.party?.replace(/,/g, '')}
+                                {candidate.party}
                               </div>
                             )}
                             <div className="text-sm text-blue-600 font-medium">
@@ -2514,7 +2526,7 @@ export default function ElectionDetailsPage() {
                                   </div>
                                   {candidate.party && (
                                     <div className="text-sm text-gray-500">
-                                      {candidate.party?.replace(/,/g, '')}
+                                      {candidate.party}
                                     </div>
                                   )}
                                   <div className="text-sm text-blue-600 font-medium">
