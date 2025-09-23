@@ -193,6 +193,7 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
 
       // Use the same endpoint for both admin and superadmin (the working one)
       const apiUrl = `/api/admin-permissions/${admin.id}`;
+      const userRole = Cookies.get("role");
       
       console.log('Using unified save endpoint:', apiUrl);
       console.log('User role:', userRole);
