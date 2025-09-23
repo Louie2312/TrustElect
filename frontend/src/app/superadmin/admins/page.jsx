@@ -312,7 +312,15 @@ export default function AdminsPage() {
       {showEditModal && selectedAdmin && (
         <EditAdminModal 
           admin={selectedAdmin} 
-          onClose={() => setShowEditModal(false)} 
+          onClose={() => {
+            setShowEditModal(false);
+            setSelectedAdmin(null);
+          }}
+          onSuccess={() => {
+            setShowEditModal(false);
+            setSelectedAdmin(null);
+            fetchAdmins(); // Refresh the admin list
+          }}
         />
       )}
 
