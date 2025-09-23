@@ -34,10 +34,33 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
     try {
       setLoading(true);
       const token = Cookies.get("token");
+      const userRole = Cookies.get("role");
       
-      const response = await axios.get(`/api/admin-permissions/${admin.id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // Use different endpoints based on user role
+      let endpoint = userRole === 'Super Admin' 
+        ? `/api/admin-permissions/${admin.id}`
+        : `/api/admin/admin-permissions/${admin.id}`;
+      
+      console.log("Fetching permissions from:", endpoint);
+      console.log("User role:", userRole);
+      
+      let response;
+      try {
+        response = await axios.get(endpoint, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      } catch (endpointError) {
+        // If admin endpoint fails, try superadmin endpoint as fallback
+        if (userRole !== 'Super Admin' && endpointError.response?.status === 404) {
+          console.log("Admin endpoint not found, trying superadmin endpoint as fallback");
+          endpoint = `/api/admin-permissions/${admin.id}`;
+          response = await axios.get(endpoint, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+        } else {
+          throw endpointError;
+        }
+      }
       
       if (response.data.permissions) {
         const mergedPermissions = { ...defaultPermissions };
@@ -57,7 +80,18 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
       
     } catch (error) {
       console.error("Error fetching admin permissions:", error);
-      setError("Failed to load permissions. Please try again.");
+      console.error("Error response:", error.response);
+      console.error("Error status:", error.response?.status);
+      
+      if (error.response?.status === 403) {
+        setError("You don't have permission to view admin permissions. Please contact a superadmin.");
+      } else if (error.response?.status === 404) {
+        setError("Admin not found. Please refresh the page and try again.");
+      } else if (error.response?.status === 401) {
+        setError("Authentication failed. Please log in again.");
+      } else {
+        setError(`Failed to load permissions. ${error.response?.data?.message || 'Please try again.'}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -153,13 +187,18 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
       
       console.log('Saving permissions:', JSON.stringify(formattedPermissions));
 
-      // Use relative URL to avoid double /api prefix
-      const apiUrl = `/api/admin-permissions/${admin.id}`;
+      // Use different endpoints based on user role
+      const userRole = Cookies.get("role");
+      let apiUrl = userRole === 'Super Admin' 
+        ? `/api/admin-permissions/${admin.id}`
+        : `/api/admin/admin-permissions/${admin.id}`;
       
       console.log('Making API request to:', apiUrl);
+      console.log('User role:', userRole);
 
+      let response;
       try {
-        const response = await axios.put(
+        response = await axios.put(
           apiUrl,
           { permissions: formattedPermissions },
           { 
@@ -173,26 +212,46 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
         
         console.log('Permissions update response:', response.data);
         console.log('Permissions updated successfully for admin:', admin.id);
-      } catch (requestError) {
-        console.error('First request attempt failed:', requestError);
-
-        console.log('Trying fallback approach...');
-
-        const fetchResponse = await fetch(apiUrl, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ permissions: formattedPermissions })
-        });
         
-        if (!fetchResponse.ok) {
-          throw new Error(`Server responded with ${fetchResponse.status}: ${fetchResponse.statusText}`);
+      } catch (endpointError) {
+        // If admin endpoint fails, try superadmin endpoint as fallback
+        if (userRole !== 'Super Admin' && endpointError.response?.status === 404) {
+          console.log("Admin endpoint not found, trying superadmin endpoint as fallback");
+          apiUrl = `/api/admin-permissions/${admin.id}`;
+          response = await axios.put(
+            apiUrl,
+            { permissions: formattedPermissions },
+            { 
+              headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+              timeout: 15000 
+            }
+          );
+          console.log('Permissions update response:', response.data);
+          console.log('Permissions updated successfully for admin:', admin.id);
+        } else {
+          // Try fallback approach with fetch API
+          console.error('First request attempt failed:', endpointError);
+          console.log('Trying fallback approach...');
+
+          const fetchResponse = await fetch(apiUrl, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ permissions: formattedPermissions })
+          });
+          
+          if (!fetchResponse.ok) {
+            throw new Error(`Server responded with ${fetchResponse.status}: ${fetchResponse.statusText}`);
+          }
+          
+          const responseData = await fetchResponse.json();
+          console.log('Fetch API fallback succeeded:', responseData);
         }
-        
-        const responseData = await fetchResponse.json();
-        console.log('Fetch API fallback succeeded:', responseData);
       }
 
       await validatePermissions(admin.id);
@@ -238,11 +297,24 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
         console.error('Response data:', error.response.data);
         console.error('Response status:', error.response.status);
         console.error('Response headers:', error.response.headers);
+        
+        // Provide specific error messages based on status code
+        if (error.response.status === 403) {
+          toast?.error?.("You don't have permission to update admin permissions. Please contact a superadmin.");
+        } else if (error.response.status === 404) {
+          toast?.error?.("Admin not found. Please refresh the page and try again.");
+        } else if (error.response.status === 401) {
+          toast?.error?.("Authentication failed. Please log in again.");
+        } else {
+          toast?.error?.(error.response.data?.message || "Failed to save permissions. Please try again.");
+        }
       } else if (error.request) {
         console.error('Request made but no response received:', error.request);
         console.error('Error code:', error.code);
+        toast?.error?.("Network error. Please check your connection and try again.");
       } else {
         console.error('Error message:', error.message);
+        toast?.error?.(error.message || "An unexpected error occurred. Please try again.");
       }
       
       // Show a more specific error message
