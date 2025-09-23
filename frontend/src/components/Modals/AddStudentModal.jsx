@@ -31,6 +31,7 @@ export default function AddStudentModal({ onClose }) {
     synced: false,
     hasUnsyncedCourses: false
   });
+  const [emailChecking, setEmailChecking] = useState(false);
 
   useEffect(() => {
     const fetchMaintenanceData = async () => {
@@ -188,17 +189,117 @@ export default function AddStudentModal({ onClose }) {
           });
         }
       }
+    } else if (name === "firstName" || name === "middleName" || name === "lastName") {
+      // Only allow letters and spaces, max 35 characters
+      const lettersOnly = value.replace(/[^a-zA-Z\s]/g, '');
+      const trimmed = lettersOnly.slice(0, 35);
+      setFormData(prev => ({ ...prev, [name]: trimmed }));
+      
+      // Clear name errors when user starts typing
+      if (errors[name]) {
+        setErrors(prev => {
+          const newErrors = {...prev};
+          delete newErrors[name];
+          return newErrors;
+        });
+      }
+    } else if (name === "studentNumber") {
+      // Only allow numbers, exactly 11 digits
+      const numbersOnly = value.replace(/[^0-9]/g, '');
+      const trimmed = numbersOnly.slice(0, 11);
+      setFormData(prev => ({ ...prev, [name]: trimmed }));
+      
+      // Clear student number errors when user starts typing
+      if (errors.studentNumber) {
+        setErrors(prev => {
+          const newErrors = {...prev};
+          delete newErrors.studentNumber;
+          return newErrors;
+        });
+      }
+    } else if (name === "email") {
+      setFormData(prev => ({ ...prev, [name]: value }));
+      
+      // Clear email errors when user starts typing
+      if (errors.email) {
+        setErrors(prev => {
+          const newErrors = {...prev};
+          delete newErrors.email;
+          return newErrors;
+        });
+      }
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
   };
 
-  const validateInputs = () => {
+  const checkEmailExists = async (email) => {
+    try {
+      setEmailChecking(true);
+      const token = Cookies.get("token");
+      const response = await axios.get(`/api/students/check-email?email=${encodeURIComponent(email)}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data.exists || false;
+    } catch (error) {
+      console.error("Error checking email:", error);
+      return false; // Assume email is available if check fails
+    } finally {
+      setEmailChecking(false);
+    }
+  };
+
+  const validateInputs = async () => {
     let newErrors = {};
-    if (!formData.firstName.trim()) newErrors.firstName = "First Name is required.";
-    if (!formData.lastName.trim()) newErrors.lastName = "Last Name is required.";
-    if (!formData.email.trim() || (!formData.email.endsWith("@novaliches.sti.edu.ph") && !formData.email.endsWith("@novaliches.sti.edu"))) newErrors.email = "Invalid STI email. Must end with @novaliches.sti.edu.ph or @novaliches.sti.edu";
-    if (!formData.studentNumber.match(/^02000[0-9]{6}$/)) newErrors.studentNumber = "Must start with '02000' and be 11 digits.";
+    
+    // Name validations
+    if (!formData.firstName.trim()) {
+      newErrors.firstName = "First Name is required.";
+    } else if (formData.firstName.length > 35) {
+      newErrors.firstName = "First Name must not exceed 35 characters.";
+    } else if (!/^[a-zA-Z\s]+$/.test(formData.firstName)) {
+      newErrors.firstName = "First Name can only contain letters and spaces.";
+    }
+    
+    if (formData.middleName && formData.middleName.length > 35) {
+      newErrors.middleName = "Middle Name must not exceed 35 characters.";
+    } else if (formData.middleName && !/^[a-zA-Z\s]+$/.test(formData.middleName)) {
+      newErrors.middleName = "Middle Name can only contain letters and spaces.";
+    }
+    
+    if (!formData.lastName.trim()) {
+      newErrors.lastName = "Last Name is required.";
+    } else if (formData.lastName.length > 35) {
+      newErrors.lastName = "Last Name must not exceed 35 characters.";
+    } else if (!/^[a-zA-Z\s]+$/.test(formData.lastName)) {
+      newErrors.lastName = "Last Name can only contain letters and spaces.";
+    }
+    
+    // Email validations
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required.";
+    } else if (!formData.email.endsWith("@novaliches.sti.edu.ph") && !formData.email.endsWith("@novaliches.sti.edu")) {
+      newErrors.email = "Invalid STI email. Must end with @novaliches.sti.edu.ph or @novaliches.sti.edu";
+    } else {
+      // Check if email already exists
+      const emailExists = await checkEmailExists(formData.email);
+      if (emailExists) {
+        newErrors.email = "This email is already registered. Please use a different email.";
+      }
+    }
+    
+    // Student number validations
+    if (!formData.studentNumber.trim()) {
+      newErrors.studentNumber = "Student Number is required.";
+    } else if (formData.studentNumber.length !== 11) {
+      newErrors.studentNumber = "Student Number must be exactly 11 digits.";
+    } else if (!/^[0-9]{11}$/.test(formData.studentNumber)) {
+      newErrors.studentNumber = "Student Number can only contain numbers.";
+    } else if (!formData.studentNumber.startsWith("02000")) {
+      newErrors.studentNumber = "Student Number must start with '02000'.";
+    }
+    
+    // Other validations
     if (!formData.courseId && !formData.courseName) newErrors.courseId = "Select a course.";
     if (!formData.yearLevel) newErrors.yearLevel = "Select a year level.";
     if (!formData.birthdate) newErrors.birthdate = "Birth date is required.";
@@ -220,7 +321,8 @@ export default function AddStudentModal({ onClose }) {
   };
   
   const handleRegister = async () => {
-    if (!validateInputs()) return;
+    const isValid = await validateInputs();
+    if (!isValid) return;
 
     if (!formData.courseId && formData.courseName) {
       if (!window.confirm(
@@ -325,32 +427,68 @@ export default function AddStudentModal({ onClose }) {
 
           <form className="space-y-3 w-full">
             <label name="firstName" className="text-black font-bold">First Name:</label>
-            <input type="text" name="firstName"  onChange={handleChange} required className="border w-full p-2 rounded" />
+            <input 
+              type="text" 
+              name="firstName" 
+              value={formData.firstName}
+              onChange={handleChange} 
+              required 
+              className="border w-full p-2 rounded" 
+            />
             {errors.firstName && <p className="text-red-500 text-sm">{errors.firstName}</p>}
           
             <label name="middleName" className="text-black font-bold">Middle Name:</label>
-            <input type="text" name="middleName" onChange={handleChange} className="border w-full p-2 rounded" />
+            <input 
+              type="text" 
+              name="middleName" 
+              value={formData.middleName}
+              onChange={handleChange} 
+              className="border w-full p-2 rounded" 
+            />
+            {errors.middleName && <p className="text-red-500 text-sm">{errors.middleName}</p>}
           
             <label name="lastName" className="text-black font-bold">Last Name:</label>
-            <input type="text" name="lastName"  onChange={handleChange} required className="border w-full p-2 rounded" />
+            <input 
+              type="text" 
+              name="lastName" 
+              value={formData.lastName}
+              onChange={handleChange} 
+              required 
+              className="border w-full p-2 rounded" 
+            />
             {errors.lastName && <p className="text-red-500 text-sm">{errors.lastName}</p>}
             
             <label name="email" className="text-black font-bold">Email:</label>
-            <input type="email" name="email" onChange={handleChange} required className="border w-full p-2 rounded" />
+            <input 
+              type="email" 
+              name="email" 
+              value={formData.email}
+              onChange={handleChange} 
+              required 
+              className="border w-full p-2 rounded" 
+            />
             {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
+            {emailChecking && <p className="text-blue-500 text-sm">Checking email availability...</p>}
 
             <label name="studentNumber" className="text-black font-bold">Student Number:</label>
-            <input type="text" name="studentNumber"  onChange={handleChange} required className="border w-full p-2 rounded" />
+            <input 
+              type="text" 
+              name="studentNumber" 
+              value={formData.studentNumber}
+              onChange={handleChange} 
+              required 
+              className="border w-full p-2 rounded" 
+            />
             {errors.studentNumber && <p className="text-red-500 text-sm">{errors.studentNumber}</p>}
 
-            <label name="birthdate" className="text-black font-bold">Birth Date (MM/DD/YYYY):</label>
+            <label name="birthdate" className="text-black font-bold">Birth Date:</label>
             <input 
               type="date" 
               name="birthdate" 
+              value={formData.birthdate}
               onChange={handleChange} 
               required 
               className="border w-full p-2 rounded"
-              placeholder="MM/DD/YYYY"
             />
             {errors.birthdate && <p className="text-red-500 text-sm">{errors.birthdate}</p>}
 
@@ -412,9 +550,9 @@ export default function AddStudentModal({ onClose }) {
           <button 
             onClick={handleRegister} 
             className="bg-blue-600 text-white px-4 py-2 rounded w-full mt-4"
-            disabled={isLoading}
+            disabled={isLoading || emailChecking}
           >
-            {isLoading ? "Loading..." : "Generate Password & Register"}
+            {isLoading ? "Loading..." : emailChecking ? "Checking Email..." : "Generate Password & Register"}
           </button>
           <button onClick={onClose} className="text-red-500 w-full text-center mt-3">Cancel</button>
         </div>
