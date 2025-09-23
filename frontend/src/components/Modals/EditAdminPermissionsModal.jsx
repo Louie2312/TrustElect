@@ -24,15 +24,16 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
   const [hasAccess, setHasAccess] = useState(true);
 
   useEffect(() => {
-    // Check if user has permission to manage admin permissions
-    const canManageAdmins = hasPermission('adminManagement', 'edit') || hasPermission('adminManagement', 'create');
+    // Allow both Super Admin and Admin to access admin permissions
     const userRole = Cookies.get("role");
     const isSuperAdmin = userRole === 'Super Admin';
+    const isAdmin = userRole === 'Admin';
     
-    console.log("Permission check - canManageAdmins:", canManageAdmins, "isSuperAdmin:", isSuperAdmin);
+    console.log("Permission check - userRole:", userRole, "isSuperAdmin:", isSuperAdmin, "isAdmin:", isAdmin);
     
-    if (!canManageAdmins && !isSuperAdmin) {
-      setError("You don't have permission to manage admin permissions. Please contact a superadmin.");
+    // Allow access for both Super Admin and Admin users
+    if (!isSuperAdmin && !isAdmin) {
+      setError("Access denied. Only Super Admin and Admin can manage admin permissions.");
       setHasAccess(false);
       setLoading(false);
       return;
@@ -41,7 +42,7 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
     if (admin?.id) {
       fetchAdminPermissions();
     }
-  }, [admin?.id, hasPermission]);
+  }, [admin?.id]);
 
   const fetchAdminPermissions = async () => {
     if (!admin?.id) return;
