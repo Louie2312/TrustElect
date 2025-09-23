@@ -132,50 +132,80 @@ const updateAdmin = async (id, fields) => {
   try {
     await client.query("BEGIN");
 
-    const updates = [];
-    const values = [];
-    let index = 1;
+    // Update users table for name and email fields
+    const userUpdates = [];
+    const userValues = [];
+    let userIndex = 1;
 
     if (fields.firstName) {
-      updates.push(`first_name = $${index}`);
-      values.push(fields.firstName);
-      index++;
+      userUpdates.push(`first_name = $${userIndex}`);
+      userValues.push(fields.firstName);
+      userIndex++;
     }
     if (fields.lastName) {
-      updates.push(`last_name = $${index}`);
-      values.push(fields.lastName);
-      index++;
+      userUpdates.push(`last_name = $${userIndex}`);
+      userValues.push(fields.lastName);
+      userIndex++;
     }
     if (fields.email) {
-      updates.push(`email = $${index}`);
-      values.push(fields.email);
-      index++;
-    }
-    if (fields.employeeNumber) {
-      updates.push(`employee_number = $${index}`);
-      values.push(fields.employeeNumber);
-      index++;
-    }
-    if (fields.department) {
-      updates.push(`department = $${index}`);
-      values.push(fields.department);
-      index++;
+      userUpdates.push(`email = $${userIndex}`);
+      userValues.push(fields.email);
+      userIndex++;
     }
 
-    if (updates.length === 0) {
+    // Update admins table for admin-specific fields
+    const adminUpdates = [];
+    const adminValues = [];
+    let adminIndex = 1;
+
+    if (fields.employeeNumber) {
+      adminUpdates.push(`employee_number = $${adminIndex}`);
+      adminValues.push(fields.employeeNumber);
+      adminIndex++;
+    }
+    if (fields.department) {
+      adminUpdates.push(`department = $${adminIndex}`);
+      adminValues.push(fields.department);
+      adminIndex++;
+    }
+
+    if (userUpdates.length === 0 && adminUpdates.length === 0) {
       return null;
     }
 
-    values.push(id);
+    // Update users table if needed
+    if (userUpdates.length > 0) {
+      userValues.push(id);
+      const userUpdateQuery = `
+        UPDATE users
+        SET ${userUpdates.join(", ")}, updated_at = NOW()
+        WHERE id = $${userIndex} RETURNING *;
+      `;
+      await client.query(userUpdateQuery, userValues);
+    }
 
-    const updateQuery = `
-      UPDATE admins
-      SET ${updates.join(", ")}, updated_at = NOW()
-      WHERE user_id = $${index} RETURNING *;
-    `;
+    // Update admins table if needed
+    if (adminUpdates.length > 0) {
+      adminValues.push(id);
+      const adminUpdateQuery = `
+        UPDATE admins
+        SET ${adminUpdates.join(", ")}, updated_at = NOW()
+        WHERE user_id = $${adminIndex} RETURNING *;
+      `;
+      await client.query(adminUpdateQuery, adminValues);
+    }
 
-    const result = await client.query(updateQuery, values);
     await client.query("COMMIT");
+    
+    // Return the updated user data
+    const result = await client.query(`
+      SELECT users.id, users.first_name, users.last_name, users.email, users.is_active, 
+             admins.employee_number, admins.department, users.is_locked, users.locked_until
+      FROM users
+      JOIN admins ON users.id = admins.user_id
+      WHERE users.id = $1;
+    `, [id]);
+    
     return result.rows[0];
   } catch (error) {
     await client.query("ROLLBACK");
