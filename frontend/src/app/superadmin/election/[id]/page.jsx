@@ -856,7 +856,6 @@ export default function ElectionDetailsPage() {
       // Initialize data as empty
       let ballotData = { positions: [] };
       let resultsData = { positions: [] };
-      let voterCodes = [];
       let candidateVotes = [];
 
       // Try to fetch ballot data (optional - election might not have a ballot yet)
@@ -911,14 +910,6 @@ export default function ElectionDetailsPage() {
         }
       }
 
-      // Try to fetch voter codes
-      try {
-        const voterCodesResponse = await fetchWithAuth(`/elections/${params.id}/voter-codes`);
-        voterCodes = voterCodesResponse.data?.voterCodes || [];
-      } catch (voterCodesError) {
-        console.warn('No voter codes found for this election:', voterCodesError.message);
-        voterCodes = [];
-      }
 
       // Try to fetch candidate votes
       try {
@@ -948,7 +939,7 @@ export default function ElectionDetailsPage() {
           position_name: position.position,
           max_choices: position.max_choices,
           candidates: position.candidates?.map(candidate => ({
-            name: candidate.first_name && candidate.last_name ? `${candidate.first_name} ${candidate.last_name}` : candidate.name || 'Unknown Candidate',
+            name: candidate.first_name && candidate.last_name ? `${candidate.first_name} ${candidate.last_name}` : (candidate.name || 'Unknown Candidate'),
             course: candidate.course || 'Not specified',
             party: candidate.party || 'Independent',
             slogan: candidate.slogan || 'N/A',
@@ -967,21 +958,12 @@ export default function ElectionDetailsPage() {
             status: candidate.status || 'Candidate'
           })) || []
         })) || [],
-        voter_codes: voterCodes.map(voter => ({
-          vote_token: voter.voteToken,
-          verification_code: voter.verificationCode,
-          vote_date: voter.voteDate,
-          student_number: voter.studentNumber,
-          student_name: `${voter.firstName} ${voter.lastName}`,
-          course: voter.courseName,
-          year_level: voter.yearLevel
-        })),
         candidate_votes: candidateVotes.map(position => ({
           position_name: position.position_title,
           max_choices: position.max_choices,
           candidates: position.candidates?.map(candidate => ({
-            name: `${candidate.first_name} ${candidate.last_name}`,
-            party: candidate.partylist_name || 'Independent',
+            name: candidate.first_name && candidate.last_name ? `${candidate.first_name} ${candidate.last_name}` : (candidate.name || 'Unknown Candidate'),
+            party: candidate.partylist_name || candidate.party || 'Independent',
             vote_count: candidate.vote_count || 0,
             vote_percentage: election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'
           })) || []
