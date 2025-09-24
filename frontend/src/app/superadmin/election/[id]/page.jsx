@@ -850,27 +850,68 @@ export default function ElectionDetailsPage() {
 
   const handleGenerateReport = async () => {
     try {
-      // Fetch comprehensive election data
-      const [electionDetails, ballotData, resultsData] = await Promise.all([
-        fetchWithAuth(`/elections/${params.id}/details`),
-        fetchWithAuth(`/elections/${params.id}/ballot`),
-        fetchWithAuth(`/elections/completed/${params.id}/results`)
-      ]);
+      // Fetch election details first
+      const electionDetails = await fetchWithAuth(`/elections/${params.id}/details`);
+      
+      // Initialize ballot and results data as empty
+      let ballotData = { positions: [] };
+      let resultsData = { positions: [] };
+
+      // Try to fetch ballot data (optional - election might not have a ballot yet)
+      try {
+        ballotData = await fetchWithAuth(`/elections/${params.id}/ballot`);
+      } catch (ballotError) {
+        console.warn('No ballot found for this election:', ballotError.message);
+        // Use existing election positions if available
+        if (election.positions && election.positions.length > 0) {
+          ballotData = {
+            positions: election.positions.map(pos => ({
+              position: pos.name,
+              max_choices: pos.max_choices,
+              candidates: pos.candidates || []
+            }))
+          };
+        }
+      }
+
+      // Try to fetch results data (optional - election might not have results yet)
+      try {
+        resultsData = await fetchWithAuth(`/elections/completed/${params.id}/results`);
+      } catch (resultsError) {
+        console.warn('No results found for this election:', resultsError.message);
+        // Use existing election positions with vote counts if available
+        if (election.positions && election.positions.length > 0) {
+          resultsData = {
+            positions: election.positions.map(pos => ({
+              position_name: pos.name,
+              candidates: (pos.candidates || []).map(candidate => ({
+                name: `${candidate.first_name} ${candidate.last_name}`,
+                party: candidate.party || 'Independent',
+                vote_count: candidate.vote_count || 0,
+                vote_percentage: election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00',
+                rank: 0,
+                is_winner: false,
+                status: 'Candidate'
+              }))
+            }))
+          };
+        }
+      }
 
       // Prepare report data
       const reportData = {
         title: "Comprehensive Election Report",
         description: "Complete election details including ballot information, final results, and election bulletin codes",
         election_details: {
-          title: electionDetails.election?.title || electionDetails.title,
-          type: electionDetails.election?.election_type || electionDetails.type || 'Regular Election',
-          status: electionDetails.election?.status || electionDetails.status,
-          start_date: parseElectionDate(electionDetails.election?.date_from || electionDetails.date_from, electionDetails.election?.start_time || electionDetails.start_time),
-          end_date: parseElectionDate(electionDetails.election?.date_to || electionDetails.date_to, electionDetails.election?.end_time || electionDetails.end_time),
-          description: electionDetails.election?.description || electionDetails.description,
-          total_eligible_voters: electionDetails.election?.voter_count || electionDetails.total_eligible_voters || 0,
-          total_votes_cast: electionDetails.election?.vote_count || electionDetails.total_votes_cast || 0,
-          voter_turnout_percentage: electionDetails.election?.voter_count ? ((electionDetails.election?.vote_count / electionDetails.election?.voter_count) * 100).toFixed(2) : electionDetails.voter_turnout_percentage || 0
+          title: electionDetails.election?.title || electionDetails.title || election.title,
+          type: electionDetails.election?.election_type || electionDetails.type || election.election_type || 'Regular Election',
+          status: electionDetails.election?.status || electionDetails.status || election.status,
+          start_date: parseElectionDate(electionDetails.election?.date_from || electionDetails.date_from || election.date_from, electionDetails.election?.start_time || electionDetails.start_time || election.start_time),
+          end_date: parseElectionDate(electionDetails.election?.date_to || electionDetails.date_to || election.date_to, electionDetails.election?.end_time || electionDetails.end_time || election.end_time),
+          description: electionDetails.election?.description || electionDetails.description || election.description,
+          total_eligible_voters: electionDetails.election?.voter_count || electionDetails.total_eligible_voters || election.voter_count || 0,
+          total_votes_cast: electionDetails.election?.vote_count || electionDetails.total_votes_cast || election.vote_count || 0,
+          voter_turnout_percentage: election.voter_count ? ((election.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'
         },
         ballot_info: ballotData.positions?.map(position => ({
           position_name: position.position,
@@ -895,7 +936,7 @@ export default function ElectionDetailsPage() {
             status: candidate.status || 'Candidate'
           })) || []
         })) || [],
-        bulletin_code: electionDetails.election?.bulletin_code || electionDetails.bulletin_code || 'N/A',
+        bulletin_code: electionDetails.election?.bulletin_code || electionDetails.bulletin_code || election.bulletin_code || 'N/A',
         generated_at: new Date().toLocaleString()
       };
 
