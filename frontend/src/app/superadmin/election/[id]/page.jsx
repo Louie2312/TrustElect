@@ -868,7 +868,14 @@ export default function ElectionDetailsPage() {
             positions: election.positions.map(pos => ({
               position: pos.name,
               max_choices: pos.max_choices,
-              candidates: pos.candidates || []
+              candidates: (pos.candidates || []).map(candidate => ({
+                first_name: candidate.first_name,
+                last_name: candidate.last_name,
+                course: candidate.course || 'Not specified',
+                party: candidate.party || 'Independent',
+                slogan: candidate.slogan || 'N/A',
+                platform: candidate.platform || 'N/A'
+              }))
             }))
           };
         }
@@ -881,19 +888,23 @@ export default function ElectionDetailsPage() {
         console.warn('No results found for this election:', resultsError.message);
         // Use existing election positions with vote counts if available
         if (election.positions && election.positions.length > 0) {
+          // Sort candidates by vote count to determine winners and ranks
           resultsData = {
-            positions: election.positions.map(pos => ({
-              position_name: pos.name,
-              candidates: (pos.candidates || []).map(candidate => ({
-                name: `${candidate.first_name} ${candidate.last_name}`,
-                party: candidate.party || 'Independent',
-                vote_count: candidate.vote_count || 0,
-                vote_percentage: election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00',
-                rank: 0,
-                is_winner: false,
-                status: 'Candidate'
-              }))
-            }))
+            positions: election.positions.map(pos => {
+              const sortedCandidates = (pos.candidates || []).sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0));
+              return {
+                position_name: pos.name,
+                candidates: sortedCandidates.map((candidate, index) => ({
+                  name: `${candidate.first_name} ${candidate.last_name}`,
+                  party: candidate.party || 'Independent',
+                  vote_count: candidate.vote_count || 0,
+                  vote_percentage: election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00',
+                  rank: index + 1,
+                  is_winner: index === 0 && candidate.vote_count > 0, // First place is winner if they have votes
+                  status: index === 0 && candidate.vote_count > 0 ? 'Winner' : 'Candidate'
+                }))
+              };
+            })
           };
         }
       }
@@ -917,7 +928,7 @@ export default function ElectionDetailsPage() {
           position_name: position.position,
           max_choices: position.max_choices,
           candidates: position.candidates?.map(candidate => ({
-            name: `${candidate.first_name} ${candidate.last_name}`,
+            name: candidate.first_name && candidate.last_name ? `${candidate.first_name} ${candidate.last_name}` : candidate.name || 'Unknown Candidate',
             course: candidate.course || 'Not specified',
             party: candidate.party || 'Independent',
             slogan: candidate.slogan || 'N/A',
