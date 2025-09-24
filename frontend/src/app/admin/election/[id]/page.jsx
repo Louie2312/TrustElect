@@ -539,15 +539,32 @@ export default function ElectionDetailsPage() {
       let resultsData = { positions: [] };
       let candidateVotes = [];
 
-      // Try to fetch ballot data (optional - election might not have a ballot yet)
+      // Try to fetch candidate list data (this provides complete candidate information)
       try {
-        ballotData = await fetchWithAuth(`/elections/${params.id}/ballot`);
-        console.log('Ballot data from API:', ballotData);
-      } catch (ballotError) {
-        console.warn('No ballot found for this election:', ballotError.message);
-        // Use existing election positions if available
+        const candidateListResponse = await fetchWithAuth(`/reports/candidate-list/admin/candidate-list`);
+        
+        // Find the current election in the candidate list data
+        const currentElectionData = candidateListResponse.data?.elections?.find(e => e.id === parseInt(params.id));
+        if (currentElectionData) {
+          ballotData = {
+            positions: currentElectionData.positions.map(pos => ({
+              position: pos.position,
+              max_choices: pos.max_choices || 1,
+              candidates: (pos.candidates || []).map(candidate => ({
+                first_name: candidate.first_name,
+                last_name: candidate.last_name,
+                course: candidate.course || 'Not specified',
+                party: candidate.party || 'Independent',
+                slogan: candidate.slogan || 'N/A',
+                platform: candidate.platform || 'N/A'
+              }))
+            }))
+          };
+        }
+      } catch (candidateListError) {
+        console.warn('No candidate list found for this election:', candidateListError.message);
+        // Fallback to existing election positions if available
         if (election.positions && election.positions.length > 0) {
-          console.log('Using election positions data:', election.positions);
           ballotData = {
             positions: election.positions.map(pos => ({
               position: pos.name,
@@ -598,7 +615,6 @@ export default function ElectionDetailsPage() {
       try {
         const candidateVotesResponse = await fetchWithAuth(`/elections/${params.id}/votes-per-candidate`);
         candidateVotes = candidateVotesResponse.data?.positions || [];
-        console.log('Candidate votes data from API:', candidateVotes);
       } catch (candidateVotesError) {
         console.warn('No candidate votes found for this election:', candidateVotesError.message);
         candidateVotes = [];
