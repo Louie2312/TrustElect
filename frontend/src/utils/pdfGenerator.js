@@ -944,21 +944,26 @@ const generateComprehensiveElectionReport = (data) => {
       yPos += 8;
       
       if (position.candidates && position.candidates.length > 0) {
-        const candidateData = position.candidates.map(candidate => ({
-          name: candidate.name,
-          course: candidate.course,
-          party: candidate.party,
-          slogan: candidate.slogan,
-          platform: candidate.platform
-        }));
+        const candidateData = position.candidates.map(candidate => {
+          const data = { name: candidate.name };
+          
+          // Only add fields that exist in the candidate data
+          if (candidate.course) data.course = candidate.course;
+          if (candidate.party) data.party = candidate.party;
+          if (candidate.slogan) data.slogan = candidate.slogan;
+          if (candidate.platform) data.platform = candidate.platform;
+          
+          return data;
+        });
         
-        yPos = createSummaryTable(doc, candidateData, [
-          { header: "Candidate Name", key: "name" },
-          { header: "Course", key: "course" },
-          { header: "Party", key: "party" },
-          { header: "Slogan", key: "slogan" },
-          { header: "Platform", key: "platform" }
-        ], yPos);
+        // Create dynamic headers based on available data
+        const headers = [{ header: "Candidate Name", key: "name" }];
+        if (candidateData.some(c => c.course)) headers.push({ header: "Course", key: "course" });
+        if (candidateData.some(c => c.party)) headers.push({ header: "Party", key: "party" });
+        if (candidateData.some(c => c.slogan)) headers.push({ header: "Slogan", key: "slogan" });
+        if (candidateData.some(c => c.platform)) headers.push({ header: "Platform", key: "platform" });
+        
+        yPos = createSummaryTable(doc, candidateData, headers, yPos);
       } else {
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');

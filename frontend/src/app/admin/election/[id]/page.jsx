@@ -545,14 +545,28 @@ export default function ElectionDetailsPage() {
           positions: election.positions.map(pos => ({
             position: pos.name,
             max_choices: pos.max_choices,
-            candidates: (pos.candidates || []).map(candidate => ({
-              first_name: candidate.first_name,
-              last_name: candidate.last_name,
-              course: candidate.course || 'Not specified',
-              party: candidate.party || 'Independent',
-              slogan: candidate.slogan || 'N/A',
-              platform: candidate.platform || 'N/A'
-            }))
+            candidates: (pos.candidates || []).map(candidate => {
+              const candidateData = {
+                first_name: candidate.first_name,
+                last_name: candidate.last_name
+              };
+              
+              // Only add fields that have actual data
+              if (candidate.course && candidate.course.trim() !== '') {
+                candidateData.course = candidate.course;
+              }
+              if (candidate.party && candidate.party.trim() !== '') {
+                candidateData.party = candidate.party;
+              }
+              if (candidate.slogan && candidate.slogan.trim() !== '') {
+                candidateData.slogan = candidate.slogan;
+              }
+              if (candidate.platform && candidate.platform.trim() !== '') {
+                candidateData.platform = candidate.platform;
+              }
+              
+              return candidateData;
+            })
           }))
         };
       }
@@ -613,13 +627,27 @@ export default function ElectionDetailsPage() {
         ballot_info: ballotData.positions?.map(position => ({
           position_name: position.position,
           max_choices: position.max_choices,
-          candidates: position.candidates?.map(candidate => ({
-            name: candidate.first_name && candidate.last_name ? `${candidate.first_name} ${candidate.last_name}` : (candidate.name || 'Unknown Candidate'),
-            course: candidate.course || 'Not specified',
-            party: candidate.party || 'Independent',
-            slogan: candidate.slogan || 'N/A',
-            platform: candidate.platform || 'N/A'
-          })) || []
+          candidates: position.candidates?.map(candidate => {
+            const candidateData = {
+              name: candidate.first_name && candidate.last_name ? `${candidate.first_name} ${candidate.last_name}` : (candidate.name || 'Unknown Candidate')
+            };
+            
+            // Only add fields that have actual data
+            if (candidate.course && candidate.course.trim() !== '') {
+              candidateData.course = candidate.course;
+            }
+            if (candidate.party && candidate.party.trim() !== '') {
+              candidateData.party = candidate.party;
+            }
+            if (candidate.slogan && candidate.slogan.trim() !== '') {
+              candidateData.slogan = candidate.slogan;
+            }
+            if (candidate.platform && candidate.platform.trim() !== '') {
+              candidateData.platform = candidate.platform;
+            }
+            
+            return candidateData;
+          }) || []
         })) || [],
         results: resultsData.positions?.map(position => ({
           position_name: position.position_name,
