@@ -853,9 +853,11 @@ export default function ElectionDetailsPage() {
       // Fetch election details first
       const electionDetails = await fetchWithAuth(`/elections/${params.id}/details`);
       
-      // Initialize ballot and results data as empty
+      // Initialize data as empty
       let ballotData = { positions: [] };
       let resultsData = { positions: [] };
+      let voterCodes = [];
+      let candidateVotes = [];
 
       // Try to fetch ballot data (optional - election might not have a ballot yet)
       try {
@@ -909,6 +911,24 @@ export default function ElectionDetailsPage() {
         }
       }
 
+      // Try to fetch voter codes
+      try {
+        const voterCodesResponse = await fetchWithAuth(`/elections/${params.id}/voter-codes`);
+        voterCodes = voterCodesResponse.data?.voterCodes || [];
+      } catch (voterCodesError) {
+        console.warn('No voter codes found for this election:', voterCodesError.message);
+        voterCodes = [];
+      }
+
+      // Try to fetch candidate votes
+      try {
+        const candidateVotesResponse = await fetchWithAuth(`/elections/${params.id}/votes-per-candidate`);
+        candidateVotes = candidateVotesResponse.data?.positions || [];
+      } catch (candidateVotesError) {
+        console.warn('No candidate votes found for this election:', candidateVotesError.message);
+        candidateVotes = [];
+      }
+
       // Prepare report data
       const reportData = {
         title: "Comprehensive Election Report",
@@ -947,6 +967,25 @@ export default function ElectionDetailsPage() {
             status: candidate.status || 'Candidate'
           })) || []
         })) || [],
+        voter_codes: voterCodes.map(voter => ({
+          vote_token: voter.voteToken,
+          verification_code: voter.verificationCode,
+          vote_date: voter.voteDate,
+          student_number: voter.studentNumber,
+          student_name: `${voter.firstName} ${voter.lastName}`,
+          course: voter.courseName,
+          year_level: voter.yearLevel
+        })),
+        candidate_votes: candidateVotes.map(position => ({
+          position_name: position.position_title,
+          max_choices: position.max_choices,
+          candidates: position.candidates?.map(candidate => ({
+            name: `${candidate.first_name} ${candidate.last_name}`,
+            party: candidate.partylist_name || 'Independent',
+            vote_count: candidate.vote_count || 0,
+            vote_percentage: election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'
+          })) || []
+        })),
         bulletin_code: electionDetails.election?.bulletin_code || electionDetails.bulletin_code || election.bulletin_code || 'N/A',
         generated_at: new Date().toLocaleString()
       };

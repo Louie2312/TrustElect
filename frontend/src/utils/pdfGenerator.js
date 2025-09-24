@@ -1029,6 +1029,100 @@ const generateComprehensiveElectionReport = (data) => {
       yPos += 15; // Add space between positions
     });
   }
+
+  // Add voter codes section
+  if (data.voter_codes && data.voter_codes.length > 0) {
+    // Add a new page if we're running out of space
+    if (yPos > 150) {
+      doc.addPage();
+      yPos = 20;
+    }
+    
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text("Voter Verification Codes", 14, yPos);
+    yPos += 10;
+    
+    // Limit to first 50 voter codes to avoid PDF size issues
+    const limitedVoterCodes = data.voter_codes.slice(0, 50);
+    
+    const voterCodeData = limitedVoterCodes.map(voter => ({
+      student_number: voter.student_number,
+      student_name: voter.student_name,
+      course: voter.course,
+      year_level: voter.year_level,
+      vote_token: voter.vote_token,
+      verification_code: voter.verification_code,
+      vote_date: new Date(voter.vote_date).toLocaleDateString()
+    }));
+    
+    yPos = createSummaryTable(doc, voterCodeData, [
+      { header: "Student #", key: "student_number" },
+      { header: "Name", key: "student_name" },
+      { header: "Course", key: "course" },
+      { header: "Year", key: "year_level" },
+      { header: "Vote Token", key: "vote_token" },
+      { header: "Verification Code", key: "verification_code" },
+      { header: "Vote Date", key: "vote_date" }
+    ], yPos);
+    
+    if (data.voter_codes.length > 50) {
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Note: Showing first 50 of ${data.voter_codes.length} voter codes.`, 14, yPos);
+      yPos += 10;
+    }
+  }
+
+  // Add candidate votes section
+  if (data.candidate_votes && data.candidate_votes.length > 0) {
+    // Add a new page if we're running out of space
+    if (yPos > 150) {
+      doc.addPage();
+      yPos = 20;
+    }
+    
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text("Detailed Candidate Vote Counts", 14, yPos);
+    yPos += 10;
+    
+    data.candidate_votes.forEach((position, index) => {
+      // Add a new page if we're running out of space
+      if (yPos > 200) {
+        doc.addPage();
+        yPos = 20;
+      }
+      
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Position: ${position.position_name}`, 14, yPos);
+      yPos += 8;
+      
+      if (position.candidates && position.candidates.length > 0) {
+        const candidateData = position.candidates.map(candidate => ({
+          name: candidate.name,
+          party: candidate.party,
+          votes: formatNumber(candidate.vote_count),
+          percentage: `${candidate.vote_percentage}%`
+        }));
+        
+        yPos = createSummaryTable(doc, candidateData, [
+          { header: "Candidate", key: "name" },
+          { header: "Party", key: "party" },
+          { header: "Votes", key: "votes" },
+          { header: "Percentage", key: "percentage" }
+        ], yPos);
+      } else {
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text("No candidate data found for this position.", 14, yPos);
+        yPos += 10;
+      }
+      
+      yPos += 15; // Add space between positions
+    });
+  }
   
   // Add report generation timestamp
   if (data.generated_at) {
