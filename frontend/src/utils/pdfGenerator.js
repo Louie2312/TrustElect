@@ -891,6 +891,158 @@ const generateDepartmentVoterReport = (data) => {
   return doc;
 };
 
+// Generate Comprehensive Election Report
+const generateComprehensiveElectionReport = (data) => {
+  const doc = new jsPDF();
+  doc._reportTitle = data.title || 'Comprehensive Election Report';
+  
+  let yPos = addHeader(doc, data.title, data.description);
+  
+  // Add election details section
+  if (data.election_details) {
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text("Election Details", 14, yPos);
+    yPos += 10;
+    
+    const electionData = [
+      { metric: "Election Title", value: data.election_details.title },
+      { metric: "Election Type", value: data.election_details.type },
+      { metric: "Status", value: data.election_details.status },
+      { metric: "Start Date", value: data.election_details.start_date },
+      { metric: "End Date", value: data.election_details.end_date },
+      { metric: "Description", value: data.election_details.description || 'N/A' },
+      { metric: "Total Eligible Voters", value: formatNumber(data.election_details.total_eligible_voters) },
+      { metric: "Total Votes Cast", value: formatNumber(data.election_details.total_votes_cast) },
+      { metric: "Voter Turnout", value: `${data.election_details.voter_turnout_percentage}%` },
+      { metric: "Election Bulletin Code", value: data.bulletin_code || 'N/A' }
+    ];
+    
+    yPos = createSummaryTable(doc, electionData, [
+      { header: "Detail", key: "metric" },
+      { header: "Value", key: "value" }
+    ], yPos);
+  }
+  
+  // Add ballot information
+  if (data.ballot_info && data.ballot_info.length > 0) {
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text("Ballot Information", 14, yPos);
+    yPos += 10;
+    
+    data.ballot_info.forEach((position, index) => {
+      // Add a new page if we're running out of space
+      if (yPos > 200) {
+        doc.addPage();
+        yPos = 20;
+      }
+      
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Position: ${position.position_name} (Max Choices: ${position.max_choices})`, 14, yPos);
+      yPos += 8;
+      
+      if (position.candidates && position.candidates.length > 0) {
+        const candidateData = position.candidates.map(candidate => ({
+          name: candidate.name,
+          course: candidate.course,
+          party: candidate.party,
+          slogan: candidate.slogan,
+          platform: candidate.platform
+        }));
+        
+        yPos = createSummaryTable(doc, candidateData, [
+          { header: "Candidate Name", key: "name" },
+          { header: "Course", key: "course" },
+          { header: "Party", key: "party" },
+          { header: "Slogan", key: "slogan" },
+          { header: "Platform", key: "platform" }
+        ], yPos);
+      } else {
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text("No candidates found for this position.", 14, yPos);
+        yPos += 10;
+      }
+      
+      yPos += 15; // Add space between positions
+    });
+  }
+  
+  // Add election results
+  if (data.results && data.results.length > 0) {
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text("Election Results", 14, yPos);
+    yPos += 10;
+    
+    data.results.forEach((position, index) => {
+      // Add a new page if we're running out of space
+      if (yPos > 200) {
+        doc.addPage();
+        yPos = 20;
+      }
+      
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Position: ${position.position_name}`, 14, yPos);
+      yPos += 8;
+      
+      // Highlight winner
+      if (position.candidates && position.candidates.length > 0) {
+        const winner = position.candidates.find(c => c.is_winner) || position.candidates[0];
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(0, 100, 0); // Green color for winner
+        doc.text(`Winner: ${winner.name} (${formatNumber(winner.vote_count)} votes - ${winner.vote_percentage}%)`, 14, yPos);
+        doc.setTextColor(0, 0, 0); // Reset to black
+        yPos += 8;
+      }
+      
+      // Candidates results table
+      if (position.candidates && position.candidates.length > 0) {
+        const candidateData = position.candidates.map(candidate => ({
+          rank: candidate.rank,
+          name: candidate.name,
+          party: candidate.party,
+          votes: formatNumber(candidate.vote_count),
+          percentage: `${candidate.vote_percentage}%`,
+          status: candidate.status
+        }));
+        
+        yPos = createSummaryTable(doc, candidateData, [
+          { header: "Rank", key: "rank" },
+          { header: "Candidate", key: "name" },
+          { header: "Party", key: "party" },
+          { header: "Votes", key: "votes" },
+          { header: "Percentage", key: "percentage" },
+          { header: "Status", key: "status" }
+        ], yPos);
+      } else {
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text("No results found for this position.", 14, yPos);
+        yPos += 10;
+      }
+      
+      yPos += 15; // Add space between positions
+    });
+  }
+  
+  // Add report generation timestamp
+  if (data.generated_at) {
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Report generated on: ${data.generated_at}`, 14, yPos);
+  }
+  
+  // Add footer to all pages
+  addFooter(doc, data.title || 'Comprehensive Election Report');
+  
+  return doc;
+};
+
 export const generatePdfReport = (reportId, data) => {
   try {
     let doc;
@@ -934,6 +1086,9 @@ export const generatePdfReport = (reportId, data) => {
         break;
       case 14:
         doc = generateDepartmentVoterReport(data);
+        break;
+      case 15:
+        doc = generateComprehensiveElectionReport(data);
         break;
       default:
         throw new Error('Invalid report ID');
@@ -988,6 +1143,8 @@ const getReportTitle = (reportId) => {
       return 'Election Result Report';
     case 14:
       return 'Department Voter Report';
+    case 15:
+      return 'Comprehensive Election Report';
     default:
       return 'Report';
   }

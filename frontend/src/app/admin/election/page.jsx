@@ -1,10 +1,11 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, Plus, Lock } from 'lucide-react';
+import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, Plus, Lock, FileText } from 'lucide-react';
 import Cookies from 'js-cookie';
 import usePermissions from '../../../hooks/usePermissions';
 import Link from 'next/link';
+import { generatePdfReport } from '../../../utils/pdfGenerator';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -199,6 +200,65 @@ export default function ElectionPage() {
     router.push(`/admin/election/${electionId}`);
   };
 
+  const handleGenerateReport = async (electionId) => {
+    try {
+      // Fetch comprehensive election data
+      const [electionDetails, ballotData, resultsData] = await Promise.all([
+        fetchWithAuth(`/elections/${electionId}/details`),
+        fetchWithAuth(`/elections/${electionId}/ballot`),
+        fetchWithAuth(`/elections/completed/${electionId}/results`)
+      ]);
+
+      // Prepare report data
+      const reportData = {
+        title: "Comprehensive Election Report",
+        description: "Complete election details including ballot information, final results, and election bulletin codes",
+        election_details: {
+          title: electionDetails.title,
+          type: electionDetails.type || 'Regular Election',
+          status: electionDetails.status,
+          start_date: formatDate(electionDetails.date_from),
+          end_date: formatDate(electionDetails.date_to),
+          description: electionDetails.description,
+          total_eligible_voters: electionDetails.total_eligible_voters || 0,
+          total_votes_cast: electionDetails.total_votes_cast || 0,
+          voter_turnout_percentage: electionDetails.voter_turnout_percentage || 0
+        },
+        ballot_info: ballotData.positions?.map(position => ({
+          position_name: position.position,
+          max_choices: position.max_choices,
+          candidates: position.candidates?.map(candidate => ({
+            name: `${candidate.first_name} ${candidate.last_name}`,
+            course: candidate.course || 'Not specified',
+            party: candidate.party || 'Independent',
+            slogan: candidate.slogan || 'N/A',
+            platform: candidate.platform || 'N/A'
+          })) || []
+        })) || [],
+        results: resultsData.positions?.map(position => ({
+          position_name: position.position_name,
+          candidates: position.candidates?.map(candidate => ({
+            name: candidate.name,
+            party: candidate.party || 'Independent',
+            vote_count: candidate.vote_count || 0,
+            vote_percentage: candidate.vote_percentage || 0,
+            rank: candidate.rank || 0,
+            is_winner: candidate.is_winner || false,
+            status: candidate.status || 'Candidate'
+          })) || []
+        })) || [],
+        bulletin_code: electionDetails.bulletin_code || 'N/A',
+        generated_at: new Date().toLocaleString()
+      };
+
+      // Generate PDF report
+      await generatePdfReport(15, reportData);
+    } catch (error) {
+      console.error('Error generating election report:', error);
+      alert('Failed to generate report. Please try again.');
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
@@ -357,6 +417,9 @@ export default function ElectionPage() {
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
                       End Date
                     </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -378,6 +441,19 @@ export default function ElectionPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                         {formatDate(election.date_to)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleGenerateReport(election.id);
+                          }}
+                          className="bg-green-600 text-white px-3 py-1.5 rounded-md hover:bg-green-700 transition-colors flex items-center text-xs"
+                          title="Generate Election Report"
+                        >
+                          <FileText className="w-3 h-3 mr-1" />
+                          Generate Report
+                        </button>
                       </td>
                     </tr>
                   ))}
