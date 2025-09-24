@@ -539,47 +539,22 @@ export default function ElectionDetailsPage() {
       let resultsData = { positions: [] };
       let candidateVotes = [];
 
-      // Try to fetch candidate list data (this provides complete candidate information)
-      try {
-        const candidateListResponse = await fetchWithAuth(`/reports/candidate-list/admin/candidate-list`);
-        
-        // Find the current election in the candidate list data
-        const currentElectionData = candidateListResponse.data?.elections?.find(e => e.id === parseInt(params.id));
-        if (currentElectionData) {
-          ballotData = {
-            positions: currentElectionData.positions.map(pos => ({
-              position: pos.position,
-              max_choices: pos.max_choices || 1,
-              candidates: (pos.candidates || []).map(candidate => ({
-                first_name: candidate.first_name,
-                last_name: candidate.last_name,
-                course: candidate.course || 'Not specified',
-                party: candidate.party || 'Independent',
-                slogan: candidate.slogan || 'N/A',
-                platform: candidate.platform || 'N/A'
-              }))
+      // Use existing election data which has complete candidate information
+      if (election.positions && election.positions.length > 0) {
+        ballotData = {
+          positions: election.positions.map(pos => ({
+            position: pos.name,
+            max_choices: pos.max_choices,
+            candidates: (pos.candidates || []).map(candidate => ({
+              first_name: candidate.first_name,
+              last_name: candidate.last_name,
+              course: candidate.course || 'Not specified',
+              party: candidate.party || 'Independent',
+              slogan: candidate.slogan || 'N/A',
+              platform: candidate.platform || 'N/A'
             }))
-          };
-        }
-      } catch (candidateListError) {
-        console.warn('No candidate list found for this election:', candidateListError.message);
-        // Fallback to existing election positions if available
-        if (election.positions && election.positions.length > 0) {
-          ballotData = {
-            positions: election.positions.map(pos => ({
-              position: pos.name,
-              max_choices: pos.max_choices,
-              candidates: (pos.candidates || []).map(candidate => ({
-                first_name: candidate.first_name,
-                last_name: candidate.last_name,
-                course: candidate.course || 'Not specified',
-                party: candidate.party || 'Independent',
-                slogan: candidate.slogan || 'N/A',
-                platform: candidate.platform || 'N/A'
-              }))
-            }))
-          };
-        }
+          }))
+        };
       }
 
       // Try to fetch results data (optional - election might not have results yet)
