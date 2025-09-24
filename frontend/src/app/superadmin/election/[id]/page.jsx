@@ -7,7 +7,7 @@ import {
   AlertTriangle as ExclamationTriangle,
   Lock, Award, ArrowDown, ArrowUp, PieChart,
   AlertCircle, XCircle, Check, X, Maximize2, Minimize2,
-  ChevronRight, Play, Pause, Timer, FileText, Trophy
+  ChevronRight, Play, Pause, Timer, FileText, Trophy, Download
 } from 'lucide-react';
 import Link from 'next/link';
 import Cookies from 'js-cookie';
@@ -15,6 +15,7 @@ import Image from 'next/image';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, LabelList } from 'recharts';
 import toast from 'react-hot-toast';
 import { BASE_URL } from '@/config';
+import { generatePdfReport } from '../../../../utils/pdfGenerator';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
@@ -847,6 +848,65 @@ export default function ElectionDetailsPage() {
     }
   };
 
+  const handleGenerateReport = async () => {
+    try {
+      // Fetch comprehensive election data
+      const [electionDetails, ballotData, resultsData] = await Promise.all([
+        fetchWithAuth(`/elections/${params.id}/details`),
+        fetchWithAuth(`/elections/${params.id}/ballot`),
+        fetchWithAuth(`/elections/completed/${params.id}/results`)
+      ]);
+
+      // Prepare report data
+      const reportData = {
+        title: "Comprehensive Election Report",
+        description: "Complete election details including ballot information, final results, and election bulletin codes",
+        election_details: {
+          title: electionDetails.election?.title || electionDetails.title,
+          type: electionDetails.election?.election_type || electionDetails.type || 'Regular Election',
+          status: electionDetails.election?.status || electionDetails.status,
+          start_date: parseElectionDate(electionDetails.election?.date_from || electionDetails.date_from, electionDetails.election?.start_time || electionDetails.start_time),
+          end_date: parseElectionDate(electionDetails.election?.date_to || electionDetails.date_to, electionDetails.election?.end_time || electionDetails.end_time),
+          description: electionDetails.election?.description || electionDetails.description,
+          total_eligible_voters: electionDetails.election?.voter_count || electionDetails.total_eligible_voters || 0,
+          total_votes_cast: electionDetails.election?.vote_count || electionDetails.total_votes_cast || 0,
+          voter_turnout_percentage: electionDetails.election?.voter_count ? ((electionDetails.election?.vote_count / electionDetails.election?.voter_count) * 100).toFixed(2) : electionDetails.voter_turnout_percentage || 0
+        },
+        ballot_info: ballotData.positions?.map(position => ({
+          position_name: position.position,
+          max_choices: position.max_choices,
+          candidates: position.candidates?.map(candidate => ({
+            name: `${candidate.first_name} ${candidate.last_name}`,
+            course: candidate.course || 'Not specified',
+            party: candidate.party || 'Independent',
+            slogan: candidate.slogan || 'N/A',
+            platform: candidate.platform || 'N/A'
+          })) || []
+        })) || [],
+        results: resultsData.positions?.map(position => ({
+          position_name: position.position_name,
+          candidates: position.candidates?.map(candidate => ({
+            name: candidate.name,
+            party: candidate.party || 'Independent',
+            vote_count: candidate.vote_count || 0,
+            vote_percentage: candidate.vote_percentage || 0,
+            rank: candidate.rank || 0,
+            is_winner: candidate.is_winner || false,
+            status: candidate.status || 'Candidate'
+          })) || []
+        })) || [],
+        bulletin_code: electionDetails.election?.bulletin_code || electionDetails.bulletin_code || 'N/A',
+        generated_at: new Date().toLocaleString()
+      };
+
+      // Generate PDF report
+      await generatePdfReport(15, reportData);
+      toast.success('Election report generated successfully!');
+    } catch (error) {
+      console.error('Error generating election report:', error);
+      toast.error('Failed to generate report. Please try again.');
+    }
+  };
 
   return (
     <div className="max-w-6xl mx-auto p-4">
@@ -868,6 +928,16 @@ export default function ElectionDetailsPage() {
           }`}>
             {election.needs_approval && !isSuperAdminCreator ? 'NEEDS APPROVAL' : election.status.toUpperCase()}
           </span>
+          
+          {/* Generate Report Button - Always visible */}
+          <button
+            onClick={handleGenerateReport}
+            className="flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+            title="Generate Comprehensive Election Report"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Generate Report
+          </button>
    
           {(election.needs_approval || election.status === 'upcoming' || election.status === 'ongoing' || election.status === 'completed') ? (
             isSystemAdminCreator ? (
