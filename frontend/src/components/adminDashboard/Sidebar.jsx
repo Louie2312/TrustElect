@@ -206,6 +206,20 @@ export default function Sidebar() {
             </button>
           )}
 
+          {/* Only show Maintenance if user has permission */}
+          {!permissionsLoading && hasPermission('maintenance', 'view') && (
+            <button 
+              className={`block w-full text-left p-3 rounded transition-colors ${
+                isActiveRoute("/admin/maintenance") 
+                  ? "bg-[#01579B] text-white shadow-md" 
+                  : "hover:bg-[#01579B] hover:text-white"
+              }`} 
+              onClick={() => router.push("/admin/maintenance")}
+            >
+              Maintenance
+            </button>
+          )}
+
           {/* Only show Reports if user has permission */}
           {/* Reports button - always visible for admins */}
             <button 
