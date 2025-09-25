@@ -1805,7 +1805,7 @@ exports.getVotesPerCandidate = async (req, res) => {
       });
     }
 
-    // Get all positions and their candidates with vote counts
+    // Get all positions and their candidates with vote counts and course information
     const positionsQuery = `
       SELECT 
         p.id as position_id,
@@ -1816,14 +1816,16 @@ exports.getVotesPerCandidate = async (req, res) => {
         c.first_name,
         c.last_name,
         c.party as partylist_name,
+        COALESCE(s.course_name, 'Not a student') as course,
         COALESCE(COUNT(v.id), 0) as vote_count
       FROM positions p
       JOIN candidates c ON p.id = c.position_id
+      LEFT JOIN students s ON LOWER(CONCAT(s.first_name, ' ', s.last_name)) = LOWER(CONCAT(c.first_name, ' ', c.last_name))
       LEFT JOIN votes v ON c.id = v.candidate_id AND v.election_id = $1
       WHERE p.ballot_id IN (
         SELECT id FROM ballots WHERE election_id = $1
       )
-      GROUP BY p.id, p.name, p.max_choices, p.display_order, c.id, c.first_name, c.last_name, c.party
+      GROUP BY p.id, p.name, p.max_choices, p.display_order, c.id, c.first_name, c.last_name, c.party, s.course_name
       ORDER BY COALESCE(p.display_order, 999), p.id, c.id
     `;
 
@@ -1883,6 +1885,7 @@ exports.getVotesPerCandidate = async (req, res) => {
         firstName: row.first_name,
         lastName: row.last_name,
         partylistName: row.partylist_name,
+        course: row.course,
         voteCount: parseInt(row.vote_count) || 0,
         voters: votesByCandidate[row.candidate_id] || []
       });

@@ -629,7 +629,7 @@ export default function ElectionDetailsPage() {
           max_choices: position.max_choices,
           candidates: position.candidates?.map(candidate => {
             const candidateData = {
-              name: candidate.first_name && candidate.last_name ? `${candidate.first_name} ${candidate.last_name}` : (candidate.name || 'Unknown Candidate')
+              name: formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)
             };
             
             // Only add fields that have actual data
@@ -665,10 +665,11 @@ export default function ElectionDetailsPage() {
           position_name: position.position_title,
           max_choices: position.max_choices,
           candidates: position.candidates?.map(candidate => ({
-            name: candidate.first_name && candidate.last_name ? `${candidate.first_name} ${candidate.last_name}` : (candidate.name || 'Unknown Candidate'),
-            party: candidate.partylist_name || candidate.party || 'Independent',
-            vote_count: candidate.vote_count || 0,
-            vote_percentage: election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'
+            name: formatNameSimple(candidate.lastName, candidate.firstName, candidate.name),
+            party: candidate.partylistName || candidate.party || 'Independent',
+            course: candidate.course || 'Not specified',
+            vote_count: candidate.voteCount || candidate.vote_count || 0,
+            vote_percentage: election.voter_count ? (((candidate.voteCount || candidate.vote_count || 0) / election.voter_count) * 100).toFixed(2) : '0.00'
           })) || []
         })),
         bulletin_code: electionDetails.election?.bulletin_code || electionDetails.bulletin_code || election.bulletin_code || 'N/A',

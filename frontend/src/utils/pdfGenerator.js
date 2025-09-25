@@ -945,10 +945,10 @@ const generateComprehensiveElectionReport = (data) => {
       
       if (position.candidates && position.candidates.length > 0) {
         const candidateData = position.candidates.map(candidate => {
-          const data = { name: candidate.name };
+          const data = { name: candidate.name || 'Unknown Candidate' };
           
-          // Only add fields that exist in the candidate data
-          if (candidate.course) data.course = candidate.course;
+          // Always include course if available, otherwise show "Not specified"
+          data.course = candidate.course || 'Not specified';
           if (candidate.party) data.party = candidate.party;
           if (candidate.slogan) data.slogan = candidate.slogan;
           if (candidate.platform) data.platform = candidate.platform;
@@ -956,9 +956,11 @@ const generateComprehensiveElectionReport = (data) => {
           return data;
         });
         
-        // Create dynamic headers based on available data
-        const headers = [{ header: "Candidate Name", key: "name" }];
-        if (candidateData.some(c => c.course)) headers.push({ header: "Course", key: "course" });
+        // Create dynamic headers based on available data - always include course
+        const headers = [
+          { header: "Candidate Name", key: "name" },
+          { header: "Course", key: "course" }
+        ];
         if (candidateData.some(c => c.party)) headers.push({ header: "Party", key: "party" });
         if (candidateData.some(c => c.slogan)) headers.push({ header: "Slogan", key: "slogan" });
         if (candidateData.some(c => c.platform)) headers.push({ header: "Platform", key: "platform" });
@@ -1063,14 +1065,16 @@ const generateComprehensiveElectionReport = (data) => {
       
       if (position.candidates && position.candidates.length > 0) {
         const candidateData = position.candidates.map(candidate => ({
-          name: candidate.name,
-          party: candidate.party,
+          name: candidate.name || 'Unknown Candidate',
+          party: candidate.party || 'Independent',
+          course: candidate.course || 'Not specified',
           votes: formatNumber(candidate.vote_count),
           percentage: `${candidate.vote_percentage}%`
         }));
         
         yPos = createSummaryTable(doc, candidateData, [
           { header: "Candidate", key: "name" },
+          { header: "Course", key: "course" },
           { header: "Party", key: "party" },
           { header: "Votes", key: "votes" },
           { header: "Percentage", key: "percentage" }
