@@ -14,6 +14,7 @@ export default function VotingTimeReport() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedElection, setSelectedElection] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all');
   const [elections, setElections] = useState([]);
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -34,11 +35,17 @@ export default function VotingTimeReport() {
       setCurrentPage(1);
       fetchVotingTimeData(selectedElection, 1);
     }
-  }, [selectedElection]);
+  }, [selectedElection, selectedStatus]);
 
   const handlePageChange = (newPage) => {
     setCurrentPage(newPage);
     fetchVotingTimeData(selectedElection, newPage);
+  };
+
+  const handleStatusChange = (status) => {
+    setSelectedStatus(status);
+    setCurrentPage(1);
+    fetchVotingTimeData(selectedElection, 1);
   };
 
   const fetchElections = async () => {
@@ -56,9 +63,21 @@ export default function VotingTimeReport() {
   const fetchVotingTimeData = async (electionId, page = 1) => {
     try {
       setLoading(true);
+      
+      // Build query parameters
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '50'
+      });
+      
+      // Add status filter if not 'all'
+      if (selectedStatus !== 'all') {
+        params.append('status', selectedStatus);
+      }
+      
       const endpoint = electionId === 'all' 
-        ? `/reports/voting-time?page=${page}&limit=50` 
-        : `/reports/voting-time/${electionId}?page=${page}&limit=50`;
+        ? `/reports/voting-time?${params.toString()}` 
+        : `/reports/voting-time/${electionId}?${params.toString()}`;
       
       console.log('Fetching voting time data from:', `${API_BASE}${endpoint}`);
       
@@ -148,6 +167,15 @@ export default function VotingTimeReport() {
                 {election.title}
               </option>
             ))}
+          </select>
+          <select
+            value={selectedStatus}
+            onChange={(e) => handleStatusChange(e.target.value)}
+            className="border rounded-md p-2 text-black focus:outline-none focus:ring-2 focus:ring-[#01579B]"
+          >
+            <option value="all">All Status</option>
+            <option value="voted">Voted</option>
+            <option value="not_voted">Not Voted</option>
           </select>
           <button
             onClick={handleDownload}
