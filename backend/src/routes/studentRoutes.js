@@ -110,6 +110,18 @@ router.post(
   uploadStudentsBatch
 );
 
+// Admin batch upload route with permission check
+router.post(
+  '/admin/students/batch',
+  verifyToken,
+  checkPermission('users', 'create'),
+  upload.single('file'),
+  [
+    check('createdBy', 'Admin ID is required').notEmpty()
+  ],
+  uploadStudentsBatch
+);
+
 router.get("/by-courses", verifyToken, getStudentsByCourses);
 
 // Admin student management routes with permission checks

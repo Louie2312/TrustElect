@@ -150,11 +150,24 @@ export default function StudentsListPage() {
         return;
       }
   
+      // Check if user has permission to create users
+      if (!hasPermission('users', 'create')) {
+        setUploadStatus('error');
+        setBatchResults({
+          message: "Access Denied. You don't have permission to batch upload students.",
+          errors: []
+        });
+        return;
+      }
+
       const formData = new FormData();
       formData.append('file', selectedFile);
       formData.append('createdBy', adminId);
   
-      const res = await axios.post('/api/students/batch', formData, {
+      // Use admin endpoint for admins with permissions
+      const endpoint = userRole === 'Super Admin' ? '/api/students/batch' : '/api/admin/students/batch';
+      
+      const res = await axios.post(endpoint, formData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -799,7 +812,7 @@ export default function StudentsListPage() {
         <ResetStudentPasswordModal student={selectedStudent} onClose={() => setShowResetModal(false)} />
       )}
 
-      {showBatchModal && (
+      {showBatchModal && hasPermission('users', 'create') && (
         <div className="fixed inset-0 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg w-full max-w-2xl">
             <h2 className="text-xl font-bold mb-4 text-black">Batch Upload Students</h2>
