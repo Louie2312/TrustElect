@@ -1382,7 +1382,7 @@ export default function AdminDashboard() {
                             <h3 className="text-lg text-black font-bold">Login Activity</h3>
                             <div className="flex items-center gap-2 text-xs text-gray-600">
                               <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                              <span>Peak: {formatTime(chartConfig.login.peak.hour)}</span>
+                              <span>Peak: {formatTime(chartConfig.login.peak.hour)} ({Math.round(chartConfig.login.peak.count).toLocaleString()} logins)</span>
                             </div>
                           </div>
                           <div className="h-[200px]">
@@ -1463,7 +1463,7 @@ export default function AdminDashboard() {
                             <h3 className="text-lg text-black font-bold">Voting Activity</h3>
                             <div className="flex items-center gap-2 text-xs text-gray-600">
                               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                              <span>Peak: {formatTime(chartConfig.voting.peak.hour)}</span>
+                              <span>Peak: {formatTime(chartConfig.voting.peak.hour)} ({Math.round(chartConfig.voting.peak.count).toLocaleString()} votes)</span>
                             </div>
                           </div>
                           <div className="h-[200px]">
