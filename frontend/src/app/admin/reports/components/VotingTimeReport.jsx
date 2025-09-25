@@ -93,17 +93,20 @@ export default function VotingTimeReport() {
     try {
       const reportData = {
         title: "Voting Time Report",
-        description: "Track when voters cast their votes, including timestamps and voter IDs",
+        description: "Detailed voter activity tracking including login times, session duration, and device information",
         summary: {
-          total_votes: votingData.length,
-          unique_voters: new Set(votingData.map(v => v.student_id)).size
+          total_voters: votingData.length,
+          voted_count: votingData.filter(v => v.status === 'Voted').length,
+          not_voted_count: votingData.filter(v => v.status === 'Not Voted').length
         },
-        voting_data: votingData.map(vote => ({
-          student_id: vote.student_id,
-          election_title: vote.election_title,
-          first_vote_time: format(new Date(vote.first_vote_time), 'MMM d, yyyy h:mm:ss a'),
-          last_vote_time: format(new Date(vote.last_vote_time), 'MMM d, yyyy h:mm:ss a'),
-          total_votes: vote.total_votes
+        voting_data: votingData.map(voter => ({
+          voter_id: voter.voter_id,
+          election_title: voter.election_title,
+          login_time: voter.login_time ? format(new Date(voter.login_time), 'yyyy-MM-dd HH:mm:ss') : '—',
+          vote_submitted_time: voter.vote_submitted_time ? format(new Date(voter.vote_submitted_time), 'yyyy-MM-dd HH:mm:ss') : '—',
+          session_duration: voter.session_duration || '—',
+          status: voter.status,
+          device_browser_info: voter.device_browser_info || '—'
         }))
       };
 
@@ -165,42 +168,54 @@ export default function VotingTimeReport() {
                   Voter ID
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Election Name
+                  Login Time
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  First Vote Time
+                  Vote Submitted Time
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Last Vote Time
+                  Session Duration
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Total Votes
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  IP Address Device / Browser
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {votingData.map((vote, index) => (
+              {votingData.map((voter, index) => (
                 <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {vote.student_id}
+                    {voter.voter_id}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {vote.election_title}
+                    {voter.login_time ? format(new Date(voter.login_time), 'yyyy-MM-dd HH:mm:ss') : '—'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {format(new Date(vote.first_vote_time), 'MMM d, yyyy h:mm:ss a')}
+                    {voter.vote_submitted_time ? format(new Date(voter.vote_submitted_time), 'yyyy-MM-dd HH:mm:ss') : '—'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {format(new Date(vote.last_vote_time), 'MMM d, yyyy h:mm:ss a')}
+                    {voter.session_duration || '—'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      voter.status === 'Voted' 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {voter.status}
+                    </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {vote.total_votes}
+                    {voter.device_browser_info || '—'}
                   </td>
                 </tr>
               ))}
               {votingData.length === 0 && (
                 <tr>
-                  <td colSpan="5" className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
                     No voting data available
                   </td>
                 </tr>

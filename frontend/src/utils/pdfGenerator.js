@@ -1103,6 +1103,85 @@ const generateComprehensiveElectionReport = (data) => {
   return doc;
 };
 
+const generateVotingTimeReport = (data) => {
+  const doc = new jsPDF();
+  let yPos = 20;
+
+  // Add header
+  addHeader(doc, data.title || 'Voting Time Report', data.description || 'Detailed voter activity tracking');
+
+  // Add summary section
+  if (data.summary) {
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Summary', 14, yPos);
+    yPos += 10;
+
+    const summaryData = [
+      { label: 'Total Voters', value: data.summary.total_voters || 0 },
+      { label: 'Voted', value: data.summary.voted_count || 0 },
+      { label: 'Not Voted', value: data.summary.not_voted_count || 0 }
+    ];
+
+    yPos = createSummaryTable(doc, summaryData, [
+      { header: 'Metric', key: 'label' },
+      { header: 'Count', key: 'value' }
+    ], yPos);
+
+    yPos += 20;
+  }
+
+  // Add voting data table
+  if (data.voting_data && data.voting_data.length > 0) {
+    // Add a new page if we're running out of space
+    if (yPos > 200) {
+      doc.addPage();
+      yPos = 20;
+    }
+
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Voter Activity Details', 14, yPos);
+    yPos += 10;
+
+    // Create table data
+    const tableData = data.voting_data.map(voter => ({
+      voter_id: voter.voter_id,
+      login_time: voter.login_time,
+      vote_submitted_time: voter.vote_submitted_time,
+      session_duration: voter.session_duration,
+      status: voter.status,
+      device_browser_info: voter.device_browser_info
+    }));
+
+    yPos = createSummaryTable(doc, tableData, [
+      { header: 'Voter ID', key: 'voter_id' },
+      { header: 'Login Time', key: 'login_time' },
+      { header: 'Vote Submitted Time', key: 'vote_submitted_time' },
+      { header: 'Session Duration', key: 'session_duration' },
+      { header: 'Status', key: 'status' },
+      { header: 'IP Address Device / Browser', key: 'device_browser_info' }
+    ], yPos);
+  } else {
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('No voting data available.', 14, yPos);
+    yPos += 10;
+  }
+
+  // Add report generation timestamp
+  if (data.generated_at) {
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Report generated on: ${data.generated_at}`, 14, yPos);
+  }
+
+  // Add footer to all pages
+  addFooter(doc, data.title || 'Voting Time Report');
+
+  return doc;
+};
+
 export const generatePdfReport = (reportId, data) => {
   try {
     let doc;
@@ -1140,6 +1219,9 @@ export const generatePdfReport = (reportId, data) => {
         break;
       case 11:
         doc = generateElectionDetailReport(data);
+        break;
+      case 12:
+        doc = generateVotingTimeReport(data);
         break;
       case 13:
         doc = generateElectionResultReport(data);
