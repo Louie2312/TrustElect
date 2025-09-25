@@ -405,12 +405,18 @@ export default function ElectionSummaryReport() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto p-6 border border-gray-200">
             <div className="flex justify-between items-center mb-4">
-              <div>
-                <h2 className="text-2xl font-bold text-black mb-2">{electionDetails.title}</h2>
-                <div className="text-sm text-gray-600 space-y-1">
-                  <p>Start: {formatDateTime(electionDetails.date_from || electionDetails.start_date, electionDetails.start_time)}</p>
-                  <p>End: {formatDateTime(electionDetails.date_to || electionDetails.end_date, electionDetails.end_time)}</p>
-                  <p className="mt-2">Status: <span className={`inline-block px-2 py-1 rounded-full text-xs ${electionDetails.status === 'ongoing' ? 'bg-blue-100 text-blue-800' : electionDetails.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{electionDetails.status?.toUpperCase()}</span></p>
+              <div className="flex items-center gap-4">
+                <button onClick={handleCloseDetails} className="flex items-center text-white bg-[#01579B] px-4 py-2 rounded hover:bg-[#01416E]">
+                  <ArrowLeft className="w-5 h-5 mr-2" />
+                  Back
+                </button>
+                <div>
+                  <h2 className="text-2xl font-bold text-black mb-2">{electionDetails.title}</h2>
+                  <div className="text-sm text-gray-600 space-y-1">
+                    <p>Start: {formatDateTime(electionDetails.date_from || electionDetails.start_date, electionDetails.start_time)}</p>
+                    <p>End: {formatDateTime(electionDetails.date_to || electionDetails.end_date, electionDetails.end_time)}</p>
+                    <p className="mt-2">Status: <span className={`inline-block px-2 py-1 rounded-full text-xs ${electionDetails.status === 'ongoing' ? 'bg-blue-100 text-blue-800' : electionDetails.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{electionDetails.status?.toUpperCase()}</span></p>
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -420,10 +426,6 @@ export default function ElectionSummaryReport() {
                 >
                   <Download className="w-5 h-5 mr-2" />
                   Download PDF
-                </button>
-                <button onClick={handleCloseDetails} className="flex items-center text-gray-500 hover:text-gray-700">
-                  <ArrowLeft className="w-6 h-6 mr-1" />
-                  Back
                 </button>
               </div>
             </div>
