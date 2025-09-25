@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { format } from 'date-fns';
 import { useAuth } from '@/context/AuthContext';
-import { Download, X, Calendar, Eye } from 'lucide-react';
+import { Download, ArrowLeft, Eye } from 'lucide-react';
 import { generatePdfReport } from '@/utils/pdfGenerator';
 import Cookies from 'js-cookie';
 import Image from 'next/image';
@@ -59,7 +59,6 @@ export default function ElectionSummaryReport() {
   const [selectedElection, setSelectedElection] = useState(null);
   const [electionDetails, setElectionDetails] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
-  const [dateRange, setDateRange] = useState({ start: null, end: null });
   const { token } = useAuth();
 
   useEffect(() => {
@@ -302,28 +301,7 @@ export default function ElectionSummaryReport() {
         </button>
       </div>
 
-      <div className="mb-4 flex justify-between items-center">
-        <div className="flex gap-2">
-          <div className="relative">
-            <Calendar className="absolute left-3 top-3 h-4 w-4 text-black" />
-            <input
-              type="date"
-              className="border p-2 pl-10 rounded text-sm text-black"
-              placeholder="Start date"
-              onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-            />
-          </div>
-          <span className="self-center">to</span>
-          <div className="relative">
-            <Calendar className="absolute left-3 top-3 h-4 w-4 text-black" />
-            <input
-              type="date"
-              className="border p-2 pl-10 rounded text-sm text-black"
-              placeholder="End date"
-              onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-            />
-          </div>
-        </div>
+      <div className="mb-4 flex justify-end items-center">
         <button
           onClick={electionDetails ? handleDownloadElectionDetails : handleDownload}
           className="flex items-center text-white bg-[#01579B] px-4 py-2 rounded hover:bg-[#01416E]"
@@ -443,8 +421,9 @@ export default function ElectionSummaryReport() {
                   <Download className="w-5 h-5 mr-2" />
                   Download PDF
                 </button>
-                <button onClick={handleCloseDetails} className="text-gray-500 hover:text-gray-700">
-                  <X className="w-6 h-6" />
+                <button onClick={handleCloseDetails} className="flex items-center text-gray-500 hover:text-gray-700">
+                  <ArrowLeft className="w-6 h-6 mr-1" />
+                  Back
                 </button>
               </div>
             </div>
