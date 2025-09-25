@@ -37,7 +37,7 @@ exports.updatePermissions = async (req, res) => {
       return res.status(400).json({ message: "Invalid permissions format" });
     }
 
-    const validModules = ['users', 'elections', 'departments', 'notifications', 'reports', 'cms', 'auditLog', 'adminManagement'];
+    const validModules = ['users', 'elections', 'departments', 'notifications', 'reports', 'cms', 'auditLog', 'adminManagement', 'maintenance'];
     const validActions = ['canView', 'canCreate', 'canEdit', 'canDelete'];
 
     for (const [module, perms] of Object.entries(permissions)) {

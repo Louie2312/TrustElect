@@ -11,7 +11,8 @@ const AdminPermissionsModal = ({ admin, onClose, onSave }) => {
     users: { canView: false, canCreate: false, canEdit: false, canDelete: false },
     elections: { canView: false, canCreate: false, canEdit: false, canDelete: false },
     departments: { canView: false, canCreate: false, canEdit: false, canDelete: false },
-    adminManagement: { canView: false, canCreate: false, canEdit: false, canDelete: false }
+    adminManagement: { canView: false, canCreate: false, canEdit: false, canDelete: false },
+    maintenance: { canView: false, canCreate: false, canEdit: false, canDelete: false }
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -48,6 +49,16 @@ const AdminPermissionsModal = ({ admin, onClose, onSave }) => {
         // Ensure adminManagement module exists with default values if not present
         if (!formattedPermissions.adminManagement) {
           formattedPermissions.adminManagement = { 
+            canView: false, 
+            canCreate: false, 
+            canEdit: false, 
+            canDelete: false 
+          };
+        }
+        
+        // Ensure maintenance module exists with default values if not present
+        if (!formattedPermissions.maintenance) {
+          formattedPermissions.maintenance = { 
             canView: false, 
             canCreate: false, 
             canEdit: false, 
