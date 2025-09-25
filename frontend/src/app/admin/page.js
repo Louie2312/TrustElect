@@ -392,20 +392,40 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  // Load total unique voters - same as super admin
+  // Load total unique voters - use students endpoint for admin users
   const loadTotalUniqueVoters = useCallback(async () => {
     try {
-      const response = await fetchWithAuth('/elections/preview-voters', {
-        method: 'POST',
-        body: JSON.stringify({
-          eligible_voters: {
-            programs: [],
-            yearLevels: [],
-            gender: []
-          }
-        })
+      const token = Cookies.get('token');
+      const response = await fetch('/api/students', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
-      setTotalUniqueVoters(response.count || 0);
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Count active students
+        const activeStudents = data.students ? data.students.filter(student => student.is_active !== false) : [];
+        setTotalUniqueVoters(activeStudents.length);
+      } else {
+        // Fallback: try to get count from stats
+        const statsResponse = await fetch('/api/elections/stats', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (statsResponse.ok) {
+          const statsData = await statsResponse.json();
+          // Sum up total voters from all election stats
+          const totalVoters = statsData.reduce((sum, stat) => sum + parseInt(stat.total_voters || 0), 0);
+          setTotalUniqueVoters(totalVoters);
+        } else {
+          setTotalUniqueVoters(0);
+        }
+      }
     } catch (err) {
       console.log("[Admin] Total unique voters not available:", err.message);
       setTotalUniqueVoters(0);
@@ -505,6 +525,7 @@ export default function AdminDashboard() {
           loadAllElections(),
           loadStats(),
           loadUIDesign(),
+          loadTotalUniqueVoters(), // Load total voters as critical data
           loadSystemLoadData('7d') // Load system load data on initial load
         ]);
         
@@ -517,9 +538,6 @@ export default function AdminDashboard() {
         setTimeout(() => {
           if (isMounted) {
             Promise.allSettled([
-              loadTotalUniqueVoters().catch(err => {
-                console.log("[Admin] Total unique voters not available:", err.message);
-              }),
               loadLiveVoteCount().catch(err => {
                 console.log("[Admin] Live vote count not available:", err.message);
               })
@@ -559,7 +577,7 @@ export default function AdminDashboard() {
       }
     }, 120000));
     
-    // Refresh optional data every 5 minutes (reduced frequency)
+    // Refresh total voters every 5 minutes (reduced frequency)
     intervals.push(setInterval(() => {
       if (isMounted && dataLoaded) {
         loadTotalUniqueVoters().catch(err => {
