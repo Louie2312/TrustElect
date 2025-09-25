@@ -384,7 +384,7 @@ export default function Home() {
               } else if (heroPosterUrl) {
                 const posterWithTimestamp = `${heroPosterUrl}?timestamp=${new Date().getTime()}`;
                 return (
-              <div className="w-full max-w-7xl aspect-video bg-black/20 rounded-lg overflow-hidden">
+              <div className="w-full max-w-8xl aspect-video bg-black/20 rounded-lg overflow-hidden">
                 <Image
                   src={posterWithTimestamp}
                   alt="TrustElect Platform"
@@ -444,7 +444,7 @@ export default function Home() {
 
               } else {
                 return (
-                  <div className="w-full max-w-6xl aspect-video bg-blue-700 rounded-lg flex items-center justify-center">
+                  <div className="w-full max-w-8xl aspect-video bg-blue-700 rounded-lg flex items-center justify-center">
 
                   </div>
                 );
@@ -494,7 +494,7 @@ export default function Home() {
                 
                 return landingContent.callToAction?.videoUrl;
               })() ? (
-                <div className="w-full max-w-6xl aspect-video bg-black/20 rounded-lg overflow-hidden relative mx-auto">
+                <div className="w-full max-w-4xl aspect-video bg-black/20 rounded-lg overflow-hidden relative mx-auto">
                   <video
                     src={formatImageUrl(landingContent.callToAction.videoUrl)}
                     autoPlay
@@ -527,7 +527,7 @@ export default function Home() {
                   />
                 </div>
               ) : (
-                <div className="w-full max-w-6xl aspect-video flex items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-purple-700 mx-auto">
+                <div className="w-full max-w-4xl aspect-video flex items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-purple-700 mx-auto">
                   <p className="text-2xl text-white">No video uploaded</p>
                 </div>
               )}
