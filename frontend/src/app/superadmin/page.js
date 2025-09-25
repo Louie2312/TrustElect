@@ -445,10 +445,10 @@ export default function SuperAdminDashboard() {
     if (!Array.isArray(data)) return [];
     return data.map(item => ({
       hour: item.hour || item.hour_of_day || 0,
-      count: typeof item.count === 'number' && !isNaN(item.count) ? item.count : 
+      count: Math.round(typeof item.count === 'number' && !isNaN(item.count) ? item.count : 
              typeof item.login_count === 'number' && !isNaN(item.login_count) ? item.login_count :
              typeof item.vote_count === 'number' && !isNaN(item.vote_count) ? item.vote_count :
-             typeof item.activity_count === 'number' && !isNaN(item.activity_count) ? item.activity_count : 0,
+             typeof item.activity_count === 'number' && !isNaN(item.activity_count) ? item.activity_count : 0),
       date: item.date || (item.timestamp ? new Date(item.timestamp).toISOString().split('T')[0] : null),
       timestamp: item.timestamp || item.date || null
     }));
@@ -461,28 +461,22 @@ export default function SuperAdminDashboard() {
     
     const now = new Date();
     let processedData = [];
-    
-    // The backend returns data with hour and count fields
-    // For 24h: hour represents actual hour (0-23)
-    // For 7d: hour represents hour (0-23) but we want to show daily data
-    // For 30d: hour represents day of month (1-31) but we want to show daily data
+
     
     if (timeframe === '24h') {
-      // For 24h, use the data as-is since backend already provides hourly data
+
       processedData = data.map(item => ({
         hour: item.hour || 0,
-        count: typeof item.count === 'number' && !isNaN(item.count) ? item.count : 0,
+        count: Math.round(typeof item.count === 'number' && !isNaN(item.count) ? item.count : 0),
         date: now.toISOString().split('T')[0], // Use current date for 24h
         timestamp: now.toISOString()
       }));
     } else if (timeframe === '7d') {
-      // For 7d, backend returns hourly data - show all hours with their actual times
-      // Map each data point to a specific time slot
+
       data.forEach((item, index) => {
         const hour = item.hour || 0;
-        const count = item.count || 0;
-        
-        // Calculate which day this hour belongs to (distribute across 7 days)
+        const count = Math.round(item.count || 0);
+
         const dayOffset = index % 7;
         const date = new Date(now.getTime() - dayOffset * 24 * 60 * 60 * 1000);
         
@@ -493,8 +487,7 @@ export default function SuperAdminDashboard() {
           timestamp: date.toISOString()
         });
       });
-      
-      // Sort by date and hour for proper display
+
       processedData.sort((a, b) => {
         const dateCompare = new Date(a.date).getTime() - new Date(b.date).getTime();
         if (dateCompare === 0) {
@@ -507,7 +500,7 @@ export default function SuperAdminDashboard() {
       // Distribute each day's data across different times to show variety
       data.forEach((item, index) => {
         const dayOfMonth = item.hour || 0;
-        const count = item.count || 0;
+        const count = Math.round(item.count || 0);
         
         // Find the correct date for this day of month
         let targetDate = null;
@@ -1015,7 +1008,7 @@ export default function SuperAdminDashboard() {
                           payload[0].name === 'Logins' ? 'bg-blue-500' : 'bg-green-500'
                         }`}></div>
                         <p className="text-sm text-black">
-                          {payload[0].name}: <span className="font-bold text-black">{formatNumber(value)}</span>
+                          {payload[0].name}: <span className="font-bold text-black">{Math.round(value).toLocaleString()}</span>
                         </p>
                       </div>
                     </div>
@@ -1039,7 +1032,7 @@ export default function SuperAdminDashboard() {
                         {formatTime(chartConfig.login.peak.hour)}
                       </p>
                       <p className="text-xs text-black">
-                        {formatNumber(chartConfig.login.peak.count)} logins
+                        {Math.round(chartConfig.login.peak.count).toLocaleString()} logins
                       </p>
                     </div>
                     <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
@@ -1053,7 +1046,7 @@ export default function SuperAdminDashboard() {
                         {formatTime(chartConfig.voting.peak.hour)}
                       </p>
                       <p className="text-xs text-black">
-                        {formatNumber(chartConfig.voting.peak.count)} votes
+                        {Math.round(chartConfig.voting.peak.count).toLocaleString()} votes
                       </p>
                     </div>
                     <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
@@ -1064,7 +1057,7 @@ export default function SuperAdminDashboard() {
                         <h3 className="text-sm font-semibold text-black">Total Activity</h3>
                       </div>
                       <p className="text-2xl font-bold text-black mb-1">
-                        {formatNumber(chartConfig.login.total + chartConfig.voting.total)}
+                        {Math.round(chartConfig.login.total + chartConfig.voting.total).toLocaleString()}
                       </p>
                       <p className="text-xs text-black">
                         {selectedTimeframe === '24h' ? '24 hours' : selectedTimeframe === '7d' ? '7 days' : '30 days'}
@@ -1096,7 +1089,7 @@ export default function SuperAdminDashboard() {
                             <h3 className="text-lg text-black font-bold">Login Activity</h3>
                             <div className="flex items-center gap-2 text-xs text-gray-600">
                               <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                              <span>Peak: {formatTime(chartConfig.login.peak.hour)}</span>
+                              <span>Peak: {formatTime(chartConfig.login.peak.hour)} ({Math.round(chartConfig.login.peak.count).toLocaleString()} logins)</span>
                             </div>
                           </div>
                           <div className="h-[200px]">
@@ -1122,7 +1115,7 @@ export default function SuperAdminDashboard() {
                                 <YAxis 
                                   stroke="#374151"
                                   tick={{ fill: '#374151', fontSize: 11 }}
-                                  tickFormatter={formatNumber}
+                                  tickFormatter={(value) => Math.round(value).toLocaleString()}
                                   axisLine={{ stroke: '#d1d5db' }}
                                 />
                                 <Tooltip 
@@ -1132,7 +1125,7 @@ export default function SuperAdminDashboard() {
                                 <ReferenceLine 
                                   y={chartConfig.login.average} 
                                   label={{ 
-                                    value: `Avg: ${formatNumber(chartConfig.login.average)}`,
+                                    value: `Avg: ${Math.round(chartConfig.login.average).toLocaleString()}`,
                                     position: 'right',
                                     fill: '#6b7280',
                                     fontSize: 11,
@@ -1177,7 +1170,7 @@ export default function SuperAdminDashboard() {
                             <h3 className="text-lg text-black font-bold">Voting Activity</h3>
                             <div className="flex items-center gap-2 text-xs text-gray-600">
                               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                              <span>Peak: {formatTime(chartConfig.voting.peak.hour)}</span>
+                              <span>Peak: {formatTime(chartConfig.voting.peak.hour)} ({Math.round(chartConfig.voting.peak.count).toLocaleString()} votes)</span>
                             </div>
                           </div>
                           <div className="h-[200px]">
@@ -1203,7 +1196,7 @@ export default function SuperAdminDashboard() {
                                 <YAxis 
                                   stroke="#374151"
                                   tick={{ fill: '#374151', fontSize: 11 }}
-                                  tickFormatter={formatNumber}
+                                  tickFormatter={(value) => Math.round(value).toLocaleString()}
                                   axisLine={{ stroke: '#d1d5db' }}
                                 />
                                 <Tooltip 
@@ -1213,7 +1206,7 @@ export default function SuperAdminDashboard() {
                                 <ReferenceLine 
                                   y={chartConfig.voting.average} 
                                   label={{ 
-                                    value: `Avg: ${formatNumber(chartConfig.voting.average)}`,
+                                    value: `Avg: ${Math.round(chartConfig.voting.average).toLocaleString()}`,
                                     position: 'right',
                                     fill: '#6b7280',
                                     fontSize: 11,

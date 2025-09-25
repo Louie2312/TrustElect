@@ -788,10 +788,10 @@ export default function AdminDashboard() {
     if (!Array.isArray(data)) return [];
     return data.map(item => ({
       hour: item.hour || item.hour_of_day || 0,
-      count: typeof item.count === 'number' && !isNaN(item.count) ? item.count : 
+      count: Math.round(typeof item.count === 'number' && !isNaN(item.count) ? item.count : 
              typeof item.login_count === 'number' && !isNaN(item.login_count) ? item.login_count :
              typeof item.vote_count === 'number' && !isNaN(item.vote_count) ? item.vote_count :
-             typeof item.activity_count === 'number' && !isNaN(item.activity_count) ? item.activity_count : 0,
+             typeof item.activity_count === 'number' && !isNaN(item.activity_count) ? item.activity_count : 0),
       date: item.date || (item.timestamp ? new Date(item.timestamp).toISOString().split('T')[0] : null),
       timestamp: item.timestamp || item.date || null
     }));
@@ -814,7 +814,7 @@ export default function AdminDashboard() {
       // For 24h, use the data as-is since backend already provides hourly data
       processedData = data.map(item => ({
         hour: item.hour || 0,
-        count: typeof item.count === 'number' && !isNaN(item.count) ? item.count : 0,
+        count: Math.round(typeof item.count === 'number' && !isNaN(item.count) ? item.count : 0),
         date: now.toISOString().split('T')[0], // Use current date for 24h
         timestamp: now.toISOString()
       }));
@@ -823,7 +823,7 @@ export default function AdminDashboard() {
       // Map each data point to a specific time slot
       data.forEach((item, index) => {
         const hour = item.hour || 0;
-        const count = item.count || 0;
+        const count = Math.round(item.count || 0);
         
         // Calculate which day this hour belongs to (distribute across 7 days)
         const dayOffset = index % 7;
@@ -850,7 +850,7 @@ export default function AdminDashboard() {
       // Distribute each day's data across different times to show variety
       data.forEach((item, index) => {
         const dayOfMonth = item.hour || 0;
-        const count = item.count || 0;
+        const count = Math.round(item.count || 0);
         
         // Find the correct date for this day of month
         let targetDate = null;
@@ -1301,7 +1301,7 @@ export default function AdminDashboard() {
                           payload[0].name === 'Logins' ? 'bg-blue-500' : 'bg-green-500'
                         }`}></div>
                         <p className="text-sm text-black">
-                          {payload[0].name}: <span className="font-bold text-black">{formatNumber(value)}</span>
+                          {payload[0].name}: <span className="font-bold text-black">{Math.round(value).toLocaleString()}</span>
                         </p>
                       </div>
                     </div>
@@ -1325,7 +1325,7 @@ export default function AdminDashboard() {
                         {formatTime(chartConfig.login.peak.hour)}
                       </p>
                       <p className="text-xs text-black">
-                        {formatNumber(chartConfig.login.peak.count)} logins
+                        {Math.round(chartConfig.login.peak.count).toLocaleString()} logins
                       </p>
                     </div>
                     <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
@@ -1339,7 +1339,7 @@ export default function AdminDashboard() {
                         {formatTime(chartConfig.voting.peak.hour)}
                       </p>
                       <p className="text-xs text-black">
-                        {formatNumber(chartConfig.voting.peak.count)} votes
+                        {Math.round(chartConfig.voting.peak.count).toLocaleString()} votes
                       </p>
                     </div>
                     <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
@@ -1350,7 +1350,7 @@ export default function AdminDashboard() {
                         <h3 className="text-sm font-semibold text-black">Total Activity</h3>
                       </div>
                       <p className="text-2xl font-bold text-black mb-1">
-                        {formatNumber(chartConfig.login.total + chartConfig.voting.total)}
+                        {Math.round(chartConfig.login.total + chartConfig.voting.total).toLocaleString()}
                       </p>
                       <p className="text-xs text-black">
                         {selectedTimeframe === '24h' ? '24 hours' : selectedTimeframe === '7d' ? '7 days' : '30 days'}
@@ -1408,7 +1408,7 @@ export default function AdminDashboard() {
                                 <YAxis 
                                   stroke="#374151"
                                   tick={{ fill: '#374151', fontSize: 11 }}
-                                  tickFormatter={formatNumber}
+                                  tickFormatter={(value) => Math.round(value).toLocaleString()}
                                   axisLine={{ stroke: '#d1d5db' }}
                                 />
                                 <Tooltip 
@@ -1418,7 +1418,7 @@ export default function AdminDashboard() {
                                 <ReferenceLine 
                                   y={chartConfig.login.average} 
                                   label={{ 
-                                    value: `Avg: ${formatNumber(chartConfig.login.average)}`,
+                                    value: `Avg: ${Math.round(chartConfig.login.average).toLocaleString()}`,
                                     position: 'right',
                                     fill: '#6b7280',
                                     fontSize: 11,
@@ -1489,7 +1489,7 @@ export default function AdminDashboard() {
                                 <YAxis 
                                   stroke="#374151"
                                   tick={{ fill: '#374151', fontSize: 11 }}
-                                  tickFormatter={formatNumber}
+                                  tickFormatter={(value) => Math.round(value).toLocaleString()}
                                   axisLine={{ stroke: '#d1d5db' }}
                                 />
                                 <Tooltip 
@@ -1499,7 +1499,7 @@ export default function AdminDashboard() {
                                 <ReferenceLine 
                                   y={chartConfig.voting.average} 
                                   label={{ 
-                                    value: `Avg: ${formatNumber(chartConfig.voting.average)}`,
+                                    value: `Avg: ${Math.round(chartConfig.voting.average).toLocaleString()}`,
                                     position: 'right',
                                     fill: '#6b7280',
                                     fontSize: 11,
