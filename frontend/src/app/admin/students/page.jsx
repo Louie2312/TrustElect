@@ -32,6 +32,7 @@ export default function StudentsListPage() {
   const [selectedCourse, setSelectedCourse] = useState("");
   const [selectedYearLevel, setSelectedYearLevel] = useState("");
   const [showStatsPanel, setShowStatsPanel] = useState(false);
+  const [sortBy, setSortBy] = useState("name-asc"); // "name-asc", "name-desc", "student-number-asc", "student-number-desc"
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -264,6 +265,26 @@ export default function StudentsListPage() {
       filtered = filtered.filter((student) => student.year_level === selectedYearLevel);
     }
 
+    // Apply sorting
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "name-asc":
+          return formatFullName(a.last_name, a.first_name, a.middle_name).localeCompare(
+            formatFullName(b.last_name, b.first_name, b.middle_name)
+          );
+        case "name-desc":
+          return formatFullName(b.last_name, b.first_name, b.middle_name).localeCompare(
+            formatFullName(a.last_name, a.first_name, a.middle_name)
+          );
+        case "student-number-asc":
+          return a.student_number.localeCompare(b.student_number);
+        case "student-number-desc":
+          return b.student_number.localeCompare(a.student_number);
+        default:
+          return 0;
+      }
+    });
+
     const total = Math.ceil(filtered.length / studentsPerPage);
     setTotalPages(total > 0 ? total : 1);
 
@@ -284,12 +305,13 @@ export default function StudentsListPage() {
       const filteredCount = applyFilters(students);
       setFilteredCount(filteredCount);
     }
-  }, [searchQuery, selectedCourse, selectedYearLevel, currentPage, students]);
+  }, [searchQuery, selectedCourse, selectedYearLevel, currentPage, students, sortBy]);
 
   const resetFilters = () => {
     setSearchQuery("");
     setSelectedCourse("");
     setSelectedYearLevel("");
+    setSortBy("name-asc");
     setCurrentPage(1);
     applyFilters(students); 
   };
@@ -571,6 +593,13 @@ export default function StudentsListPage() {
                 {year}
               </option>
             ))}
+          </select>
+
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="border w-48 p-2 rounded text-black">
+            <option value="name-asc">Name (A-Z)</option>
+            <option value="name-desc">Name (Z-A)</option>
+            <option value="student-number-asc">Student # (A-Z)</option>
+            <option value="student-number-desc">Student # (Z-A)</option>
           </select>
           
           <button
