@@ -245,7 +245,7 @@ export default function AddStudentModal({ onClose }) {
     try {
       setEmailChecking(true);
       const token = Cookies.get("token");
-      const response = await axios.get(`/api/students/check-email?email=${encodeURIComponent(email)}`, {
+      const response = await axios.get(`/api/superadmin/check-email?email=${encodeURIComponent(email)}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       return response.data.exists || false;
@@ -286,7 +286,7 @@ export default function AddStudentModal({ onClose }) {
 
     try {
       const token = Cookies.get("token");
-      const response = await axios.get(`/api/students/check-email?email=${encodeURIComponent(email)}`, {
+      const response = await axios.get(`/api/superadmin/check-email?email=${encodeURIComponent(email)}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
