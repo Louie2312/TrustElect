@@ -496,14 +496,14 @@ const getElectionWithBallot = async (electionId) => {
         (SELECT COALESCE(COUNT(DISTINCT student_id), 0) FROM votes WHERE election_id = e.id) AS vote_count,
         CASE 
           WHEN e.created_by = 1 THEN 'System Administrator'
-          ELSE COALESCE(a.name, 'Unknown Admin')
+          ELSE COALESCE(CONCAT(a.first_name, ' ', a.last_name), 'Unknown Admin')
         END as creator_name,
         CASE 
           WHEN e.created_by = 1 THEN 'SuperAdmin'
           ELSE 'Admin'
         END as creator_role
       FROM elections e
-      LEFT JOIN admins a ON e.created_by = a.id
+      LEFT JOIN admins a ON e.created_by = a.user_id
       WHERE e.id = $1
     `, [electionId]);
 
@@ -702,11 +702,11 @@ const getAllElectionsWithCreator = async () => {
   try {
     const query = `
       SELECT e.*, 
-             a.name as admin_name, 
+             CONCAT(a.first_name, ' ', a.last_name) as admin_name, 
              a.department as admin_department,
-             a.id as admin_id
+             a.user_id as admin_id
       FROM elections e
-      LEFT JOIN admins a ON e.created_by = a.id
+      LEFT JOIN admins a ON e.created_by = a.user_id
       ORDER BY e.date_from DESC
     `;
     const result = await pool.query(query);
