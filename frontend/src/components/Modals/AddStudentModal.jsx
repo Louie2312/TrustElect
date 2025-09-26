@@ -37,6 +37,7 @@ export default function AddStudentModal({ onClose }) {
     message: "",
     isChecking: false
   });
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   useEffect(() => {
     const fetchMaintenanceData = async () => {
@@ -326,6 +327,30 @@ export default function AddStudentModal({ onClose }) {
 
   // Create debounced email validation
   const debouncedEmailValidation = debounce(validateEmailRealTime, 1000);
+
+  // Handle cancel with confirmation
+  const handleCancel = () => {
+    // Check if form has any data entered
+    const hasData = formData.firstName || formData.middleName || formData.lastName || 
+                   formData.email || formData.studentNumber || formData.birthdate;
+    
+    if (hasData) {
+      setShowCancelConfirm(true);
+    } else {
+      onClose();
+    }
+  };
+
+  // Confirm cancel and close modal
+  const confirmCancel = () => {
+    setShowCancelConfirm(false);
+    onClose();
+  };
+
+  // Cancel the cancel action
+  const cancelCancel = () => {
+    setShowCancelConfirm(false);
+  };
 
   const validateInputs = async () => {
     let newErrors = {};
@@ -674,7 +699,7 @@ export default function AddStudentModal({ onClose }) {
              emailValidationStatus.isValid === false ? "Email Not Available" :
              "Generate Password & Register"}
           </button>
-          <button onClick={onClose} className="text-red-500 w-full text-center mt-3">Cancel</button>
+          <button onClick={handleCancel} className="text-red-500 w-full text-center mt-3">Cancel</button>
         </div>
       </div>
 
@@ -689,6 +714,32 @@ export default function AddStudentModal({ onClose }) {
             <div className="flex justify-center gap-4 mt-4">
               <button onClick={confirmRegistration} className="bg-green-600 text-white px-4 py-2 rounded">Confirm & Register</button>
               <button onClick={() => setShowPasswordModal(false)} className="bg-gray-500 text-white px-4 py-2 rounded">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCancelConfirm && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+            <h2 className="text-xl font-bold text-center mb-4 text-gray-800">Confirm Cancellation</h2>
+            <p className="text-center text-gray-600 mb-6">
+              Are you sure you want to cancel? All entered data will be lost.
+            </p>
+
+            <div className="flex justify-center gap-4">
+              <button 
+                onClick={confirmCancel} 
+                className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition-colors"
+              >
+                Yes, Cancel
+              </button>
+              <button 
+                onClick={cancelCancel} 
+                className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600 transition-colors"
+              >
+                No, Continue
+              </button>
             </div>
           </div>
         </div>
