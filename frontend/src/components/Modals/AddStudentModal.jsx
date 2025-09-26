@@ -32,6 +32,11 @@ export default function AddStudentModal({ onClose }) {
     hasUnsyncedCourses: false
   });
   const [emailChecking, setEmailChecking] = useState(false);
+  const [emailValidationStatus, setEmailValidationStatus] = useState({
+    isValid: null,
+    message: "",
+    isChecking: false
+  });
 
   useEffect(() => {
     const fetchMaintenanceData = async () => {
@@ -228,6 +233,9 @@ export default function AddStudentModal({ onClose }) {
           return newErrors;
         });
       }
+
+      // Trigger real-time email validation
+      debouncedEmailValidation(value);
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -248,6 +256,76 @@ export default function AddStudentModal({ onClose }) {
       setEmailChecking(false);
     }
   };
+
+  // Debounced email validation function
+  const validateEmailRealTime = async (email) => {
+    if (!email || !email.includes('@')) {
+      setEmailValidationStatus({
+        isValid: null,
+        message: "",
+        isChecking: false
+      });
+      return;
+    }
+
+    // Check if it's a valid STI email format
+    if (!email.endsWith("@novaliches.sti.edu.ph") && !email.endsWith("@novaliches.sti.edu")) {
+      setEmailValidationStatus({
+        isValid: false,
+        message: "Invalid STI email format",
+        isChecking: false
+      });
+      return;
+    }
+
+    setEmailValidationStatus({
+      isValid: null,
+      message: "Checking email availability...",
+      isChecking: true
+    });
+
+    try {
+      const token = Cookies.get("token");
+      const response = await axios.get(`/api/students/check-email?email=${encodeURIComponent(email)}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      const emailExists = response.data.exists || false;
+      
+      if (emailExists) {
+        setEmailValidationStatus({
+          isValid: false,
+          message: "This email is already registered",
+          isChecking: false
+        });
+      } else {
+        setEmailValidationStatus({
+          isValid: true,
+          message: "Email is available",
+          isChecking: false
+        });
+      }
+    } catch (error) {
+      console.error("Error checking email:", error);
+      setEmailValidationStatus({
+        isValid: null,
+        message: "Unable to verify email",
+        isChecking: false
+      });
+    }
+  };
+
+  // Debounce function
+  const debounce = (func, delay) => {
+    let timeoutId;
+    return (...args) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => func.apply(null, args), delay);
+    };
+  };
+
+  // Create debounced email validation
+  const debouncedEmailValidation = debounce(validateEmailRealTime, 1000);
 
   const validateInputs = async () => {
     let newErrors = {};
@@ -280,8 +358,12 @@ export default function AddStudentModal({ onClose }) {
       newErrors.email = "Email is required.";
     } else if (!formData.email.endsWith("@novaliches.sti.edu.ph") && !formData.email.endsWith("@novaliches.sti.edu")) {
       newErrors.email = "Invalid STI email. Must end with @novaliches.sti.edu.ph or @novaliches.sti.edu";
-    } else {
-      // Check if email already exists
+    } else if (emailValidationStatus.isValid === false) {
+      newErrors.email = emailValidationStatus.message;
+    } else if (emailValidationStatus.isChecking) {
+      newErrors.email = "Please wait  verifying the email...";
+    } else if (emailValidationStatus.isValid === null && formData.email.includes('@')) {
+      // If real-time validation hasn't completed yet, do a final check
       const emailExists = await checkEmailExists(formData.email);
       if (emailExists) {
         newErrors.email = "This email is already registered. Please use a different email.";
@@ -459,15 +541,49 @@ export default function AddStudentModal({ onClose }) {
             {errors.lastName && <p className="text-red-500 text-sm">{errors.lastName}</p>}
             
             <label name="email" className="text-black font-bold">Email:</label>
-            <input 
-              type="email" 
-              name="email" 
-              value={formData.email}
-              onChange={handleChange} 
-              required 
-              className="border w-full p-2 rounded" 
-            />
+            <div className="relative">
+              <input 
+                type="email" 
+                name="email" 
+                value={formData.email}
+                onChange={handleChange} 
+                required 
+                className={`border w-full p-2 rounded pr-10 ${
+                  emailValidationStatus.isValid === true ? 'border-green-500' : 
+                  emailValidationStatus.isValid === false ? 'border-red-500' : 
+                  'border-gray-300'
+                }`}
+              />
+              {emailValidationStatus.isChecking && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                </div>
+              )}
+              {emailValidationStatus.isValid === true && !emailValidationStatus.isChecking && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <svg className="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              )}
+              {emailValidationStatus.isValid === false && !emailValidationStatus.isChecking && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <svg className="h-4 w-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
+              )}
+            </div>
             {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
+            {emailValidationStatus.message && !errors.email && (
+              <p className={`text-sm ${
+                emailValidationStatus.isValid === true ? 'text-green-600' : 
+                emailValidationStatus.isValid === false ? 'text-red-500' : 
+                'text-blue-500'
+              }`}>
+                {emailValidationStatus.message}
+              </p>
+            )}
             {emailChecking && <p className="text-blue-500 text-sm">Checking email availability...</p>}
 
             <label name="studentNumber" className="text-black font-bold">Student Number:</label>
@@ -549,10 +665,14 @@ export default function AddStudentModal({ onClose }) {
 
           <button 
             onClick={handleRegister} 
-            className="bg-blue-600 text-white px-4 py-2 rounded w-full mt-4"
-            disabled={isLoading || emailChecking}
+            className="bg-blue-600 text-white px-4 py-2 rounded w-full mt-4 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            disabled={isLoading || emailChecking || emailValidationStatus.isChecking || emailValidationStatus.isValid === false}
           >
-            {isLoading ? "Loading..." : emailChecking ? "Checking Email..." : "Generate Password & Register"}
+            {isLoading ? "Loading..." : 
+             emailChecking ? "Checking Email..." : 
+             emailValidationStatus.isChecking ? "Validating Email..." :
+             emailValidationStatus.isValid === false ? "Email Not Available" :
+             "Generate Password & Register"}
           </button>
           <button onClick={onClose} className="text-red-500 w-full text-center mt-3">Cancel</button>
         </div>
