@@ -252,63 +252,9 @@ export default function ElectionDetailsPage() {
       
       let electionData = data.election;
 
-      if (electionData && electionData.created_by) {
-        try {
-          let isSysAdmin = false;
-
-          if (typeof electionData.created_by === 'object') {
-            const creatorId = electionData.created_by.id || '';
-            if (creatorId === 1 || creatorId === '1') {
-              isSysAdmin = true;
-            }
-          } else if (electionData.created_by === 1 || electionData.created_by === '1') {
-            isSysAdmin = true;
-            
-            try {
-              electionData.created_by_name = "System Administrator";
-              electionData.created_by_role = "SuperAdmin";
-            } catch (creatorFetchError) {
-              console.error('Error setting creator details:', creatorFetchError);
-              electionData.created_by_name = "System Administrator";
-            }
-          } else if (typeof electionData.created_by === 'number' || typeof electionData.created_by === 'string') {
-            electionData.created_by_name = "";  
-            electionData.created_by_role = "Admin";
-          }
-
-          if (typeof electionData.created_by === 'object' && electionData.created_by.role) {
-            const creatorRole = electionData.created_by.role.toLowerCase();
-
-            const isSysAdminByRole = 
-              creatorRole.includes('superadmin') || 
-              creatorRole.includes('system_admin') || 
-              creatorRole.includes('systemadmin') ||
-              creatorRole.includes('super');
-            
-            if (isSysAdminByRole) {
-              isSysAdmin = true;
-            }
-                 
-          } else if (electionData.created_by_role) {
-            const creatorRole = electionData.created_by_role.toLowerCase();
-            
-            const isSysAdminByRole = 
-              creatorRole.includes('superadmin') || 
-              creatorRole.includes('system_admin') || 
-              creatorRole.includes('systemadmin') ||
-              creatorRole.includes('super');
-              
-            if (isSysAdminByRole) {
-              isSysAdmin = true;
-            }
-          }
-
-          setIsSystemAdminCreator(isSysAdmin);
-
-        } catch (error) {
-          console.error('Error checking creator:', error);
-          setIsSystemAdminCreator(false);
-        }
+      // Set system admin creator flag based on creator role from backend
+      if (electionData && electionData.creator_role) {
+        setIsSystemAdminCreator(electionData.creator_role === 'SuperAdmin');
       } else {
         setIsSystemAdminCreator(false);
       }
@@ -1076,37 +1022,16 @@ export default function ElectionDetailsPage() {
       <div className="mb-4 bg-gray-50 rounded-lg p-3 border border-gray-200">
         <p className="text-sm text-gray-600">
           <span className="font-medium">Created by: </span>
-          {election.created_by ? (
-            typeof election.created_by === 'object' ? 
-              <span className="text-black">
-                {election.created_by.first_name && election.created_by.last_name ? 
-                  `${election.created_by.first_name} ${election.created_by.last_name}` : 
-                  election.created_by.name || election.created_by.username || 
-                  election.created_by.email || ''}
-                <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
-                  isSystemAdminCreator 
-                    ? 'bg-purple-100 text-purple-800' 
-                    : 'bg-blue-100 text-blue-800'
-                }`}>
-                  {isSystemAdminCreator ? 'System Admin' : 'Admin'}
-                </span>
-              </span> :
-              <span className="text-black">
-                {election.created_by_name && (
-                  <span>{election.created_by_name} </span>
-                )}
-                <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
-                  isSystemAdminCreator || election.created_by === 1 || election.created_by === '1'
-                    ? 'bg-purple-100 text-purple-800' 
-                    : 'bg-blue-100 text-blue-800'
-                }`}>
-                  {isSystemAdminCreator || election.created_by === 1 || election.created_by === '1' 
-                    ? 'System Admin' 
-                    : 'Admin'}
-                </span>
-              </span>
-          ) : 'Unknown'}
-          
+          <span className="text-black">
+            {election.creator_name || 'Unknown'}
+            <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
+              election.creator_role === 'SuperAdmin' 
+                ? 'bg-purple-100 text-purple-800' 
+                : 'bg-blue-100 text-blue-800'
+            }`}>
+              {election.creator_role || 'Admin'}
+            </span>
+          </span>
           {election.created_at && (
             <span className="ml-2">
               on {new Date(election.created_at).toLocaleDateString()} at {new Date(election.created_at).toLocaleTimeString()}

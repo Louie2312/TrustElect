@@ -493,8 +493,17 @@ const getElectionWithBallot = async (electionId) => {
       SELECT 
         e.*,
         (SELECT COUNT(*) FROM eligible_voters WHERE election_id = e.id) AS voter_count,
-        (SELECT COALESCE(COUNT(DISTINCT student_id), 0) FROM votes WHERE election_id = e.id) AS vote_count
+        (SELECT COALESCE(COUNT(DISTINCT student_id), 0) FROM votes WHERE election_id = e.id) AS vote_count,
+        CASE 
+          WHEN e.created_by = 1 THEN 'System Administrator'
+          ELSE COALESCE(a.name, 'Unknown Admin')
+        END as creator_name,
+        CASE 
+          WHEN e.created_by = 1 THEN 'SuperAdmin'
+          ELSE 'Admin'
+        END as creator_role
       FROM elections e
+      LEFT JOIN admins a ON e.created_by = a.id
       WHERE e.id = $1
     `, [electionId]);
 

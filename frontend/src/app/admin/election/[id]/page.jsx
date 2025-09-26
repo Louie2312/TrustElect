@@ -1125,6 +1125,28 @@ export default function ElectionDetailsPage() {
       <h1 className="text-2xl font-bold mb-2 text-black">Title: {election.title}</h1>
       <p className="text-gray-600 mb-6 text-black">Description: {election.description}</p>
 
+      {/* Creator Information */}
+      <div className="mb-4 bg-gray-50 rounded-lg p-3 border border-gray-200">
+        <p className="text-sm text-gray-600">
+          <span className="font-medium">Created by: </span>
+          <span className="text-black">
+            {election.creator_name || 'Unknown'}
+            <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
+              election.creator_role === 'SuperAdmin' 
+                ? 'bg-purple-100 text-purple-800' 
+                : 'bg-blue-100 text-blue-800'
+            }`}>
+              {election.creator_role || 'Admin'}
+            </span>
+          </span>
+          {election.created_at && (
+            <span className="ml-2">
+              on {new Date(election.created_at).toLocaleDateString()} at {new Date(election.created_at).toLocaleTimeString()}
+            </span>
+          )}
+        </p>
+      </div>
+
       {/* Approval Section */}
       {(election.needs_approval && !isSuperAdminCreator) && (
         <div className="mb-6 p-4 rounded-lg border-2 border-yellow-400 bg-yellow-50">
