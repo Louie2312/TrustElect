@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Download, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Download, X, ChevronLeft, ChevronRight, Search, ChevronDown } from 'lucide-react';
 import axios from 'axios';
 import Cookies from 'js-cookie';
 import { generatePdfReport } from '@/utils/pdfGenerator';
@@ -20,6 +20,36 @@ const AdminActivityReport = () => {
   const [error, setError] = useState(null);
   const [pdfStatus, setPdfStatus] = useState(null);
   const [availableUsers, setAvailableUsers] = useState([]);
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+
+  const fetchUsers = async () => {
+    try {
+      const token = Cookies.get("token");
+      const response = await axios.get(`${API_BASE}/users`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: {
+          role: 'admin,superadmin,student',
+          limit: 1000
+        }
+      });
+      
+      if (response.data.success) {
+        const users = response.data.data?.users || [];
+        // Filter out users with 'Unknown' name and only include admins and students
+        const filteredUsers = users.filter(user => 
+          user.first_name && 
+          user.last_name && 
+          user.first_name !== 'Unknown' && 
+          user.last_name !== 'Unknown' &&
+          (user.role === 'admin' || user.role === 'superadmin' || user.role === 'student')
+        );
+        setAvailableUsers(filteredUsers);
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -58,10 +88,6 @@ const AdminActivityReport = () => {
         summary: summaryResponse.data.data || {},
         pagination: activitiesResponse.data.data?.pagination || { totalPages: 1, currentPage: 1 }
       });
-
-      // Extract unique users for filtering
-      const uniqueUsers = [...new Set(activities.map(activity => activity.admin_name).filter(Boolean))];
-      setAvailableUsers(uniqueUsers);
     } catch (error) {
       console.error('Error fetching admin activity data:', error);
       setError(error.message || 'Failed to fetch admin activity data');
@@ -83,12 +109,52 @@ const AdminActivityReport = () => {
   };
 
   useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  useEffect(() => {
     fetchData();
   }, [selectedTimeframe, selectedAction, selectedUser, currentPage]);
 
   const activities = data.activities || [];
   const summary = data.summary || {};
   const pagination = data.pagination || {};
+
+  // Filter users based on search term
+  const filteredUsers = useMemo(() => {
+    if (!userSearchTerm) return availableUsers;
+    return availableUsers.filter(user => {
+      const fullName = `${user.first_name} ${user.last_name}`.toLowerCase();
+      return fullName.includes(userSearchTerm.toLowerCase());
+    });
+  }, [availableUsers, userSearchTerm]);
+
+  const handleUserSelect = (user) => {
+    const fullName = `${user.first_name} ${user.last_name}`;
+    setSelectedUser(fullName);
+    setUserSearchTerm(fullName);
+    setIsUserDropdownOpen(false);
+    setCurrentPage(1);
+  };
+
+  const handleUserSearchChange = (e) => {
+    setUserSearchTerm(e.target.value);
+    setIsUserDropdownOpen(true);
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isUserDropdownOpen && !event.target.closest('.relative')) {
+        setIsUserDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isUserDropdownOpen]);
 
   const timeframes = [
     { value: 'all', label: 'All Time' },
@@ -368,21 +434,62 @@ const AdminActivityReport = () => {
             ))}
           </select>
 
-          <select
-            value={selectedUser}
-            onChange={(e) => {
-              setSelectedUser(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="border rounded p-2 text-black"
-          >
-            <option value="all">All Users</option>
-            {availableUsers.map(user => (
-              <option key={user} value={user}>
-                {user}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <div className="relative">
+              <input
+                type="text"
+                value={userSearchTerm}
+                onChange={handleUserSearchChange}
+                onFocus={() => setIsUserDropdownOpen(true)}
+                placeholder="Search users..."
+                className="border rounded p-2 pr-8 text-black w-full"
+              />
+              {userSearchTerm ? (
+                <button
+                  onClick={() => {
+                    setUserSearchTerm('');
+                    setSelectedUser('all');
+                    setCurrentPage(1);
+                  }}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              ) : (
+                <Search className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              )}
+            </div>
+            
+            {isUserDropdownOpen && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                <div
+                  className="px-3 py-2 cursor-pointer hover:bg-gray-100 text-black"
+                  onClick={() => {
+                    setSelectedUser('all');
+                    setUserSearchTerm('');
+                    setIsUserDropdownOpen(false);
+                    setCurrentPage(1);
+                  }}
+                >
+                  All Users
+                </div>
+                {filteredUsers.map(user => (
+                  <div
+                    key={user.id}
+                    className="px-3 py-2 cursor-pointer hover:bg-gray-100 text-black"
+                    onClick={() => handleUserSelect(user)}
+                  >
+                    <div className="font-medium">{user.first_name} {user.last_name}</div>
+                    <div className="text-sm text-gray-500">{user.email}</div>
+                    <div className="text-xs text-gray-400 capitalize">{user.role}</div>
+                  </div>
+                ))}
+                {filteredUsers.length === 0 && userSearchTerm && (
+                  <div className="px-3 py-2 text-gray-500">No users found</div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -425,13 +532,13 @@ const AdminActivityReport = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
-                        {activity.admin_name}
+                        {activity.admin_name || 'Unknown User'}
                       </div>
                       <div className="text-sm text-gray-500">
-                        {activity.user_email}
+                        {activity.user_email || 'N/A'}
                       </div>
                       <div className="text-xs text-gray-500">
-                        {activity.user_role}
+                        {activity.user_role || 'N/A'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
