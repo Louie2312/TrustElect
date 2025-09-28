@@ -508,7 +508,7 @@ export default function ManageStudents() {
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4 text-black">Student Management</h1>
       <p className="text-black font-bold mb-4">
-      School Year: 2024-2025 
+      School Year: 2025-2026
       </p> 
       {error && <p className="text-red-500">{error}</p>}
 

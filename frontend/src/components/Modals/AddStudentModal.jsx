@@ -440,7 +440,7 @@ export default function AddStudentModal({ onClose }) {
     
     // Name validations
     if (!formData.firstName.trim()) {
-      newErrors.firstName = "First Name is required.";
+      newErrors.firstName = "*First Name is required.";
     } else if (formData.firstName.length > 35) {
       newErrors.firstName = "First Name must not exceed 35 characters.";
     } else if (!/^[a-zA-Z\s]+$/.test(formData.firstName)) {
@@ -454,7 +454,7 @@ export default function AddStudentModal({ onClose }) {
     }
     
     if (!formData.lastName.trim()) {
-      newErrors.lastName = "Last Name is required.";
+      newErrors.lastName = "*Last Name is required.";
     } else if (formData.lastName.length > 35) {
       newErrors.lastName = "Last Name must not exceed 35 characters.";
     } else if (!/^[a-zA-Z\s]+$/.test(formData.lastName)) {
@@ -463,7 +463,7 @@ export default function AddStudentModal({ onClose }) {
     
     // Email validations
     if (!formData.email.trim()) {
-      newErrors.email = "Email is required.";
+      newErrors.email = "*Email is required.";
     } else if (!formData.email.endsWith("@novaliches.sti.edu.ph") && !formData.email.endsWith("@novaliches.sti.edu")) {
       newErrors.email = "Invalid STI email. Must end with @novaliches.sti.edu.ph or @novaliches.sti.edu";
     } else if (emailValidationStatus.isValid === false) {
@@ -480,7 +480,7 @@ export default function AddStudentModal({ onClose }) {
     
     // Student number validations
     if (!formData.studentNumber.trim()) {
-      newErrors.studentNumber = "Student Number is required.";
+      newErrors.studentNumber = "*Student Number is required.";
     } else if (formData.studentNumber.length !== 11) {
       newErrors.studentNumber = "Student Number must be exactly 11 digits.";
     } else if (!/^[0-9]{11}$/.test(formData.studentNumber)) {
@@ -490,9 +490,9 @@ export default function AddStudentModal({ onClose }) {
     }
     
     // Other validations
-    if (!formData.courseId && !formData.courseName) newErrors.courseId = "Select a course.";
-    if (!formData.yearLevel) newErrors.yearLevel = "Select a year level.";
-    if (!formData.birthdate) newErrors.birthdate = "Birth date is required.";
+    if (!formData.courseId && !formData.courseName) newErrors.courseId = "*Select a course.";
+    if (!formData.yearLevel) newErrors.yearLevel = "*Select a year level.";
+    if (!formData.birthdate) newErrors.birthdate = "*Birth date is required.";
 
     setErrors(prev => {
       const preserved = { 
