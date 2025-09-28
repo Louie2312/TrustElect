@@ -439,15 +439,10 @@ export default function EditAdminModal({ admin, onClose, onSuccess }) {
           <div className="bg-white p-6 rounded-lg shadow-lg w-96">
             <h2 className="text-xl font-bold text-center mb-4 text-gray-800">Confirm Save Changes</h2>
             <div className="mb-6">
-              <p className="text-center text-gray-600 mb-2">
+              <p className="text-center text-black mb-2">
                 Are you sure you want to save these changes?
               </p>
-              <div className="bg-gray-50 p-3 rounded border">
-                <p className="text-sm"><strong>Admin:</strong> {formData.firstName} {formData.lastName}</p>
-                <p className="text-sm"><strong>Email:</strong> {formData.email}</p>
-                <p className="text-sm"><strong>Employee #:</strong> {formData.employeeNumber}</p>
-                <p className="text-sm"><strong>Department:</strong> {formData.department}</p>
-              </div>
+ 
             </div>
 
             <div className="flex justify-center gap-4">
