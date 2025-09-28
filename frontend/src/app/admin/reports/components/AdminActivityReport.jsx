@@ -17,6 +17,7 @@ const AdminActivityReport = () => {
     pagination: {}
   });
   const [error, setError] = useState(null);
+  const [pdfStatus, setPdfStatus] = useState(null);
 
   const fetchData = async () => {
     try {
@@ -231,6 +232,16 @@ const AdminActivityReport = () => {
 
   const handleDownload = async () => {
     try {
+      setLoading(true);
+      setPdfStatus(null);
+      
+      // Check if we have data to generate report
+      if (!data.activities || data.activities.length === 0) {
+        setPdfStatus({ type: 'error', message: 'No data available to generate report. Please try different filters.' });
+        setTimeout(() => setPdfStatus(null), 5000);
+        return;
+      }
+      
       const reportData = {
         title: "Admin Activity Report",
         description: "Detailed tracking of all administrative actions and changes in the system",
@@ -241,18 +252,32 @@ const AdminActivityReport = () => {
           most_common_action: data.summary.most_common_action || 'N/A'
         },
         activities: data.activities.map(activity => ({
-          admin_name: activity.admin_name,
-          user_email: activity.user_email,
-          role_name: activity.user_role,
-          action: activity.action,
-          entity_type: activity.entity_type,
-          created_at: activity.created_at
+          admin_name: activity.admin_name || 'Unknown',
+          user_email: activity.user_email || 'N/A',
+          role_name: activity.user_role || 'N/A',
+          action: activity.action || 'Unknown',
+          entity_type: activity.entity_type || 'Unknown',
+          created_at: new Date(activity.created_at) // Convert string to Date object
         }))
       };
 
-      await generatePdfReport(10, reportData); // 10 is the report ID for Admin Activity
+      const result = await generatePdfReport(10, reportData); // 10 is the report ID for Admin Activity
+      
+      if (result.success) {
+        console.log('PDF generated successfully:', result.filename);
+        setPdfStatus({ type: 'success', message: 'PDF report generated successfully!' });
+        setTimeout(() => setPdfStatus(null), 3000);
+      } else {
+        console.error('PDF generation failed:', result.message);
+        setPdfStatus({ type: 'error', message: result.message });
+        setTimeout(() => setPdfStatus(null), 5000);
+      }
     } catch (error) {
       console.error('Error downloading report:', error);
+      setPdfStatus({ type: 'error', message: 'Failed to generate PDF report. Please try again.' });
+      setTimeout(() => setPdfStatus(null), 5000);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -263,12 +288,27 @@ const AdminActivityReport = () => {
           <h2 className="text-2xl font-bold text-gray-800">Admin Activity Report</h2>
           <button
             onClick={handleDownload}
-            className="flex items-center gap-2 bg-[#01579B] text-white px-4 py-2 rounded hover:bg-[#01416E] transition-colors"
+            disabled={loading || !data.activities || data.activities.length === 0}
+            className={`flex items-center gap-2 px-4 py-2 rounded transition-colors ${
+              loading || !data.activities || data.activities.length === 0
+                ? 'bg-gray-400 cursor-not-allowed' 
+                : 'bg-[#01579B] hover:bg-[#01416E]'
+            } text-white`}
           >
             <Download className="w-4 h-4" />
-            Download Report
+            {loading ? 'Generating PDF...' : 'Download Report'}
           </button>
         </div>
+
+        {pdfStatus && (
+          <div className={`mb-4 p-3 rounded ${
+            pdfStatus.type === 'success' 
+              ? 'bg-green-100 text-green-800 border border-green-200' 
+              : 'bg-red-100 text-red-800 border border-red-200'
+          }`}>
+            {pdfStatus.message}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-blue-50 p-4 rounded-lg">

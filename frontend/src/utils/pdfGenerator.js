@@ -5,18 +5,33 @@ import autoTable from 'jspdf-autotable';
 import { saveAs } from 'file-saver';
 
 const formatDate = (date) => {
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true
-  });
+  try {
+    if (!date) return 'N/A';
+    const dateObj = date instanceof Date ? date : new Date(date);
+    if (isNaN(dateObj.getTime())) return 'Invalid Date';
+    
+    return dateObj.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return 'N/A';
+  }
 };
 
 const formatNumber = (num) => {
-  return num.toLocaleString();
+  try {
+    if (num === null || num === undefined || isNaN(num)) return '0';
+    return Number(num).toLocaleString();
+  } catch (error) {
+    console.error('Error formatting number:', error);
+    return '0';
+  }
 };
 
 // Updated addHeader function - using PNG instead of SVG
@@ -220,17 +235,22 @@ const generateAdminActivityReport = (data) => {
   
   let currentY = addHeader(doc, 'Admin Activity Report', 'Summary of administrative actions and system activities.');
   
+  // Ensure we have valid summary data
+  const summary = data.summary || {};
   const summaryData = [
-    { metric: "Total Activities", value: formatNumber(data.summary.total_activities) },
-    { metric: "Active Admins", value: formatNumber(data.summary.active_admins) },
-    { metric: "Today's Activities", value: formatNumber(data.summary.activities_today) }
+    { metric: "Total Activities", value: formatNumber(summary.total_activities || 0) },
+    { metric: "Active Admins", value: formatNumber(summary.active_admins || 0) },
+    { metric: "Today's Activities", value: formatNumber(summary.activities_today || 0) },
+    { metric: "Most Common Action", value: summary.most_common_action || 'N/A' }
   ];
   
-  const activitiesData = data.activities.map(activity => ({
-    admin: activity.admin_name,
-    action: activity.action,
-    entity: activity.entity_type,
-    timestamp: formatDate(activity.created_at)
+  // Ensure we have valid activities data
+  const activities = data.activities || [];
+  const activitiesData = activities.map(activity => ({
+    admin: activity.admin_name || 'Unknown',
+    action: activity.action || 'Unknown',
+    entity: activity.entity_type || 'Unknown',
+    timestamp: formatDate(activity.created_at instanceof Date ? activity.created_at : new Date(activity.created_at))
   }));
   
   doc.setFontSize(14);
@@ -246,12 +266,18 @@ const generateAdminActivityReport = (data) => {
   doc.setFont('helvetica', 'bold');
   doc.text("Recent Activities", 14, currentY);
   
-  createSummaryTable(doc, activitiesData, [
-    { header: "Admin", key: "admin" },
-    { header: "Action", key: "action" },
-    { header: "Entity", key: "entity" },
-    { header: "Timestamp", key: "timestamp" }
-  ], currentY + 10);
+  if (activitiesData.length > 0) {
+    createSummaryTable(doc, activitiesData, [
+      { header: "Admin", key: "admin" },
+      { header: "Action", key: "action" },
+      { header: "Entity", key: "entity" },
+      { header: "Timestamp", key: "timestamp" }
+    ], currentY + 10);
+  } else {
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.text("No activities found for the selected period.", 14, currentY + 10);
+  }
   
   // Add footer to the first page
   addFooter(doc, 'Admin Activity Report');
