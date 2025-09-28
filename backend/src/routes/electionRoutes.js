@@ -5,6 +5,10 @@ const {
     getElectionById,
     updateElection,
     deleteElection,
+    archiveElection,
+    restoreElection,
+    permanentlyDeleteElection,
+    getArchivedElections,
     previewEligibleVoters,
     getElectionVoters,
     getElectionsByStatus,
@@ -60,6 +64,10 @@ router.get('/completed/:id/results', verifyToken, getCompletedElectionResults);
 router.get("/:id", verifyToken, getElectionById);
 router.put("/:id", verifyToken, updateElection);
 router.delete("/:id", verifyToken, deleteElection);
+router.patch("/:id/archive", verifyToken, archiveElection);
+router.patch("/:id/restore", verifyToken, restoreElection);
+router.delete("/:id/permanent", verifyToken, permanentlyDeleteElection);
+router.get("/archived", verifyToken, getArchivedElections);
 
 router.post("/:id/approve", verifyToken, isSuperAdmin, approveElection);
 router.post("/:id/reject", verifyToken, isSuperAdmin, rejectElection);

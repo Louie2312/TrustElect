@@ -486,6 +486,72 @@ const deleteElection = async (id) => {
   return { message: "Election deleted successfully" };
 };
 
+// Archive election (soft delete)
+const archiveElection = async (id) => {
+  try {
+    const query = `
+      UPDATE elections 
+      SET is_active = FALSE, updated_at = NOW() 
+      WHERE id = $1 RETURNING *;
+    `;
+    const result = await pool.query(query, [id]);
+    return result.rows[0] || null;
+  } catch (error) {
+    console.error("Error archiving election:", error);
+    throw error;
+  }
+};
+
+// Restore election from archive
+const restoreElection = async (id) => {
+  try {
+    const query = `
+      UPDATE elections 
+      SET is_active = TRUE, updated_at = NOW() 
+      WHERE id = $1 RETURNING *;
+    `;
+    const result = await pool.query(query, [id]);
+    return result.rows[0] || null;
+  } catch (error) {
+    console.error("Error restoring election:", error);
+    throw error;
+  }
+};
+
+// Permanently delete election
+const permanentlyDeleteElection = async (id) => {
+  try {
+    const query = `DELETE FROM elections WHERE id = $1 RETURNING *;`;
+    const result = await pool.query(query, [id]);
+    return result.rows[0] || null;
+  } catch (error) {
+    console.error("Error permanently deleting election:", error);
+    throw error;
+  }
+};
+
+// Get archived elections
+const getArchivedElections = async () => {
+  try {
+    const query = `
+      SELECT 
+        e.*,
+        u.first_name as created_by_name,
+        u.last_name as created_by_last_name,
+        u.department as created_by_department
+      FROM elections e
+      LEFT JOIN users u ON e.created_by = u.id
+      WHERE e.is_active = FALSE
+      ORDER BY e.updated_at DESC;
+    `;
+    const result = await pool.query(query);
+    return result.rows;
+  } catch (error) {
+    console.error("Error fetching archived elections:", error);
+    throw error;
+  }
+};
+
 const getElectionWithBallot = async (electionId) => {
   try {
 
@@ -855,6 +921,10 @@ module.exports = {
   getElectionById, 
   updateElection, 
   deleteElection, 
+  archiveElection,
+  restoreElection,
+  permanentlyDeleteElection,
+  getArchivedElections,
   getEligibleVotersCount, 
   getElectionStatistics, 
   getElectionsByStatus,
