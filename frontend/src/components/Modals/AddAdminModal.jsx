@@ -176,7 +176,7 @@ export default function AddAdminModal({ onClose }) {
     if (name === 'email' && newValue && (newValue.endsWith("@novaliches.sti.edu.ph") || newValue.endsWith("@novaliches.sti.edu"))) {
       const emailExists = await checkEmailExists(newValue);
       if (emailExists) {
-        setErrors(prev => ({ ...prev, email: 'Email already exists. Please use a different email.' }));
+        setErrors(prev => ({ ...prev, email: '*Email already exists. Please use a different email.' }));
       }
     }
 
@@ -192,51 +192,51 @@ export default function AddAdminModal({ onClose }) {
     
     // First Name validation
     if (!formData.firstName.trim()) {
-      newErrors.firstName = "First Name is required.";
+      newErrors.firstName = "*First Name is required.";
     } else if (!/^[A-Za-z\s]+$/.test(formData.firstName.trim())) {
-      newErrors.firstName = "First Name must contain letters only.";
+      newErrors.firstName = "*First Name must contain letters only.";
     } else if (formData.firstName.trim().length > 35) {
-      newErrors.firstName = "First Name must not exceed 35 characters.";
+      newErrors.firstName = "*First Name must not exceed 35 characters.";
     }
     
     // Last Name validation
     if (!formData.lastName.trim()) {
-      newErrors.lastName = "Last Name is required.";
+      newErrors.lastName = "*Last Name is required.";
     } else if (!/^[A-Za-z\s]+$/.test(formData.lastName.trim())) {
-      newErrors.lastName = "Last Name must contain letters only.";
+      newErrors.lastName = "*Last Name must contain letters only.";
     } else if (formData.lastName.trim().length > 35) {
-      newErrors.lastName = "Last Name must not exceed 35 characters.";
+      newErrors.lastName = "*Last Name must not exceed 35 characters.";
     }
     
     // Email validation
     if (!formData.email.trim()) {
-      newErrors.email = "Email is required.";
+      newErrors.email = "*Email is required.";
     } else if (!formData.email.endsWith("@novaliches.sti.edu.ph") && !formData.email.endsWith("@novaliches.sti.edu")) {
-      newErrors.email = "Invalid STI email. Must end with @novaliches.sti.edu.ph or @novaliches.sti.edu";
+      newErrors.email = "*Invalid STI email. Must end with @novaliches.sti.edu.ph or @novaliches.sti.edu";
     } else if (formData.email.length > 50) {
-      newErrors.email = "Email must not exceed 50 characters.";
+      newErrors.email = "*Email must not exceed 50 characters.";
     } else {
       // Check if email already exists
       const emailExists = await checkEmailExists(formData.email);
       if (emailExists) {
-        newErrors.email = "Email already exists. Please use a different email.";
+        newErrors.email = "*Email already exists. Please use a different email.";
       }
     }
     
     // Employee Number validation
     if (!formData.employeeNumber.trim()) {
-      newErrors.employeeNumber = "Employee Number is required.";
+      newErrors.employeeNumber = "*Employee Number is required.";
     } else if (!/^[a-zA-Z0-9]+$/.test(formData.employeeNumber)) {
-      newErrors.employeeNumber = "Employee Number must contain only letters and numbers.";
+      newErrors.employeeNumber = "*Employee Number must contain only letters and numbers.";
     } else if (formData.employeeNumber.length < 3) {
-      newErrors.employeeNumber = "Employee Number must be at least 3 characters.";
+      newErrors.employeeNumber = "*Employee Number must be at least 3 characters.";
     } else if (formData.employeeNumber.length > 8) {
-      newErrors.employeeNumber = "Employee Number must not exceed 8 characters.";
+      newErrors.employeeNumber = "*Employee Number must not exceed 8 characters.";
     }
     
     // Department validation
     if (!formData.department) {
-      newErrors.department = "Select a department.";
+      newErrors.department = "*Select a department.";
     }
 
     setErrors(newErrors);

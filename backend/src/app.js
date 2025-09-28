@@ -285,11 +285,11 @@ app.put('/api/candidates/:candidateId', (req, res) => {
 });
 
 app.use("/api/superadmin", superAdminRoutes);
-app.use("/api/superadmin", departmentRoutes);
 app.use("/api/superadmin", adminRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/admin", checkEmailRoutes);
 app.use("/api/admin", departmentRoutes);
+app.use("/api/superadmin", departmentRoutes);
 app.use("/api/superadmin", superAdminCheckEmailRoutes);
 app.use("/api/superadmin", studentRoutes);
 app.use("/api/auth", require("./routes/authRoutes"));
@@ -309,7 +309,6 @@ app.use("/api/reports/admin-activity", adminActivityRoutes);  // Updated path fo
 app.use("/api", studentRoutes);
 app.use("/api/ballots", ballotRoutes);
 app.use("/api/maintenance", maintenanceRoutes);
-app.use("/api/superadmin", departmentRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/content", contentRoutes);
 app.use("/api/audit-logs", auditLogRoutes);

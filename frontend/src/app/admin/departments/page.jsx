@@ -363,9 +363,9 @@ export default function AdminDepartmentsPage() {
           onChange={(e) => setFilter(e.target.value)}
         >
           <option value="All">All Types</option>
-          <option value="Academic">Academic</option>
-          <option value="Administrative">Administrative</option>
-          <option value="Organization">Organization</option>
+          {Array.from(new Set(departments.map(dept => dept.department_type))).map(type => (
+            <option key={type} value={type}>{type}</option>
+          ))}
         </select>
       </div>
 

@@ -146,10 +146,9 @@ export default function DepartmentsPage() {
           onChange={(e) => setFilter(e.target.value)}
         >
           <option value="All">All Types</option>
-          <option value="Academic">Academic</option>
-          <option value="Administrative">Administrative</option>
-          <option value="Organization">Organization</option>
-          <option value="System">System</option>
+          {Array.from(new Set(departments.map(dept => dept.department_type))).map(type => (
+            <option key={type} value={type}>{type}</option>
+          ))}
         </select>
       </div>
 
@@ -598,7 +597,7 @@ function AssignAdminModal({ department, admins: initialAdmins, onClose, onSucces
                     <div>
                       <span className="font-medium">{admin.first_name} {admin.last_name}</span>
                       <span className="text-gray-500 text-sm block">{admin.email}</span>
-                      {admin.department && admin.department !== department.department_name && (
+                      {admin.department && !admin.department.split(',').map(d => d.trim()).includes(department.department_name) && (
                         <span className="text-amber-600 text-xs">
                           Currently assigned to: {admin.department}
                         </span>
@@ -667,10 +666,11 @@ function EditDepartmentModal({ department, onClose, onSuccess }) {
         });
         
         const adminsArray = res.data.admins || res.data || [];
-        const departmentAdmins = adminsArray.filter(admin => 
-          admin.is_active && 
-          admin.department === department.department_name
-        );
+        const departmentAdmins = adminsArray.filter(admin => {
+          if (!admin.is_active) return false;
+          const departments = admin.department ? admin.department.split(',').map(d => d.trim()) : [];
+          return departments.includes(department.department_name);
+        });
         setAdmins(departmentAdmins);
       } catch (error) {
         console.error("Error fetching admins:", error);
