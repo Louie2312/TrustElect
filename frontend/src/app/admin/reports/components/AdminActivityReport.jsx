@@ -9,6 +9,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 const AdminActivityReport = () => {
   const [selectedTimeframe, setSelectedTimeframe] = useState('all');
   const [selectedAction, setSelectedAction] = useState('all');
+  const [selectedUser, setSelectedUser] = useState('all');
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [data, setData] = useState({
@@ -18,6 +19,7 @@ const AdminActivityReport = () => {
   });
   const [error, setError] = useState(null);
   const [pdfStatus, setPdfStatus] = useState(null);
+  const [availableUsers, setAvailableUsers] = useState([]);
 
   const fetchData = async () => {
     try {
@@ -31,6 +33,7 @@ const AdminActivityReport = () => {
           params: {
             timeframe: selectedTimeframe,
             action: selectedAction !== 'all' ? selectedAction : undefined,
+            user: selectedUser !== 'all' ? selectedUser : undefined,
             page: currentPage,
             limit: 100,
             sort_by: 'created_at',
@@ -49,11 +52,16 @@ const AdminActivityReport = () => {
         throw new Error('Failed to fetch admin activity data');
       }
 
+      const activities = activitiesResponse.data.data?.activities || [];
       setData({
-        activities: activitiesResponse.data.data?.activities || [],
+        activities: activities,
         summary: summaryResponse.data.data || {},
         pagination: activitiesResponse.data.data?.pagination || { totalPages: 1, currentPage: 1 }
       });
+
+      // Extract unique users for filtering
+      const uniqueUsers = [...new Set(activities.map(activity => activity.admin_name).filter(Boolean))];
+      setAvailableUsers(uniqueUsers);
     } catch (error) {
       console.error('Error fetching admin activity data:', error);
       setError(error.message || 'Failed to fetch admin activity data');
@@ -76,7 +84,7 @@ const AdminActivityReport = () => {
 
   useEffect(() => {
     fetchData();
-  }, [selectedTimeframe, selectedAction, currentPage]);
+  }, [selectedTimeframe, selectedAction, selectedUser, currentPage]);
 
   const activities = data.activities || [];
   const summary = data.summary || {};
@@ -359,6 +367,22 @@ const AdminActivityReport = () => {
               </option>
             ))}
           </select>
+
+          <select
+            value={selectedUser}
+            onChange={(e) => {
+              setSelectedUser(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="border rounded p-2 text-black"
+          >
+            <option value="all">All Users</option>
+            {availableUsers.map(user => (
+              <option key={user} value={user}>
+                {user}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -378,16 +402,16 @@ const AdminActivityReport = () => {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
-                    Admin
+                    Time Stamp
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
-                    Action Details
+                    Name
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
-                    Action Type
+                    Action Taken
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
-                    Entity Type
+                    Details/Description
                   </th>
                 </tr>
               </thead>
@@ -395,28 +419,33 @@ const AdminActivityReport = () => {
                 {activities.map((activity, index) => (
                   <tr key={index} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-black">
+                        {formatDate(activity.created_at)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
                         {activity.admin_name}
                       </div>
-                      <div className="text-sm text-black">
+                      <div className="text-sm text-gray-500">
                         {activity.user_email}
                       </div>
-                      <div className="text-xs text-black">
+                      <div className="text-xs text-gray-500">
                         {activity.user_role}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-black">
-                        {getActionDescription(activity)}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getActionColor(activity.action)}`}>
                         {activity.action}
                       </span>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {activity.entity_type}
+                      </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                      {activity.entity_type}
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-black">
+                        {getActionDescription(activity)}
+                      </div>
                     </td>
                   </tr>
                 ))}
