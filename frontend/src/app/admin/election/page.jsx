@@ -28,6 +28,7 @@ const statusColors = {
   completed: 'bg-green-100 text-black border-green-300',
   pending: 'bg-purple-100 text-black border-purple-300',
   to_approve: 'bg-purple-100 text-black border-purple-800',
+  archived: 'bg-gray-100 text-black border-gray-300',
 };
 
 const statusIcons = {
@@ -36,7 +37,8 @@ const statusIcons = {
   completed: <CheckCircle className="w-5 h-5" />,
   pending: <AlertCircle className="w-5 h-5" />,
   to_approve: <AlertCircle className="w-5 h-5" />,
-  draft: <AlertCircle className="w-5 h-5" />
+  draft: <AlertCircle className="w-5 h-5" />,
+  archived: <AlertCircle className="w-5 h-5" />
 };
 
 const isCreatedBySystemAdmin = (election) => {
@@ -272,6 +274,7 @@ export default function ElectionPage() {
           <span className="ml-2 text-xs font-medium">
             {election.status === 'pending' ? 'PENDING APPROVAL' : 
              election.status === 'draft' ? 'DRAFT' : 
+             election.status === 'archived' ? 'ARCHIVED' :
              election.status.toUpperCase()}
           </span>
         </div>
@@ -292,6 +295,7 @@ export default function ElectionPage() {
         <span className="ml-2 text-xs font-medium">
           {election.status === 'pending' ? 'PENDING APPROVAL' : 
            election.status === 'draft' ? 'DRAFT' : 
+           election.status === 'archived' ? 'ARCHIVED' :
            election.status.toUpperCase()}
         </span>
       </div>

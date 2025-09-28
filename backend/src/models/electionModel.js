@@ -48,6 +48,7 @@ const getElectionsByStatus = async (status) => {
       LEFT JOIN votes v ON e.id = v.election_id
       LEFT JOIN ballots b ON e.id = b.election_id
       WHERE e.status = $1 
+      AND e.status != 'archived'
       AND (
           e.needs_approval = FALSE 
           OR e.needs_approval IS NULL
@@ -321,9 +322,10 @@ const getAllElections = async () => {
           COUNT(ev.id) AS voter_count
       FROM elections e
       LEFT JOIN eligible_voters ev ON e.id = ev.election_id
+      WHERE e.status != 'archived'
       GROUP BY e.id
       ORDER BY e.created_at DESC;
-  `);
+`);
   return result.rows;
 };
 
@@ -491,7 +493,7 @@ const archiveElection = async (id) => {
   try {
     const query = `
       UPDATE elections 
-      SET is_active = FALSE, updated_at = NOW() 
+      SET status = 'archived', updated_at = NOW() 
       WHERE id = $1 RETURNING *;
     `;
     const result = await pool.query(query, [id]);
@@ -505,12 +507,38 @@ const archiveElection = async (id) => {
 // Restore election from archive
 const restoreElection = async (id) => {
   try {
+    // Get the election to determine what status to restore to
+    const electionQuery = await pool.query(`
+      SELECT date_from, date_to, start_time, end_time 
+      FROM elections 
+      WHERE id = $1
+    `, [id]);
+    
+    if (electionQuery.rows.length === 0) {
+      throw new Error('Election not found');
+    }
+    
+    const election = electionQuery.rows[0];
+    const now = new Date();
+    const start = new Date(`${election.date_from}T${election.start_time}`);
+    const end = new Date(`${election.date_to}T${election.end_time}`);
+    
+    // Determine appropriate status based on dates
+    let newStatus = 'draft';
+    if (now < start) {
+      newStatus = 'upcoming';
+    } else if (now >= start && now <= end) {
+      newStatus = 'ongoing';
+    } else if (now > end) {
+      newStatus = 'completed';
+    }
+    
     const query = `
       UPDATE elections 
-      SET is_active = TRUE, updated_at = NOW() 
-      WHERE id = $1 RETURNING *;
+      SET status = $1, updated_at = NOW() 
+      WHERE id = $2 RETURNING *;
     `;
-    const result = await pool.query(query, [id]);
+    const result = await pool.query(query, [newStatus, id]);
     return result.rows[0] || null;
   } catch (error) {
     console.error("Error restoring election:", error);
@@ -541,7 +569,7 @@ const getArchivedElections = async () => {
         u.department as created_by_department
       FROM elections e
       LEFT JOIN users u ON e.created_by = u.id
-      WHERE e.is_active = FALSE
+      WHERE e.status = 'archived'
       ORDER BY e.updated_at DESC;
     `;
     const result = await pool.query(query);
@@ -773,6 +801,7 @@ const getAllElectionsWithCreator = async () => {
              a.user_id as admin_id
       FROM elections e
       LEFT JOIN admins a ON e.created_by = a.user_id
+      WHERE e.status != 'archived'
       ORDER BY e.date_from DESC
     `;
     const result = await pool.query(query);

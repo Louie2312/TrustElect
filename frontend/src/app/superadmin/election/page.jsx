@@ -25,14 +25,16 @@ const statusColors = {
   ongoing: 'bg-blue-100 text-black border-blue-300',
   upcoming: 'bg-yellow-100 text-black border-yellow-300',
   completed: 'bg-green-100 text-black border-green-300',
-  to_approve: 'bg-purple-100 text-black border-purple-300'
+  to_approve: 'bg-purple-100 text-black border-purple-300',
+  archived: 'bg-gray-100 text-black border-gray-300'
 };
 
 const statusIcons = {
   ongoing: <Clock className="w-5 h-5" />,
   upcoming: <Calendar className="w-5 h-5" />,
   completed: <CheckCircle className="w-5 h-5" />,
-  to_approve: <AlertCircle className="w-5 h-5" />
+  to_approve: <AlertCircle className="w-5 h-5" />,
+  archived: <AlertCircle className="w-5 h-5" />
 };
 
 export default function ElectionPage() {
@@ -200,7 +202,9 @@ export default function ElectionPage() {
       <div className={`flex items-center px-3 py-1 rounded-full ${statusColors[status]}`}>
         {statusIcons[status]}
         <span className="ml-2 text-xs font-medium">
-          {(election.needs_approval && !isSuperAdminCreator) ? 'NEEDS APPROVAL' : election.status.toUpperCase()}
+          {(election.needs_approval && !isSuperAdminCreator) ? 'NEEDS APPROVAL' : 
+           election.status === 'archived' ? 'ARCHIVED' :
+           election.status.toUpperCase()}
         </span>
       </div>
     );

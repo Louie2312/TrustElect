@@ -53,6 +53,7 @@ router.post("/update-statuses", verifyToken, updateElectionStatuses);
 // Get elections pending approval (these need to come BEFORE /:id routes)
 router.get("/pending-approval", verifyToken, isSuperAdmin, getPendingApprovalElections);
 router.get("/admin-pending-approval", verifyToken, isAdmin, getPendingApprovalElections);
+router.get("/archived", verifyToken, getArchivedElections);
 
 // Routes with :id parameter
 router.get('/:id/voters', verifyToken, getElectionVoters);
@@ -67,7 +68,6 @@ router.delete("/:id", verifyToken, deleteElection);
 router.patch("/:id/archive", verifyToken, archiveElection);
 router.patch("/:id/restore", verifyToken, restoreElection);
 router.delete("/:id/permanent", verifyToken, permanentlyDeleteElection);
-router.get("/archived", verifyToken, getArchivedElections);
 
 router.post("/:id/approve", verifyToken, isSuperAdmin, approveElection);
 router.post("/:id/reject", verifyToken, isSuperAdmin, rejectElection);
