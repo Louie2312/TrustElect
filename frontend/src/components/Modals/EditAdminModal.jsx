@@ -442,7 +442,6 @@ export default function EditAdminModal({ admin, onClose, onSuccess }) {
               <p className="text-center text-black mb-2">
                 Are you sure you want to save these changes?
               </p>
- 
             </div>
 
             <div className="flex justify-center gap-4">
