@@ -48,6 +48,8 @@ const AdminActivityReport = () => {
       }
     } catch (error) {
       console.error('Error fetching users:', error);
+      // Fallback: try to get users from activities if API fails
+      setAvailableUsers([]);
     }
   };
 
@@ -88,6 +90,26 @@ const AdminActivityReport = () => {
         summary: summaryResponse.data.data || {},
         pagination: activitiesResponse.data.data?.pagination || { totalPages: 1, currentPage: 1 }
       });
+
+      // Extract users from activities and add to available users
+      const activityUsers = activities
+        .map(activity => ({
+          id: `activity_${activity.admin_name}`,
+          first_name: activity.admin_name?.split(' ')[0] || '',
+          last_name: activity.admin_name?.split(' ').slice(1).join(' ') || '',
+          email: activity.user_email || '',
+          role: activity.user_role || 'admin'
+        }))
+        .filter(user => user.first_name && user.last_name && user.first_name !== 'Unknown');
+
+      // Combine with existing users and remove duplicates
+      setAvailableUsers(prevUsers => {
+        const combinedUsers = [...prevUsers, ...activityUsers];
+        const uniqueUsers = combinedUsers.filter((user, index, self) => 
+          index === self.findIndex(u => u.first_name === user.first_name && u.last_name === user.last_name)
+        );
+        return uniqueUsers;
+      });
     } catch (error) {
       console.error('Error fetching admin activity data:', error);
       setError(error.message || 'Failed to fetch admin activity data');
@@ -123,14 +145,22 @@ const AdminActivityReport = () => {
   // Filter users based on search term
   const filteredUsers = useMemo(() => {
     if (!userSearchTerm) return availableUsers;
+    const searchTerm = userSearchTerm.toLowerCase().trim();
     return availableUsers.filter(user => {
       const fullName = `${user.first_name} ${user.last_name}`.toLowerCase();
-      return fullName.includes(userSearchTerm.toLowerCase());
+      const firstName = user.first_name?.toLowerCase() || '';
+      const lastName = user.last_name?.toLowerCase() || '';
+      const email = user.email?.toLowerCase() || '';
+      
+      return fullName.includes(searchTerm) || 
+             firstName.includes(searchTerm) || 
+             lastName.includes(searchTerm) ||
+             email.includes(searchTerm);
     });
   }, [availableUsers, userSearchTerm]);
 
   const handleUserSelect = (user) => {
-    const fullName = `${user.first_name} ${user.last_name}`;
+    const fullName = `${user.first_name} ${user.last_name}`.trim();
     setSelectedUser(fullName);
     setUserSearchTerm(fullName);
     setIsUserDropdownOpen(false);
@@ -480,12 +510,19 @@ const AdminActivityReport = () => {
                     onClick={() => handleUserSelect(user)}
                   >
                     <div className="font-medium">{user.first_name} {user.last_name}</div>
-                    <div className="text-sm text-gray-500">{user.email}</div>
-                    <div className="text-xs text-gray-400 capitalize">{user.role}</div>
+                    <div className="text-sm text-gray-500">{user.email || 'N/A'}</div>
+                    <div className="text-xs text-gray-400 capitalize">{user.role || 'admin'}</div>
                   </div>
                 ))}
                 {filteredUsers.length === 0 && userSearchTerm && (
-                  <div className="px-3 py-2 text-gray-500">No users found</div>
+                  <div className="px-3 py-2 text-gray-500">
+                    No users found for "{userSearchTerm}"
+                    {availableUsers.length > 0 && (
+                      <div className="text-xs mt-1">
+                        Available users: {availableUsers.length}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             )}
