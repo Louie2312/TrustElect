@@ -721,11 +721,11 @@ export default function AddStudentModal({ onClose }) {
       )}
 
       {showCancelConfirm && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+        <div className="fixed inset-0 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg w-96">
             <h2 className="text-xl font-bold text-center mb-4 text-gray-800">Confirm Cancellation</h2>
             <p className="text-center text-gray-600 mb-6">
-              Are you sure you want to cancel? All entered data will be lost.
+              Are you sure you want to cancel? All data changes will be lost.
             </p>
 
             <div className="flex justify-center gap-4">

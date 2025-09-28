@@ -287,42 +287,55 @@ export default function ContentManagement() {
     const file = e.target.files[0];
     if (!file) return;
 
+    // Validate file type and size
+    const maxSize = file.type.startsWith('video/') ? 200 * 1024 * 1024 : 5 * 1024 * 1024; // 200MB for videos, 5MB for images
+    if (file.size > maxSize) {
+      const maxSizeMB = maxSize / (1024 * 1024);
+      setSaveStatus(`Error: File is too large. Maximum size is ${maxSizeMB}MB.`);
+      setTimeout(() => setSaveStatus(""), 3000);
+      e.target.value = '';
+      return;
+    }
+
+    // Validate file type
+    const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    const allowedVideoTypes = ['video/mp4', 'video/webm', 'video/ogg'];
+    
+    if (file.type.startsWith('video/') && !allowedVideoTypes.includes(file.type)) {
+      setSaveStatus("Error: Invalid video format. Please use MP4, WebM, or OGG.");
+      setTimeout(() => setSaveStatus(""), 3000);
+      e.target.value = '';
+      return;
+    }
+    
+    if (file.type.startsWith('image/') && !allowedImageTypes.includes(file.type)) {
+      setSaveStatus("Error: Invalid image format. Please use JPEG, PNG, GIF, or WebP.");
+      setTimeout(() => setSaveStatus(""), 3000);
+      e.target.value = '';
+      return;
+    }
+
     const localUrl = URL.createObjectURL(file);
     
     if (type === 'heroVideo') {
-      if (file.size > 200 * 1024 * 1024) {
-        alert("Video file is too large. Maximum size is 200MB.");
-        e.target.value = '';
-        return;
-      }
       console.log("Updating hero video URL:", localUrl);
       updateHero('videoUrl', localUrl);
+      setSaveStatus("Hero video uploaded successfully! Click Save to apply changes.");
+      setTimeout(() => setSaveStatus(""), 3000);
     } 
     else if (type === 'heroPoster') {
-      if (file.size > 5 * 1024 * 1024) {
-        alert("Image file is too large. Maximum size is 5MB.");
-        e.target.value = '';
-        return;
-      }
       console.log("Updating hero poster image URL:", localUrl);
       updateHero('posterImage', localUrl);
+      setSaveStatus("Hero poster image uploaded successfully! Click Save to apply changes.");
+      setTimeout(() => setSaveStatus(""), 3000);
     }
     else if (type === 'ctaVideo') {
-      if (file.size > 200 * 1024 * 1024) {
-        alert("Video file is too large. Maximum size is 200MB.");
-        e.target.value = '';
-        return;
-      }
       console.log("Updating CTA video URL:", localUrl);
       updateCTA('videoUrl', localUrl);
+      setSaveStatus("CTA video uploaded successfully! Click Save to apply changes.");
+      setTimeout(() => setSaveStatus(""), 3000);
     } 
     else if (type === 'featureImage') {
-      if (file.size > 5 * 1024 * 1024) {
-        alert("Image file is too large. Maximum size is 5MB.");
-        e.target.value = '';
-        return;
-      }
-
       if (index === 0) {
         console.log("FEATURE CARD 1 IMAGE UPLOAD - index:" + index);
         console.log("Element ID:", e.target.id);
@@ -332,7 +345,6 @@ export default function ContentManagement() {
       console.log(`Updating feature image ${index} with URL ${localUrl}`);
 
       e.target.id = `feature-image-${index}`;
-
       e.target.setAttribute('data-feature-index', String(index));
  
       if (index === 0) {
@@ -341,24 +353,36 @@ export default function ContentManagement() {
       }
 
       updateFeature(index, 'imageUrl', localUrl);
+      setSaveStatus(`Feature card ${index + 1} image uploaded successfully! Click Save to apply changes.`);
+      setTimeout(() => setSaveStatus(""), 3000);
     }
   };
 
   const removeImage = (type, index) => {
+    let successMessage = '';
+    
     if (type === 'heroVideo') {
       updateHero('videoUrl', null);
+      successMessage = 'Hero video removed successfully! Click Save to apply changes.';
     } 
     else if (type === 'heroPoster') {
       updateHero('posterImage', null);
+      successMessage = 'Hero poster image removed successfully! Click Save to apply changes.';
     } 
     else if (type === 'ctaVideo') {
       updateCTA('videoUrl', null);
+      successMessage = 'CTA video removed successfully! Click Save to apply changes.';
     }
     else if (type === 'featureImage') {
       updateFeature(index, 'imageUrl', null);
+      successMessage = `Feature card ${index + 1} image removed successfully! Click Save to apply changes.`;
+    }
+    else if (type === 'logo') {
+      updateLogo('imageUrl', null);
+      successMessage = 'Logo removed successfully! Click Save to apply changes.';
     }
     
-    setSaveStatus('Image removed. Click Save to apply changes.');
+    setSaveStatus(successMessage);
     setTimeout(() => setSaveStatus(''), 3000);
   };
 
@@ -388,7 +412,7 @@ export default function ContentManagement() {
 
   const saveSectionContent = async (section) => {
     setIsLoading(true);
-    setSaveStatus("Saving...");
+    setSaveStatus(`Saving ${section} content...`);
     
     try {
       const token = Cookies.get('token');
@@ -493,7 +517,29 @@ export default function ContentManagement() {
       );
   
       if (response.status === 200) {
-        setSaveStatus("Changes saved successfully!");
+        // Set specific success messages based on section
+        let successMessage = '';
+        switch (section) {
+          case 'logo':
+            successMessage = 'Logo updated successfully!';
+            break;
+          case 'hero':
+            successMessage = 'Banner section updated successfully!';
+            break;
+          case 'features':
+            successMessage = 'Feature cards updated successfully!';
+            break;
+          case 'callToAction':
+            successMessage = 'Call to action section updated successfully!';
+            break;
+          case 'candidates':
+            successMessage = 'Candidates section updated successfully!';
+            break;
+          default:
+            successMessage = `${section} updated successfully!`;
+        }
+        
+        setSaveStatus(successMessage);
         // Update initialContent to reflect the saved state
         setInitialContent(JSON.stringify(landingContent));
         setShowPreview(false);
@@ -502,7 +548,7 @@ export default function ContentManagement() {
       console.error("Error saving content:", error);
       
       // Handle specific error cases
-      let errorMessage = "Error saving changes. Please try again.";
+      let errorMessage = `Error saving ${section}. Please try again.`;
       if (error.status === 413 || error.response?.status === 413) {
         errorMessage = 'File too large. Please try a smaller video file (max 200MB).';
       } else if (error.response?.data?.message) {
@@ -521,17 +567,32 @@ export default function ContentManagement() {
     setSaveStatus("Applying all changes...");
     
     try {
-
-      await saveSectionContent('features');
-
-      await saveSectionContent('hero');
-
-      await saveSectionContent('callToAction');
-
-      await fetchContent();
+      // Save each section with proper validation
+      const sections = ['features', 'hero', 'callToAction'];
+      const results = [];
       
-      setSaveStatus("All changes applied successfully!");
-      setTimeout(() => setSaveStatus(""), 2000);
+      for (const section of sections) {
+        try {
+          await saveSectionContent(section);
+          results.push({ section, success: true });
+        } catch (error) {
+          console.error(`Error saving ${section}:`, error);
+          results.push({ section, success: false, error: error.message });
+        }
+      }
+
+      // Check if all sections saved successfully
+      const failedSections = results.filter(r => !r.success);
+      
+      if (failedSections.length === 0) {
+        await fetchContent();
+        setSaveStatus("All changes applied successfully!");
+        setTimeout(() => setSaveStatus(""), 2000);
+      } else {
+        const failedSectionNames = failedSections.map(f => f.section).join(', ');
+        setSaveStatus(`Error: Failed to save ${failedSectionNames}. Please try again.`);
+        setTimeout(() => setSaveStatus(""), 5000);
+      }
     } catch (error) {
       console.error("Error saving content:", error);
       
@@ -573,13 +634,15 @@ export default function ContentManagement() {
         ]
       }
     }));
+    
+    setSaveStatus('New feature card added successfully! Click Save to apply changes.');
+    setTimeout(() => setSaveStatus(''), 3000);
   };
 
 
   const deleteFeatureCard = (index) => {
-
     if (landingContent.features.columns.length <= 1) {
-      setSaveStatus("Cannot delete the last feature card");
+      setSaveStatus("Error: Cannot delete the last feature card. At least one feature card is required.");
       setTimeout(() => setSaveStatus(""), 3000);
       return;
     }
@@ -592,7 +655,7 @@ export default function ContentManagement() {
       }
     }));
     
-    setSaveStatus('Feature card removed. Click Save to apply changes.');
+    setSaveStatus(`Feature card ${index + 1} removed successfully! Click Save to apply changes.`);
     setTimeout(() => setSaveStatus(''), 3000);
   };
 
