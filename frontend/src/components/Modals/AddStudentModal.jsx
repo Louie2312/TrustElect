@@ -332,7 +332,8 @@ export default function AddStudentModal({ onClose }) {
   const handleCancel = () => {
     // Check if form has any data entered
     const hasData = formData.firstName || formData.middleName || formData.lastName || 
-                   formData.email || formData.studentNumber || formData.birthdate;
+                   formData.email || formData.studentNumber || formData.birthdate ||
+                   formData.courseName || formData.yearLevel;
     
     if (hasData) {
       setShowCancelConfirm(true);
@@ -720,7 +721,7 @@ export default function AddStudentModal({ onClose }) {
       )}
 
       {showCancelConfirm && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg w-96">
             <h2 className="text-xl font-bold text-center mb-4 text-gray-800">Confirm Cancellation</h2>
             <p className="text-center text-gray-600 mb-6">
@@ -736,7 +737,7 @@ export default function AddStudentModal({ onClose }) {
               </button>
               <button 
                 onClick={cancelCancel} 
-                className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600 transition-colors"
+                className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition-colors"
               >
                 No, Continue
               </button>
