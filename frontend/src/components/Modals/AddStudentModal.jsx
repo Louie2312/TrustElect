@@ -746,14 +746,7 @@ export default function AddStudentModal({ onClose }) {
 
             {/* Year Level Dropdown */}
             <label name="yearLevel" className="text-black font-bold">Select Year Level:</label>
-            {formData.courseName && (
-              <div className="text-sm text-blue-600 mb-1">
-                {isCollegeProgram(formData.courseName) ? 
-                  "College Program - Select from 1st Year to 4th Year" : 
-                  "Senior High Program - Select Grade 11 or Grade 12"
-                }
-              </div>
-            )}
+               
             <select 
               name="yearLevel" 
               value={formData.yearLevel}
