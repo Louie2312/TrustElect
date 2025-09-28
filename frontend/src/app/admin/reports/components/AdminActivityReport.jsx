@@ -65,9 +65,7 @@ const AdminActivityReport = () => {
           params: {
             timeframe: selectedTimeframe,
             action: selectedAction !== 'all' ? selectedAction : undefined,
-            user: selectedUser !== 'all' ? selectedUser : undefined,
-            page: currentPage,
-            limit: 100,
+            limit: 1000, // Increased limit to get more data for client-side filtering
             sort_by: 'created_at',
             sort_order: 'DESC'
           }
@@ -84,15 +82,38 @@ const AdminActivityReport = () => {
         throw new Error('Failed to fetch admin activity data');
       }
 
-      const activities = activitiesResponse.data.data?.activities || [];
+      let activities = activitiesResponse.data.data?.activities || [];
+      
+      // Client-side filtering for user if backend filtering doesn't work properly
+      if (selectedUser !== 'all') {
+        const originalCount = activities.length;
+        activities = activities.filter(activity => {
+          const activityUserName = activity.admin_name || '';
+          return activityUserName.toLowerCase().trim() === selectedUser.toLowerCase().trim();
+        });
+        console.log(`Filtered activities for user "${selectedUser}": ${originalCount} -> ${activities.length}`);
+      }
+      
+      // Client-side pagination
+      const itemsPerPage = 100;
+      const totalPages = Math.ceil(activities.length / itemsPerPage);
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage;
+      const paginatedActivities = activities.slice(startIndex, endIndex);
+      
       setData({
-        activities: activities,
+        activities: paginatedActivities,
         summary: summaryResponse.data.data || {},
-        pagination: activitiesResponse.data.data?.pagination || { totalPages: 1, currentPage: 1 }
+        pagination: { 
+          totalPages: totalPages, 
+          currentPage: currentPage,
+          totalItems: activities.length
+        }
       });
 
-      // Extract users from activities and add to available users
-      const activityUsers = activities
+      // Extract users from original activities (before filtering) and add to available users
+      const originalActivities = activitiesResponse.data.data?.activities || [];
+      const activityUsers = originalActivities
         .map(activity => ({
           id: `activity_${activity.admin_name}`,
           first_name: activity.admin_name?.split(' ')[0] || '',
