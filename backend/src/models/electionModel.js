@@ -493,7 +493,7 @@ const archiveElection = async (id) => {
   try {
     const query = `
       UPDATE elections 
-      SET status = 'archived', updated_at = NOW() 
+      SET status = 'archived' 
       WHERE id = $1 RETURNING *;
     `;
     const result = await pool.query(query, [id]);
@@ -535,7 +535,7 @@ const restoreElection = async (id) => {
     
     const query = `
       UPDATE elections 
-      SET status = $1, updated_at = NOW() 
+      SET status = $1 
       WHERE id = $2 RETURNING *;
     `;
     const result = await pool.query(query, [newStatus, id]);
@@ -570,7 +570,7 @@ const getArchivedElections = async () => {
       FROM elections e
       LEFT JOIN users u ON e.created_by = u.id
       WHERE e.status = 'archived'
-      ORDER BY e.updated_at DESC;
+      ORDER BY e.created_at DESC;
     `;
     const result = await pool.query(query);
     return result.rows;

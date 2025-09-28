@@ -4,9 +4,9 @@ const {
   getElectionById, 
   updateElection, 
   deleteElection,
-  archiveElection,
-  restoreElection,
-  permanentlyDeleteElection,
+  archiveElection: archiveElectionModel,
+  restoreElection: restoreElectionModel,
+  permanentlyDeleteElection: permanentlyDeleteElectionModel,
   getArchivedElections,
   getEligibleVotersCount,
   getElectionsByStatus,
@@ -1938,7 +1938,7 @@ exports.getVotesPerCandidate = async (req, res) => {
 exports.archiveElection = async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await archiveElection(id);
+    const result = await archiveElectionModel(id);
     
     if (!result) {
       return res.status(404).json({ message: "Election not found" });
@@ -1959,7 +1959,7 @@ exports.archiveElection = async (req, res) => {
 exports.restoreElection = async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await restoreElection(id);
+    const result = await restoreElectionModel(id);
     
     if (!result) {
       return res.status(404).json({ message: "Election not found" });
@@ -1980,7 +1980,7 @@ exports.restoreElection = async (req, res) => {
 exports.permanentlyDeleteElection = async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await permanentlyDeleteElection(id);
+    const result = await permanentlyDeleteElectionModel(id);
     
     if (!result) {
       return res.status(404).json({ message: "Election not found" });
