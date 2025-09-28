@@ -100,11 +100,11 @@ export default function ElectionBulletinPage() {
   
   // Pagination states for voters
   const [currentVoterPage, setCurrentVoterPage] = useState(1);
-  const [votersPerPage] = useState(50);
+  const [votersPerPage] = useState(40);
   
   // Pagination states for candidates
   const [currentCandidatePage, setCurrentCandidatePage] = useState(1);
-  const [candidatesPerPage] = useState(50);
+  const [candidatesPerPage] = useState(40);
 
   const handleImageError = (candidateId) => {
     if (!imageErrors[candidateId]) {
@@ -313,7 +313,7 @@ export default function ElectionBulletinPage() {
         </div>
       </div>
 
-      <h1 className="text-2xl font-bold mb-2 text-black">Election Bulletin</h1>
+      <h1 className="text-2xl font-bold mb-2 text-black">Public Bulletin</h1>
       <p className="text-gray-600 mb-6 text-black">Election: {election.title}</p>
 
       {/* Sub-tabs */}
@@ -380,76 +380,124 @@ export default function ElectionBulletinPage() {
                     <h3 className="text-2xl font-bold text-black mb-6 text-center">{position.name}</h3>
                     
                     {top3Winners.length > 0 ? (
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {top3Winners.map((winner, index) => (
-                          <div 
-                            key={winner.id} 
-                            className={`relative bg-white rounded-xl p-6 shadow-lg border-2 ${
-                              index === 0 ? 'border-yellow-400 bg-gradient-to-b from-yellow-50 to-yellow-100' :
-                              index === 1 ? 'border-gray-300 bg-gradient-to-b from-gray-50 to-gray-100' :
-                              'border-orange-300 bg-gradient-to-b from-orange-50 to-orange-100'
-                            }`}
-                          >
-                            {/* Rank Badge */}
-                            <div className={`absolute -top-3 -right-3 w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg ${
-                              index === 0 ? 'bg-yellow-500' :
-                              index === 1 ? 'bg-gray-500' :
-                              'bg-orange-500'
-                            }`}>
-                              {index + 1}
-                            </div>
-                            
-                            {/* Winner Image */}
-                            <div className="flex justify-center mb-4">
-                              <div className="relative w-32 h-40">
-                                {winner.image_url && !imageErrors[winner.id] ? (
-                                  <Image
-                                    src={candidateImages[winner.id] || getImageUrl(winner.image_url)}
-                                    alt={`${winner.first_name} ${winner.last_name}`}
-                                    fill
-                                    sizes="128px"
-                                    className="object-cover rounded-lg shadow-md"
-                                    onError={() => handleImageError(winner.id)}
-                                  />
-                                ) : (
-                                  <div className="w-32 h-40 rounded-lg bg-gray-200 flex items-center justify-center shadow-md">
-                                    <User className="w-16 h-16 text-gray-400" />
+                      <>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                          {top3Winners.map((winner, index) => (
+                            <div 
+                              key={winner.id} 
+                              className={`relative bg-white rounded-xl p-6 shadow-lg border-2 ${
+                                index === 0 ? 'border-yellow-400 bg-gradient-to-b from-yellow-50 to-yellow-100' :
+                                index === 1 ? 'border-gray-300 bg-gradient-to-b from-gray-50 to-gray-100' :
+                                'border-orange-300 bg-gradient-to-b from-orange-50 to-orange-100'
+                              }`}
+                            >
+                              {/* Rank Badge */}
+                              <div className={`absolute -top-3 -right-3 w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg ${
+                                index === 0 ? 'bg-yellow-500' :
+                                index === 1 ? 'bg-gray-500' :
+                                'bg-orange-500'
+                              }`}>
+                                {index + 1}
+                              </div>
+                              
+                              {/* Winner Image */}
+                              <div className="flex justify-center mb-4">
+                                <div className="relative w-40 h-48">
+                                  {winner.image_url && !imageErrors[winner.id] ? (
+                                    <Image
+                                      src={candidateImages[winner.id] || getImageUrl(winner.image_url)}
+                                      alt={`${winner.first_name} ${winner.last_name}`}
+                                      fill
+                                      sizes="160px"
+                                      className="object-cover rounded-lg shadow-md"
+                                      onError={() => handleImageError(winner.id)}
+                                    />
+                                  ) : (
+                                    <div className="w-40 h-48 rounded-lg bg-gray-200 flex items-center justify-center shadow-md">
+                                      <User className="w-20 h-20 text-gray-400" />
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {/* Winner Details */}
+                              <div className="text-center">
+                                <h4 className="text-xl font-bold text-black mb-2">
+                                  {formatNameSimple(winner.last_name, winner.first_name, winner.name)}
+                                </h4>
+                                
+                                {winner.party && (
+                                  <div className="mb-3">
+                                    <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">
+                                      {winner.party}
+                                    </span>
                                   </div>
                                 )}
+                                
+                                <div className="mb-3">
+                                  <div className="text-2xl font-bold text-blue-600">
+                                    {Number(winner.vote_count || 0).toLocaleString()} votes
+                                  </div>
+                                  <div className="text-sm text-gray-600">
+                                    {election.voter_count ? ((winner.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}% of total votes
+                                  </div>
+                                </div>
+                                
+                                <div className="flex items-center justify-center gap-2 text-sm font-medium text-gray-700">
+                                  {getRankIcon(index)}
+                                  <span>{getRankLabel(index)}</span>
+                                </div>
                               </div>
                             </div>
-                            
-                            {/* Winner Details */}
-                            <div className="text-center">
-                              <h4 className="text-xl font-bold text-black mb-2">
-                                {formatNameSimple(winner.last_name, winner.first_name, winner.name)}
-                              </h4>
-                              
-                              {winner.party && (
-                                <div className="mb-3">
-                                  <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">
-                                    {winner.party}
-                                  </span>
+                          ))}
+                        </div>
+                        
+                        {/* Other Candidates */}
+                        {position.candidates && position.candidates.length > 3 && (
+                          <div className="mt-8">
+                            <h4 className="text-xl font-bold text-black mb-6 text-center">Other Candidates</h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                              {position.candidates.slice(3).map((candidate) => (
+                                <div 
+                                  key={candidate.id} 
+                                  className="flex flex-col items-center p-4 bg-gray-50 rounded-lg shadow-md hover:shadow-lg transition-shadow"
+                                >
+                                  <div className="relative w-24 h-32 mb-3">
+                                    {candidate.image_url && !imageErrors[candidate.id] ? (
+                                      <Image
+                                        src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
+                                        alt={`${candidate.first_name} ${candidate.last_name}`}
+                                        fill
+                                        sizes="96px"
+                                        className="object-cover rounded-lg"
+                                        onError={() => handleImageError(candidate.id)}
+                                      />
+                                    ) : (
+                                      <div className="w-24 h-32 rounded-lg bg-gray-200 flex items-center justify-center">
+                                        <User className="w-12 h-12 text-gray-400" />
+                                      </div>
+                                    )}
+                                  </div>
+                                  
+                                  <div className="text-center w-full">
+                                    <h4 className="font-medium text-black text-sm mb-1 line-clamp-2">
+                                      {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
+                                    </h4>
+                                    {candidate.party && (
+                                      <div className="text-xs text-black mb-1 px-2 py-1 bg-white rounded-full">
+                                        {candidate.party}
+                                      </div>
+                                    )}
+                                    <div className="text-sm text-black font-semibold">
+                                      {Number(candidate.vote_count || 0).toLocaleString()} votes ({election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%)
+                                    </div>
+                                  </div>
                                 </div>
-                              )}
-                              
-                              <div className="mb-3">
-                                <div className="text-2xl font-bold text-blue-600">
-                                  {Number(winner.vote_count || 0).toLocaleString()} votes
-                                </div>
-                                <div className="text-sm text-gray-600">
-                                  {election.voter_count ? ((winner.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}% of total votes
-                                </div>
-                              </div>
-                              
-                              <div className="flex items-center justify-center gap-2 text-sm font-medium text-gray-700">
-                                {getRankIcon(index)}
-                                <span>{getRankLabel(index)}</span>
-                              </div>
+                              ))}
                             </div>
                           </div>
-                        ))}
-                      </div>
+                        )}
+                      </>
                     ) : (
                       <div className="text-center py-8">
                         <Trophy className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -513,16 +561,16 @@ export default function ElectionBulletinPage() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {currentVoters.map((voter, index) => (
                 <div key={voter.voteToken} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                   <div className="flex flex-col space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 font-mono">
+                      <span className="inline-flex items-center px-4 py-2 rounded-full text-lg font-medium bg-blue-100 text-blue-800 font-mono">
                         {voter.verificationCode}
                       </span>
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-sm text-gray-500">
                       {new Date(voter.voteDate).toLocaleString()}
                     </div>
                   </div>
@@ -633,14 +681,14 @@ export default function ElectionBulletinPage() {
                       <h5 className="text-sm font-medium text-gray-700 mb-2">
                         Voter Verification Codes ({candidate.voters.length})
                       </h5>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                         {candidate.voters.map((voter, voterIndex) => (
                           <div key={voterIndex} className="bg-gray-100 rounded-lg p-3 border border-gray-200">
                             <div className="flex flex-col space-y-1">
-                              <span className="font-mono text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded text-center">
+                              <span className="font-mono text-lg bg-blue-100 text-blue-800 px-4 py-2 rounded text-center">
                                 {voter.verificationCode}
                               </span>
-                              <span className="text-xs text-gray-500 text-center">
+                              <span className="text-sm text-gray-500 text-center">
                                 {new Date(voter.voteDate || voter.vote_date).toLocaleDateString()}
                               </span>
                             </div>
