@@ -20,6 +20,7 @@ export default function AddStudentModal({ onClose }) {
 
   const [courses, setCourses] = useState([]);
   const [yearLevels, setYearLevels] = useState([]);
+  const [allYearLevels, setAllYearLevels] = useState([]);
   const [loading, setLoading] = useState({
     courses: false,
     yearLevels: false
@@ -38,6 +39,54 @@ export default function AddStudentModal({ onClose }) {
     isChecking: false
   });
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+
+  // Function to determine if a course is a college program or senior high program
+  const isCollegeProgram = (courseName) => {
+    if (!courseName) return true; // Default to college if no course name
+    
+    const collegeKeywords = ['BS', 'BA', 'BSCS', 'BSIT', 'BSCPE', 'BMMA', 'BSTM', 'BSHM', 'BSA', 'BSBAOM'];
+    const seniorHighKeywords = ['SHS', 'STEM', 'ABM', 'HUMSS', 'GAS', 'TVL', 'ICT', 'HE', 'Grade 11', 'Grade 12'];
+    
+    const courseUpper = courseName.toUpperCase();
+    
+    // Check for senior high keywords first
+    if (seniorHighKeywords.some(keyword => courseUpper.includes(keyword.toUpperCase()))) {
+      return false;
+    }
+    
+    // Check for college keywords
+    if (collegeKeywords.some(keyword => courseUpper.includes(keyword.toUpperCase()))) {
+      return true;
+    }
+    
+    // Default to college if no specific keywords found
+    return true;
+  };
+
+  // Function to filter year levels based on course type
+  const filterYearLevels = (courseName) => {
+    if (!courseName || allYearLevels.length === 0) return allYearLevels;
+    
+    const isCollege = isCollegeProgram(courseName);
+    
+    if (isCollege) {
+      // For college programs, show 1st Year to 4th Year
+      return allYearLevels.filter(level => 
+        level.includes('1st Year') || 
+        level.includes('2nd Year') || 
+        level.includes('3rd Year') || 
+        level.includes('4th Year')
+      );
+    } else {
+      // For senior high programs, show Grade 11 and Grade 12
+      return allYearLevels.filter(level => 
+        level.includes('Grade 11') || 
+        level.includes('Grade 12') ||
+        level.includes('11th Grade') ||
+        level.includes('12th Grade')
+      );
+    }
+  };
 
   useEffect(() => {
     const fetchMaintenanceData = async () => {
@@ -147,6 +196,9 @@ export default function AddStudentModal({ onClose }) {
         if (yearLevelsResponse.data && yearLevelsResponse.data.data) {
     
           const yearLevelNames = yearLevelsResponse.data.data.map(level => level.name);
+          setAllYearLevels(yearLevelNames);
+          
+          // Set initial year levels (will be filtered based on selected course)
           setYearLevels(yearLevelNames);
 
           if (yearLevelNames.length > 0) {
@@ -156,7 +208,9 @@ export default function AddStudentModal({ onClose }) {
       } catch (error) {
         console.error("Error fetching year levels:", error);
 
-        setYearLevels(["1st Year", "2nd Year", "3rd Year", "4th Year"]);
+        const defaultYearLevels = ["1st Year", "2nd Year", "3rd Year", "4th Year", "Grade 11", "Grade 12"];
+        setAllYearLevels(defaultYearLevels);
+        setYearLevels(defaultYearLevels);
       } finally {
         setLoading(prev => ({ ...prev, yearLevels: false }));
       }
@@ -164,6 +218,22 @@ export default function AddStudentModal({ onClose }) {
 
     fetchMaintenanceData();
   }, []);
+
+  // Effect to filter year levels when allYearLevels or courseName changes
+  useEffect(() => {
+    if (allYearLevels.length > 0 && formData.courseName) {
+      const filteredYearLevels = filterYearLevels(formData.courseName);
+      setYearLevels(filteredYearLevels);
+      
+      // Reset year level if current selection is not valid
+      const currentYearLevel = formData.yearLevel;
+      const isValidYearLevel = filteredYearLevels.includes(currentYearLevel);
+      
+      if (!isValidYearLevel && filteredYearLevels.length > 0) {
+        setFormData(prev => ({ ...prev, yearLevel: filteredYearLevels[0] }));
+      }
+    }
+  }, [allYearLevels, formData.courseName]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -180,6 +250,18 @@ export default function AddStudentModal({ onClose }) {
           courseId: selectedCourse.id,
           courseName: selectedCourse.course_name
         }));
+
+        // Filter year levels based on selected course
+        const filteredYearLevels = filterYearLevels(selectedCourse.course_name);
+        setYearLevels(filteredYearLevels);
+        
+        // Reset year level selection if current selection is not valid for the new course
+        const currentYearLevel = formData.yearLevel;
+        const isValidYearLevel = filteredYearLevels.includes(currentYearLevel);
+        
+        if (!isValidYearLevel && filteredYearLevels.length > 0) {
+          setFormData(prev => ({ ...prev, yearLevel: filteredYearLevels[0] }));
+        }
 
         if (selectedCourse.id === null || selectedCourse.not_in_db) {
           setErrors(prev => ({
@@ -664,8 +746,17 @@ export default function AddStudentModal({ onClose }) {
 
             {/* Year Level Dropdown */}
             <label name="yearLevel" className="text-black font-bold">Select Year Level:</label>
+            {formData.courseName && (
+              <div className="text-sm text-blue-600 mb-1">
+                {isCollegeProgram(formData.courseName) ? 
+                  "College Program - Select from 1st Year to 4th Year" : 
+                  "Senior High Program - Select Grade 11 or Grade 12"
+                }
+              </div>
+            )}
             <select 
               name="yearLevel" 
+              value={formData.yearLevel}
               onChange={handleChange} 
               className="border w-full p-2 rounded"
               disabled={loading.yearLevels}
@@ -673,7 +764,7 @@ export default function AddStudentModal({ onClose }) {
               {loading.yearLevels ? (
                 <option>Loading year levels...</option>
               ) : yearLevels.length === 0 ? (
-                <option value="">No year levels available</option>
+                <option value="">No year levels available for this course</option>
               ) : (
                 yearLevels.map((year) => (
                   <option key={year} value={year}>{year}</option>
