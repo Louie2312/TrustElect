@@ -66,6 +66,13 @@ const registerAdmin = async (firstName, lastName, email, username, hashedPasswor
   try {
     await client.query("BEGIN"); 
 
+    // Deduplicate department names if provided
+    let deduplicatedDepartment = department;
+    if (department) {
+      const departments = department.split(',').map(d => d.trim()).filter(d => d);
+      const uniqueDepartments = [...new Set(departments)];
+      deduplicatedDepartment = uniqueDepartments.join(', ');
+    }
     
     const userQuery = `
       INSERT INTO users (first_name, last_name, email, username, password_hash, role_id, created_by, is_email_verified, is_first_login, is_active)
@@ -80,7 +87,7 @@ const registerAdmin = async (firstName, lastName, email, username, hashedPasswor
       INSERT INTO admins (user_id, first_name, last_name, email, employee_number, department, created_by)
       VALUES ($1, $2, $3, $4, $5, $6, $7);
     `;
-    const adminValues = [userId, firstName, lastName, email, employeeNumber, department, createdBy];
+    const adminValues = [userId, firstName, lastName, email, employeeNumber, deduplicatedDepartment, createdBy];
     await client.query(adminQuery, adminValues);
 
     await client.query("COMMIT"); 
@@ -164,8 +171,13 @@ const updateAdmin = async (id, fields) => {
       adminIndex++;
     }
     if (fields.department) {
+      // Deduplicate department names by splitting, removing duplicates, and rejoining
+      const departments = fields.department.split(',').map(d => d.trim()).filter(d => d);
+      const uniqueDepartments = [...new Set(departments)];
+      const deduplicatedDepartment = uniqueDepartments.join(', ');
+      
       adminUpdates.push(`department = $${adminIndex}`);
-      adminValues.push(fields.department);
+      adminValues.push(deduplicatedDepartment);
       adminIndex++;
     }
 
