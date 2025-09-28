@@ -2234,8 +2234,8 @@ export default function ElectionDetailsPage() {
                       <div className="grid grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2">
                         {bulletinData.voterCodes.slice(carouselContent.page * 40, (carouselContent.page + 1) * 40).map((voter, index) => (
                           <div key={voter.voteToken || index} className="bg-white rounded p-2 border hover:shadow-md transition-shadow">
-                            <div className="flex flex-col items-center">
-                              <span className="font-mono text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded mb-1 text-center whitespace-nowrap">
+                            <div className="flex flex-col items-center w-full">
+                              <span className="font-mono text-base bg-blue-100 text-blue-800 px-2 py-1 rounded mb-1 text-center whitespace-nowrap w-full">
                                 {voter.verificationCode}
                               </span>
                               <span className="text-xs text-gray-500 text-center">
@@ -2309,10 +2309,10 @@ export default function ElectionDetailsPage() {
                             {bulletinData.candidateVotes
                               .find(pos => pos.id === position.id)
                               ?.candidates?.find(c => c.id === candidate.id)
-                              ?.voters?.map((voter, voterIndex) => (
+                              ?.voters?.slice(0, 50).map((voter, voterIndex) => (
                                 <div key={voterIndex} className="bg-white rounded p-2 border text-center hover:shadow-md transition-shadow">
-                                  <div className="flex flex-col space-y-1">
-                                    <span className="font-mono text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded whitespace-nowrap">
+                                  <div className="flex flex-col items-center w-full">
+                                    <span className="font-mono text-base bg-blue-100 text-blue-800 px-2 py-1 rounded whitespace-nowrap w-full">
                                       {voter.verificationCode}
                                     </span>
                                     <span className="text-xs text-gray-500">
@@ -2505,8 +2505,8 @@ export default function ElectionDetailsPage() {
                     <div className="grid grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2">
                       {bulletinData.voterCodes.slice(currentCodesPage * 40, (currentCodesPage + 1) * 40).map((voter, index) => (
                         <div key={voter.voteToken || index} className="bg-white rounded p-2 border hover:shadow-md transition-shadow">
-                          <div className="flex flex-col items-center">
-                            <span className="font-mono text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded mb-1 text-center whitespace-nowrap">
+                          <div className="flex flex-col items-center w-full">
+                            <span className="font-mono text-base bg-blue-100 text-blue-800 px-2 py-1 rounded mb-1 text-center whitespace-nowrap w-full">
                               {voter.verificationCode}
                             </span>
                             <span className="text-xs text-gray-500 text-center">
@@ -2607,10 +2607,10 @@ export default function ElectionDetailsPage() {
                                 {bulletinData.candidateVotes
                                   .find(pos => pos.id === election.positions[currentCandidatesPage].id)
                                   ?.candidates?.find(c => c.id === candidate.id)
-                                  ?.voters?.map((voter, voterIndex) => (
+                                  ?.voters?.slice(0, 50).map((voter, voterIndex) => (
                                     <div key={voterIndex} className="bg-white rounded p-2 border text-center hover:shadow-md transition-shadow">
-                                      <div className="flex flex-col space-y-1">
-                                        <span className="font-mono text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded whitespace-nowrap">
+                                      <div className="flex flex-col items-center w-full">
+                                        <span className="font-mono text-base bg-blue-100 text-blue-800 px-2 py-1 rounded whitespace-nowrap w-full">
                                           {voter.verificationCode}
                                         </span>
                                         <span className="text-xs text-gray-500">
