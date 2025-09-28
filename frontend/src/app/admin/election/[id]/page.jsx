@@ -920,7 +920,7 @@ export default function ElectionDetailsPage() {
 
   // Bulletin pagination functions
   const goToNextCodesPage = () => {
-    const codesPerPage = 50; // 50 codes per page
+    const codesPerPage = 40; // 40 codes per page
     const totalPages = Math.ceil(bulletinData.voterCodes.length / codesPerPage);
     if (currentCodesPage < totalPages - 1) {
       setCurrentCodesPage(prev => prev + 1);
@@ -971,7 +971,7 @@ export default function ElectionDetailsPage() {
     const interval = setInterval(() => {
       setBulletinCarouselIndex(prev => {
         // Calculate total items for carousel
-        const voterPages = Math.ceil(bulletinData.voterCodes.length / 50);
+        const voterPages = Math.ceil(bulletinData.voterCodes.length / 40);
         const candidateItems = election?.positions?.reduce((total, position) => {
           return total + (position.candidates?.length || 0);
         }, 0) || 0;
@@ -995,7 +995,7 @@ export default function ElectionDetailsPage() {
   };
 
   const getBulletinCarouselContent = () => {
-    const voterPages = Math.ceil(bulletinData.voterCodes.length / 50);
+    const voterPages = Math.ceil(bulletinData.voterCodes.length / 40);
     const candidateItems = election?.positions?.reduce((total, position) => {
       return total + (position.candidates?.length || 0);
     }, 0) || 0;
@@ -2159,7 +2159,7 @@ export default function ElectionDetailsPage() {
           <div className={`flex items-center justify-between mb-6 ${isBulletinFullScreen ? 'sticky top-0 z-10 bg-white p-4 rounded-lg shadow-lg' : ''}`}>
             <h2 className={`text-xl font-semibold text-black flex items-center ${isBulletinFullScreen ? 'text-3xl' : ''}`}>
               <FileText className={`w-5 h-5 mr-2 ${isBulletinFullScreen ? 'w-8 h-8' : ''}`} />
-              Election Bulletin
+              Public Bulletin
             </h2>
             <div className="flex items-center gap-3">
               {isBulletinFullScreen && (
@@ -2231,11 +2231,11 @@ export default function ElectionDetailsPage() {
                         </div>
                       </div>
                       
-                      <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3">
-                        {bulletinData.voterCodes.slice(carouselContent.page * 50, (carouselContent.page + 1) * 50).map((voter, index) => (
-                          <div key={voter.voteToken || index} className="bg-white rounded-lg p-3 border hover:shadow-md transition-shadow">
+                      <div className="grid grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2">
+                        {bulletinData.voterCodes.slice(carouselContent.page * 40, (carouselContent.page + 1) * 40).map((voter, index) => (
+                          <div key={voter.voteToken || index} className="bg-white rounded p-2 border hover:shadow-md transition-shadow">
                             <div className="flex flex-col items-center">
-                              <span className="font-mono text-base bg-blue-100 text-blue-800 px-3 py-1.5 rounded mb-1 text-center whitespace-nowrap">
+                              <span className="font-mono text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded mb-1 text-center whitespace-nowrap">
                                 {voter.verificationCode}
                               </span>
                               <span className="text-xs text-gray-500 text-center">
@@ -2305,14 +2305,14 @@ export default function ElectionDetailsPage() {
                               ?.candidates?.find(c => c.id === candidate.id)
                               ?.voters?.length || 0}):
                           </h5>
-                          <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+                          <div className="grid grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2">
                             {bulletinData.candidateVotes
                               .find(pos => pos.id === position.id)
                               ?.candidates?.find(c => c.id === candidate.id)
                               ?.voters?.map((voter, voterIndex) => (
-                                <div key={voterIndex} className="bg-white rounded p-3 border text-center hover:shadow-md transition-shadow">
+                                <div key={voterIndex} className="bg-white rounded p-2 border text-center hover:shadow-md transition-shadow">
                                   <div className="flex flex-col space-y-1">
-                                    <span className="font-mono text-base bg-blue-100 text-blue-800 px-3 py-1.5 rounded whitespace-nowrap">
+                                    <span className="font-mono text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded whitespace-nowrap">
                                       {voter.verificationCode}
                                     </span>
                                     <span className="text-xs text-gray-500">
@@ -2337,63 +2337,111 @@ export default function ElectionDetailsPage() {
                       </h3>
                       
                       {top3Winners.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          {top3Winners.map((winner, index) => (
-                            <div 
-                              key={winner.id} 
-                              className={`relative bg-white rounded-lg p-4 shadow-lg border-2 ${
-                                index === 0 ? 'border-yellow-400 bg-gradient-to-b from-yellow-50 to-yellow-100' :
-                                index === 1 ? 'border-gray-300 bg-gradient-to-b from-gray-50 to-gray-100' :
-                                'border-orange-300 bg-gradient-to-b from-orange-50 to-orange-100'
-                              }`}
-                            >
-                              <div className={`absolute -top-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg ${
-                                index === 0 ? 'bg-yellow-500' :
-                                index === 1 ? 'bg-gray-500' :
-                                'bg-orange-500'
-                              }`}>
-                                {index + 1}
-                              </div>
-                              
-                              <div className="flex justify-center mb-3">
-                                <div className="relative w-20 h-24">
-                                  {winner.image_url && !imageErrors[winner.id] ? (
-                                    <Image
-                                      src={candidateImages[winner.id] || getImageUrl(winner.image_url)}
-                                      alt={`${winner.first_name} ${winner.last_name}`}
-                                      fill
-                                      sizes="80px"
-                                      className="object-cover rounded-lg shadow-md"
-                                      onError={() => handleImageError(winner.id)}
-                                    />
-                                  ) : (
-                                    <div className="w-20 h-24 rounded-lg bg-gray-200 flex items-center justify-center shadow-md">
-                                      <User className="w-10 h-10 text-gray-400" />
+                        <>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {top3Winners.map((winner, index) => (
+                              <div 
+                                key={winner.id} 
+                                className={`relative bg-white rounded-lg p-4 shadow-lg border-2 ${
+                                  index === 0 ? 'border-yellow-400 bg-gradient-to-b from-yellow-50 to-yellow-100' :
+                                  index === 1 ? 'border-gray-300 bg-gradient-to-b from-gray-50 to-gray-100' :
+                                  'border-orange-300 bg-gradient-to-b from-orange-50 to-orange-100'
+                                }`}
+                              >
+                                <div className={`absolute -top-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg ${
+                                  index === 0 ? 'bg-yellow-500' :
+                                  index === 1 ? 'bg-gray-500' :
+                                  'bg-orange-500'
+                                }`}>
+                                  {index + 1}
+                                </div>
+                                
+                                <div className="flex justify-center mb-3">
+                                  <div className="relative w-32 h-40">
+                                    {winner.image_url && !imageErrors[winner.id] ? (
+                                      <Image
+                                        src={candidateImages[winner.id] || getImageUrl(winner.image_url)}
+                                        alt={`${winner.first_name} ${winner.last_name}`}
+                                        fill
+                                        sizes="128px"
+                                        className="object-cover rounded-lg shadow-md"
+                                        onError={() => handleImageError(winner.id)}
+                                      />
+                                    ) : (
+                                      <div className="w-32 h-40 rounded-lg bg-gray-200 flex items-center justify-center shadow-md">
+                                        <User className="w-16 h-16 text-gray-400" />
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                
+                                <div className="text-center">
+                                  <h5 className="font-bold text-black text-sm mb-1">
+                                    {formatNameSimple(winner.last_name, winner.first_name, winner.name)}
+                                  </h5>
+                                  
+                                  {winner.party && (
+                                    <div className="mb-2">
+                                      <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+                                        {winner.party}
+                                      </span>
                                     </div>
                                   )}
+                                  
+                                  <div className="text-sm text-blue-600 font-bold">
+                                    {Number(winner.vote_count || 0).toLocaleString()} votes
+                                  </div>
                                 </div>
                               </div>
-                              
-                              <div className="text-center">
-                                <h5 className="font-bold text-black text-sm mb-1">
-                                  {formatNameSimple(winner.last_name, winner.first_name, winner.name)}
-                                </h5>
-                                
-                                {winner.party && (
-                                  <div className="mb-2">
-                                    <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
-                                      {winner.party}
-                                    </span>
+                            ))}
+                          </div>
+                          
+                          {/* Other Candidates */}
+                          {position.candidates && position.candidates.length > 3 && (
+                            <div className="mt-8">
+                              <h4 className="text-xl font-bold text-black mb-6 text-center">Other Candidates</h4>
+                              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                                {position.candidates.slice(3).map((candidate) => (
+                                  <div 
+                                    key={candidate.id} 
+                                    className="flex flex-col items-center p-4 bg-gray-50 rounded-lg shadow-md hover:shadow-lg transition-shadow"
+                                  >
+                                    <div className="relative w-24 h-32 mb-3">
+                                      {candidate.image_url && !imageErrors[candidate.id] ? (
+                                        <Image
+                                          src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
+                                          alt={`${candidate.first_name} ${candidate.last_name}`}
+                                          fill
+                                          sizes="96px"
+                                          className="object-cover rounded-lg"
+                                          onError={() => handleImageError(candidate.id)}
+                                        />
+                                      ) : (
+                                        <div className="w-24 h-32 rounded-lg bg-gray-200 flex items-center justify-center">
+                                          <User className="w-12 h-12 text-gray-400" />
+                                        </div>
+                                      )}
+                                    </div>
+                                    
+                                    <div className="text-center w-full">
+                                      <h4 className="font-medium text-black text-sm mb-1 line-clamp-2">
+                                        {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
+                                      </h4>
+                                      {candidate.party && (
+                                        <div className="text-xs text-black mb-1 px-2 py-1 bg-white rounded-full">
+                                          {candidate.party}
+                                        </div>
+                                      )}
+                                      <div className="text-sm text-black font-semibold">
+                                        {Number(candidate.vote_count || 0).toLocaleString()} votes ({election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%)
+                                      </div>
+                                    </div>
                                   </div>
-                                )}
-                                
-                                <div className="text-sm text-blue-600 font-bold">
-                                  {Number(winner.vote_count || 0).toLocaleString()} votes
-                                </div>
+                                ))}
                               </div>
                             </div>
-                          ))}
-                        </div>
+                          )}
+                        </>
                       ) : (
                         <div className="text-center py-4">
                           <Trophy className="w-12 h-12 text-gray-400 mx-auto mb-2" />
@@ -2422,10 +2470,10 @@ export default function ElectionDetailsPage() {
                       <div className="text-sm text-gray-500">
                         Total: {bulletinData.voterCodes.length} voters
                       </div>
-                      {bulletinData.voterCodes.length > 50 && (
+                      {bulletinData.voterCodes.length > 40 && (
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-gray-600">
-                            Page {currentCodesPage + 1} of {Math.ceil(bulletinData.voterCodes.length / 50)}
+                            Page {currentCodesPage + 1} of {Math.ceil(bulletinData.voterCodes.length / 40)}
                           </span>
                           <div className="flex gap-1">
                             <button
@@ -2437,7 +2485,7 @@ export default function ElectionDetailsPage() {
                             </button>
                             <button
                               onClick={goToNextCodesPage}
-                              disabled={currentCodesPage >= Math.ceil(bulletinData.voterCodes.length / 50) - 1}
+                              disabled={currentCodesPage >= Math.ceil(bulletinData.voterCodes.length / 40) - 1}
                               className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               Next
@@ -2454,19 +2502,19 @@ export default function ElectionDetailsPage() {
                       <p className="text-gray-500">No voters yet</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3">
-                      {bulletinData.voterCodes.slice(currentCodesPage * 50, (currentCodesPage + 1) * 50).map((voter, index) => (
-                        <div key={voter.voteToken || index} className="bg-white rounded-lg p-3 border hover:shadow-md transition-shadow">
-                            <div className="flex flex-col items-center">
-                            <span className="font-mono text-base bg-blue-100 text-blue-800 px-3 py-1.5 rounded mb-1 text-center whitespace-nowrap">
-                                {voter.verificationCode}
-                              </span>
+                    <div className="grid grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2">
+                      {bulletinData.voterCodes.slice(currentCodesPage * 40, (currentCodesPage + 1) * 40).map((voter, index) => (
+                        <div key={voter.voteToken || index} className="bg-white rounded p-2 border hover:shadow-md transition-shadow">
+                          <div className="flex flex-col items-center">
+                            <span className="font-mono text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded mb-1 text-center whitespace-nowrap">
+                              {voter.verificationCode}
+                            </span>
                             <span className="text-xs text-gray-500 text-center">
-                                {new Date(voter.voteDate).toLocaleDateString()}
-                              </span>
-                            </div>
+                              {new Date(voter.voteDate).toLocaleDateString()}
+                            </span>
                           </div>
-                        ))}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -2555,14 +2603,14 @@ export default function ElectionDetailsPage() {
                                   ?.candidates?.find(c => c.id === candidate.id)
                                   ?.voters?.length || 0}):
                               </h5>
-                              <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+                              <div className="grid grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2">
                                 {bulletinData.candidateVotes
                                   .find(pos => pos.id === election.positions[currentCandidatesPage].id)
                                   ?.candidates?.find(c => c.id === candidate.id)
                                   ?.voters?.map((voter, voterIndex) => (
-                                    <div key={voterIndex} className="bg-white rounded p-3 border text-center hover:shadow-md transition-shadow">
+                                    <div key={voterIndex} className="bg-white rounded p-2 border text-center hover:shadow-md transition-shadow">
                                       <div className="flex flex-col space-y-1">
-                                        <span className="font-mono text-base bg-blue-100 text-blue-800 px-3 py-1.5 rounded whitespace-nowrap">
+                                        <span className="font-mono text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded whitespace-nowrap">
                                           {voter.verificationCode}
                                         </span>
                                         <span className="text-xs text-gray-500">
