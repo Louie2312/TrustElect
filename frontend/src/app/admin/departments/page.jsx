@@ -503,9 +503,9 @@ export default function AdminDepartmentsPage() {
                             onClick={() => handleArchive(department.id)}
                             className="bg-orange-500 text-white px-3 py-1 rounded text-sm flex items-center"
                             title="Archive Department"
-                          >
+                          > 
                             <Archive className="w-4 h-4 mr-1" />
-                            Archive
+                            Delete
                           </button>
                         </div>
                       </td>
@@ -551,21 +551,28 @@ function AddDepartmentModal({ onClose, onSuccess }) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     setError("");
-    setLoading(true);
 
     if (!formData.department_name.trim()) {
       setError("Department name is required");
-      setLoading(false);
       return;
     }
+
+    // Show confirmation modal instead of directly submitting
+    setShowConfirmModal(true);
+  };
+
+  const confirmCreateDepartment = async () => {
+    setLoading(true);
+    setShowConfirmModal(false);
 
     try {
       const token = Cookies.get("token");
@@ -623,6 +630,10 @@ function AddDepartmentModal({ onClose, onSuccess }) {
     }
   };
 
+  const cancelCreateDepartment = () => {
+    setShowConfirmModal(false);
+  };
+
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50">
       <div className="bg-white p-6 rounded-lg shadow-lg w-96 text-black">
@@ -660,6 +671,7 @@ function AddDepartmentModal({ onClose, onSuccess }) {
               type="button"
               onClick={onClose}
               className="px-4 py-2 border rounded hover:bg-gray-100"
+              disabled={loading}
             >
               Cancel
             </button>
@@ -673,6 +685,41 @@ function AddDepartmentModal({ onClose, onSuccess }) {
           </div>
         </form>
       </div>
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+            <h2 className="text-xl font-bold text-center mb-4 text-gray-800">Confirm Department Creation</h2>
+            <div className="mb-6">
+              <p className="text-center text-gray-600 mb-2">
+                Are you sure you want to create this department?
+              </p>
+              <div className="bg-gray-50 p-3 rounded border">
+                <p className="text-sm"><strong>Department Name:</strong> {formData.department_name}</p>
+                <p className="text-sm"><strong>Department Type:</strong> {formData.department_type}</p>
+              </div>
+            </div>
+
+            <div className="flex justify-center gap-4">
+              <button 
+                onClick={confirmCreateDepartment} 
+                className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition-colors"
+                disabled={loading}
+              >
+                Yes, Create
+              </button>
+              <button 
+                onClick={cancelCreateDepartment} 
+                className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition-colors"
+                disabled={loading}
+              >
+                No, Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

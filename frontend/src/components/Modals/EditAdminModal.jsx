@@ -21,6 +21,19 @@ export default function EditAdminModal({ admin, onClose, onSuccess }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [departmentsWithAdmins, setDepartmentsWithAdmins] = useState([]);
   const [checkingEmail, setCheckingEmail] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false);
+
+  // Check if form has been modified
+  const hasFormChanged = () => {
+    return (
+      formData.firstName !== (admin.first_name || "") ||
+      formData.lastName !== (admin.last_name || "") ||
+      formData.email !== (admin.email || "") ||
+      formData.employeeNumber !== (admin.employee_number || "") ||
+      formData.department !== (admin.department || "")
+    );
+  };
 
   // Fetch departments when component mounts
   useEffect(() => {
@@ -206,7 +219,13 @@ export default function EditAdminModal({ admin, onClose, onSuccess }) {
     const isValid = await validateInputs();
     if (!isValid) return;
     
+    // Show confirmation modal instead of directly submitting
+    setShowSaveConfirm(true);
+  };
+
+  const confirmSaveChanges = async () => {
     setIsSubmitting(true);
+    setShowSaveConfirm(false);
 
     try {
       const token = Cookies.get("token");
@@ -258,6 +277,28 @@ export default function EditAdminModal({ admin, onClose, onSuccess }) {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const cancelSaveChanges = () => {
+    setShowSaveConfirm(false);
+  };
+
+  const handleCancel = () => {
+    // Check if form has been modified
+    if (hasFormChanged()) {
+      setShowCancelConfirm(true);
+    } else {
+      onClose();
+    }
+  };
+
+  const confirmCancel = () => {
+    setShowCancelConfirm(false);
+    onClose();
+  };
+
+  const cancelCancel = () => {
+    setShowCancelConfirm(false);
   };
 
   return (
@@ -338,7 +379,7 @@ export default function EditAdminModal({ admin, onClose, onSuccess }) {
         </form>
 
         <div className="mt-6 flex justify-between">
-          <button onClick={onClose} className="text-red-500" disabled={isSubmitting}>Cancel</button>
+          <button onClick={handleCancel} className="text-red-500" disabled={isSubmitting}>Cancel</button>
           <div className="space-x-2">
             <button 
               onClick={handleSubmit} 
@@ -364,6 +405,70 @@ export default function EditAdminModal({ admin, onClose, onSuccess }) {
           </p>
         </div>
       </div>
+
+      {/* Cancel Confirmation Modal */}
+      {showCancelConfirm && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+            <h2 className="text-xl font-bold text-center mb-4 text-gray-800">Confirm Cancellation</h2>
+            <p className="text-center text-gray-600 mb-6">
+              Are you sure you want to cancel? All unsaved changes will be lost.
+            </p>
+
+            <div className="flex justify-center gap-4">
+              <button 
+                onClick={confirmCancel} 
+                className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition-colors"
+              >
+                Yes, Cancel
+              </button>
+              <button 
+                onClick={cancelCancel} 
+                className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition-colors"
+              >
+                No, Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Save Confirmation Modal */}
+      {showSaveConfirm && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+            <h2 className="text-xl font-bold text-center mb-4 text-gray-800">Confirm Save Changes</h2>
+            <div className="mb-6">
+              <p className="text-center text-gray-600 mb-2">
+                Are you sure you want to save these changes?
+              </p>
+              <div className="bg-gray-50 p-3 rounded border">
+                <p className="text-sm"><strong>Admin:</strong> {formData.firstName} {formData.lastName}</p>
+                <p className="text-sm"><strong>Email:</strong> {formData.email}</p>
+                <p className="text-sm"><strong>Employee #:</strong> {formData.employeeNumber}</p>
+                <p className="text-sm"><strong>Department:</strong> {formData.department}</p>
+              </div>
+            </div>
+
+            <div className="flex justify-center gap-4">
+              <button 
+                onClick={confirmSaveChanges} 
+                className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition-colors"
+                disabled={isSubmitting}
+              >
+                Yes, Save
+              </button>
+              <button 
+                onClick={cancelSaveChanges} 
+                className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition-colors"
+                disabled={isSubmitting}
+              >
+                No, Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

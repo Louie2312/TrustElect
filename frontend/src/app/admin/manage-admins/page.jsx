@@ -124,13 +124,12 @@ export default function ManageAdminsPage() {
     }
 
     // Check if user is trying to delete themselves
-    const currentUserId = Cookies.get("userId");
     if (currentUserId && parseInt(currentUserId) === parseInt(adminId)) {
-      toast.error("You cannot delete your own account.");
+      toast.error("You cannot archive your own account.");
       return;
     }
 
-    if (window.confirm("Are you sure you want to delete this admin?")) {
+    if (window.confirm("Are you sure you want to archive this admin?")) {
       try {
         const token = Cookies.get("token");
         await axios.delete(`/api/admin/manage-admins/${adminId}`, {
@@ -138,11 +137,11 @@ export default function ManageAdminsPage() {
           withCredentials: true,
         });
 
-        toast.success("Admin deleted successfully");
+        toast.success("Admin archived successfully");
         fetchAdmins();
       } catch (error) {
-        console.error("Error deleting admin:", error);
-        toast.error("Failed to delete admin");
+        console.error("Error archiving admin:", error);
+        toast.error("Failed to archive admin");
       }
     }
   };
@@ -201,6 +200,13 @@ export default function ManageAdminsPage() {
       toast.error("You don't have permission to manage admin permissions");
       return;
     }
+
+    // Check if user is trying to edit their own permissions
+    if (currentUserId && parseInt(currentUserId) === parseInt(admin.id)) {
+      toast.error("You cannot edit your own permissions.");
+      return;
+    }
+
     setSelectedAdmin(admin);
     setShowPermissionsModal(true);
   };
@@ -326,7 +332,7 @@ export default function ManageAdminsPage() {
                       Edit
                     </button>
                   )}
-                  {hasPermission('adminManagement', 'edit') && (
+                  {hasPermission('adminManagement', 'edit') && !isCurrentUser(admin) && (
                     <button
                       onClick={() => handleManagePermissions(admin)}
                       className="bg-indigo-600 text-white px-1.5 py-0.5 rounded text-xs whitespace-nowrap"
