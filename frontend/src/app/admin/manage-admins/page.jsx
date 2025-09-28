@@ -27,6 +27,7 @@ export default function ManageAdminsPage() {
   const [departmentFilter, setDepartmentFilter] = useState(""); 
   const [currentUserId, setCurrentUserId] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [availableDepartments, setAvailableDepartments] = useState([]);
 
   // Check if user has admin management permissions
   useEffect(() => {
@@ -43,6 +44,28 @@ export default function ManageAdminsPage() {
       return;
     }
   }, [hasPermission, router, permissionsLoading, permissions]);
+
+  const fetchDepartments = async () => {
+    try {
+      const token = Cookies.get("token");
+      const res = await axios.get("/api/admin/departments", {
+        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
+      });
+
+      const departments = res.data.departments || res.data || [];
+      setAvailableDepartments(departments);
+    } catch (error) {
+      console.error("Error fetching departments:", error);
+      // Fallback to hardcoded departments if API fails
+      setAvailableDepartments([
+        "Information and Communication Technology (ICT)",
+        "Tourism and Hospitality Management (THM)",
+        "Business Administration and Accountancy",
+        "Administrator"
+      ]);
+    }
+  };
 
   const fetchAdmins = async () => {
     try {
@@ -162,6 +185,7 @@ export default function ManageAdminsPage() {
   
   useEffect(() => {
     fetchAdmins();
+    fetchDepartments();
   }, [refreshTrigger]);
 
   const isSuperAdmin = (admin) => {
@@ -228,10 +252,11 @@ export default function ManageAdminsPage() {
           className="border p-2 rounded w-50 text-black"
         >
           <option value="">All Departments</option>
-          <option value="Information and Communication Technology (ICT)">Information and Communication Technology (ICT)</option>
-          <option value="Tourism and Hospitality Management (THM)">Tourism and Hospitality Management (THM)</option>
-          <option value="Business Administration and Accountancy">Business Administration and Accountancy</option>
-          <option value="Administrator">Administrator</option>
+          {availableDepartments.map((dept) => (
+            <option key={dept.department_name || dept} value={dept.department_name || dept}>
+              {dept.department_name || dept}
+            </option>
+          ))}
         </select>
       </div>
 
