@@ -996,9 +996,29 @@ export default function ElectionDetailsPage() {
 
   const getBulletinCarouselContent = () => {
     const voterPages = Math.ceil(bulletinData.voterCodes.length / 40);
-    const candidateItems = election?.positions?.reduce((total, position) => {
-      return total + (position.candidates?.length || 0);
-    }, 0) || 0;
+    
+    // Calculate total candidate pages (including pagination for candidates with 40+ votes)
+    let totalCandidatePages = 0;
+    const candidatePageMap = [];
+    
+    election?.positions?.forEach((position, posIndex) => {
+      position.candidates?.forEach((candidate, candIndex) => {
+        const candidateVotes = bulletinData.candidateVotes
+          ?.find(pos => pos.id === position.id)
+          ?.candidates?.find(c => c.id === candidate.id)
+          ?.voters?.length || 0;
+        
+        const candidatePages = Math.ceil(candidateVotes / 50);
+        candidatePageMap.push({
+          positionIndex: posIndex,
+          candidateIndex: candIndex,
+          totalPages: candidatePages,
+          candidateVotes
+        });
+        totalCandidatePages += candidatePages;
+      });
+    });
+    
     const winnerPages = election?.positions?.length || 0;
     
     if (bulletinCarouselIndex < voterPages) {
@@ -1008,31 +1028,29 @@ export default function ElectionDetailsPage() {
         page: bulletinCarouselIndex,
         title: `Voter Codes - Page ${bulletinCarouselIndex + 1} of ${voterPages}`
       };
-    } else if (bulletinCarouselIndex < voterPages + candidateItems) {
-      // Per candidate views
-      let candidateIndex = bulletinCarouselIndex - voterPages;
-      let positionIndex = 0;
-      let candidateInPosition = 0;
+    } else if (bulletinCarouselIndex < voterPages + totalCandidatePages) {
+      // Per candidate views with pagination
+      let candidatePageIndex = bulletinCarouselIndex - voterPages;
+      let currentPage = 0;
       
-      for (let i = 0; i < election.positions.length; i++) {
-        const candidatesInThisPosition = election.positions[i].candidates?.length || 0;
-        if (candidateIndex < candidatesInThisPosition) {
-          positionIndex = i;
-          candidateInPosition = candidateIndex;
-          break;
+      for (let i = 0; i < candidatePageMap.length; i++) {
+        const candidateInfo = candidatePageMap[i];
+        if (candidatePageIndex < candidateInfo.totalPages) {
+          return {
+            type: 'per-candidate',
+            positionIndex: candidateInfo.positionIndex,
+            candidateIndex: candidateInfo.candidateIndex,
+            page: candidatePageIndex,
+            totalPages: candidateInfo.totalPages,
+            candidateVotes: candidateInfo.candidateVotes,
+            title: `${election.positions[candidateInfo.positionIndex]?.name} - ${election.positions[candidateInfo.positionIndex]?.candidates?.[candidateInfo.candidateIndex]?.first_name} ${election.positions[candidateInfo.positionIndex]?.candidates?.[candidateInfo.candidateIndex]?.last_name} (Page ${candidatePageIndex + 1} of ${candidateInfo.totalPages})`
+          };
         }
-        candidateIndex -= candidatesInThisPosition;
+        candidatePageIndex -= candidateInfo.totalPages;
       }
-      
-      return {
-        type: 'per-candidate',
-        positionIndex,
-        candidateIndex: candidateInPosition,
-        title: `${election.positions[positionIndex]?.name} - ${election.positions[positionIndex]?.candidates?.[candidateInPosition]?.first_name} ${election.positions[positionIndex]?.candidates?.[candidateInPosition]?.last_name}`
-      };
     } else {
       // Top 3 winners
-      const winnerIndex = bulletinCarouselIndex - voterPages - candidateItems;
+      const winnerIndex = bulletinCarouselIndex - voterPages - totalCandidatePages;
       return {
         type: 'top3-winners',
         positionIndex: winnerIndex,
@@ -2253,6 +2271,15 @@ export default function ElectionDetailsPage() {
                   
                   if (!candidate) return null;
                   
+                  const candidateVoters = bulletinData.candidateVotes
+                    ?.find(pos => pos.id === position.id)
+                    ?.candidates?.find(c => c.id === candidate.id)
+                    ?.voters || [];
+                  
+                  const startIndex = carouselContent.page * 50;
+                  const endIndex = startIndex + 50;
+                  const currentPageVoters = candidateVoters.slice(startIndex, endIndex);
+                  
                   return (
                     <div className="bg-gray-50 rounded-lg p-6">
                       <div className="flex items-center justify-between mb-4">
@@ -2261,38 +2288,38 @@ export default function ElectionDetailsPage() {
                           {carouselContent.title}
                         </h3>
                         <div className="text-sm text-gray-500">
-                          {candidate.vote_count || 0} votes
+                          Total: {carouselContent.candidateVotes || 0} votes
                         </div>
                       </div>
                       
-                      <div className="bg-white rounded-lg p-4">
-                        <div className="flex items-center mb-4">
-                          <div className="relative w-20 h-24 mr-4">
+                      <div className="bg-white rounded-lg p-6 border">
+                        <div className="flex items-center space-x-4 mb-4">
+                          <div className="relative w-32 h-40">
                             {candidate.image_url && !imageErrors[candidate.id] ? (
                               <Image
                                 src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
                                 alt={`${candidate.first_name} ${candidate.last_name}`}
                                 fill
-                                sizes="80px"
+                                sizes="128px"
                                 className="object-cover rounded-lg"
                                 onError={() => handleImageError(candidate.id)}
                               />
                             ) : (
-                              <div className="w-20 h-24 rounded-lg bg-gray-200 flex items-center justify-center">
-                                <User className="w-10 h-10 text-gray-400" />
+                              <div className="w-32 h-40 rounded-lg bg-gray-200 flex items-center justify-center">
+                                <User className="w-16 h-16 text-gray-400" />
                               </div>
                             )}
                           </div>
-                          <div>
-                            <div className="font-medium text-black text-lg">
+                          <div className="flex-1">
+                            <h4 className="text-xl font-semibold text-black">
                               {candidate.first_name} {candidate.last_name}
-                            </div>
+                            </h4>
                             {candidate.party && (
-                              <div className="text-sm text-gray-500">
-                                          {candidate.party}
+                              <div className="text-sm text-gray-600 mb-2">
+                                {candidate.party}
                               </div>
                             )}
-                            <div className="text-sm text-blue-600 font-medium">
+                            <div className="text-lg font-bold text-blue-600">
                               {candidate.vote_count || 0} votes
                             </div>
                           </div>
@@ -2300,27 +2327,21 @@ export default function ElectionDetailsPage() {
                         
                         <div className="mt-3">
                           <h5 className="text-sm font-medium text-gray-700 mb-2">
-                            Voter Codes ({bulletinData.candidateVotes
-                              .find(pos => pos.id === position.id)
-                              ?.candidates?.find(c => c.id === candidate.id)
-                              ?.voters?.length || 0}):
+                            Voter Codes ({candidateVoters.length}):
                           </h5>
                           <div className="grid grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2">
-                            {bulletinData.candidateVotes
-                              .find(pos => pos.id === position.id)
-                              ?.candidates?.find(c => c.id === candidate.id)
-                              ?.voters?.slice(0, 50).map((voter, voterIndex) => (
-                                <div key={voterIndex} className="bg-white rounded p-2 border text-center hover:shadow-md transition-shadow">
-                                  <div className="flex flex-col items-center w-full">
-                                    <span className="font-mono text-base bg-blue-100 text-blue-800 px-2 py-1 rounded whitespace-nowrap w-full">
-                                      {voter.verificationCode}
-                                    </span>
-                                    <span className="text-xs text-gray-500">
-                                      {new Date(voter.voteDate || voter.vote_date).toLocaleDateString()}
-                                    </span>
-                                  </div>
+                            {currentPageVoters.map((voter, voterIndex) => (
+                              <div key={voterIndex} className="bg-white rounded p-2 border text-center hover:shadow-md transition-shadow">
+                                <div className="flex flex-col items-center w-full">
+                                  <span className="font-mono text-base bg-blue-100 text-blue-800 px-2 py-1 rounded whitespace-nowrap w-full">
+                                    {voter.verificationCode}
+                                  </span>
+                                  <span className="text-xs text-gray-500">
+                                    {new Date(voter.voteDate || voter.vote_date).toLocaleDateString()}
+                                  </span>
                                 </div>
-                              )) || []}
+                              </div>
+                            ))}
                           </div>
                         </div>
                       </div>
