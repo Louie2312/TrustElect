@@ -25,16 +25,14 @@ const statusColors = {
   ongoing: 'bg-blue-100 text-black border-blue-300',
   upcoming: 'bg-yellow-100 text-black border-yellow-300',
   completed: 'bg-green-100 text-black border-green-300',
-  to_approve: 'bg-purple-100 text-black border-purple-300',
-  archived: 'bg-gray-100 text-black border-gray-300'
+  to_approve: 'bg-purple-100 text-black border-purple-300'
 };
 
 const statusIcons = {
   ongoing: <Clock className="w-5 h-5" />,
   upcoming: <Calendar className="w-5 h-5" />,
   completed: <CheckCircle className="w-5 h-5" />,
-  to_approve: <AlertCircle className="w-5 h-5" />,
-  archived: <AlertCircle className="w-5 h-5" />
+  to_approve: <AlertCircle className="w-5 h-5" />
 };
 
 export default function ElectionPage() {
@@ -50,8 +48,7 @@ export default function ElectionPage() {
     { id: 'ongoing', label: 'Ongoing' },
     { id: 'upcoming', label: 'Upcoming' },
     { id: 'completed', label: 'Completed' },
-    { id: 'to_approve', label: 'To Approve' },
-    { id: 'archived', label: 'Archived' }
+    { id: 'to_approve', label: 'To Approve' }
   ]);
 
   const fetchElections = useCallback(async (showLoading = true) => {
@@ -116,9 +113,6 @@ export default function ElectionPage() {
   useEffect(() => {
     if (activeTab === 'all') {
       setFilteredElections(elections);
-    } else if (activeTab === 'archived') {
-      // Fetch archived elections
-      fetchArchivedElections();
     } else {
       setFilteredElections(
         elections.filter(election => {
@@ -147,36 +141,6 @@ export default function ElectionPage() {
     router.push(`/superadmin/election/${electionId}`);
   };
 
-  const handleArchiveElection = async (electionId, event) => {
-    event.stopPropagation(); // Prevent row click
-    
-    if (!confirm("Are you sure you want to archive this election? It will be moved to the archive.")) {
-      return;
-    }
-
-    try {
-      const token = Cookies.get('token');
-      const response = await fetch(`${API_BASE}/elections/${electionId}/archive`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        alert("Election archived successfully!");
-        fetchElections(); // Refresh the list
-      } else {
-        const errorData = await response.json();
-        alert(`Failed to archive election: ${errorData.message || 'Unknown error'}`);
-      }
-    } catch (error) {
-      console.error("Error archiving election:", error);
-      alert("Failed to archive election. Please try again.");
-    }
-  };
-
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
@@ -202,27 +166,11 @@ export default function ElectionPage() {
       <div className={`flex items-center px-3 py-1 rounded-full ${statusColors[status]}`}>
         {statusIcons[status]}
         <span className="ml-2 text-xs font-medium">
-          {(election.needs_approval && !isSuperAdminCreator) ? 'NEEDS APPROVAL' : 
-           election.status === 'archived' ? 'ARCHIVED' :
-           election.status.toUpperCase()}
+          {(election.needs_approval && !isSuperAdminCreator) ? 'NEEDS APPROVAL' : election.status.toUpperCase()}
         </span>
       </div>
     );
   };
-
-  const fetchArchivedElections = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await fetchWithAuth('/elections/archived');
-      setFilteredElections(data || []);
-    } catch (err) {
-      console.error("Failed to load archived elections:", err);
-      setError("Failed to load archived elections. Please try again later.");
-      setFilteredElections([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
   const manualRefresh = () => {
     fetchElections(false);
@@ -239,14 +187,7 @@ export default function ElectionPage() {
         
       </div>
 
-      <div className="mb-6 flex justify-end gap-3">
-        <Link 
-          href="/superadmin/election/archive"
-          className="bg-gray-600 text-white px-5 py-2.5 rounded-lg hover:bg-gray-700 transition-colors flex items-center shadow-sm"
-        >
-          <AlertCircle className="w-5 h-5 mr-2" />
-          Archived Elections
-        </Link>
+      <div className="mb-6 flex justify-end">
         <button 
           onClick={handleCreateElection} 
           className="bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 transition-colors flex items-center shadow-sm"
@@ -315,9 +256,6 @@ export default function ElectionPage() {
                         Created By
                       </th>
                     )}
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
-                      Actions
-                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -352,14 +290,6 @@ export default function ElectionPage() {
                           )}
                         </td>
                       )}
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                        <button
-                          onClick={(e) => handleArchiveElection(election.id, e)}
-                          className="bg-yellow-500 text-white px-3 py-1 rounded text-xs hover:bg-yellow-600 transition-colors"
-                        >
-                          Archive
-                        </button>
-                      </td>
                     </tr>
                   ))}
                 </tbody>

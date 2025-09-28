@@ -4,10 +4,6 @@ const {
   getElectionById, 
   updateElection, 
   deleteElection,
-  archiveElection: archiveElectionModel,
-  restoreElection: restoreElectionModel,
-  permanentlyDeleteElection: permanentlyDeleteElectionModel,
-  getArchivedElections,
   getEligibleVotersCount,
   getElectionsByStatus,
   getElectionStatistics,
@@ -1931,82 +1927,5 @@ exports.getVotesPerCandidate = async (req, res) => {
       success: false,
       message: "Failed to fetch votes per candidate: " + error.message
     });
-  }
-};
-
-// Archive election (soft delete)
-exports.archiveElection = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const result = await archiveElectionModel(id);
-    
-    if (!result) {
-      return res.status(404).json({ message: "Election not found" });
-    }
-    
-    res.json({ 
-      success: true,
-      message: "Election archived successfully",
-      data: result 
-    });
-  } catch (error) {
-    console.error("Error archiving election:", error);
-    res.status(500).json({ message: "Server error when archiving election" });
-  }
-};
-
-// Restore election from archive
-exports.restoreElection = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const result = await restoreElectionModel(id);
-    
-    if (!result) {
-      return res.status(404).json({ message: "Election not found" });
-    }
-    
-    res.json({ 
-      success: true,
-      message: "Election restored successfully",
-      data: result 
-    });
-  } catch (error) {
-    console.error("Error restoring election:", error);
-    res.status(500).json({ message: "Server error when restoring election" });
-  }
-};
-
-// Permanently delete election
-exports.permanentlyDeleteElection = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const result = await permanentlyDeleteElectionModel(id);
-    
-    if (!result) {
-      return res.status(404).json({ message: "Election not found" });
-    }
-    
-    res.json({ 
-      success: true,
-      message: "Election permanently deleted",
-      data: result 
-    });
-  } catch (error) {
-    console.error("Error permanently deleting election:", error);
-    res.status(500).json({ message: "Server error when permanently deleting election" });
-  }
-};
-
-// Get archived elections
-exports.getArchivedElections = async (req, res) => {
-  try {
-    const archivedElections = await getArchivedElections();
-    res.json({ 
-      success: true,
-      data: archivedElections 
-    });
-  } catch (error) {
-    console.error("Error fetching archived elections:", error);
-    res.status(500).json({ message: "Server error when fetching archived elections" });
   }
 };

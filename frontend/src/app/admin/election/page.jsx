@@ -28,7 +28,6 @@ const statusColors = {
   completed: 'bg-green-100 text-black border-green-300',
   pending: 'bg-purple-100 text-black border-purple-300',
   to_approve: 'bg-purple-100 text-black border-purple-800',
-  archived: 'bg-gray-100 text-black border-gray-300',
 };
 
 const statusIcons = {
@@ -37,8 +36,7 @@ const statusIcons = {
   completed: <CheckCircle className="w-5 h-5" />,
   pending: <AlertCircle className="w-5 h-5" />,
   to_approve: <AlertCircle className="w-5 h-5" />,
-  draft: <AlertCircle className="w-5 h-5" />,
-  archived: <AlertCircle className="w-5 h-5" />
+  draft: <AlertCircle className="w-5 h-5" />
 };
 
 const isCreatedBySystemAdmin = (election) => {
@@ -86,7 +84,6 @@ export default function ElectionPage() {
     { id: 'upcoming', label: 'Upcoming' },
     { id: 'completed', label: 'Completed' },
     { id: 'pending', label: 'Pending Approval', requiresPermission: 'edit' },
-    { id: 'archived', label: 'Archived', requiresPermission: 'delete' },
   ];
 
   const fetchElections = useCallback(async () => {
@@ -135,20 +132,6 @@ export default function ElectionPage() {
     }
   }, [hasPermission]);
 
-  const fetchArchivedElections = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await fetchWithAuth('/elections/archived');
-      setFilteredElections(data || []);
-    } catch (err) {
-      console.error("Failed to load archived elections:", err);
-      setError("Failed to load archived elections. Please try again later.");
-      setFilteredElections([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   // Initial load
   useEffect(() => {
     const loadData = async () => {
@@ -174,9 +157,6 @@ export default function ElectionPage() {
     } else if (activeTab === 'pending') {
       // Use the dedicated pendingApprovals state
       setFilteredElections(pendingApprovals);
-    } else if (activeTab === 'archived') {
-      // Fetch archived elections
-      fetchArchivedElections();
     } else {
       // For other tabs, filter by status but exclude those needing approval
       setFilteredElections(
@@ -219,41 +199,6 @@ export default function ElectionPage() {
     router.push(`/admin/election/${electionId}`);
   };
 
-  const handleArchiveElection = async (electionId, event) => {
-    event.stopPropagation(); // Prevent row click
-    
-    if (!hasPermission('elections', 'delete')) {
-      alert("You don't have permission to archive elections");
-      return;
-    }
-
-    if (!confirm("Are you sure you want to archive this election? It will be moved to the archive.")) {
-      return;
-    }
-
-    try {
-      const token = Cookies.get('token');
-      const response = await fetch(`${API_BASE}/elections/${electionId}/archive`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        alert("Election archived successfully!");
-        fetchElections(); // Refresh the list
-      } else {
-        const errorData = await response.json();
-        alert(`Failed to archive election: ${errorData.message || 'Unknown error'}`);
-      }
-    } catch (error) {
-      console.error("Error archiving election:", error);
-      alert("Failed to archive election. Please try again.");
-    }
-  };
-
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
@@ -274,7 +219,6 @@ export default function ElectionPage() {
           <span className="ml-2 text-xs font-medium">
             {election.status === 'pending' ? 'PENDING APPROVAL' : 
              election.status === 'draft' ? 'DRAFT' : 
-             election.status === 'archived' ? 'ARCHIVED' :
              election.status.toUpperCase()}
           </span>
         </div>
@@ -295,7 +239,6 @@ export default function ElectionPage() {
         <span className="ml-2 text-xs font-medium">
           {election.status === 'pending' ? 'PENDING APPROVAL' : 
            election.status === 'draft' ? 'DRAFT' : 
-           election.status === 'archived' ? 'ARCHIVED' :
            election.status.toUpperCase()}
         </span>
       </div>
@@ -338,31 +281,20 @@ export default function ElectionPage() {
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-black">Elections</h1>
-        <div className="flex gap-3">
-          {hasPermission('elections', 'delete') && (
-            <Link 
-              href="/admin/election/archive"
-              className="bg-gray-600 text-white px-5 py-2.5 rounded-lg hover:bg-gray-700 transition-colors flex items-center shadow-sm"
-            >
-              <AlertCircle className="w-5 h-5 mr-2" />
-              Archived Elections
-            </Link>
-          )}
-          {hasPermission('elections', 'create') ? (
-            <button 
-              onClick={handleCreateElection} 
-              className="bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 transition-colors flex items-center shadow-sm"
-            >
-              <Plus className="w-5 h-5 mr-2" />
-              Create New Election
-            </button>
-          ) : (
-            <div className="text-sm text-gray-500 italic bg-gray-100 px-4 py-2 rounded-md flex items-center">
-              <Lock className="w-4 h-4 mr-2" />
-              Create permission required
-            </div>
-          )}
-        </div>
+        {hasPermission('elections', 'create') ? (
+          <button 
+            onClick={handleCreateElection} 
+            className="bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 transition-colors flex items-center shadow-sm"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Create New Election
+          </button>
+        ) : (
+          <div className="text-sm text-gray-500 italic bg-gray-100 px-4 py-2 rounded-md flex items-center">
+            <Lock className="w-4 h-4 mr-2" />
+            Create permission required
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow mb-6">
@@ -426,11 +358,6 @@ export default function ElectionPage() {
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
                       End Date
                     </th>
-                    {hasPermission('elections', 'delete') && (
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
-                        Actions
-                      </th>
-                    )}
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -453,16 +380,6 @@ export default function ElectionPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                         {formatDate(election.date_to)}
                       </td>
-                      {hasPermission('elections', 'delete') && (
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                          <button
-                            onClick={(e) => handleArchiveElection(election.id, e)}
-                            className="bg-yellow-500 text-white px-3 py-1 rounded text-xs hover:bg-yellow-600 transition-colors"
-                          >
-                            Archive
-                          </button>
-                        </td>
-                      )}
                     </tr>
                   ))}
                 </tbody>

@@ -48,7 +48,6 @@ const getElectionsByStatus = async (status) => {
       LEFT JOIN votes v ON e.id = v.election_id
       LEFT JOIN ballots b ON e.id = b.election_id
       WHERE e.status = $1 
-      AND e.status != 'archived'
       AND (
           e.needs_approval = FALSE 
           OR e.needs_approval IS NULL
@@ -322,10 +321,9 @@ const getAllElections = async () => {
           COUNT(ev.id) AS voter_count
       FROM elections e
       LEFT JOIN eligible_voters ev ON e.id = ev.election_id
-      WHERE e.status != 'archived'
       GROUP BY e.id
       ORDER BY e.created_at DESC;
-`);
+  `);
   return result.rows;
 };
 
@@ -488,98 +486,6 @@ const deleteElection = async (id) => {
   return { message: "Election deleted successfully" };
 };
 
-// Archive election (soft delete)
-const archiveElection = async (id) => {
-  try {
-    const query = `
-      UPDATE elections 
-      SET status = 'archived' 
-      WHERE id = $1 RETURNING *;
-    `;
-    const result = await pool.query(query, [id]);
-    return result.rows[0] || null;
-  } catch (error) {
-    console.error("Error archiving election:", error);
-    throw error;
-  }
-};
-
-// Restore election from archive
-const restoreElection = async (id) => {
-  try {
-    // Get the election to determine what status to restore to
-    const electionQuery = await pool.query(`
-      SELECT date_from, date_to, start_time, end_time 
-      FROM elections 
-      WHERE id = $1
-    `, [id]);
-    
-    if (electionQuery.rows.length === 0) {
-      throw new Error('Election not found');
-    }
-    
-    const election = electionQuery.rows[0];
-    const now = new Date();
-    const start = new Date(`${election.date_from}T${election.start_time}`);
-    const end = new Date(`${election.date_to}T${election.end_time}`);
-    
-    // Determine appropriate status based on dates
-    let newStatus = 'draft';
-    if (now < start) {
-      newStatus = 'upcoming';
-    } else if (now >= start && now <= end) {
-      newStatus = 'ongoing';
-    } else if (now > end) {
-      newStatus = 'completed';
-    }
-    
-    const query = `
-      UPDATE elections 
-      SET status = $1 
-      WHERE id = $2 RETURNING *;
-    `;
-    const result = await pool.query(query, [newStatus, id]);
-    return result.rows[0] || null;
-  } catch (error) {
-    console.error("Error restoring election:", error);
-    throw error;
-  }
-};
-
-// Permanently delete election
-const permanentlyDeleteElection = async (id) => {
-  try {
-    const query = `DELETE FROM elections WHERE id = $1 RETURNING *;`;
-    const result = await pool.query(query, [id]);
-    return result.rows[0] || null;
-  } catch (error) {
-    console.error("Error permanently deleting election:", error);
-    throw error;
-  }
-};
-
-// Get archived elections
-const getArchivedElections = async () => {
-  try {
-    const query = `
-      SELECT 
-        e.*,
-        u.first_name as created_by_name,
-        u.last_name as created_by_last_name,
-        u.department as created_by_department
-      FROM elections e
-      LEFT JOIN users u ON e.created_by = u.id
-      WHERE e.status = 'archived'
-      ORDER BY e.created_at DESC;
-    `;
-    const result = await pool.query(query);
-    return result.rows;
-  } catch (error) {
-    console.error("Error fetching archived elections:", error);
-    throw error;
-  }
-};
-
 const getElectionWithBallot = async (electionId) => {
   try {
 
@@ -587,17 +493,8 @@ const getElectionWithBallot = async (electionId) => {
       SELECT 
         e.*,
         (SELECT COUNT(*) FROM eligible_voters WHERE election_id = e.id) AS voter_count,
-        (SELECT COALESCE(COUNT(DISTINCT student_id), 0) FROM votes WHERE election_id = e.id) AS vote_count,
-        CASE 
-          WHEN e.created_by = 1 THEN 'System Administrator'
-          ELSE COALESCE(CONCAT(a.first_name, ' ', a.last_name), 'Unknown Admin')
-        END as creator_name,
-        CASE 
-          WHEN e.created_by = 1 THEN 'SuperAdmin'
-          ELSE 'Admin'
-        END as creator_role
+        (SELECT COALESCE(COUNT(DISTINCT student_id), 0) FROM votes WHERE election_id = e.id) AS vote_count
       FROM elections e
-      LEFT JOIN admins a ON e.created_by = a.user_id
       WHERE e.id = $1
     `, [electionId]);
 
@@ -796,12 +693,11 @@ const getAllElectionsWithCreator = async () => {
   try {
     const query = `
       SELECT e.*, 
-             CONCAT(a.first_name, ' ', a.last_name) as admin_name, 
+             a.name as admin_name, 
              a.department as admin_department,
-             a.user_id as admin_id
+             a.id as admin_id
       FROM elections e
-      LEFT JOIN admins a ON e.created_by = a.user_id
-      WHERE e.status != 'archived'
+      LEFT JOIN admins a ON e.created_by = a.id
       ORDER BY e.date_from DESC
     `;
     const result = await pool.query(query);
@@ -950,12 +846,8 @@ module.exports = {
   getElectionById, 
   updateElection, 
   deleteElection, 
-  archiveElection,
-  restoreElection,
-  permanentlyDeleteElection,
-  getArchivedElections,
   getEligibleVotersCount, 
-  getElectionStatistics, 
+  getElectionStatistics,  
   getElectionsByStatus,
   getElectionWithBallot, 
   updateElectionStatuses, 
