@@ -417,16 +417,17 @@ export default function EditAdminModal({ admin, onClose, onSuccess }) {
 
             <div className="flex justify-center gap-4">
               <button 
-                onClick={confirmCancel} 
-                className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition-colors"
-              >
-                Yes, Cancel
-              </button>
-              <button 
                 onClick={cancelCancel} 
                 className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition-colors"
               >
                 No, Continue
+              </button>
+
+               <button 
+                onClick={confirmCancel} 
+                className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition-colors"
+              >
+                Yes, Cancel
               </button>
             </div>
           </div>
@@ -446,19 +447,21 @@ export default function EditAdminModal({ admin, onClose, onSuccess }) {
 
             <div className="flex justify-center gap-4">
               <button 
-                onClick={confirmSaveChanges} 
-                className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition-colors"
-                disabled={isSubmitting}
-              >
-                Yes, Save
-              </button>
-              <button 
                 onClick={cancelSaveChanges} 
                 className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition-colors"
                 disabled={isSubmitting}
               >
                 No, Cancel
               </button>
+
+              <button 
+                onClick={confirmSaveChanges} 
+                className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition-colors"
+                disabled={isSubmitting}
+              >
+                Yes, Save
+              </button>
+              
             </div>
           </div>
         </div>
