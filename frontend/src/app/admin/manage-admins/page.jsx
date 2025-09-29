@@ -286,7 +286,7 @@ export default function ManageAdminsPage() {
             <th className="p-3">Employee #</th>
             <th className="p-3">Department</th>
             <th className="p-3">Role</th>
-            <th className="p-3">Status</th>
+            <th className="p-3">Active Status</th>
             <th className="p-3">Account Status</th>
             <th className="p-3">Actions</th>
           </tr>
