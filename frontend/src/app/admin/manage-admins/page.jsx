@@ -266,6 +266,7 @@ export default function ManageAdminsPage() {
         </select>
       </div>
 
+
       {loading && <p>Loading admins...</p>}
       {error && <p className="text-red-500">{error}</p>}
 
