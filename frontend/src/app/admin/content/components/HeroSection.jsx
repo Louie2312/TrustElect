@@ -90,10 +90,58 @@ const HeroSection = ({
           </div>
         </div>
         
+        {/* Carousel Images Section */}
+        <div>
+          <label className="block text-sm font-medium text-black mb-2">
+            Upload 3 - 5 Images
+          </label>
+          <div className="space-y-3">
+            <div className="flex items-center">
+              <input 
+                id="hero-carousel-input"
+                type="file" 
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                onChange={(e) => handleFileUpload('heroCarousel', null, e)}
+                className="w-full border rounded p-1 text-sm file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-blue-50 file:text-black text-black"
+              />
+            </div>
+            
+            {/* Display uploaded carousel images */}
+            {landingContent.hero.carouselImages && landingContent.hero.carouselImages.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {landingContent.hero.carouselImages.map((image, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={formatImageUrl(image)}
+                      alt={`Carousel image ${index + 1}`}
+                      className="w-full h-20 object-cover rounded border"
+                    />
+                    <button
+                      onClick={() => removeImage('heroCarousel', index)}
+                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Remove image"
+                    >
+                      ×
+                    </button>
+                    <div className="absolute bottom-1 left-1 bg-black bg-opacity-50 text-white text-xs px-1 rounded">
+                      {index + 1}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            <p className="text-xs text-gray-600">
+              Upload 3-5 high-quality images for the hero carousel. Images will be displayed in a rotating carousel.
+            </p>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-black mb-1">
-              Background Video
+              Background Video (Optional)
             </label>
             <div className="flex items-center">
             <input 
@@ -122,7 +170,7 @@ const HeroSection = ({
           
           <div>
             <label className="block text-sm font-medium text-black mb-1">
-              Poster Image
+              Fallback Poster Image
             </label>
             <div className="flex items-center">
             <input 
@@ -163,7 +211,20 @@ const HeroSection = ({
                 <p className="text-sm mb-3">{landingContent.hero.subtitle}</p>
                 
                 <div className="aspect-video rounded-md overflow-hidden bg-black/20">
-                  {landingContent.hero.videoUrl ? (
+                  {landingContent.hero.carouselImages && landingContent.hero.carouselImages.length > 0 ? (
+                    <div className="relative w-full h-full">
+                      <img
+                        src={formatImageUrl(landingContent.hero.carouselImages[0])}
+                        alt="Hero carousel preview"
+                        className="w-full h-full object-cover"
+                      />
+                      {landingContent.hero.carouselImages.length > 1 && (
+                        <div className="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                          +{landingContent.hero.carouselImages.length - 1} more
+                        </div>
+                      )}
+                    </div>
+                  ) : landingContent.hero.videoUrl ? (
                     <video
                       src={formatImageUrl(landingContent.hero.videoUrl)}
                       poster={formatImageUrl(landingContent.hero.posterImage)}

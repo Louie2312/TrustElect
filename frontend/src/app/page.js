@@ -12,6 +12,7 @@ export default function Home() {
   const [showLogin, setShowLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [apiConnected, setApiConnected] = useState(false);
+  const [currentCarouselIndex, setCurrentCarouselIndex] = useState(0);
   
   const [landingContent, setLandingContent] = useState({
     logo: {
@@ -21,7 +22,8 @@ export default function Home() {
       title: "TrustElect Voting Platform",
       subtitle: "STI TrustElect Voting System",
       videoUrl: null,
-      posterImage: null
+      posterImage: null,
+      carouselImages: []
     },
     features: {
       columns: [
@@ -123,6 +125,7 @@ export default function Home() {
             subtitle: newHero.subtitle || landingContent.hero.subtitle,
             videoUrl: newHero.videoUrl || null,
             posterImage: newHero.posterImage || null,
+            carouselImages: newHero.carouselImages || [],
             bgColor: newHero.bgColor || landingContent.hero.bgColor || "#1e40af",
             textColor: newHero.textColor || landingContent.hero.textColor || "#ffffff"
           },
@@ -172,6 +175,19 @@ export default function Home() {
     checkApiConnection();
     fetchContent();
   }, [fetchContent]); // Added fetchContent dependency
+
+  // Carousel auto-rotation effect
+  useEffect(() => {
+    if (landingContent.hero.carouselImages && landingContent.hero.carouselImages.length > 1) {
+      const interval = setInterval(() => {
+        setCurrentCarouselIndex((prevIndex) => 
+          (prevIndex + 1) % landingContent.hero.carouselImages.length
+        );
+      }, 5000); // Change image every 5 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [landingContent.hero.carouselImages]);
 
 
   const formatImageUrl = (url) => {
@@ -238,11 +254,12 @@ export default function Home() {
             <Image 
               src={`${formatImageUrl(landingContent.logo.imageUrl)}?timestamp=${new Date().getTime()}`}
               alt="Site Logo" 
-              width={60}
-              height={20} 
+              width={120}
+              height={40} 
               className="mr-2"
               priority
               unoptimized={true}
+              quality={95}
               style={{ maxHeight: 'calc(51px - (0px * 2))' }}
               onError={(e) => {
                 console.error("Error loading logo:", landingContent.logo.imageUrl);
@@ -286,14 +303,15 @@ export default function Home() {
             <Image 
               src={stiLogo} 
               alt="STI Logo" 
-              width={65}
-              height={25} 
+              width={130}
+              height={50} 
               className="mr-2"
               priority
+              quality={95}
               style={{ maxHeight: 'calc(51px - (0px * 2))' }}
             />
           )}
-          <span className="text-white">TrustElect</span>
+          <span className="text-white">TrustElect Voting System</span>
         </h1>
         
         <nav className="flex items-center gap-4">
@@ -315,140 +333,216 @@ export default function Home() {
           color: landingContent.hero?.textColor || '#ffffff'
         }}
       >
-        <div className="container mx-auto max-w-6xl flex flex-col md:flex-row items-center">
-          <div className="md:w-1/3 space-y-6">
+        <div className="container mx-auto max-w-7xl flex flex-col lg:flex-row items-center">
+          <div className="lg:w-2/5 space-y-6 pr-0 lg:pr-8">
             <h1 
-              className="text-4xl md:text-5xl font-bold leading-tight"
+              className="text-4xl md:text-6xl font-bold leading-tight text-left"
               style={{ color: landingContent.hero?.textColor || '#ffffff' }}
             >
               {landingContent.hero.title}
             </h1>
             <p 
-              className="text-xl md:text-2xl"
+              className="text-xl md:text-2xl text-left"
               style={{ color: landingContent.hero?.textColor || '#ffffff' }}
             >
               {landingContent.hero.subtitle}
             </p>
             
           </div>
-          <div className="md:w-2/3 mt-10 md:mt-0 flex justify-center">
+          <div className="lg:w-3/5 mt-10 lg:mt-0 flex justify-center">
             {(() => {
-              
-              const heroVideoUrl = landingContent.hero && landingContent.hero.videoUrl ? 
-                formatImageUrl(landingContent.hero.videoUrl) : null;
-              
-              // Safety check: Ensure hero video is not accidentally using CTA video
-              if (heroVideoUrl && landingContent.callToAction?.videoUrl && 
-                  heroVideoUrl === formatImageUrl(landingContent.callToAction.videoUrl)) {
-                console.warn("WARNING: Hero video URL matches CTA video URL - this should not happen!");
-                console.warn("Hero video URL:", heroVideoUrl);
-                console.warn("CTA video URL:", formatImageUrl(landingContent.callToAction.videoUrl));
-              }
-              
-              const heroPosterUrl = landingContent.hero && landingContent.hero.posterImage ? 
-                formatImageUrl(landingContent.hero.posterImage) : null;
-
-              // Debug logging to ensure we're not mixing up videos
-              console.log("=== VIDEO DEBUG INFO ===");
-              console.log("Hero section - Video URL:", heroVideoUrl);
-              console.log("Hero section - Poster URL:", heroPosterUrl);
-              console.log("CTA section - Video URL:", landingContent.callToAction?.videoUrl);
-              console.log("Full landing content:", landingContent);
-              console.log("=========================");
-
-          if (heroVideoUrl) {
+              // Check for carousel images first
+              if (landingContent.hero.carouselImages && landingContent.hero.carouselImages.length > 0) {
                 return (
-            <div className="w-full max-w-7xl aspect-video bg-black/20 rounded-lg overflow-hidden relative">
-              <video
-                src={heroVideoUrl}
-                poster={heroPosterUrl}
-                controls
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  console.error("Error loading hero video");
-                  e.currentTarget.style.display = 'none';
-                  const parent = e.currentTarget.parentElement;
-                  if (parent) {
-                    const fallback = document.createElement('div');
-                    fallback.className = 'absolute inset-0 flex items-center justify-center bg-blue-700';
-                    fallback.innerHTML = `<span class="text-white/70">Video unavailable</span>`;
-                    parent.appendChild(fallback);
-                  }
-                }}
-              >
-                Your browser does not support the video tag.
-              </video>
-            </div>
-                );
-
-              } else if (heroPosterUrl) {
-                const posterWithTimestamp = `${heroPosterUrl}?timestamp=${new Date().getTime()}`;
-                return (
-              <div className="w-full max-w-8xl aspect-video bg-black/20 rounded-lg overflow-hidden">
-                <Image
-                  src={posterWithTimestamp}
-                  alt="TrustElect Platform"
-                  width={2560}
-                  height={1440}
-                  className="w-full h-full object-cover"
-                  unoptimized={true}
-                  onError={(e) => {
-                    console.error("Error loading hero poster image:", posterWithTimestamp);
-                    console.error("Original URL:", heroPosterUrl);
-                    
-                    // Try multiple fallback URLs
-                    const fallbackUrls = [
-                      heroPosterUrl.replace('/uploads/images/', '/api/uploads/images/'),
-                      heroPosterUrl.replace('/uploads/', '/api/uploads/'),
-                      heroPosterUrl.replace('/uploads/images/', '/uploads/'),
-                      heroPosterUrl
-                    ];
-                    
-                    const container = e.currentTarget.closest('div');
-                    if (container) {
-                      const tryNextFallback = (index) => {
-                        if (index >= fallbackUrls.length) {
-                          console.error('All fallback URLs failed');
-                          container.innerHTML = `
-                            <div class="w-full h-full flex items-center justify-center bg-blue-700">
-                              <span class="text-xl text-white/70">Demo Video</span>
-                            </div>
-                          `;
-                          return;
-                        }
+                  <div className="w-full max-w-8xl aspect-video bg-black/20 rounded-lg overflow-hidden relative">
+                    {/* Carousel Images */}
+                    <div className="relative w-full h-full">
+                      {landingContent.hero.carouselImages.map((image, index) => {
+                        const imageUrl = formatImageUrl(image);
+                        if (!imageUrl) return null;
                         
-                        const fallbackUrl = fallbackUrls[index];
-                        const img = document.createElement('img');
-                        img.src = `${fallbackUrl}?timestamp=${new Date().getTime()}`;
-                        img.className = 'w-full h-full object-cover';
-                        img.onload = () => {
-                          console.log('Fallback URL worked:', fallbackUrl); 
-                          container.innerHTML = '';
-                          container.appendChild(img);
-                        };
-                        img.onerror = () => {
-                          console.error('Fallback URL failed:', fallbackUrl);
-                          tryNextFallback(index + 1);
-                        };
-                      };
-                      
-                      tryNextFallback(0);
-                    }
-                  }}
-                  onLoad={() => {
-                    console.log('Hero poster loaded successfully:', posterWithTimestamp);
-                  }}
-                />
-              </div>
-            );
-
-              } else {
-                return (
-                  <div className="w-full max-w-8xl aspect-video bg-blue-700 rounded-lg flex items-center justify-center">
-
+                        return (
+                          <div
+                            key={index}
+                            className={`absolute inset-0 transition-opacity duration-1000 ${
+                              index === currentCarouselIndex ? 'opacity-100' : 'opacity-0'
+                            }`}
+                          >
+                            <Image
+                              src={`${imageUrl}?timestamp=${new Date().getTime()}`}
+                              alt={`Hero carousel ${index + 1}`}
+                              width={2560}
+                              height={1440}
+                              className="w-full h-full object-cover"
+                              unoptimized={true}
+                              priority={index === 0}
+                              quality={95}
+                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 70vw"
+                              onError={(e) => {
+                                console.error(`Error loading carousel image ${index + 1}:`, imageUrl);
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                    
+                    {/* Carousel Indicators */}
+                    {landingContent.hero.carouselImages.length > 1 && (
+                      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+                        {landingContent.hero.carouselImages.map((_, index) => (
+                          <button
+                            key={index}
+                            onClick={() => setCurrentCarouselIndex(index)}
+                            className={`w-3 h-3 rounded-full transition-colors ${
+                              index === currentCarouselIndex 
+                                ? 'bg-white' 
+                                : 'bg-white/50 hover:bg-white/75'
+                            }`}
+                            aria-label={`Go to slide ${index + 1}`}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* Navigation Arrows */}
+                    {landingContent.hero.carouselImages.length > 1 && (
+                      <>
+                        <button
+                          onClick={() => setCurrentCarouselIndex(
+                            currentCarouselIndex === 0 
+                              ? landingContent.hero.carouselImages.length - 1 
+                              : currentCarouselIndex - 1
+                          )}
+                          className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors"
+                          aria-label="Previous image"
+                        >
+                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => setCurrentCarouselIndex(
+                            (currentCarouselIndex + 1) % landingContent.hero.carouselImages.length
+                          )}
+                          className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors"
+                          aria-label="Next image"
+                        >
+                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
+                      </>
+                    )}
                   </div>
                 );
               }
+              
+              // Fallback to video if no carousel images
+              const heroVideoUrl = landingContent.hero && landingContent.hero.videoUrl ? 
+                formatImageUrl(landingContent.hero.videoUrl) : null;
+              
+              if (heroVideoUrl) {
+                return (
+                  <div className="w-full max-w-8xl aspect-video bg-black/20 rounded-lg overflow-hidden relative">
+                    <video
+                      src={heroVideoUrl}
+                      poster={formatImageUrl(landingContent.hero.posterImage)}
+                      controls
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        console.error("Error loading hero video");
+                        e.currentTarget.style.display = 'none';
+                        const parent = e.currentTarget.parentElement;
+                        if (parent) {
+                          const fallback = document.createElement('div');
+                          fallback.className = 'absolute inset-0 flex items-center justify-center bg-blue-700';
+                          fallback.innerHTML = `<span class="text-white/70">Video unavailable</span>`;
+                          parent.appendChild(fallback);
+                        }
+                      }}
+                    >
+                      Your browser does not support the video tag.
+                    </video>
+                  </div>
+                );
+              }
+              
+              // Fallback to poster image
+              const heroPosterUrl = landingContent.hero && landingContent.hero.posterImage ? 
+                formatImageUrl(landingContent.hero.posterImage) : null;
+
+              if (heroPosterUrl) {
+                const posterWithTimestamp = `${heroPosterUrl}?timestamp=${new Date().getTime()}`;
+                return (
+                  <div className="w-full max-w-8xl aspect-video bg-black/20 rounded-lg overflow-hidden">
+                  <Image
+                    src={posterWithTimestamp}
+                    alt="TrustElect Platform"
+                    width={2560}
+                    height={1440}
+                    className="w-full h-full object-cover"
+                    unoptimized={true}
+                    quality={95}
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 70vw"
+                    onError={(e) => {
+                      console.error("Error loading hero poster image:", posterWithTimestamp);
+                      console.error("Original URL:", heroPosterUrl);
+                      
+                      // Try multiple fallback URLs
+                      const fallbackUrls = [
+                        heroPosterUrl.replace('/uploads/images/', '/api/uploads/images/'),
+                        heroPosterUrl.replace('/uploads/', '/api/uploads/'),
+                        heroPosterUrl.replace('/uploads/images/', '/uploads/'),
+                        heroPosterUrl
+                      ];
+                      
+                      const container = e.currentTarget.closest('div');
+                      if (container) {
+                        const tryNextFallback = (index) => {
+                          if (index >= fallbackUrls.length) {
+                            console.error('All fallback URLs failed');
+                            container.innerHTML = `
+                              <div class="w-full h-full flex items-center justify-center bg-blue-700">
+                                <span class="text-xl text-white/70">Demo Video</span>
+                              </div>
+                            `;
+                            return;
+                          }
+                          
+                          const fallbackUrl = fallbackUrls[index];
+                          const img = document.createElement('img');
+                          img.src = `${fallbackUrl}?timestamp=${new Date().getTime()}`;
+                          img.className = 'w-full h-full object-cover';
+                          img.onload = () => {
+                            console.log('Fallback URL worked:', fallbackUrl); 
+                            container.innerHTML = '';
+                            container.appendChild(img);
+                          };
+                          img.onerror = () => {
+                            console.error('Fallback URL failed:', fallbackUrl);
+                            tryNextFallback(index + 1);
+                          };
+                        };
+                        
+                        tryNextFallback(0);
+                      }
+                    }}
+                    onLoad={() => {
+                      console.log('Hero poster loaded successfully:', posterWithTimestamp);
+                    }}
+                  />
+                </div>
+                );
+              }
+              
+              // Default fallback
+              return (
+                <div className="w-full max-w-8xl aspect-video bg-blue-700 rounded-lg flex items-center justify-center">
+                  <span className="text-2xl text-white/70">No media selected</span>
+                </div>
+              );
             })()}
           </div>
         </div>
@@ -582,10 +676,12 @@ export default function Home() {
                   <Image
                     src={imageUrl}
                     alt={feature.title || `Feature ${index + 1}`}
-                    width={400}
-                    height={300}
+                    width={800}
+                    height={600}
                     className="w-full h-full object-cover"
                     unoptimized={true}
+                    quality={95}
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     onError={(e) => {
                       console.error(`Error loading feature image ${index}:`, imageUrl);
                       const container = e.currentTarget.closest('.mb-4');
