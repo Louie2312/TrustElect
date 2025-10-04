@@ -12,6 +12,7 @@ export default function Home() {
   const [showLogin, setShowLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [apiConnected, setApiConnected] = useState(false);
+  const [currentCarouselIndex, setCurrentCarouselIndex] = useState(0);
   
   const [landingContent, setLandingContent] = useState({
     logo: {
@@ -21,7 +22,8 @@ export default function Home() {
       title: "TrustElect Voting Platform",
       subtitle: "STI TrustElect Voting System",
       videoUrl: null,
-      posterImage: null
+      posterImage: null,
+      carouselImages: []
     },
     features: {
       columns: [
@@ -172,6 +174,22 @@ export default function Home() {
     checkApiConnection();
     fetchContent();
   }, [fetchContent]); // Added fetchContent dependency
+
+  // Carousel auto-rotation effect
+  useEffect(() => {
+    if (landingContent.hero.carouselImages && landingContent.hero.carouselImages.length > 1) {
+      const interval = setInterval(() => {
+        setCurrentCarouselIndex((prevIndex) => 
+          (prevIndex + 1) % landingContent.hero.carouselImages.length
+        );
+      }, 5000); // Change image every 5 seconds
+
+      return () => clearInterval(interval);
+    } else {
+      // Reset to first image if carousel images change
+      setCurrentCarouselIndex(0);
+    }
+  }, [landingContent.hero.carouselImages]);
 
 
   const formatImageUrl = (url) => {
@@ -333,7 +351,95 @@ export default function Home() {
           </div>
           <div className="lg:w-3/4 mt-10 lg:mt-0 flex justify-center w-full">
             {(() => {
+              // Check for carousel images first
+              if (landingContent.hero.carouselImages && landingContent.hero.carouselImages.length > 0) {
+                return (
+                  <div className="w-full h-full min-h-[500px] bg-black/20 rounded-lg overflow-hidden relative">
+                    {/* Carousel Images */}
+                    <div className="relative w-full h-full">
+                      {landingContent.hero.carouselImages.map((image, index) => {
+                        const imageUrl = formatImageUrl(image);
+                        if (!imageUrl) return null;
+                        
+                        return (
+                          <div
+                            key={index}
+                            className={`absolute inset-0 transition-opacity duration-1000 ${
+                              index === currentCarouselIndex ? 'opacity-100' : 'opacity-0'
+                            }`}
+                          >
+                            <Image
+                              src={`${imageUrl}?timestamp=${new Date().getTime()}`}
+                              alt={`Hero carousel ${index + 1}`}
+                              width={2560}
+                              height={1440}
+                              className="w-full h-full object-cover"
+                              unoptimized={true}
+                              priority={index === 0}
+                              quality={95}
+                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 70vw"
+                              onError={(e) => {
+                                console.error(`Error loading carousel image ${index + 1}:`, imageUrl);
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                    
+                    {/* Carousel Indicators */}
+                    {landingContent.hero.carouselImages.length > 1 && (
+                      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+                        {landingContent.hero.carouselImages.map((_, index) => (
+                          <button
+                            key={index}
+                            onClick={() => setCurrentCarouselIndex(index)}
+                            className={`w-3 h-3 rounded-full transition-colors ${
+                              index === currentCarouselIndex 
+                                ? 'bg-white' 
+                                : 'bg-white/50 hover:bg-white/75'
+                            }`}
+                            aria-label={`Go to slide ${index + 1}`}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* Navigation Arrows */}
+                    {landingContent.hero.carouselImages.length > 1 && (
+                      <>
+                        <button
+                          onClick={() => setCurrentCarouselIndex(
+                            currentCarouselIndex === 0 
+                              ? landingContent.hero.carouselImages.length - 1 
+                              : currentCarouselIndex - 1
+                          )}
+                          className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors"
+                          aria-label="Previous image"
+                        >
+                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => setCurrentCarouselIndex(
+                            (currentCarouselIndex + 1) % landingContent.hero.carouselImages.length
+                          )}
+                          className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors"
+                          aria-label="Next image"
+                        >
+                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                );
+              }
               
+              // Fallback to video if no carousel images
               const heroVideoUrl = landingContent.hero && landingContent.hero.videoUrl ? 
                 formatImageUrl(landingContent.hero.videoUrl) : null;
               
@@ -445,7 +551,7 @@ export default function Home() {
               } else {
                 return (
                   <div className="w-full h-full min-h-[500px] bg-blue-700 rounded-lg flex items-center justify-center">
-                    <span className="text-2xl text-white/70">No media selected</span>
+                    <span className="text-2xl text-white/70">Upload images to create carousel</span>
                   </div>
                 );
               }
