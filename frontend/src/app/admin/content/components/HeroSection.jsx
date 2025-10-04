@@ -159,65 +159,6 @@ const HeroSection = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-black mb-1">
-              Background Video (Optional)
-            </label>
-            <div className="flex items-center">
-            <input 
-              id="hero-video-input"
-              type="file" 
-              accept="video/mp4,video/webm"
-              onChange={(e) => handleFileUpload('heroVideo', null, e)}
-              className="w-full border rounded p-1 text-sm file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-blue-50 file:text-black text-black"
-            />
-              {landingContent.hero.videoUrl && (
-                <button
-                  onClick={() => removeImage('heroVideo')}
-                  className="ml-2 bg-red-100 text-red-800 px-2 py-1 rounded text-xs hover:bg-red-200"
-                  title="Remove video"
-                >
-                  Remove
-                </button>
-              )}
-            </div>
-            {landingContent.hero.videoUrl && !landingContent.hero.videoUrl.startsWith('blob:') && (
-              <p className="mt-1 text-xs text-black truncate">
-                Current: {landingContent.hero.videoUrl}
-              </p>
-            )}
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-black mb-1">
-              Fallback Poster Image
-            </label>
-            <div className="flex items-center">
-            <input 
-              id="hero-poster-input"
-              type="file" 
-              accept="image/jpeg,image/png,image/webp"
-              onChange={(e) => handleFileUpload('heroPoster', null, e)}
-              className="w-full border rounded p-1 text-sm file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-blue-50 file:text-black text-black"
-            />
-              {landingContent.hero.posterImage && (
-                <button
-                  onClick={() => removeImage('heroPoster')}
-                  className="ml-2 bg-red-100 text-red-800 px-2 py-1 rounded text-xs hover:bg-red-200"
-                  title="Remove image"
-                >
-                  Remove
-                </button>
-              )}
-            </div>
-            {landingContent.hero.posterImage && !landingContent.hero.posterImage.startsWith('blob:') && (
-              <p className="mt-1 text-xs text-black truncate">
-                Current: {landingContent.hero.posterImage}
-              </p>
-            )}
-          </div>
-        </div>
         
         {/* Hero Preview - only shown if content has changed or preview is toggled */}
         {showPreview && (
@@ -258,22 +199,9 @@ const HeroSection = ({
                         ))}
                       </div>
                     </div>
-                  ) : landingContent.hero.videoUrl ? (
-                    <video
-                      src={formatImageUrl(landingContent.hero.videoUrl)}
-                      poster={formatImageUrl(landingContent.hero.posterImage)}
-                      controls
-                      className="w-full h-full object-cover"
-                    />
-                  ) : landingContent.hero.posterImage ? (
-                    <img
-                      src={formatImageUrl(landingContent.hero.posterImage)}
-                      alt="Hero background"
-                      className="w-full h-full object-cover"
-                    />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <span className="text-sm text-white/70">No media selected</span>
+                      <span className="text-sm text-white/70">Upload images to create carousel</span>
                     </div>
                   )}
                 </div>

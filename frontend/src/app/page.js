@@ -192,6 +192,11 @@ export default function Home() {
     }
   }, [landingContent.hero.carouselImages]);
 
+  // Reset carousel index when images change
+  useEffect(() => {
+    setCurrentCarouselIndex(0);
+  }, [landingContent.hero.carouselImages]);
+
 
   const formatImageUrl = (url) => {
     if (!url) return null; 
@@ -337,7 +342,7 @@ export default function Home() {
         }}
       >
         <div className="container mx-auto max-w-7xl flex flex-col lg:flex-row items-center">
-          <div className="lg:w-2/5 space-y-6 pr-0 lg:pr-8">
+          <div className="lg:w-2/5 space-y-6 pr-0 lg:pr-8 z-10 relative">
             <h1 
               className="text-4xl md:text-6xl font-bold leading-tight text-left"
               style={{ color: landingContent.hero?.textColor || '#ffffff' }}
@@ -352,12 +357,12 @@ export default function Home() {
             </p>
             
           </div>
-          <div className="lg:w-3/5 mt-10 lg:mt-0 flex justify-center">
+          <div className="lg:w-3/5 mt-10 lg:mt-0 flex justify-center w-full">
             {(() => {
               // Check for carousel images first
               if (landingContent.hero.carouselImages && landingContent.hero.carouselImages.length > 0) {
                 return (
-                  <div className="w-full max-w-5xl aspect-video bg-black/20 rounded-lg overflow-hidden relative">
+                  <div className="w-full h-full min-h-[400px] bg-black/20 rounded-lg overflow-hidden relative">
                     {/* Carousel Images */}
                     <div className="relative w-full h-full">
                       {landingContent.hero.carouselImages.map((image, index) => {
@@ -442,108 +447,10 @@ export default function Home() {
                 );
               }
               
-              // Fallback to video if no carousel images
-              const heroVideoUrl = landingContent.hero && landingContent.hero.videoUrl ? 
-                formatImageUrl(landingContent.hero.videoUrl) : null;
-              
-              if (heroVideoUrl) {
-                return (
-                  <div className="w-full max-w-5xl aspect-video bg-black/20 rounded-lg overflow-hidden relative">
-                    <video
-                      src={heroVideoUrl}
-                      poster={formatImageUrl(landingContent.hero.posterImage)}
-                      controls
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        console.error("Error loading hero video");
-                        e.currentTarget.style.display = 'none';
-                        const parent = e.currentTarget.parentElement;
-                        if (parent) {
-                          const fallback = document.createElement('div');
-                          fallback.className = 'absolute inset-0 flex items-center justify-center bg-blue-700';
-                          fallback.innerHTML = `<span class="text-white/70">Video unavailable</span>`;
-                          parent.appendChild(fallback);
-                        }
-                      }}
-                    >
-                      Your browser does not support the video tag.
-                    </video>
-                  </div>
-                );
-              }
-              
-              // Fallback to poster image
-              const heroPosterUrl = landingContent.hero && landingContent.hero.posterImage ? 
-                formatImageUrl(landingContent.hero.posterImage) : null;
-
-              if (heroPosterUrl) {
-                const posterWithTimestamp = `${heroPosterUrl}?timestamp=${new Date().getTime()}`;
-                return (
-                  <div className="w-full max-w-5xl aspect-video bg-black/20 rounded-lg overflow-hidden">
-                  <Image
-                    src={posterWithTimestamp}
-                    alt="TrustElect Platform"
-                    width={2560}
-                    height={1440}
-                    className="w-full h-full object-cover"
-                    unoptimized={true}
-                    quality={95}
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 70vw"
-                    onError={(e) => {
-                      console.error("Error loading hero poster image:", posterWithTimestamp);
-                      console.error("Original URL:", heroPosterUrl);
-                      
-                      // Try multiple fallback URLs
-                      const fallbackUrls = [
-                        heroPosterUrl.replace('/uploads/images/', '/api/uploads/images/'),
-                        heroPosterUrl.replace('/uploads/', '/api/uploads/'),
-                        heroPosterUrl.replace('/uploads/images/', '/uploads/'),
-                        heroPosterUrl
-                      ];
-                      
-                      const container = e.currentTarget.closest('div');
-                      if (container) {
-                        const tryNextFallback = (index) => {
-                          if (index >= fallbackUrls.length) {
-                            console.error('All fallback URLs failed');
-                            container.innerHTML = `
-                              <div class="w-full h-full flex items-center justify-center bg-blue-700">
-                                <span class="text-xl text-white/70">Demo Video</span>
-                              </div>
-                            `;
-                            return;
-                          }
-                          
-                          const fallbackUrl = fallbackUrls[index];
-                          const img = document.createElement('img');
-                          img.src = `${fallbackUrl}?timestamp=${new Date().getTime()}`;
-                          img.className = 'w-full h-full object-cover';
-                          img.onload = () => {
-                            console.log('Fallback URL worked:', fallbackUrl); 
-                            container.innerHTML = '';
-                            container.appendChild(img);
-                          };
-                          img.onerror = () => {
-                            console.error('Fallback URL failed:', fallbackUrl);
-                            tryNextFallback(index + 1);
-                          };
-                        };
-                        
-                        tryNextFallback(0);
-                      }
-                    }}
-                    onLoad={() => {
-                      console.log('Hero poster loaded successfully:', posterWithTimestamp);
-                    }}
-                  />
-                </div>
-                );
-              }
-              
-              // Default fallback
+              // Default fallback - no carousel images
               return (
-                <div className="w-full max-w-5xl aspect-video bg-blue-700 rounded-lg flex items-center justify-center">
-                  <span className="text-2xl text-white/70">No media selected</span>
+                <div className="w-full h-full min-h-[400px] bg-blue-700 rounded-lg flex items-center justify-center">
+                  <span className="text-2xl text-white/70">Upload images to create carousel</span>
                 </div>
               );
             })()}
