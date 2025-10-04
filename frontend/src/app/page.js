@@ -370,16 +370,23 @@ export default function Home() {
             {(() => {
               // Check for carousel images first
               if (landingContent.hero.carouselImages && landingContent.hero.carouselImages.length > 0) {
+                console.log('=== CAROUSEL CONTAINER DEBUG ===');
+                console.log('Total carousel images:', landingContent.hero.carouselImages.length);
+                console.log('Current carousel index:', currentCarouselIndex);
+                console.log('Carousel images array:', landingContent.hero.carouselImages);
+                console.log('===============================');
+                
                 return (
-                  <div className="w-full h-full min-h-[500px] bg-black/20 rounded-lg overflow-hidden relative">
+                  <div className="w-full h-full min-h-[500px] bg-gray-900 rounded-lg overflow-hidden relative">
                     {/* Carousel Images */}
-                    <div className="relative w-full h-full">
+                    <div className="relative w-full h-full min-h-[500px]">
                       {landingContent.hero.carouselImages.map((image, index) => {
                         console.log(`=== CAROUSEL IMAGE ${index + 1} ===`);
                         console.log('Raw image URL from backend:', image);
                         
                         const imageUrl = formatImageUrl(image);
                         console.log('Formatted image URL:', imageUrl);
+                        console.log('Is current image:', index === currentCarouselIndex);
                         console.log('============================');
                         
                         if (!imageUrl) {
@@ -390,20 +397,26 @@ export default function Home() {
                         return (
                           <div
                             key={index}
-                            className={`absolute inset-0 transition-opacity duration-1000 ${
+                            className={`absolute inset-0 transition-opacity duration-1000 z-10 ${
                               index === currentCarouselIndex ? 'opacity-100' : 'opacity-0'
                             }`}
+                            style={{
+                              display: 'block',
+                              width: '100%',
+                              height: '100%',
+                              minHeight: '500px'
+                            }}
                           >
-                            <Image
+                            <img
                               src={`${imageUrl}?timestamp=${new Date().getTime()}`}
                               alt={`Hero carousel ${index + 1}`}
-                              width={2560}
-                              height={1440}
                               className="w-full h-full object-cover"
-                              unoptimized={true}
-                              priority={index === 0}
-                              quality={95}
-                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 70vw"
+                              style={{
+                                display: 'block',
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover'
+                              }}
                               onError={(e) => {
                                 console.error(`Error loading carousel image ${index + 1}:`, imageUrl);
                                 console.error('Image element:', e.currentTarget);
@@ -411,6 +424,7 @@ export default function Home() {
                               }}
                               onLoad={() => {
                                 console.log(`Successfully loaded carousel image ${index + 1}:`, imageUrl);
+                                console.log('Image dimensions:', e.currentTarget.naturalWidth, 'x', e.currentTarget.naturalHeight);
                               }}
                             />
                           </div>
@@ -418,13 +432,21 @@ export default function Home() {
                       })}
                     </div>
                     
+                    {/* Debug overlay to show if container is working */}
+                    <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded z-20">
+                      Carousel: {currentCarouselIndex + 1}/{landingContent.hero.carouselImages.length}
+                    </div>
+                    
                     {/* Carousel Indicators */}
                     {landingContent.hero.carouselImages.length > 1 && (
-                      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+                      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2 z-20">
                         {landingContent.hero.carouselImages.map((_, index) => (
                           <button
                             key={index}
-                            onClick={() => setCurrentCarouselIndex(index)}
+                            onClick={() => {
+                              console.log(`Clicking carousel indicator ${index + 1}`);
+                              setCurrentCarouselIndex(index);
+                            }}
                             className={`w-3 h-3 rounded-full transition-colors ${
                               index === currentCarouselIndex 
                                 ? 'bg-white' 
@@ -440,12 +462,14 @@ export default function Home() {
                     {landingContent.hero.carouselImages.length > 1 && (
                       <>
                         <button
-                          onClick={() => setCurrentCarouselIndex(
-                            currentCarouselIndex === 0 
+                          onClick={() => {
+                            const newIndex = currentCarouselIndex === 0 
                               ? landingContent.hero.carouselImages.length - 1 
-                              : currentCarouselIndex - 1
-                          )}
-                          className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors"
+                              : currentCarouselIndex - 1;
+                            console.log(`Previous button clicked, changing from ${currentCarouselIndex} to ${newIndex}`);
+                            setCurrentCarouselIndex(newIndex);
+                          }}
+                          className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors z-20"
                           aria-label="Previous image"
                         >
                           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -453,10 +477,12 @@ export default function Home() {
                           </svg>
                         </button>
                         <button
-                          onClick={() => setCurrentCarouselIndex(
-                            (currentCarouselIndex + 1) % landingContent.hero.carouselImages.length
-                          )}
-                          className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors"
+                          onClick={() => {
+                            const newIndex = (currentCarouselIndex + 1) % landingContent.hero.carouselImages.length;
+                            console.log(`Next button clicked, changing from ${currentCarouselIndex} to ${newIndex}`);
+                            setCurrentCarouselIndex(newIndex);
+                          }}
+                          className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors z-20"
                           aria-label="Next image"
                         >
                           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
