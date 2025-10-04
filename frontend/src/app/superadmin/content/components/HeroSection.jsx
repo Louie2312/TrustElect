@@ -109,26 +109,47 @@ const HeroSection = ({
             
             {/* Display uploaded carousel images */}
             {landingContent.hero.carouselImages && landingContent.hero.carouselImages.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {landingContent.hero.carouselImages.map((image, index) => (
-                  <div key={index} className="relative group">
-                    <img
-                      src={formatImageUrl(image)}
-                      alt={`Carousel image ${index + 1}`}
-                      className="w-full h-20 object-cover rounded border"
-                    />
-                    <button
-                      onClick={() => removeImage('heroCarousel', index)}
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Remove image"
-                    >
-                      ×
-                    </button>
-                    <div className="absolute bottom-1 left-1 bg-black bg-opacity-50 text-white text-xs px-1 rounded">
-                      {index + 1}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-black">
+                    Uploaded Images ({landingContent.hero.carouselImages.length}/5)
+                  </span>
+                  <span className="text-xs text-gray-600">
+                    Click to remove • Drag to reorder
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {landingContent.hero.carouselImages.map((image, index) => (
+                    <div key={index} className="relative group border-2 border-gray-200 rounded-lg overflow-hidden hover:border-blue-300 transition-colors">
+                      <img
+                        src={formatImageUrl(image)}
+                        alt={`Carousel image ${index + 1}`}
+                        className="w-full h-24 object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center">
+                        <button
+                          onClick={() => removeImage('heroCarousel', index)}
+                          className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Remove image"
+                        >
+                          ×
+                        </button>
+                      </div>
+                      <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full font-medium">
+                        {index + 1}
+                      </div>
+                      <div className="absolute bottom-2 left-2 right-2">
+                        <div className="bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded truncate">
+                          {image.split('/').pop()}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+                <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
+                  <strong>Current Display Order:</strong> Images will appear in the carousel in the order shown above. 
+                  The first image will be displayed initially, then rotate every 5 seconds.
+                </div>
               </div>
             )}
             
@@ -219,11 +240,24 @@ const HeroSection = ({
                         alt="Hero carousel preview"
                         className="w-full h-full object-cover"
                       />
+                      <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
+                        Carousel Preview
+                      </div>
                       {landingContent.hero.carouselImages.length > 1 && (
-                        <div className="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
-                          +{landingContent.hero.carouselImages.length - 1} more
+                        <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+                          {landingContent.hero.carouselImages.length} images • Auto-rotates every 5s
                         </div>
                       )}
+                      <div className="absolute bottom-2 left-2 flex space-x-1">
+                        {landingContent.hero.carouselImages.map((_, index) => (
+                          <div
+                            key={index}
+                            className={`w-2 h-2 rounded-full ${
+                              index === 0 ? 'bg-white' : 'bg-white/50'
+                            }`}
+                          />
+                        ))}
+                      </div>
                     </div>
                   ) : landingContent.hero.videoUrl ? (
                     <video
