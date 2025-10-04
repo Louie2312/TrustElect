@@ -309,34 +309,30 @@ export default function Home() {
 
       <main className="flex-grow pt-24">
         <section 
-        className="text-white py-20 px-8 min-h-[700px] flex items-center relative overflow-hidden"
+        className="text-white py-16 px-6 min-h-[600px] flex items-center"
         style={{
           backgroundColor: landingContent.hero?.bgColor || '#01579B',
           color: landingContent.hero?.textColor || '#ffffff'
         }}
       >
         <div className="container mx-auto max-w-7xl flex flex-col lg:flex-row items-center">
-          <div className="lg:w-1/3 space-y-8 pr-0 lg:pr-16 z-10 relative">
-            <div className="space-y-6">
-              <div className="space-y-4">
-                <h1 
-                  className="text-5xl md:text-7xl font-bold leading-tight text-left drop-shadow-lg"
-                  style={{ color: landingContent.hero?.textColor || '#ffffff' }}
-                >
-                  {landingContent.hero.title}
-                </h1>
-                <div className="w-20 h-1 bg-white/40 rounded-full shadow-sm"></div>
-              </div>
-              <div className="w-12 h-0.5 bg-white/20 rounded-full"></div>
-            </div>
+          <div className="lg:w-1/4 space-y-6 pr-0 lg:pr-8 z-10 relative">
+            <h1 
+              className="text-4xl md:text-6xl font-bold leading-tight text-left"
+              style={{ color: landingContent.hero?.textColor || '#ffffff' }}
+            >
+              {landingContent.hero.title}
+            </h1>
             <p 
-              className="text-xl md:text-2xl text-left leading-relaxed"
+              className="text-xl md:text-2xl text-left"
               style={{ color: landingContent.hero?.textColor || '#ffffff' }}
             >
               {landingContent.hero.subtitle}
+              
             </p>
+            
           </div>
-          <div className="lg:w-2/3 mt-10 lg:mt-0 flex justify-center w-full">
+          <div className="lg:w-3/4 mt-10 lg:mt-0 flex justify-center w-full">
             {(() => {
               
               const heroVideoUrl = landingContent.hero && landingContent.hero.videoUrl ? 
