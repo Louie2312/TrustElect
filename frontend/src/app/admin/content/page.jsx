@@ -290,7 +290,6 @@ export default function ContentManagement() {
 
     // Handle carousel images (multiple files)
     if (type === 'heroCarousel') {
-      const newImages = [];
       const maxFiles = 5;
       
       if (files.length > maxFiles) {
@@ -320,13 +319,33 @@ export default function ContentManagement() {
           e.target.value = '';
           return;
         }
+      }
 
+      // Store files in a way that can be accessed later for upload
+      const currentImages = landingContent.hero.carouselImages || [];
+      const newImages = [];
+      
+      // Create a temporary storage for files
+      if (!window.carouselFiles) {
+        window.carouselFiles = [];
+      }
+      
+      // Add new files to temporary storage
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
         const localUrl = URL.createObjectURL(file);
+        const fileData = {
+          file: file,
+          url: localUrl,
+          name: file.name,
+          size: file.size,
+          type: file.type
+        };
+        window.carouselFiles.push(fileData);
         newImages.push(localUrl);
       }
 
-      // Update carousel images
-      const currentImages = landingContent.hero.carouselImages || [];
+      // Update carousel images with URLs for preview
       const updatedImages = [...currentImages, ...newImages];
       
       // Limit to 5 images total
@@ -509,6 +528,7 @@ export default function ContentManagement() {
           subtitle: landingContent.hero.subtitle,
           videoUrl: landingContent.hero.videoUrl,
           posterImage: landingContent.hero.posterImage,
+          carouselImages: landingContent.hero.carouselImages,
           bgColor: landingContent.hero.bgColor,
           textColor: landingContent.hero.textColor
         };
@@ -531,6 +551,15 @@ export default function ContentManagement() {
         
         if (landingContent.hero.posterImage === null) {
           formData.append('removeHeroPoster', 'true');
+        }
+
+        // Append carousel images if they exist
+        if (window.carouselFiles && window.carouselFiles.length > 0) {
+          window.carouselFiles.forEach((fileData, index) => {
+            formData.append(`carouselImage${index}`, fileData.file);
+          });
+          // Clear the temporary storage after adding to FormData
+          window.carouselFiles = [];
         }
       } else if (section === 'features') {
         // Handle features section
@@ -585,6 +614,28 @@ export default function ContentManagement() {
       );
   
       if (response.status === 200) {
+        // Update content from server response
+        if (response.data && response.data.content) {
+          const newContent = { ...landingContent };
+          
+          if (section === 'hero') {
+            newContent.hero = {
+              title: response.data.content.title || '',
+              subtitle: response.data.content.subtitle || '',
+              videoUrl: response.data.content.videoUrl || null,
+              posterImage: response.data.content.posterImage || null,
+              carouselImages: response.data.content.carouselImages || [],
+              bgColor: response.data.content.bgColor || "#1e40af",
+              textColor: response.data.content.textColor || "#ffffff"
+            };
+          } else {
+            newContent[section] = response.data.content;
+          }
+          
+          setLandingContent(newContent);
+          setInitialContent(JSON.stringify(newContent));
+        }
+        
         // Set specific success messages based on section
         let successMessage = '';
         switch (section) {
@@ -608,8 +659,6 @@ export default function ContentManagement() {
         }
         
         setSaveStatus(successMessage);
-        // Update initialContent to reflect the saved state
-        setInitialContent(JSON.stringify(landingContent));
         setShowPreview(false);
       }
     } catch (error) {
