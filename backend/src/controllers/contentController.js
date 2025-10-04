@@ -158,7 +158,7 @@ const updateSectionContent = async (req, res) => {
   // Support up to 10 feature cards and carousel images
   for (let i = 0; i < 10; i++) {
     uploadFields.push({ name: `featureImage${i}`, maxCount: 1 });
-    uploadFields.push({ name: `carouselImage${i}`, maxCount: 1 });
+    uploadFields.push({ name: `carouselImage${i}`, maxCount: 5 });
   }
   
   const uploadMiddleware = upload.fields(uploadFields);

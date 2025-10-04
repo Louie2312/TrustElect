@@ -375,8 +375,17 @@ export default function Home() {
                     {/* Carousel Images */}
                     <div className="relative w-full h-full">
                       {landingContent.hero.carouselImages.map((image, index) => {
+                        console.log(`=== CAROUSEL IMAGE ${index + 1} ===`);
+                        console.log('Raw image URL from backend:', image);
+                        
                         const imageUrl = formatImageUrl(image);
-                        if (!imageUrl) return null;
+                        console.log('Formatted image URL:', imageUrl);
+                        console.log('============================');
+                        
+                        if (!imageUrl) {
+                          console.warn(`Carousel image ${index + 1} has no valid URL, skipping`);
+                          return null;
+                        }
                         
                         return (
                           <div
@@ -397,7 +406,11 @@ export default function Home() {
                               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 70vw"
                               onError={(e) => {
                                 console.error(`Error loading carousel image ${index + 1}:`, imageUrl);
+                                console.error('Image element:', e.currentTarget);
                                 e.currentTarget.style.display = 'none';
+                              }}
+                              onLoad={() => {
+                                console.log(`Successfully loaded carousel image ${index + 1}:`, imageUrl);
                               }}
                             />
                           </div>
