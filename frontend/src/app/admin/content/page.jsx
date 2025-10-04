@@ -82,6 +82,7 @@ export default function ContentManagement() {
       subtitle: "",
       videoUrl: null,
       posterImage: null,
+      carouselImages: [],
       bgColor: "#1e40af",
       textColor: "#ffffff" 
     },
@@ -284,7 +285,68 @@ export default function ContentManagement() {
   };
 
   const handleFileUpload = (type, index, e) => {
-    const file = e.target.files[0];
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    // Handle carousel images (multiple files)
+    if (type === 'heroCarousel') {
+      const newImages = [];
+      const maxFiles = 5;
+      
+      if (files.length > maxFiles) {
+        setSaveStatus(`Error: Maximum ${maxFiles} images allowed.`);
+        setTimeout(() => setSaveStatus(""), 3000);
+        e.target.value = '';
+        return;
+      }
+
+      // Validate each file
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        
+        // Validate file size
+        if (file.size > 5 * 1024 * 1024) {
+          setSaveStatus(`Error: File ${file.name} is too large. Maximum size is 5MB.`);
+          setTimeout(() => setSaveStatus(""), 3000);
+          e.target.value = '';
+          return;
+        }
+
+        // Validate file type
+        const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedImageTypes.includes(file.type)) {
+          setSaveStatus(`Error: Invalid image format for ${file.name}. Please use JPEG, PNG, GIF, or WebP.`);
+          setTimeout(() => setSaveStatus(""), 3000);
+          e.target.value = '';
+          return;
+        }
+
+        const localUrl = URL.createObjectURL(file);
+        newImages.push(localUrl);
+      }
+
+      // Update carousel images
+      const currentImages = landingContent.hero.carouselImages || [];
+      const updatedImages = [...currentImages, ...newImages];
+      
+      // Limit to 5 images total
+      if (updatedImages.length > 5) {
+        setSaveStatus(`Error: Maximum 5 images allowed. You have ${updatedImages.length} images.`);
+        setTimeout(() => setSaveStatus(""), 3000);
+        e.target.value = '';
+        return;
+      }
+
+      console.log("Updating hero carousel images:", updatedImages);
+      updateHero('carouselImages', updatedImages);
+      setSaveStatus(`Carousel images uploaded successfully! (${newImages.length} images) Click Save to apply changes.`);
+      setTimeout(() => setSaveStatus(""), 3000);
+      e.target.value = ''; // Clear the input
+      return;
+    }
+
+    // Handle single file uploads (existing logic)
+    const file = files[0];
     if (!file) return;
 
     // Validate file type and size
@@ -346,7 +408,7 @@ export default function ContentManagement() {
 
       e.target.id = `feature-image-${index}`;
       e.target.setAttribute('data-feature-index', String(index));
- 
+
       if (index === 0) {
         console.log("Element data-feature-index after:", e.target.getAttribute('data-feature-index'));
         console.log("Element ID after:", e.target.id);
@@ -369,6 +431,12 @@ export default function ContentManagement() {
       updateHero('posterImage', null);
       successMessage = 'Hero poster image removed successfully! Click Save to apply changes.';
     } 
+    else if (type === 'heroCarousel') {
+      const currentImages = landingContent.hero.carouselImages || [];
+      const updatedImages = currentImages.filter((_, i) => i !== index);
+      updateHero('carouselImages', updatedImages);
+      successMessage = `Carousel image ${index + 1} removed successfully! Click Save to apply changes.`;
+    }
     else if (type === 'ctaVideo') {
       updateCTA('videoUrl', null);
       successMessage = 'CTA video removed successfully! Click Save to apply changes.';
