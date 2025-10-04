@@ -238,7 +238,7 @@ export default function Home() {
             <Image 
               src={`${formatImageUrl(landingContent.logo.imageUrl)}?timestamp=${new Date().getTime()}`}
               alt="Site Logo" 
-              width={60}
+              width={50}
               height={20} 
               className="mr-2"
               priority
