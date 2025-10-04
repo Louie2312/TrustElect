@@ -182,7 +182,21 @@ export default function Home() {
   useEffect(() => {
     checkApiConnection();
     fetchContent();
-  }, []); // FIX: Remove fetchContent dependency to prevent infinite loops
+    
+    // Add storage event listener to refresh content when admin updates are made
+    const handleStorageChange = (e) => {
+      if (e.key === 'contentUpdated') {
+        console.log('Content updated, refreshing landing page...');
+        refreshContent();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [refreshContent]); // Add refreshContent dependency
 
   // Carousel auto-rotation effect
   useEffect(() => {
@@ -204,32 +218,26 @@ export default function Home() {
   const formatImageUrl = (url) => {
     if (!url) return null; 
     try {
+      // Filter out blob URLs that are temporary client-side URLs
       if (url.startsWith('blob:')) {
         console.warn("Blob URLs cannot be used on the public landing page:", url);
         return null;
       }
 
-      // Handle both absolute and relative URLs, prevent duplicate query strings
-      const baseUrl = url.split("?")[0]; // Remove any existing query params
-      const isAbsolute = /^https?:\/\//i.test(baseUrl);
-      
-      if (isAbsolute) {
-        // For absolute URLs, return as-is
-        console.log('Formatting absolute URL:', url, '->', baseUrl);
-        return baseUrl;
+      // Handle absolute URLs
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        return url;
       }
 
-      // For relative URLs, ensure they start with / and include BASE_URL if needed
-      const path = baseUrl.startsWith('/') ? baseUrl : `/${baseUrl}`;
-      
-      // Check if we need to prepend the API base URL
+      // For relative URLs starting with /uploads, /api, etc.
+      if (url.startsWith('/')) {
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+        return API_BASE ? `${API_BASE}${url}` : url;
+      }
+
+      // For relative URLs without leading slash
       const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
-      const fullUrl = API_BASE ? `${API_BASE}${path}` : path;
-      
-      // Log the URL for debugging
-      console.log('Formatting image URL:', url, '->', fullUrl);
-      
-      return fullUrl;
+      return API_BASE ? `${API_BASE}/${url}` : `/${url}`;
     } catch (error) {
       console.error('Error formatting URL:', error, url);
       return null;
