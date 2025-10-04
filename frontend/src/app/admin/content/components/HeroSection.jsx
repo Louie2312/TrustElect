@@ -133,7 +133,7 @@ const HeroSection = ({
                     <span className="text-xs text-gray-600">
                       Click X to remove
                     </span>
-                    {/* FIX: Add clear all button */}
+                    {/* Clear All button - matching superadmin */}
                     <button
                       onClick={() => {
                         updateHero('carouselImages', []);
@@ -158,17 +158,17 @@ const HeroSection = ({
                         alt={`Carousel image ${index + 1}`}
                         className="w-full h-24 object-cover"
                       />
-                      {/* FIX: Always visible delete button, not just on hover */}
+                      {/* Hover delete button */}
                       <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-200 flex items-center justify-center">
                         <button
                           onClick={() => removeImage('heroCarousel', index)}
-                          className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm hover:bg-red-600 transition-all duration-200 shadow-lg"
+                          className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg"
                           title="Remove image"
                         >
                           ×
                         </button>
                       </div>
-                      {/* FIX: Add permanent delete button in top-right corner */}
+                      {/* Permanent delete button in top-right corner - matching superadmin */}
                       <button
                         onClick={() => removeImage('heroCarousel', index)}
                         className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors shadow-lg z-10"
@@ -191,7 +191,7 @@ const HeroSection = ({
                   ))}
                 </div>
                 
-                {/* Status and Info */}
+                {/* Status and Info - matching superadmin */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                   <div className="flex items-start space-x-2">
                     <div className="text-blue-500 mt-0.5">
@@ -199,14 +199,20 @@ const HeroSection = ({
                         <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                       </svg>
                     </div>
- 
+                    <div className="text-sm text-blue-800">
+                      <strong>Carousel Status:</strong> Images will rotate automatically every 5 seconds. 
+                      The first image will be displayed initially, then cycle through all uploaded images.
+                    </div>
                   </div>
                 </div>
               </div>
             )}
             
-            {/* Upload Instructions */}
-
+            {/* Upload Instructions - matching superadmin */}
+            <div className="text-xs text-gray-600 bg-gray-50 p-3 rounded-lg">
+              <strong>Upload Guidelines:</strong> Upload 3-5 high-quality images (PNG, JPG, WEBP) for the hero carousel. 
+              Click "Update Banner" to save and display images on the landing page. Maximum file size: 5MB per image.
+            </div>
           </div>
         </div>
         

@@ -602,7 +602,7 @@ export default function ContentManagement() {
       
       formData.append('content', JSON.stringify(contentData));
       
-      const response = await axios.post(`${API_URL}/api/content/${section}`, formData, {
+      const response = await axios.post(`${API_URL}/content/${section}`, formData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'

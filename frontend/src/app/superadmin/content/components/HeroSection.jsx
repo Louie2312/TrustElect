@@ -129,9 +129,24 @@ const HeroSection = ({
                   <span className="text-sm font-medium text-black">
                     Uploaded Images ({landingContent.hero.carouselImages.length}/5)
                   </span>
-                  <span className="text-xs text-gray-600">
-                    Click to remove
-                  </span>
+                  <div className="flex items-center space-x-4">
+                    <span className="text-xs text-gray-600">
+                      Click X to remove
+                    </span>
+                    {/* Clear All button */}
+                    <button
+                      onClick={() => {
+                        updateHero('carouselImages', []);
+                        // Clear temporary files
+                        if (window.carouselFiles) {
+                          window.carouselFiles = [];
+                        }
+                      }}
+                      className="text-xs text-red-600 hover:text-red-800 font-medium"
+                    >
+                      Clear All
+                    </button>
+                  </div>
                 </div>
                 
                 {/* Large Preview Grid */}
@@ -143,6 +158,7 @@ const HeroSection = ({
                         alt={`Carousel image ${index + 1}`}
                         className="w-full h-24 object-cover"
                       />
+                      {/* Hover delete button */}
                       <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-200 flex items-center justify-center">
                         <button
                           onClick={() => removeImage('heroCarousel', index)}
@@ -152,6 +168,14 @@ const HeroSection = ({
                           ×
                         </button>
                       </div>
+                      {/* Permanent delete button in top-right corner */}
+                      <button
+                        onClick={() => removeImage('heroCarousel', index)}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors shadow-lg z-10"
+                        title="Remove image"
+                      >
+                        ×
+                      </button>
                       <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full font-medium shadow-sm">
                         {index + 1}
                       </div>
@@ -246,4 +270,4 @@ const HeroSection = ({
   );
 }
 
-export default HeroSection; 
+export default HeroSection;
