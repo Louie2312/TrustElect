@@ -316,7 +316,7 @@ export default function Home() {
         }}
       >
         <div className="container mx-auto max-w-7xl flex flex-col lg:flex-row items-center">
-          <div className="lg:w-1/4 space-y-6 pr-0 lg:pr-8 z-10 relative">
+          <div className="lg:w-1/4 space-y-6 pr-0 lg:pr-16 z-10 relative">
             <h1 
               className="text-4xl md:text-6xl font-bold leading-tight text-left"
               style={{ color: landingContent.hero?.textColor || '#ffffff' }}
