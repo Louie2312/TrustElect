@@ -125,6 +125,7 @@ export default function Home() {
             subtitle: newHero.subtitle || landingContent.hero.subtitle,
             videoUrl: newHero.videoUrl || null,
             posterImage: newHero.posterImage || null,
+            carouselImages: newHero.carouselImages || [], // FIX: Added missing carouselImages property
             bgColor: newHero.bgColor || landingContent.hero.bgColor || "#1e40af",
             textColor: newHero.textColor || landingContent.hero.textColor || "#ffffff"
           },
@@ -167,13 +168,21 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
-  }, [landingContent]);
+  }, []); // FIX: Remove landingContent dependency to prevent infinite loops
+
+  // FIX: Add function to clear cache and refresh content
+  const refreshContent = useCallback(async () => {
+    // Clear cache
+    localStorage.removeItem('cachedLandingContent');
+    // Fetch fresh content
+    await fetchContent();
+  }, [fetchContent]);
 
   // KEEP ONLY THIS useEffect - the one with empty dependency array
   useEffect(() => {
     checkApiConnection();
     fetchContent();
-  }, [fetchContent]); // Added fetchContent dependency
+  }, []); // FIX: Remove fetchContent dependency to prevent infinite loops
 
   // Carousel auto-rotation effect
   useEffect(() => {

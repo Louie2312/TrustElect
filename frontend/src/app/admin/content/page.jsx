@@ -602,16 +602,42 @@ export default function ContentManagement() {
       
       formData.append('content', JSON.stringify(contentData));
       
-      const response = await axios.post(
-        `${API_URL}/content/${section}`,
-        formData,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data'
-          }
+      const response = await axios.post(`${API_URL}/api/content/${section}`, formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        },
+        timeout: 30000
+      });
+
+      if (response.data.success) {
+        // FIX: Trigger landing page refresh
+        localStorage.setItem('contentUpdated', Date.now().toString());
+        window.dispatchEvent(new StorageEvent('storage', {
+          key: 'contentUpdated',
+          newValue: Date.now().toString()
+        }));
+        
+        // Update local state with saved content
+        if (response.data.content) {
+          setLandingContent(prev => ({
+            ...prev,
+            [section]: response.data.content
+          }));
         }
-      );
+
+        // Set success message based on section
+        const sectionNames = {
+          logo: 'Logo',
+          hero: 'Hero banner',
+          features: 'Features',
+          callToAction: 'Call to Action',
+          candidates: 'Candidates'
+        };
+        
+        setSaveStatus(`${sectionNames[section] || 'Content'} updated successfully!`);
+        setTimeout(() => setSaveStatus(""), 3000);
+      }
   
       if (response.status === 200) {
         // Update content from server response
