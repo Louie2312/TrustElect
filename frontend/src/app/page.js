@@ -337,7 +337,7 @@ export default function Home() {
         }}
       >
         <div className="container mx-auto max-w-7xl flex flex-col lg:flex-row items-center">
-          <div className="lg:w-3/5 space-y-6 pr-0 lg:pr-8">
+          <div className="lg:w-2/5 space-y-6 pr-0 lg:pr-8">
             <h1 
               className="text-4xl md:text-6xl font-bold leading-tight text-left"
               style={{ color: landingContent.hero?.textColor || '#ffffff' }}
@@ -352,12 +352,12 @@ export default function Home() {
             </p>
             
           </div>
-          <div className="lg:w-2/5 mt-10 lg:mt-0 flex justify-center">
+          <div className="lg:w-3/5 mt-10 lg:mt-0 flex justify-center">
             {(() => {
               // Check for carousel images first
               if (landingContent.hero.carouselImages && landingContent.hero.carouselImages.length > 0) {
                 return (
-                  <div className="w-full max-w-2xl aspect-video bg-black/20 rounded-lg overflow-hidden relative">
+                  <div className="w-full max-w-5xl aspect-video bg-black/20 rounded-lg overflow-hidden relative">
                     {/* Carousel Images */}
                     <div className="relative w-full h-full">
                       {landingContent.hero.carouselImages.map((image, index) => {
@@ -448,7 +448,7 @@ export default function Home() {
               
               if (heroVideoUrl) {
                 return (
-                  <div className="w-full max-w-2xl aspect-video bg-black/20 rounded-lg overflow-hidden relative">
+                  <div className="w-full max-w-5xl aspect-video bg-black/20 rounded-lg overflow-hidden relative">
                     <video
                       src={heroVideoUrl}
                       poster={formatImageUrl(landingContent.hero.posterImage)}
@@ -479,7 +479,7 @@ export default function Home() {
               if (heroPosterUrl) {
                 const posterWithTimestamp = `${heroPosterUrl}?timestamp=${new Date().getTime()}`;
                 return (
-                  <div className="w-full max-w-2xl aspect-video bg-black/20 rounded-lg overflow-hidden">
+                  <div className="w-full max-w-5xl aspect-video bg-black/20 rounded-lg overflow-hidden">
                   <Image
                     src={posterWithTimestamp}
                     alt="TrustElect Platform"
@@ -542,7 +542,7 @@ export default function Home() {
               
               // Default fallback
               return (
-                <div className="w-full max-w-2xl aspect-video bg-blue-700 rounded-lg flex items-center justify-center">
+                <div className="w-full max-w-5xl aspect-video bg-blue-700 rounded-lg flex items-center justify-center">
                   <span className="text-2xl text-white/70">No media selected</span>
                 </div>
               );
