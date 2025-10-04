@@ -95,67 +95,105 @@ const HeroSection = ({
           <label className="block text-sm font-medium text-black mb-2">
             Upload 3 - 5 Images
           </label>
-          <div className="space-y-3">
-            <div className="flex items-center">
+          <div className="space-y-4">
+            {/* Upload Area */}
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
               <input 
                 id="hero-carousel-input"
                 type="file" 
                 accept="image/jpeg,image/png,image/webp"
                 multiple
                 onChange={(e) => handleFileUpload('heroCarousel', null, e)}
-                className="w-full border rounded p-1 text-sm file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-blue-50 file:text-black text-black"
+                className="hidden"
               />
+              <label 
+                htmlFor="hero-carousel-input"
+                className="cursor-pointer flex flex-col items-center space-y-2"
+              >
+                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                <span className="text-sm text-gray-600">
+                  Click to upload images or drag and drop
+                </span>
+                <span className="text-xs text-gray-500">
+                  PNG, JPG, WEBP up to 5 images
+                </span>
+              </label>
             </div>
             
             {/* Display uploaded carousel images */}
             {landingContent.hero.carouselImages && landingContent.hero.carouselImages.length > 0 && (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-black">
                     Uploaded Images ({landingContent.hero.carouselImages.length}/5)
                   </span>
-                  <span className="text-xs text-gray-600">
-                    Click to remove • Drag to reorder
-                  </span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
+                      ⚠ Pending save
+                    </span>
+                    <span className="text-xs text-gray-600">
+                      Click to remove
+                    </span>
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                
+                {/* Large Preview Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {landingContent.hero.carouselImages.map((image, index) => (
-                    <div key={index} className="relative group border-2 border-gray-200 rounded-lg overflow-hidden hover:border-blue-300 transition-colors">
+                    <div key={index} className="relative group border-2 border-gray-200 rounded-lg overflow-hidden hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md">
                       <img
                         src={formatImageUrl(image)}
                         alt={`Carousel image ${index + 1}`}
-                        className="w-full h-24 object-cover"
+                        className="w-full h-32 object-cover"
                       />
-                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center">
+                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-200 flex items-center justify-center">
                         <button
                           onClick={() => removeImage('heroCarousel', index)}
-                          className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="bg-red-500 text-white rounded-full w-10 h-10 flex items-center justify-center text-lg hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg"
                           title="Remove image"
                         >
                           ×
                         </button>
                       </div>
-                      <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full font-medium">
+                      <div className="absolute top-3 left-3 bg-blue-500 text-white text-sm px-2 py-1 rounded-full font-medium shadow-sm">
                         {index + 1}
                       </div>
-                      <div className="absolute bottom-2 left-2 right-2">
-                        <div className="bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded truncate">
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
+                        <div className="text-white text-xs font-medium truncate">
                           {image.split('/').pop()}
+                        </div>
+                        <div className="text-white/80 text-xs">
+                          {index === 0 ? 'First to display' : `Position ${index + 1}`}
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
-                <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
-                  <strong>Current Display Order:</strong> Images will appear in the carousel in the order shown above. 
-                  The first image will be displayed initially, then rotate every 5 seconds.
+                
+                {/* Status and Info */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="flex items-start space-x-2">
+                    <div className="text-blue-500 mt-0.5">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="text-sm text-blue-800">
+                      <strong>Carousel Status:</strong> Images will rotate automatically every 5 seconds. 
+                      The first image will be displayed initially, then cycle through all uploaded images.
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
             
-            <p className="text-xs text-gray-600">
-              Upload 3-5 high-quality images for the hero carousel. Images will be displayed in a rotating carousel.
-            </p>
+            {/* Upload Instructions */}
+            <div className="text-xs text-gray-600 bg-gray-50 p-3 rounded-lg">
+              <strong>Upload Guidelines:</strong> Upload 3-5 high-quality images (PNG, JPG, WEBP) for the hero carousel. 
+              Click "Update Banner" to save and display images on the landing page. Maximum file size: 5MB per image.
+            </div>
           </div>
         </div>
 
