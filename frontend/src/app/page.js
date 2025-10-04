@@ -309,29 +309,29 @@ export default function Home() {
 
       <main className="flex-grow pt-24">
         <section 
-        className="text-white py-20 px-6"
+        className="text-white py-16 px-6 min-h-[600px] flex items-center"
         style={{
           backgroundColor: landingContent.hero?.bgColor || '#01579B',
           color: landingContent.hero?.textColor || '#ffffff'
         }}
       >
-        <div className="container mx-auto max-w-6xl flex flex-col md:flex-row items-center">
-          <div className="md:w-1/3 space-y-6">
+        <div className="container mx-auto max-w-7xl flex flex-col lg:flex-row items-center">
+          <div className="lg:w-1/4 space-y-6 pr-0 lg:pr-8 z-10 relative">
             <h1 
-              className="text-4xl md:text-5xl font-bold leading-tight"
+              className="text-4xl md:text-6xl font-bold leading-tight text-left"
               style={{ color: landingContent.hero?.textColor || '#ffffff' }}
             >
               {landingContent.hero.title}
             </h1>
             <p 
-              className="text-xl md:text-2xl"
+              className="text-xl md:text-2xl text-left"
               style={{ color: landingContent.hero?.textColor || '#ffffff' }}
             >
               {landingContent.hero.subtitle}
             </p>
             
           </div>
-          <div className="md:w-2/3 mt-10 md:mt-0 flex justify-center">
+          <div className="lg:w-3/4 mt-10 lg:mt-0 flex justify-center w-full">
             {(() => {
               
               const heroVideoUrl = landingContent.hero && landingContent.hero.videoUrl ? 
@@ -358,7 +358,7 @@ export default function Home() {
 
           if (heroVideoUrl) {
                 return (
-            <div className="w-full max-w-7xl aspect-video bg-black/20 rounded-lg overflow-hidden relative">
+            <div className="w-full h-full min-h-[500px] bg-black/20 rounded-lg overflow-hidden relative">
               <video
                 src={heroVideoUrl}
                 poster={heroPosterUrl}
@@ -384,7 +384,7 @@ export default function Home() {
               } else if (heroPosterUrl) {
                 const posterWithTimestamp = `${heroPosterUrl}?timestamp=${new Date().getTime()}`;
                 return (
-              <div className="w-full max-w-8xl aspect-video bg-black/20 rounded-lg overflow-hidden">
+              <div className="w-full h-full min-h-[500px] bg-black/20 rounded-lg overflow-hidden">
                 <Image
                   src={posterWithTimestamp}
                   alt="TrustElect Platform"
@@ -444,8 +444,8 @@ export default function Home() {
 
               } else {
                 return (
-                  <div className="w-full max-w-8xl aspect-video bg-blue-700 rounded-lg flex items-center justify-center">
-
+                  <div className="w-full h-full min-h-[500px] bg-blue-700 rounded-lg flex items-center justify-center">
+                    <span className="text-2xl text-white/70">No media selected</span>
                   </div>
                 );
               }
