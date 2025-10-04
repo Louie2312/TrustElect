@@ -328,7 +328,6 @@ export default function Home() {
               style={{ color: landingContent.hero?.textColor || '#ffffff' }}
             >
               {landingContent.hero.subtitle}
-              
             </p>
             
           </div>
