@@ -143,6 +143,9 @@ const updateSectionContent = async (req, res) => {
   console.log('Content-Type:', req.headers['content-type']);
   console.log('Content-Length:', req.headers['content-length']);
   console.log('User-Agent:', req.headers['user-agent']);
+  console.log('Request body keys:', Object.keys(req.body || {}));
+  console.log('Request files:', Object.keys(req.files || {}));
+  console.log('Raw body content field:', req.body.content);
   console.log('================================');
   
   const uploadFields = [
@@ -152,9 +155,10 @@ const updateSectionContent = async (req, res) => {
     { name: 'ctaVideo', maxCount: 1 }
   ];
   
-  // Support up to 10 feature cards
+  // Support up to 10 feature cards and carousel images
   for (let i = 0; i < 10; i++) {
     uploadFields.push({ name: `featureImage${i}`, maxCount: 1 });
+    uploadFields.push({ name: `carouselImage${i}`, maxCount: 1 });
   }
   
   const uploadMiddleware = upload.fields(uploadFields);
@@ -207,15 +211,44 @@ const updateSectionContent = async (req, res) => {
       const { section } = req.params;
       
       if (!section) {
+        console.error('Missing section parameter');
         return res.status(400).json({ error: 'Section parameter is required' });
       }
       
-      // Get content data from request body
+      console.log('Processing section:', section);
+      console.log('Request body content field exists:', !!req.body.content);
+      console.log('Request body content type:', typeof req.body.content);
+      
+      // Get content data from request body with better error handling
       let contentData;
+      if (!req.body.content) {
+        console.error('Missing content field in request body');
+        return res.status(400).json({ 
+          error: 'Content data is required',
+          details: 'The content field is missing from the request body'
+        });
+      }
+      
       try {
         contentData = JSON.parse(req.body.content);
-      } catch (error) {
-        return res.status(400).json({ error: 'Invalid content JSON' });
+        console.log('Successfully parsed content data:', contentData);
+      } catch (parseError) {
+        console.error('JSON parse error:', parseError);
+        console.error('Raw content field:', req.body.content);
+        return res.status(400).json({ 
+          error: 'Invalid content JSON format',
+          details: parseError.message,
+          receivedContent: req.body.content
+        });
+      }
+      
+      // Validate contentData is an object
+      if (!contentData || typeof contentData !== 'object') {
+        console.error('Content data is not a valid object:', contentData);
+        return res.status(400).json({ 
+          error: 'Content data must be a valid object',
+          receivedType: typeof contentData
+        });
       }
       
       // Handle file uploads based on section
@@ -258,6 +291,7 @@ const updateSectionContent = async (req, res) => {
         console.log('=== HERO SECTION PROCESSING ===');
         console.log('Files received:', req.files);
         console.log('Body data:', req.body);
+        console.log('Content data before processing:', contentData);
         
         // Process hero video if uploaded or handle removal
         const videoFile = req.files?.heroVideo?.[0];
@@ -303,29 +337,69 @@ const updateSectionContent = async (req, res) => {
           const imageUrl = normalizeFilePath(`/uploads/images/${imageFile.filename}`);
           console.log('Saving image media:', imageFile.filename);
 
-          const imageMedia = await contentModel.saveMedia({
-            filename: imageFile.filename,
-            originalFilename: imageFile.originalname,
-            fileType: 'image',
-            mimeType: imageFile.mimetype,
-            fileSize: imageFile.size,
-            path: imageFile.path,
-            url: imageUrl,
-            altText: 'Hero poster image'
-          });
+          try {
+            const imageMedia = await contentModel.saveMedia({
+              filename: imageFile.filename,
+              originalFilename: imageFile.originalname,
+              fileType: 'image',
+              mimeType: imageFile.mimetype,
+              fileSize: imageFile.size,
+              path: imageFile.path,
+              url: imageUrl,
+              altText: 'Hero poster image'
+            });
 
-          contentData.posterImage = imageUrl;
+            contentData.posterImage = imageUrl;
+          } catch (error) {
+            console.error('Error saving hero poster media:', error);
+            contentData.posterImage = imageUrl;
+          }
         } else if (req.body.removeHeroPoster === 'true') {
           console.log('Removing hero poster image');
           contentData.posterImage = null;
         }
 
+        // Handle carousel images
+        const carouselImages = [];
+        for (let i = 0; i < 10; i++) {
+          const carouselFile = req.files?.[`carouselImage${i}`]?.[0];
+          if (carouselFile) {
+            const imageUrl = normalizeFilePath(`/uploads/images/${carouselFile.filename}`);
+            console.log(`Processing carousel image ${i}:`, carouselFile.filename);
+            
+            try {
+              await contentModel.saveMedia({
+                filename: carouselFile.filename,
+                originalFilename: carouselFile.originalname,
+                fileType: 'image',
+                mimeType: carouselFile.mimetype,
+                fileSize: carouselFile.size,
+                path: carouselFile.path,
+                url: imageUrl,
+                altText: `Hero carousel image ${i + 1}`
+              });
+              
+              carouselImages.push(imageUrl);
+            } catch (error) {
+              console.error(`Error saving carousel image ${i}:`, error);
+              carouselImages.push(imageUrl);
+            }
+          }
+        }
+        
+        if (carouselImages.length > 0) {
+          contentData.carouselImages = carouselImages;
+        }
+
+        // Validate and set default colors
         if (contentData.bgColor && !isValidColorFormat(contentData.bgColor)) {
           contentData.bgColor = "#1e40af"; 
         }
         if (contentData.textColor && !isValidColorFormat(contentData.textColor)) {
           contentData.textColor = "#ffffff"; 
         }
+        
+        console.log('Content data after hero processing:', contentData);
       } else if (section === 'features') {
         if (contentData.columns && Array.isArray(contentData.columns)) {
           for (let i = 0; i < contentData.columns.length; i++) {
@@ -416,18 +490,25 @@ const updateSectionContent = async (req, res) => {
         }
       }
 
+      console.log('Final content data before database update:', contentData);
+
       // Update the content in the database
       const updatedContent = await contentModel.updateSectionContent(section, contentData);
       
+      console.log('Database update successful:', updatedContent);
+      
       res.json({
         success: true,
+        message: `${section.charAt(0).toUpperCase() + section.slice(1)} section updated successfully!`,
         content: updatedContent
       });
     } catch (error) {
       console.error(`Error updating ${req.params.section} content:`, error);
+      console.error('Error stack:', error.stack);
       res.status(500).json({
         success: false,
-        error: error.message
+        error: error.message,
+        details: error.stack
       });
     }
   });
