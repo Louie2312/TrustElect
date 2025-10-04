@@ -370,24 +370,17 @@ export default function Home() {
             {(() => {
               // Check for carousel images first
               if (landingContent.hero.carouselImages && landingContent.hero.carouselImages.length > 0) {
-                console.log('=== CAROUSEL CONTAINER DEBUG ===');
-                console.log('Total carousel images:', landingContent.hero.carouselImages.length);
-                console.log('Current carousel index:', currentCarouselIndex);
-                console.log('Carousel images array:', landingContent.hero.carouselImages);
-                console.log('===============================');
+
                 
                 return (
                   <div className="w-full h-full min-h-[500px] bg-gray-900 rounded-lg overflow-hidden relative">
                     {/* Carousel Images */}
                     <div className="relative w-full h-full min-h-[500px]">
                       {landingContent.hero.carouselImages.map((image, index) => {
-                        console.log(`=== CAROUSEL IMAGE ${index + 1} ===`);
-                        console.log('Raw image URL from backend:', image);
+
                         
                         const imageUrl = formatImageUrl(image);
-                        console.log('Formatted image URL:', imageUrl);
-                        console.log('Is current image:', index === currentCarouselIndex);
-                        console.log('============================');
+
                         
                         if (!imageUrl) {
                           console.warn(`Carousel image ${index + 1} has no valid URL, skipping`);
@@ -422,20 +415,14 @@ export default function Home() {
                                 console.error('Image element:', e.currentTarget);
                                 e.currentTarget.style.display = 'none';
                               }}
-                              onLoad={() => {
-                                console.log(`Successfully loaded carousel image ${index + 1}:`, imageUrl);
-                                console.log('Image dimensions:', e.currentTarget.naturalWidth, 'x', e.currentTarget.naturalHeight);
-                              }}
+                                              
                             />
                           </div>
                         );
                       })}
                     </div>
-                    
-                    {/* Debug overlay to show if container is working */}
-                    <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded z-20">
-                      Carousel: {currentCarouselIndex + 1}/{landingContent.hero.carouselImages.length}
-                    </div>
+
+
                     
                     {/* Carousel Indicators */}
                     {landingContent.hero.carouselImages.length > 1 && (
