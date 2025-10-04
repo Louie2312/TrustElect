@@ -45,42 +45,42 @@ export default function LoginForm({ onClose }) {
   const router = useRouter();
 
   // Add keyboard event handlers
-  const handleLoginKeyPress = (e) => {
+  const handleLoginKeyDown = (e) => {
     if (e.key === 'Enter' && !loading && email && password) {
       e.preventDefault();
       handleLogin();
     }
   };
 
-  const handleOtpKeyPress = (e) => {
+  const handleOtpKeyDown = (e) => {
     if (e.key === 'Enter' && !loading && otp.length === 6) {
       e.preventDefault();
       handleOtpVerification();
     }
   };
 
-  const handlePasswordChangeKeyPress = (e) => {
+  const handlePasswordChangeKeyDown = (e) => {
     if (e.key === 'Enter' && !loading && newPassword && confirmPassword) {
       e.preventDefault();
       handlePasswordChange();
     }
   };
 
-  const handleForgotPasswordKeyPress = (e) => {
+  const handleForgotPasswordKeyDown = (e) => {
     if (e.key === 'Enter' && !loading && forgotEmail) {
       e.preventDefault();
       handleForgotPassword();
     }
   };
 
-  const handleResetOtpKeyPress = (e) => {
+  const handleResetOtpKeyDown = (e) => {
     if (e.key === 'Enter' && !loading && resetOtp.length === 6) {
       e.preventDefault();
       handleVerifyResetOTP();
     }
   };
 
-  const handleResetPasswordKeyPress = (e) => {
+  const handleResetPasswordKeyDown = (e) => {
     if (e.key === 'Enter' && !loading && resetPassword && confirmResetPassword) {
       e.preventDefault();
       handleResetPassword();
@@ -568,7 +568,7 @@ export default function LoginForm({ onClose }) {
               placeholder="Enter your Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              onKeyPress={handleLoginKeyPress}
+              onKeyDown={handleLoginKeyDown}
               required
               className="mb-2"
             />
@@ -580,7 +580,7 @@ export default function LoginForm({ onClose }) {
                 placeholder="Enter Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                onKeyPress={handleLoginKeyPress}
+                onKeyDown={handleLoginKeyDown}
                 required
                 className="pr-16"
                 style={{
@@ -628,7 +628,7 @@ export default function LoginForm({ onClose }) {
               placeholder="Enter 6-digit OTP"
               value={otp}
               onChange={(e) => setOtp(e.target.value)}
-              onKeyPress={handleOtpKeyPress}
+              onKeyDown={handleOtpKeyDown}
               required
             />
 
@@ -678,7 +678,7 @@ export default function LoginForm({ onClose }) {
                 placeholder="Enter new password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                onKeyPress={handlePasswordChangeKeyPress}
+                onKeyDown={handlePasswordChangeKeyDown}
                 required
                 className="mb-2"
               />
@@ -698,7 +698,7 @@ export default function LoginForm({ onClose }) {
                 placeholder="Confirm new password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                onKeyPress={handlePasswordChangeKeyPress}
+                onKeyDown={handlePasswordChangeKeyDown}
                 required
                 className="mb-4"
               />
@@ -740,7 +740,7 @@ export default function LoginForm({ onClose }) {
                   placeholder="Enter your STI Email"
                   value={forgotEmail}
                   onChange={(e) => setForgotEmail(e.target.value)}
-                  onKeyPress={handleForgotPasswordKeyPress}
+                  onKeyDown={handleForgotPasswordKeyDown}
                   required
                   className="mb-4"
                 />
@@ -774,7 +774,7 @@ export default function LoginForm({ onClose }) {
                   placeholder="Enter 6-digit code"
                   value={resetOtp}
                   onChange={(e) => setResetOtp(e.target.value)}
-                  onKeyPress={handleResetOtpKeyPress}
+                  onKeyDown={handleResetOtpKeyDown}
                   required
                   className="mb-3"
                 />
@@ -822,7 +822,7 @@ export default function LoginForm({ onClose }) {
                     placeholder="Enter new password"
                     value={resetPassword}
                     onChange={(e) => setResetPassword(e.target.value)}
-                    onKeyPress={handleResetPasswordKeyPress}
+                    onKeyDown={handleResetPasswordKeyDown}
                     required
                     className="mb-2"
                   />
@@ -842,7 +842,7 @@ export default function LoginForm({ onClose }) {
                     placeholder="Confirm new password"
                     value={confirmResetPassword}
                     onChange={(e) => setConfirmResetPassword(e.target.value)}
-                    onKeyPress={handleResetPasswordKeyPress}
+                    onKeyDown={handleResetPasswordKeyDown}
                     required
                     className="mb-3"
                   />
