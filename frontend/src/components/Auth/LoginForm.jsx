@@ -44,44 +44,44 @@ export default function LoginForm({ onClose }) {
   
   const router = useRouter();
 
-  // Add keyboard event handlers
+  // Add keyboard event handlers - Fixed to always trigger, let functions handle validation
   const handleLoginKeyDown = (e) => {
-    if (e.key === 'Enter' && !loading && email && password) {
+    if (e.key === 'Enter' && !loading) {
       e.preventDefault();
       handleLogin();
     }
   };
 
   const handleOtpKeyDown = (e) => {
-    if (e.key === 'Enter' && !loading && otp.length === 6) {
+    if (e.key === 'Enter' && !loading) {
       e.preventDefault();
       handleOtpVerification();
     }
   };
 
   const handlePasswordChangeKeyDown = (e) => {
-    if (e.key === 'Enter' && !loading && newPassword && confirmPassword) {
+    if (e.key === 'Enter' && !loading) {
       e.preventDefault();
       handlePasswordChange();
     }
   };
 
   const handleForgotPasswordKeyDown = (e) => {
-    if (e.key === 'Enter' && !loading && forgotEmail) {
+    if (e.key === 'Enter' && !loading) {
       e.preventDefault();
       handleForgotPassword();
     }
   };
 
   const handleResetOtpKeyDown = (e) => {
-    if (e.key === 'Enter' && !loading && resetOtp.length === 6) {
+    if (e.key === 'Enter' && !loading) {
       e.preventDefault();
       handleVerifyResetOTP();
     }
   };
 
   const handleResetPasswordKeyDown = (e) => {
-    if (e.key === 'Enter' && !loading && resetPassword && confirmResetPassword) {
+    if (e.key === 'Enter' && !loading) {
       e.preventDefault();
       handleResetPassword();
     }
