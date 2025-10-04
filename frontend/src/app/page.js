@@ -267,7 +267,7 @@ export default function Home() {
   return (
     <div className="relative min-h-screen bg-white flex flex-col">
       {/* Header Section - Updated to remove About button */}
-      <header className="w-full flex justify-between items-center p-6 bg-[#01579B] shadow-md fixed top-0 left-0 right-0 z-10">
+      <header className="w-full flex justify-between items-center p-6 bg-[#01579B] shadow-md fixed top-0 left-0 right-0 z-50">
         <h1 className="text-2xl font-bold flex items-center">
           {landingContent.logo?.imageUrl ? (
             <Image 
