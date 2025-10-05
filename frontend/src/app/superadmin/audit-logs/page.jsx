@@ -231,7 +231,9 @@ export default function AuditLogsPage() {
     
     switch (role.toLowerCase()) {
       case 'admin': return 'bg-purple-100 text-purple-800';
-      case 'systemadmin': return 'bg-red-100 text-red-800';
+      case 'systemadmin': 
+      case 'super admin': 
+        return 'bg-red-100 text-red-800';
       case 'student': return 'bg-green-100 text-green-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -241,7 +243,9 @@ export default function AuditLogsPage() {
     if (!role) return 'Unknown';
 
     switch (role.toLowerCase()) {
-      case 'systemadmin': return 'Root Admin';
+      case 'systemadmin': 
+      case 'super admin': 
+        return 'Root Admin';
       case 'admin': return 'Admin';
       case 'student': return 'Student';
       default: return role;
