@@ -536,7 +536,7 @@ export default function AdminDashboard() {
     
     const now = new Date();
     
-    return data.map(item => {
+    return data.map((item, index) => {
       // Extract or create timestamp information
       let timestamp = item.timestamp;
       let date = item.date;
@@ -561,14 +561,25 @@ export default function AdminDashboard() {
         } 
         // For 7d, distribute across the past 7 days
         else if (timeframe === '7d') {
-          const dayOffset = Math.floor(Math.random() * 7); // Random day within past week
+          const dayOffset = index % 7; // Use index for deterministic distribution
           const targetDate = new Date(now.getTime() - dayOffset * 24 * 60 * 60 * 1000);
           date = targetDate.toISOString().split('T')[0];
           timestamp = new Date(`${date}T${hour.toString().padStart(2, '0')}:00:00`).toISOString();
         }
-        // For 30d, distribute across the past 30 days
+        // For 30d, distribute across the past 30 days with better distribution
+        else if (timeframe === '30d') {
+          // Use a more deterministic distribution for 30 days
+          const dayOffset = (index * 7 + Math.floor(index / 3)) % 30; // Better distribution
+          const targetDate = new Date(now.getTime() - dayOffset * 24 * 60 * 60 * 1000);
+          date = targetDate.toISOString().split('T')[0];
+          // Use different hours throughout the day for variety
+          const hours = [8, 10, 12, 14, 16, 18, 20, 22];
+          hour = hours[index % hours.length];
+          timestamp = new Date(`${date}T${hour.toString().padStart(2, '0')}:00:00`).toISOString();
+        }
+        // Fallback for other timeframes
         else {
-          const dayOffset = Math.floor(Math.random() * 30); // Random day within past month
+          const dayOffset = Math.floor(Math.random() * 30);
           const targetDate = new Date(now.getTime() - dayOffset * 24 * 60 * 60 * 1000);
           date = targetDate.toISOString().split('T')[0];
           timestamp = new Date(`${date}T${hour.toString().padStart(2, '0')}:00:00`).toISOString();
@@ -1059,34 +1070,24 @@ export default function AdminDashboard() {
         return dateCompare;
       });
     } else if (timeframe === '30d') {
-      // For 30d, backend returns daily data (hour represents day of month)
-      // Distribute each day's data across different times to show variety
+      // For 30d, create a more comprehensive distribution across 30 days
       data.forEach((item, index) => {
-        const dayOfMonth = item.hour || 0;
         const count = Math.round(item.count || 0);
         
-        // Find the correct date for this day of month
-        let targetDate = null;
-        for (let i = 0; i < 30; i++) {
-          const checkDate = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-          if (checkDate.getDate() === dayOfMonth) {
-            targetDate = checkDate;
-            break;
-          }
-        }
-        
-        if (targetDate && count > 0) {
-          // Distribute the count across different times of day
-          // Use different hours based on the day to create variety
-          const hours = [8, 10, 12, 14, 16, 18, 20]; // Common activity hours
-          const hourIndex = index % hours.length;
-          const selectedHour = hours[hourIndex];
+        if (count > 0) {
+          // Distribute data points across the past 30 days
+          const dayOffset = (index * 7 + Math.floor(index / 3)) % 30; // Better distribution
+          const targetDate = new Date(now.getTime() - dayOffset * 24 * 60 * 60 * 1000);
+          
+          // Use different hours throughout the day for variety
+          const hours = [8, 10, 12, 14, 16, 18, 20, 22];
+          const selectedHour = hours[index % hours.length];
           
           processedData.push({
-            hour: selectedHour, // Use varied hours instead of all 12 PM
+            hour: selectedHour,
             count: count,
             date: targetDate.toISOString().split('T')[0],
-            timestamp: targetDate.toISOString()
+            timestamp: new Date(`${targetDate.toISOString().split('T')[0]}T${selectedHour.toString().padStart(2, '0')}:00:00`).toISOString()
           });
         }
       });
@@ -1942,4 +1943,5 @@ export default function AdminDashboard() {
     </div>
   );
 }
+
 
