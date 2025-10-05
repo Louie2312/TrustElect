@@ -21,8 +21,17 @@ export default function ArchivedAdminsPage() {
         withCredentials: true,
       });
 
+      console.log("SUPERADMIN - All admins from API:", res.data.admins);
+      console.log("SUPERADMIN - Filtering for archived (is_active = false):");
+      
+      const allAdmins = res.data.admins;
+      const archivedAdmins = allAdmins.filter(admin => !admin.is_active);
+      
+      console.log("SUPERADMIN - Archived admins after filtering:", archivedAdmins);
+      console.log("SUPERADMIN - Total admins:", allAdmins.length);
+      console.log("SUPERADMIN - Archived admins count:", archivedAdmins.length);
 
-      setArchivedAdmins(res.data.admins.filter(admin => !admin.is_active));
+      setArchivedAdmins(archivedAdmins);
       setLoading(false);
     } catch (error) {
       console.error("Error fetching archived admins:", error);
