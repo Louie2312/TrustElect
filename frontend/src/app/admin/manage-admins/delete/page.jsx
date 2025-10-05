@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
+import { Trash } from "lucide-react";
+import { toast } from "react-hot-toast";
 
 export default function DeletedAdminsPage() {
   const router = useRouter();
@@ -13,7 +15,8 @@ export default function DeletedAdminsPage() {
   const [error, setError] = useState("");
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedAdminId, setSelectedAdminId] = useState(null);
-  const [autoDeleteFilter, setAutoDeleteFilter] = useState("all");
+  const [autoDeleteEnabled, setAutoDeleteEnabled] = useState(false);
+  const [autoDeleteDays, setAutoDeleteDays] = useState(7);
 
   const fetchDeletedAdmins = async () => {
     try {
@@ -34,51 +37,74 @@ export default function DeletedAdminsPage() {
     }
   };
 
-  const filterByAutoDelete = (filter) => {
-    setAutoDeleteFilter(filter);
+  const enableAutoDelete = () => {
+    if (!confirm(`Are you sure you want to enable auto-deletion? All deleted admins will be permanently deleted after ${autoDeleteDays} days.`)) return;
     
-    if (filter === "all") {
-      setFilteredAdmins(deletedAdmins);
-      return;
-    }
-
-    const now = new Date();
-    const filtered = deletedAdmins.filter(admin => {
-      if (!admin.deleted_at) return false;
-      
-      const deletedDate = new Date(admin.deleted_at);
-      const daysDiff = Math.floor((now - deletedDate) / (1000 * 60 * 60 * 24));
-      
-      switch (filter) {
-        case "3days":
-          return daysDiff >= 3;
-        case "7days":
-          return daysDiff >= 7;
-        case "30days":
-          return daysDiff >= 30;
-        default:
-          return true;
-      }
-    });
+    setAutoDeleteEnabled(true);
+    toast.success(`Auto-deletion enabled for ${autoDeleteDays} days`);
     
-    setFilteredAdmins(filtered);
+    // Set up auto-deletion timer
+    const timer = setTimeout(() => {
+      performAutoDelete();
+    }, autoDeleteDays * 24 * 60 * 60 * 1000); // Convert days to milliseconds
+    
+    // Store timer ID for potential cancellation
+    localStorage.setItem('autoDeleteTimer', timer.toString());
   };
 
-  const restoreAdmin = async (id) => {
-    if (!confirm("Are you sure you want to restore this Admin?")) return;
+  const disableAutoDelete = () => {
+    if (!confirm("Are you sure you want to disable auto-deletion?")) return;
+    
+    setAutoDeleteEnabled(false);
+    const timerId = localStorage.getItem('autoDeleteTimer');
+    if (timerId) {
+      clearTimeout(parseInt(timerId));
+      localStorage.removeItem('autoDeleteTimer');
+    }
+    toast.success("Auto-deletion disabled");
+  };
+
+  const performAutoDelete = async () => {
     try {
       const token = Cookies.get("token");
-      await axios.patch(`/api/admin/manage-admins/${id}/restore`, {}, {
-        headers: { Authorization: `Bearer ${token}` },
-        withCredentials: true,
+      
+      // Get all deleted admins that are older than the specified days
+      const now = new Date();
+      const cutoffDate = new Date(now.getTime() - (autoDeleteDays * 24 * 60 * 60 * 1000));
+      
+      const adminsToDelete = filteredAdmins.filter(admin => {
+        if (!admin.deleted_at) return false;
+        const deletedDate = new Date(admin.deleted_at);
+        return deletedDate <= cutoffDate;
       });
-      alert("Admin restored successfully.");
-      fetchDeletedAdmins(); 
+
+      if (adminsToDelete.length === 0) {
+        toast.info("No admins found for auto-deletion");
+        return;
+      }
+
+      // Delete each admin permanently
+      for (const admin of adminsToDelete) {
+        try {
+          await axios.delete(`/api/admin/manage-admins/${admin.id}/permanent`, {
+            headers: { Authorization: `Bearer ${token}` },
+            withCredentials: true,
+          });
+        } catch (error) {
+          console.error(`Error auto-deleting admin ${admin.id}:`, error);
+        }
+      }
+
+      toast.success(`${adminsToDelete.length} admins auto-deleted successfully`);
+      fetchDeletedAdmins();
+      setAutoDeleteEnabled(false);
+      localStorage.removeItem('autoDeleteTimer');
     } catch (error) {
-      console.error("Error restoring admin:", error);
-      alert("Failed to restore Admin.");
+      console.error("Error performing auto-deletion:", error);
+      toast.error("Failed to perform auto-deletion");
     }
   };
+
 
   const confirmPermanentDelete = (id) => {
     setSelectedAdminId(id);
@@ -115,6 +141,12 @@ export default function DeletedAdminsPage() {
 
   useEffect(() => {
     fetchDeletedAdmins();
+    
+    // Check if there's an existing auto-delete timer
+    const existingTimer = localStorage.getItem('autoDeleteTimer');
+    if (existingTimer) {
+      setAutoDeleteEnabled(true);
+    }
   }, []);
 
   if (loading) {
@@ -133,25 +165,46 @@ export default function DeletedAdminsPage() {
         Back
       </button>
 
-      {/* Auto-Delete Filter */}
+      {/* Auto-Delete Controls */}
       <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
         <div className="flex items-center gap-4 mb-3">
-          <h3 className="text-sm font-semibold text-black">Auto-Delete Filter:</h3>
+          <h3 className="text-sm font-semibold text-black">Auto-Delete Settings:</h3>
         </div>
-        <div className="flex items-center gap-4">
-          <select
-            value={autoDeleteFilter}
-            onChange={(e) => filterByAutoDelete(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-md text-sm text-black focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="all">All Deleted Admins</option>
-            <option value="3days">Ready for Auto-Delete (3+ days)</option>
-            <option value="7days">Ready for Auto-Delete (7+ days)</option>
-            <option value="30days">Ready for Auto-Delete (30+ days)</option>
-          </select>
-          {autoDeleteFilter !== "all" && (
-            <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
-              Showing admins deleted {autoDeleteFilter === "3days" ? "3+" : autoDeleteFilter === "7days" ? "7+" : "30+"} days ago
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-black">Delete after:</label>
+            <select
+              value={autoDeleteDays}
+              onChange={(e) => setAutoDeleteDays(parseInt(e.target.value))}
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm text-black focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              disabled={autoDeleteEnabled}
+            >
+              <option value={3}>3 days</option>
+              <option value={7}>7 days</option>
+              <option value={14}>14 days</option>
+              <option value={30}>30 days</option>
+              <option value={60}>60 days</option>
+            </select>
+          </div>
+          
+          {!autoDeleteEnabled ? (
+            <button
+              onClick={enableAutoDelete}
+              className="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 transition-colors"
+            >
+              Enable Auto-Delete
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <div className="text-sm text-green-600 bg-green-50 px-3 py-1 rounded">
+                Auto-delete enabled for {autoDeleteDays} days
+              </div>
+              <button
+                onClick={disableAutoDelete}
+                className="bg-gray-500 text-white px-4 py-2 rounded text-sm hover:bg-gray-600 transition-colors"
+              >
+                Disable
+              </button>
             </div>
           )}
         </div>
@@ -181,11 +234,13 @@ export default function DeletedAdminsPage() {
                 <td className="p-3">{admin.department}</td>
                 <td className="p-3">{admin.deleted_at ? new Date(admin.deleted_at).toLocaleDateString() : 'Unknown'}</td>
                 <td className="p-3 flex justify-center gap-2">
-                  <button onClick={() => restoreAdmin(admin.id)} className="bg-yellow-500 text-white px-3 py-1 rounded">
-                    Restore
-                  </button>
-                  <button onClick={() => confirmPermanentDelete(admin.id)} className="bg-red-700 text-white px-3 py-1 rounded">
-                    Permanently Delete
+                  <button 
+                    onClick={() => confirmPermanentDelete(admin.id)} 
+                    className="bg-red-600 text-white px-3 py-1 rounded text-sm flex items-center"
+                    title="Permanently Delete Admin"
+                  >
+                    <Trash className="w-4 h-4 mr-1" />
+                    Delete Now
                   </button>
                 </td>
               </tr>
