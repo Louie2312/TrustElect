@@ -23,6 +23,9 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
   const [isDataReset, setIsDataReset] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [currentData, setCurrentData] = useState(report.data || {});
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [isDateFiltered, setIsDateFiltered] = useState(false);
   
   // Ensure data is loaded immediately on component mount
   useEffect(() => {
@@ -69,6 +72,39 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
   const handleTimeframeChange = (newTimeframe) => {
     setSelectedTimeframe(newTimeframe);
     fetchDataForTimeframe(newTimeframe);
+  };
+
+  // Filter data by date range
+  const filterDataByDateRange = (data, dateFrom, dateTo) => {
+    if (!dateFrom && !dateTo) return data;
+    
+    const fromDate = dateFrom ? new Date(dateFrom) : null;
+    const toDate = dateTo ? new Date(dateTo) : null;
+    
+    return data.filter(item => {
+      if (!item.timestamp && !item.date) return true;
+      
+      const itemDate = item.timestamp ? new Date(item.timestamp) : new Date(item.date);
+      
+      if (fromDate && itemDate < fromDate) return false;
+      if (toDate && itemDate > toDate) return false;
+      
+      return true;
+    });
+  };
+
+  // Handle date filter change
+  const handleDateFilterChange = (fromDate, toDate) => {
+    setDateFrom(fromDate);
+    setDateTo(toDate);
+    setIsDateFiltered(!!(fromDate || toDate));
+  };
+
+  // Clear date filter
+  const clearDateFilter = () => {
+    setDateFrom('');
+    setDateTo('');
+    setIsDateFiltered(false);
   };
 
   const formatNumber = (num) => {
@@ -705,6 +741,12 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
   let processedLoginData = isDataReset ? [] : processRawData(currentData.login_activity || [], selectedTimeframe);
   let processedVotingData = isDataReset ? [] : processRawData(currentData.voting_activity || [], selectedTimeframe);
   
+  // Apply date range filter if active
+  if (isDateFiltered && !isDataReset) {
+    processedLoginData = filterDataByDateRange(processedLoginData, dateFrom, dateTo);
+    processedVotingData = filterDataByDateRange(processedVotingData, dateFrom, dateTo);
+  }
+  
   // Fallback to original data structure if new processing returns empty data
   if (processedLoginData.length === 0 && currentData.login_activity && currentData.login_activity.length > 0) {
     console.log('SystemLoadDetail - Falling back to original login data structure');
@@ -846,6 +888,49 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
               <button onClick={onClose} className="text-black hover:text-gray-700">
                 <X className="w-6 h-6" />
               </button>
+            </div>
+          </div>
+
+          {/* Date Range Filter */}
+          <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="flex items-center gap-4 mb-3">
+              <h3 className="text-sm font-semibold text-black">Filter by Date Range:</h3>
+              {isDateFiltered && (
+                <button
+                  onClick={clearDateFilter}
+                  className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200 transition-colors"
+                >
+                  Clear Filter
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-black">From:</label>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => handleDateFilterChange(e.target.value, dateTo)}
+                  className="px-3 py-2 border border-gray-300 rounded-md text-sm text-black focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  max={new Date().toISOString().split('T')[0]}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-black">To:</label>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => handleDateFilterChange(dateFrom, e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-md text-sm text-black focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  max={new Date().toISOString().split('T')[0]}
+                  min={dateFrom}
+                />
+              </div>
+              {isDateFiltered && (
+                <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                  Filtered by date range
+                </div>
+              )}
             </div>
           </div>
 

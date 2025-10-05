@@ -242,6 +242,9 @@ export default function AdminDashboard() {
   const [showSystemLoadModal, setShowSystemLoadModal] = useState(false);
   const [isSystemLoadLoading, setIsSystemLoadLoading] = useState(false);
   const [selectedTimeframe, setSelectedTimeframe] = useState('7d');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [isDateFiltered, setIsDateFiltered] = useState(false);
 
   // Load UI design - simplified and memoized
   const loadUIDesign = useCallback(async () => {
@@ -529,6 +532,39 @@ export default function AdminDashboard() {
       setIsSystemLoadLoading(false);
     }
   }, []);
+
+  // Filter data by date range
+  const filterDataByDateRange = (data, dateFrom, dateTo) => {
+    if (!dateFrom && !dateTo) return data;
+    
+    const fromDate = dateFrom ? new Date(dateFrom) : null;
+    const toDate = dateTo ? new Date(dateTo) : null;
+    
+    return data.filter(item => {
+      if (!item.timestamp && !item.date) return true;
+      
+      const itemDate = item.timestamp ? new Date(item.timestamp) : new Date(item.date);
+      
+      if (fromDate && itemDate < fromDate) return false;
+      if (toDate && itemDate > toDate) return false;
+      
+      return true;
+    });
+  };
+
+  // Handle date filter change
+  const handleDateFilterChange = (fromDate, toDate) => {
+    setDateFrom(fromDate);
+    setDateTo(toDate);
+    setIsDateFiltered(!!(fromDate || toDate));
+  };
+
+  // Clear date filter
+  const clearDateFilter = () => {
+    setDateFrom('');
+    setDateTo('');
+    setIsDateFiltered(false);
+  };
   
   // Helper function to enhance data with proper time information
   const enhanceTimeData = (data, timeframe) => {
@@ -1477,16 +1513,61 @@ export default function AdminDashboard() {
               Analytics
             </span>
           </h2>
-          <select
-            value={selectedTimeframe}
-            onChange={(e) => loadSystemLoadData(e.target.value)}
-            className="px-3 py-2 border rounded-md text-sm text-black"
-            disabled={isSystemLoadLoading}
-          >
-            <option value="24h" className="text-black">Last 24 Hours</option>
-            <option value="7d" className="text-black">Last 7 Days</option>
-            <option value="30d" className="text-black">Last 30 Days</option>
-          </select>
+          <div className="flex items-center gap-3">
+            <select
+              value={selectedTimeframe}
+              onChange={(e) => loadSystemLoadData(e.target.value)}
+              className="px-3 py-2 border rounded-md text-sm text-black"
+              disabled={isSystemLoadLoading}
+            >
+              <option value="24h" className="text-black">Last 24 Hours</option>
+              <option value="7d" className="text-black">Last 7 Days</option>
+              <option value="30d" className="text-black">Last 30 Days</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Date Range Filter */}
+        <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <div className="flex items-center gap-4 mb-3">
+            <h3 className="text-sm font-semibold text-black">Filter by Date Range:</h3>
+            {isDateFiltered && (
+              <button
+                onClick={clearDateFilter}
+                className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200 transition-colors"
+              >
+                Clear Filter
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-black">From:</label>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => handleDateFilterChange(e.target.value, dateTo)}
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm text-black focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                max={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-black">To:</label>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => handleDateFilterChange(dateFrom, e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm text-black focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                max={new Date().toISOString().split('T')[0]}
+                min={dateFrom}
+              />
+            </div>
+            {isDateFiltered && (
+              <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                Filtered by date range
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Loading Indicator */}
@@ -1507,6 +1588,12 @@ export default function AdminDashboard() {
               // Try the new date-aware processing first
               let processedLoginData = processDataWithDates(systemLoadData.login_activity || [], selectedTimeframe);
               let processedVotingData = processDataWithDates(systemLoadData.voting_activity || [], selectedTimeframe);
+              
+              // Apply date range filter if active
+              if (isDateFiltered) {
+                processedLoginData = filterDataByDateRange(processedLoginData, dateFrom, dateTo);
+                processedVotingData = filterDataByDateRange(processedVotingData, dateFrom, dateTo);
+              }
               
               // Fallback to original data structure if new processing returns empty data
               if (processedLoginData.length === 0 && systemLoadData.login_activity && systemLoadData.login_activity.length > 0) {
