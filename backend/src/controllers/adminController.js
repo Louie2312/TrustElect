@@ -129,6 +129,18 @@ exports.getAllAdmins = async (req, res) => {
   }
 };
 
+exports.getArchivedAdmins = async (req, res) => {
+  try {
+    // Get only archived admins using the model function directly
+    const { getAllAdmins: getAllAdminsModel } = require('../models/adminModel');
+    const archivedAdmins = await getAllAdminsModel(true); // Pass true for archived only
+    res.json({ admins: archivedAdmins });
+  } catch (error) {
+    console.error("Error fetching archived admins:", error);
+    res.status(500).json({ message: "Internal Server Error.", error: error.message });
+  }
+};
+
 exports.updateAdmin = async (req, res) => {
   try {
     const { id } = req.params;
