@@ -110,8 +110,7 @@ exports.registerAdmin = async (req, res) => {
 
 exports.getAllAdmins = async (req, res) => {
   try {
-    // Get only active admins
-    const regularAdmins = await getAllAdmins(false); // Pass false for active only
+    const regularAdmins = await getAllAdmins();
     const superAdmins = await getSuperAdmins();
 
     const formattedSuperAdmins = superAdmins.map(admin => ({
@@ -126,18 +125,6 @@ exports.getAllAdmins = async (req, res) => {
     res.json({ admins: allAdmins });
   } catch (error) {
     console.error("Error fetching admins:", error);
-    res.status(500).json({ message: "Internal Server Error.", error: error.message });
-  }
-};
-
-exports.getArchivedAdmins = async (req, res) => {
-  try {
-    // Get only archived admins using the model function directly
-    const { getAllAdmins: getAllAdminsModel } = require('../models/adminModel');
-    const archivedAdmins = await getAllAdminsModel(true); // Pass true for archived only
-    res.json({ admins: archivedAdmins });
-  } catch (error) {
-    console.error("Error fetching archived admins:", error);
     res.status(500).json({ message: "Internal Server Error.", error: error.message });
   }
 };

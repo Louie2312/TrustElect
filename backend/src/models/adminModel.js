@@ -102,27 +102,15 @@ const registerAdmin = async (firstName, lastName, email, username, hashedPasswor
 };
 
 
-const getAllAdmins = async (archivedOnly = false) => {
+const getAllAdmins = async () => {
   try {
-    let query;
-    if (archivedOnly) {
-      query = `
-        SELECT users.id, users.first_name, users.last_name, users.email, users.is_active, 
-               admins.employee_number, admins.department, users.is_locked, users.locked_until,
-               admins.archived_at
-        FROM users
-        JOIN admins ON users.id = admins.user_id
-        WHERE users.role_id = 2 AND users.is_active = false;
-      `;
-    } else {
-      query = `
-        SELECT users.id, users.first_name, users.last_name, users.email, users.is_active, 
-               admins.employee_number, admins.department, users.is_locked, users.locked_until
-        FROM users
-        JOIN admins ON users.id = admins.user_id
-        WHERE users.role_id = 2 AND users.is_active = true;
-      `;
-    }
+    const query = `
+      SELECT users.id, users.first_name, users.last_name, users.email, users.is_active, 
+             admins.employee_number, admins.department, users.is_locked, users.locked_until
+      FROM users
+      JOIN admins ON users.id = admins.user_id
+      WHERE users.role_id = 2;
+    `;
     const result = await pool.query(query);
     return result.rows;
   } catch (error) {
