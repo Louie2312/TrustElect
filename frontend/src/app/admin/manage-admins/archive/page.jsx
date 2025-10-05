@@ -28,7 +28,7 @@ export default function ArchivedAdminsPage() {
   const fetchArchivedAdmins = async () => {
     try {
       const token = Cookies.get("token");
-      const res = await axios.get("/api/admin/manage-admins/archived", {
+      const res = await axios.get("/api/admin/manage-admins", {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -38,8 +38,8 @@ export default function ArchivedAdminsPage() {
         department: admin.department === "Administration" ? "Administrator" : admin.department
       }));
 
-      setArchivedAdmins(updatedAdmins);
-      setFilteredAdmins(updatedAdmins);
+      setArchivedAdmins(updatedAdmins.filter(admin => !admin.is_active));
+      setFilteredAdmins(updatedAdmins.filter(admin => !admin.is_active));
     } catch (error) {
       console.error("Error fetching archived admins:", error);
       setError("Failed to fetch archived admins");
@@ -58,7 +58,7 @@ export default function ArchivedAdminsPage() {
     if (window.confirm("Are you sure you want to restore this admin?")) {
       try {
         const token = Cookies.get("token");
-        await axios.patch(`/api/admin/manage-admins/${adminId}/restore`, {}, {
+        await axios.patch(`/api/admin/admins/${adminId}/restore`, {}, {
           headers: { Authorization: `Bearer ${token}` },
           withCredentials: true,
         });
@@ -81,7 +81,7 @@ export default function ArchivedAdminsPage() {
     if (window.confirm("Are you sure you want to permanently delete this admin? This action cannot be undone.")) {
       try {
         const token = Cookies.get("token");
-        await axios.delete(`/api/admin/manage-admins/${adminId}/permanent`, {
+        await axios.delete(`/api/admin/admins/${adminId}/permanent-delete`, {
           headers: { Authorization: `Bearer ${token}` },
           withCredentials: true,
         });
