@@ -295,7 +295,7 @@ export default function AdminDepartmentsPage() {
       
       try {
         // First try admin endpoint with delete
-        response = await axios.patch(`/api/admin/departments/${id}/delete`, {}, {
+        response = await axios.delete(`/api/admin/departments/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         success = true;
@@ -304,7 +304,7 @@ export default function AdminDepartmentsPage() {
         
         try {
           // Try generic endpoint with delete
-          response = await axios.patch(`/api/departments/${id}/delete`, {}, {
+          response = await axios.delete(`/api/departments/${id}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           success = true;
@@ -312,7 +312,7 @@ export default function AdminDepartmentsPage() {
           console.error("Error on generic delete endpoint:", secondError.message);
           
           // Try superadmin endpoint as last resort
-          response = await axios.patch(`/api/superadmin/departments/${id}/delete`, {}, {
+          response = await axios.delete(`/api/superadmin/departments/${id}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           success = true;

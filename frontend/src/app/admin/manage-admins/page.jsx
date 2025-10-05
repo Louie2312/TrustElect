@@ -161,7 +161,7 @@ export default function ManageAdminsPage() {
     if (window.confirm("Are you sure you want to delete this admin? It will be moved to the deleted folder.")) {
       try {
         const token = Cookies.get("token");
-        await axios.patch(`/api/admin/admins/${adminId}/delete`, {}, {
+        await axios.delete(`/api/admin/manage-admins/${adminId}`, {
           headers: { Authorization: `Bearer ${token}` },
           withCredentials: true,
         });
