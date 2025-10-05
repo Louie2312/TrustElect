@@ -1,6 +1,6 @@
 const express = require("express");
 const { check } = require("express-validator");
-const { registerAdmin, getAllAdmins, updateAdmin, softDeleteAdmin, restoreAdmin, resetAdminPassword, permanentlyDeleteAdmin, unlockAdminAccount, getAdminProfile, uploadAdminProfilePicture} = require("../controllers/adminController");
+const { registerAdmin, getAllAdmins, getArchivedAdmins, updateAdmin, softDeleteAdmin, restoreAdmin, resetAdminPassword, permanentlyDeleteAdmin, unlockAdminAccount, getAdminProfile, uploadAdminProfilePicture} = require("../controllers/adminController");
 const { verifyToken, isAdmin, isSuperAdmin } = require("../middlewares/authMiddleware");
 const { checkPermission } = require("../middlewares/permissionMiddleware");
 const router = express.Router();
@@ -194,7 +194,7 @@ router.post(
   registerAdmin
 );
 router.delete("/manage-admins/:id", verifyToken, isAdmin, checkPermission('adminManagement', 'delete'), softDeleteAdmin);
-router.get("/manage-admins/archived", verifyToken, isAdmin, checkPermission('adminManagement', 'view'), getAllAdmins);
+router.get("/manage-admins/archived", verifyToken, isAdmin, checkPermission('adminManagement', 'view'), getArchivedAdmins);
 router.patch("/manage-admins/:id/restore", verifyToken, isAdmin, checkPermission('adminManagement', 'edit'), restoreAdmin);
 router.delete("/manage-admins/:id/permanent", verifyToken, isAdmin, checkPermission('adminManagement', 'delete'), permanentlyDeleteAdmin);
 router.patch("/manage-admins/:id/unlock", verifyToken, isAdmin, checkPermission('adminManagement', 'edit'), unlockAdminAccount);

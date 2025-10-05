@@ -110,30 +110,33 @@ exports.registerAdmin = async (req, res) => {
 
 exports.getAllAdmins = async (req, res) => {
   try {
-    const isArchivedRequest = req.path.includes('/archived');
+    // Get only active admins
+    const regularAdmins = await getAllAdmins(false); // Pass false for active only
+    const superAdmins = await getSuperAdmins();
+
+    const formattedSuperAdmins = superAdmins.map(admin => ({
+      ...admin,
+      role_id: 1, 
+      employee_number: "", 
+      department: "Administration" 
+    }));
+
+    const allAdmins = [...regularAdmins, ...formattedSuperAdmins];
     
-    if (isArchivedRequest) {
-      // Get only archived admins
-      const archivedAdmins = await getAllAdmins(true); // Pass true for archived only
-      res.json({ admins: archivedAdmins });
-    } else {
-      // Get only active admins
-      const regularAdmins = await getAllAdmins(false); // Pass false for active only
-      const superAdmins = await getSuperAdmins();
-
-      const formattedSuperAdmins = superAdmins.map(admin => ({
-        ...admin,
-        role_id: 1, 
-        employee_number: "", 
-        department: "Administration" 
-      }));
-
-      const allAdmins = [...regularAdmins, ...formattedSuperAdmins];
-      
-      res.json({ admins: allAdmins });
-    }
+    res.json({ admins: allAdmins });
   } catch (error) {
     console.error("Error fetching admins:", error);
+    res.status(500).json({ message: "Internal Server Error.", error: error.message });
+  }
+};
+
+exports.getArchivedAdmins = async (req, res) => {
+  try {
+    // Get only archived admins
+    const archivedAdmins = await getAllAdmins(true); // Pass true for archived only
+    res.json({ admins: archivedAdmins });
+  } catch (error) {
+    console.error("Error fetching archived admins:", error);
     res.status(500).json({ message: "Internal Server Error.", error: error.message });
   }
 };

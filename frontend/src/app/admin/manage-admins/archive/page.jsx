@@ -14,9 +14,6 @@ export default function ArchivedAdminsPage() {
   const [filteredAdmins, setFilteredAdmins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [departmentFilter, setDepartmentFilter] = useState("");
-  const [availableDepartments, setAvailableDepartments] = useState([]);
 
   // Check if user has admin management permissions
   useEffect(() => {
@@ -27,26 +24,6 @@ export default function ArchivedAdminsPage() {
     }
   }, [hasPermission, router, permissionsLoading]);
 
-  const fetchDepartments = async () => {
-    try {
-      const token = Cookies.get("token");
-      const res = await axios.get("/api/admin/departments", {
-        headers: { Authorization: `Bearer ${token}` },
-        withCredentials: true,
-      });
-
-      const departments = res.data.departments || res.data || [];
-      setAvailableDepartments(departments);
-    } catch (error) {
-      console.error("Error fetching departments:", error);
-      setAvailableDepartments([
-        "Information and Communication Technology (ICT)",
-        "Tourism and Hospitality Management (THM)",
-        "Business Administration and Accountancy",
-        "Administrator"
-      ]);
-    }
-  };
 
   const fetchArchivedAdmins = async () => {
     try {
@@ -71,35 +48,6 @@ export default function ArchivedAdminsPage() {
     }
   };
 
-  const handleSearch = (e) => {
-    const query = e.target.value;
-    setSearchQuery(query);
-
-    if (query === "") {
-      setFilteredAdmins(archivedAdmins);
-    } else {
-      setFilteredAdmins(
-        archivedAdmins.filter(
-          (admin) =>
-            admin.first_name.toLowerCase().includes(query.toLowerCase()) ||
-            admin.last_name.toLowerCase().includes(query.toLowerCase()) ||
-            admin.email.toLowerCase().includes(query.toLowerCase()) ||
-            admin.employee_number?.toLowerCase().includes(query.toLowerCase())
-        )
-      );
-    }
-  };
-
-  const handleDepartmentFilter = (e) => {
-    const department = e.target.value;
-    setDepartmentFilter(department);
-
-    if (department === "") {
-      setFilteredAdmins(archivedAdmins);
-    } else {
-      setFilteredAdmins(archivedAdmins.filter((admin) => admin.department === department));
-    }
-  };
 
   const restoreAdmin = async (adminId) => {
     if (!hasPermission('adminManagement', 'edit')) {
@@ -149,7 +97,6 @@ export default function ArchivedAdminsPage() {
 
   useEffect(() => {
     fetchArchivedAdmins();
-    fetchDepartments();
   }, []);
 
   if (loading) {
@@ -161,102 +108,55 @@ export default function ArchivedAdminsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="p-6">
-        <div className="flex items-center gap-4 mb-6">
-          <button
-            onClick={() => router.push("/admin/manage-admins")}
-            className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-          >
-            ← Back to Admin Management
-          </button>
-          <h1 className="text-2xl font-bold text-black">Archived Admins</h1>
-        </div>
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4 text-black">Archived Admins</h1>
 
-        <div className="flex gap-4 mb-4 text-black">
-          <input
-            type="text"
-            placeholder="Search archived admins"
-            value={searchQuery}
-            onChange={handleSearch}
-            className="border p-2 rounded w-100"
-          />
+      <button onClick={() => router.push("/admin/manage-admins")} className="bg-[#01579B] text-white px-4 py-2 rounded mb-4">
+         Back
+      </button>
 
-          <select
-            value={departmentFilter}
-            onChange={handleDepartmentFilter}
-            className="border p-2 rounded w-50 text-black"
-          >
-            <option value="">All Departments</option>
-            {availableDepartments.map((dept) => (
-              <option key={dept.department_name || dept} value={dept.department_name || dept}>
-                {dept.department_name || dept}
-              </option>
-            ))}
-          </select>
-        </div>
+      {loading && <p>Loading archived admins...</p>}
+      {error && <p className="text-red-500">{error}</p>}
 
-        {loading && <p>Loading archived admins...</p>}
-        {error && <p className="text-red-500">{error}</p>}
-
-        <table className="w-full bg-white shadow-md rounded-lg overflow-hidden text-black">
-          <thead>
-            <tr className="bg-[#01579B] text-white">
-              <th className="p-3">Full Name</th>
-              <th className="p-3">Email</th>
-              <th className="p-3">Employee #</th>
-              <th className="p-3">Department</th>
-              <th className="p-3">Role</th>
-              <th className="p-3">Archived Date</th>
-              <th className="p-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredAdmins.map((admin) => (
+      <table className="w-full bg-white shadow-md rounded-lg overflow-hidden text-black">
+        <thead>
+          <tr className="bg-[#01579B] text-white">
+            <th className="p-3">Full Name</th>
+            <th className="p-3">Email</th>
+            <th className="p-3">Employee #</th>
+            <th className="p-3">Department</th>
+            <th className="p-3">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filteredAdmins.length > 0 ? (
+            filteredAdmins.map((admin) => (
               <tr key={admin.id} className="text-center border-b">
                 <td className="p-3">{`${admin.first_name} ${admin.last_name}`}</td>
                 <td className="p-3">{admin.email}</td>
                 <td className="p-3">{admin.employee_number || '-'}</td>
                 <td className="p-3">{admin.department}</td>
-                <td className="p-3">
-                  <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
-                    Admin
-                  </span>
-                </td>
-                <td className="p-3">
-                  {admin.archived_at ? new Date(admin.archived_at).toLocaleDateString() : 'Unknown'}
-                </td>
-                <td className="p-2">
-                  <div className="flex flex-wrap justify-center gap-1 min-w-[200px]">
-                    {hasPermission('adminManagement', 'edit') && (
-                      <button
-                        onClick={() => restoreAdmin(admin.id)}
-                        className="bg-green-500 text-white px-1.5 py-0.5 rounded text-xs whitespace-nowrap"
-                      >
-                        Restore
-                      </button>
-                    )}
-                    {hasPermission('adminManagement', 'delete') && (
-                      <button
-                        onClick={() => permanentlyDeleteAdmin(admin.id)}
-                        className="bg-red-500 text-white px-1.5 py-0.5 rounded text-xs whitespace-nowrap"
-                      >
-                        Delete
-                      </button>
-                    )}
-                  </div>
+                <td className="p-3 flex justify-center gap-2">
+                  {hasPermission('adminManagement', 'edit') && (
+                    <button onClick={() => restoreAdmin(admin.id)} className="bg-yellow-500 text-white px-3 py-1 rounded">
+                      Restore
+                    </button>
+                  )}
+                  {hasPermission('adminManagement', 'delete') && (
+                    <button onClick={() => permanentlyDeleteAdmin(admin.id)} className="bg-red-700 text-white px-3 py-1 rounded">
+                      Permanently Delete
+                    </button>
+                  )}
                 </td>
               </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {filteredAdmins.length === 0 && !loading && (
-          <div className="text-center py-8">
-            <p className="text-gray-500">No archived admins found.</p>
-          </div>
-        )}
-      </div>
+            ))
+          ) : (
+            <tr>
+              <td colSpan="5" className="p-3 text-center">No archived admins found.</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }
