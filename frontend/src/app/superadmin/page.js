@@ -512,9 +512,9 @@ export default function SuperAdminDashboard() {
         // For 30d, distribute across the past 30 days
         else if (timeframe === '30d') {
           console.log(`[SuperAdmin] Processing 30d data for hour: ${hour}`);
-          // Use a consistent day based on the hour value to ensure deterministic results
-          // Ensure we're using the full range of 30 days
-          const dayOffset = Math.min(29, hour % 30);
+          // Use a more even distribution across 30 days
+          // Create a deterministic but varied distribution
+          const dayOffset = Math.min(29, (hour * 7 + Math.floor(hour / 3)) % 30);
           const targetDate = new Date(now.getTime() - dayOffset * 24 * 60 * 60 * 1000);
           date = targetDate.toISOString().split('T')[0];
           
@@ -524,7 +524,7 @@ export default function SuperAdminDashboard() {
           // Override the hour to be 12 for consistency
           hour = 12;
           
-          console.log(`[SuperAdmin] 30d data point: date=${date}, timestamp=${timestamp}`);
+          console.log(`[SuperAdmin] 30d data point: hour=${item.hour} -> dayOffset=${dayOffset}, date=${date}, timestamp=${timestamp}`);
         } 
         // Fallback for any other timeframe
         else {

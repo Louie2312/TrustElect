@@ -138,11 +138,13 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
         // Return a compact format for the chart
         return `${weekday}, ${monthDay}`;
       } else {
-        // For 30d view, show month and day only
-        return dateObj.toLocaleDateString('en-US', { 
+        // For 30d view, show month and day with weekday
+        const weekday = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+        const monthDay = dateObj.toLocaleDateString('en-US', { 
           month: 'short',
           day: 'numeric'
         });
+        return `${weekday} ${monthDay}`;
       }
     }
     
@@ -537,7 +539,7 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
     }
     
     // Process and enhance the raw data
-    const enhancedData = rawData.map(item => {
+    const enhancedData = rawData.map((item, index) => {
       // Extract or create timestamp information
       let timestamp = item.timestamp;
       let date = item.date;
@@ -568,10 +570,22 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
           date = targetDate.toISOString().split('T')[0];
           timestamp = new Date(`${date}T${hour.toString().padStart(2, '0')}:00:00`).toISOString();
         }
-        // For 30d, use a day from the past month
+        // For 30d, distribute data across the past 30 days more evenly
+        else if (timeframe === '30d') {
+          // Use the index to distribute data across 30 days
+          const dayOffset = Math.min(29, index % 30);
+          const targetDate = new Date(now.getTime() - dayOffset * 24 * 60 * 60 * 1000);
+          date = targetDate.toISOString().split('T')[0];
+          
+          // Always use noon (12:00) for 30d data for consistency
+          hour = 12;
+          timestamp = new Date(`${date}T12:00:00`).toISOString();
+          
+          console.log(`SystemLoadDetail - 30d: Item ${index} assigned to day ${dayOffset} (${date})`);
+        }
+        // Fallback for any other timeframe
         else {
-          // Use a consistent day based on the hour value to ensure deterministic results
-          const dayOffset = Math.min(29, hour % 30);
+          const dayOffset = Math.floor(Math.random() * 30);
           const targetDate = new Date(now.getTime() - dayOffset * 24 * 60 * 60 * 1000);
           date = targetDate.toISOString().split('T')[0];
           timestamp = new Date(`${date}T${hour.toString().padStart(2, '0')}:00:00`).toISOString();
@@ -666,12 +680,16 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
         const dateStr = slotDate.toISOString().split('T')[0];
         const timestamp = new Date(`${dateStr}T12:00:00`).toISOString();
         
-        // Add a sample data point with a small random count
+        // Create more realistic sample data with varying activity levels
+        // Higher activity on weekdays, lower on weekends
+        const isWeekend = slotDate.getDay() === 0 || slotDate.getDay() === 6;
+        const baseCount = isWeekend ? Math.floor(Math.random() * 3) + 1 : Math.floor(Math.random() * 8) + 3;
+        
         result.push({
           hour: 12,
           date: dateStr,
           timestamp,
-          count: Math.floor(Math.random() * 5) + 1, // Random count between 1-5
+          count: baseCount,
           displayTime: slotDate.toLocaleTimeString('en-US', { 
             hour: '2-digit', 
             minute: '2-digit',
@@ -684,12 +702,15 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
           }),
           day: slotDate.getDate(),
           month: slotDate.getMonth() + 1,
+          weekday: slotDate.toLocaleDateString('en-US', { weekday: 'short' }),
           isSampleData: true // Mark as sample data
         });
       }
       
-      // Sort by date
-      result.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      // Sort by date (most recent first)
+      result.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      
+      console.log('SystemLoadDetail - Generated sample 30d data:', result.slice(0, 5), '... (showing first 5 items)');
     }
     
     console.log(`SystemLoadDetail - Enhanced and filtered data for ${timeframe}:`, result);
