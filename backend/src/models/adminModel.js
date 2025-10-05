@@ -119,6 +119,23 @@ const getAllAdmins = async () => {
   }
 };
 
+const getAllAdminsIncludingDeleted = async () => {
+  try {
+    const query = `
+      SELECT users.id, users.first_name, users.last_name, users.email, users.is_active, 
+             users.is_deleted, admins.employee_number, admins.department, users.is_locked, users.locked_until
+      FROM users
+      JOIN admins ON users.id = admins.user_id
+      WHERE users.role_id = 2;
+    `;
+    const result = await pool.query(query);
+    return result.rows;
+  } catch (error) {
+    console.error("Error fetching all admins:", error);
+    throw error;
+  }
+};
+
 const getSuperAdmins = async () => {
   try {
     const query = `
@@ -339,4 +356,4 @@ const unlockAdminAccount = async (adminId) => {
   }
 };
 
-module.exports = {checkAdminEmailExists, checkEmployeeNumberExists, registerAdmin, getAdminByEmail, getAllAdmins, updateAdmin, softDeleteAdmin, restoreAdmin, resetAdminPassword, deleteAdminPermanently, unlockAdminAccount, getSuperAdmins, getAdminById};
+module.exports = {checkAdminEmailExists, checkEmployeeNumberExists, registerAdmin, getAdminByEmail, getAllAdmins, getAllAdminsIncludingDeleted, updateAdmin, softDeleteAdmin, restoreAdmin, resetAdminPassword, deleteAdminPermanently, unlockAdminAccount, getSuperAdmins, getAdminById};

@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken"); //Import jsonwebtoken
 const bcrypt = require("bcryptjs");
 const { validationResult } = require("express-validator");
-const { checkEmployeeNumberExists, registerAdmin, checkAdminEmailExists, getAllAdmins, updateAdmin, softDeleteAdmin, restoreAdmin, resetAdminPassword, deleteAdminPermanently, unlockAdminAccount, getSuperAdmins, getAdminById} = require("../models/adminModel");
+const { checkEmployeeNumberExists, registerAdmin, checkAdminEmailExists, getAllAdmins, getAllAdminsIncludingDeleted, updateAdmin, softDeleteAdmin, restoreAdmin, resetAdminPassword, deleteAdminPermanently, unlockAdminAccount, getSuperAdmins, getAdminById} = require("../models/adminModel");
 const crypto = require("crypto"); 
 const pool = require("../config/db");
 const { setAdminPermissions } = require('../models/adminPermissionModel');
@@ -110,7 +110,7 @@ exports.registerAdmin = async (req, res) => {
 
 exports.getAllAdmins = async (req, res) => {
   try {
-    const regularAdmins = await getAllAdmins();
+    const regularAdmins = await getAllAdminsIncludingDeleted();
     const superAdmins = await getSuperAdmins();
 
     const formattedSuperAdmins = superAdmins.map(admin => ({
