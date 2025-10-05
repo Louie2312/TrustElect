@@ -294,8 +294,8 @@ export default function AdminDepartmentsPage() {
       let response;
       
       try {
-        // First try admin endpoint with delete
-        response = await axios.delete(`/api/admin/departments/${id}`, {
+        // First try admin endpoint with delete action parameter
+        response = await axios.delete(`/api/admin/departments/${id}?action=delete`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         success = true;
@@ -303,16 +303,16 @@ export default function AdminDepartmentsPage() {
         console.warn("Error on first delete endpoint, trying fallback:", firstError.message);
         
         try {
-          // Try generic endpoint with delete
-          response = await axios.delete(`/api/departments/${id}`, {
+          // Try generic endpoint with delete action parameter
+          response = await axios.delete(`/api/departments/${id}?action=delete`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           success = true;
         } catch (secondError) {
           console.error("Error on generic delete endpoint:", secondError.message);
           
-          // Try superadmin endpoint as last resort
-          response = await axios.delete(`/api/superadmin/departments/${id}`, {
+          // Try superadmin endpoint as last resort with delete action parameter
+          response = await axios.delete(`/api/superadmin/departments/${id}?action=delete`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           success = true;

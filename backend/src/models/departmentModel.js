@@ -29,12 +29,13 @@ class Department {
     const query = `
       SELECT 
         d.*,
+        d.is_deleted,
         CONCAT(u.first_name, ' ', u.last_name) as admin_name,
         a.employee_number as admin_employee_number
       FROM departments d
       LEFT JOIN users u ON d.admin_id = u.id
       LEFT JOIN admins a ON u.id = a.user_id
-      WHERE d.is_active = true
+      WHERE d.is_active = true AND (d.is_deleted IS NULL OR d.is_deleted = FALSE)
       ORDER BY d.department_name ASC`;
     const { rows } = await pool.query(query);
     return rows;
@@ -69,13 +70,14 @@ class Department {
     return rows[0];
   }
 
-  static async delete(id) {
+  static async delete(id, action = 'archive') {
+    const isDeleted = action === 'delete';
     const query = `
-      UPDATE departments
-      SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $1
-      RETURNING *`;
-    const { rows } = await pool.query(query, [id]);
+      UPDATE departments 
+      SET is_active = FALSE, is_deleted = $2, updated_at = CURRENT_TIMESTAMP 
+      WHERE id = $1 RETURNING *;
+    `;
+    const { rows } = await pool.query(query, [id, isDeleted]);
     return rows[0];
   }
 
@@ -87,6 +89,21 @@ class Department {
       RETURNING *`;
     const { rows } = await pool.query(query, [id]);
     return rows[0];
+  }
+
+  static async findAllIncludingDeleted() {
+    const query = `
+      SELECT 
+        d.*,
+        d.is_deleted,
+        CONCAT(u.first_name, ' ', u.last_name) as admin_name,
+        a.employee_number as admin_employee_number
+      FROM departments d
+      LEFT JOIN users u ON d.admin_id = u.id
+      LEFT JOIN admins a ON u.id = a.user_id
+      ORDER BY d.department_name ASC`;
+    const { rows } = await pool.query(query);
+    return rows;
   }
 
   static async findArchived() {

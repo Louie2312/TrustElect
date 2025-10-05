@@ -77,7 +77,7 @@ exports.createDepartment = async (req, res) => {
 exports.getAllDepartments = async (req, res) => {
   try {
     console.log("Getting all departments");
-    const departments = await Department.findAll();
+    const departments = await Department.findAllIncludingDeleted();
     console.log("Departments found:", departments.length);
     console.log("First department (if any):", departments[0]);
     
@@ -165,7 +165,9 @@ exports.updateDepartment = async (req, res) => {
 
 exports.deleteDepartment = async (req, res) => {
   try {
-    const department = await Department.delete(req.params.id);
+    const { action } = req.query; // Check if it's archive or delete
+    
+    const department = await Department.delete(req.params.id, action);
     
     if (!department) {
       return res.status(404).json({ 
@@ -174,9 +176,13 @@ exports.deleteDepartment = async (req, res) => {
       });
     }
     
+    const message = action === 'delete' 
+      ? "Department moved to deleted folder successfully." 
+      : "Department archived successfully.";
+    
     res.json({
       success: true,
-      message: "Department deleted successfully",
+      message: message,
       department
     });
   } catch (error) {
