@@ -132,8 +132,9 @@ exports.getAllAdmins = async (req, res) => {
 
 exports.getArchivedAdmins = async (req, res) => {
   try {
-    // Get only archived admins
-    const archivedAdmins = await getAllAdmins(true); // Pass true for archived only
+    // Get only archived admins using the model function directly
+    const { getAllAdmins: getAllAdminsModel } = require('../models/adminModel');
+    const archivedAdmins = await getAllAdminsModel(true); // Pass true for archived only
     res.json({ admins: archivedAdmins });
   } catch (error) {
     console.error("Error fetching archived admins:", error);

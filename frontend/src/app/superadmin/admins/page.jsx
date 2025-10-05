@@ -52,7 +52,7 @@ export default function AdminsPage() {
   const fetchAdmins = async () => {
     try {
       const token = Cookies.get("token");
-      const res = await axios.get("/api/superadmin/admins", {
+      const res = await axios.get("/api/admin/admins", {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -120,7 +120,7 @@ export default function AdminsPage() {
       
       // Use the correct endpoint based on user role
       const endpoint = userRole === 'Super Admin' 
-        ? `/api/superadmin/admins/${id}`
+        ? `/api/admin/admins/${id}`
         : `/api/admin/manage-admins/${id}`;
       
       await axios.delete(endpoint, {
@@ -139,7 +139,7 @@ export default function AdminsPage() {
     try {
       const token = Cookies.get("token");
       await axios.patch(
-        `/api/superadmin/admins/${adminId}/unlock`,
+        `/api/admin/admins/${adminId}/unlock`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` },
