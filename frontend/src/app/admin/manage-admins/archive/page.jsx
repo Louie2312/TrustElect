@@ -11,7 +11,6 @@ export default function ArchivedAdminsPage() {
   const router = useRouter();
   const { hasPermission, permissionsLoading } = usePermissions();
   const [archivedAdmins, setArchivedAdmins] = useState([]);
-  const [filteredAdmins, setFilteredAdmins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -28,22 +27,16 @@ export default function ArchivedAdminsPage() {
   const fetchArchivedAdmins = async () => {
     try {
       const token = Cookies.get("token");
-      const res = await axios.get("/api/admin/manage-admins", {
+      const res = await axios.get("/api/admin/admins", {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
 
-      const updatedAdmins = res.data.admins.map(admin => ({
-        ...admin,
-        department: admin.department === "Administration" ? "Administrator" : admin.department
-      }));
-
-      setArchivedAdmins(updatedAdmins.filter(admin => !admin.is_active));
-      setFilteredAdmins(updatedAdmins.filter(admin => !admin.is_active));
+      setArchivedAdmins(res.data.admins.filter(admin => !admin.is_active));
+      setLoading(false);
     } catch (error) {
       console.error("Error fetching archived admins:", error);
-      setError("Failed to fetch archived admins");
-    } finally {
+      setError("Failed to load archived admins.");
       setLoading(false);
     }
   };
@@ -129,8 +122,8 @@ export default function ArchivedAdminsPage() {
           </tr>
         </thead>
         <tbody>
-          {filteredAdmins.length > 0 ? (
-            filteredAdmins.map((admin) => (
+          {archivedAdmins.length > 0 ? (
+            archivedAdmins.map((admin) => (
               <tr key={admin.id} className="text-center border-b">
                 <td className="p-3">{`${admin.first_name} ${admin.last_name}`}</td>
                 <td className="p-3">{admin.email}</td>
