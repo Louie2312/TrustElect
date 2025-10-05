@@ -1,149 +1,151 @@
-const pool = require("../config/db");
+const pool = require('../config/db');
 
-// Simple in-memory cache for system load data
-const systemLoadCache = {
-  '24h': { data: null, timestamp: 0 },
-  '7d': { data: null, timestamp: 0 },
-  '30d': { data: null, timestamp: 0 },
-  TTL: 5 * 60 * 1000 // 5 minutes cache TTL
-};
-
-/**
- * Get system load data (login and voting activity)
- * Optimized with caching and efficient queries
- */
-exports.getSystemLoadData = async (req, res) => {
+const getSystemLoad = async (req, res) => {
   try {
     const { timeframe = '24h' } = req.query;
+    console.log('System Load Request - Timeframe:', timeframe);
     
-    // Validate timeframe
-    if (!['24h', '7d', '30d'].includes(timeframe)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid timeframe. Must be one of: 24h, 7d, 30d"
-      });
-    }
-    
-    // Check cache first
-    const now = Date.now();
-    if (systemLoadCache[timeframe].data && (now - systemLoadCache[timeframe].timestamp < systemLoadCache.TTL)) {
-      console.log(`Using cached system load data for timeframe: ${timeframe}`);
-      return res.status(200).json({
-        success: true,
-        data: systemLoadCache[timeframe].data,
-        cached: true
-      });
-    }
-    
-    console.log(`Fetching fresh system load data for timeframe: ${timeframe}`);
-    
-    // Prepare time interval based on timeframe
-    let timeInterval;
+    let interval;
+    let grouping;
+    let dateFormat;
+
+    // Set the time interval and grouping based on timeframe
     switch (timeframe) {
-      case '24h':
-        timeInterval = "INTERVAL '24 hours'";
-        break;
       case '7d':
-        timeInterval = "INTERVAL '7 days'";
+        interval = 'INTERVAL \'7 days\'';
+        grouping = 'date_trunc(\'hour\', created_at)';
+        dateFormat = 'YYYY-MM-DD HH24:00:00';
         break;
       case '30d':
-        timeInterval = "INTERVAL '30 days'";
+        interval = 'INTERVAL \'30 days\'';
+        grouping = 'date_trunc(\'day\', created_at)';
+        dateFormat = 'YYYY-MM-DD';
         break;
-      default:
-        timeInterval = "INTERVAL '24 hours'";
+      default: // 24h
+        interval = 'INTERVAL \'24 hours\'';
+        grouping = 'date_trunc(\'hour\', created_at)';
+        dateFormat = 'YYYY-MM-DD HH24:00:00';
     }
-    
-    // Optimize queries with proper indexing and aggregation
-    const loginActivityQuery = `
+
+    // Get login activity with better data handling
+    const loginQuery = `
+      WITH hourly_logins AS (
+        SELECT 
+          ${grouping} as time_period,
+          COUNT(*) as count
+        FROM audit_logs
+        WHERE 
+          action = 'LOGIN'
+          AND created_at >= NOW() - ${interval}
+        GROUP BY ${grouping}
+        ORDER BY time_period
+      )
       SELECT 
-        EXTRACT(HOUR FROM created_at)::INTEGER as hour,
-        COUNT(*) as count
-      FROM audit_logs
-      WHERE action = 'login'
-        AND created_at > NOW() - ${timeInterval}
-      GROUP BY EXTRACT(HOUR FROM created_at)
-      ORDER BY hour
+        ${timeframe === '30d' ? 'EXTRACT(DAY FROM time_period) as hour' : 'EXTRACT(HOUR FROM time_period) as hour'},
+        count
+      FROM hourly_logins
     `;
-    
-    const votingActivityQuery = `
+
+    // Get voting activity with better data handling
+    const votingQuery = `
+      WITH hourly_votes AS (
+        SELECT 
+          ${grouping} as time_period,
+          COUNT(*) as count
+        FROM votes
+        WHERE created_at >= NOW() - ${interval}
+        GROUP BY ${grouping}
+        ORDER BY time_period
+      )
       SELECT 
-        EXTRACT(HOUR FROM created_at)::INTEGER as hour,
-        COUNT(*) as count
-      FROM votes
-      WHERE created_at > NOW() - ${timeInterval}
-      GROUP BY EXTRACT(HOUR FROM created_at)
-      ORDER BY hour
+        ${timeframe === '30d' ? 'EXTRACT(DAY FROM time_period) as hour' : 'EXTRACT(HOUR FROM time_period) as hour'},
+        count
+      FROM hourly_votes
     `;
-    
-    // Execute queries in parallel
-    const [loginActivityResult, votingActivityResult] = await Promise.all([
-      pool.query(loginActivityQuery),
-      pool.query(votingActivityQuery)
+
+    // Get peak hours and counts with better timeframe handling
+    const peakStatsQuery = `
+      WITH login_stats AS (
+        SELECT 
+          ${timeframe === '30d' ? 'EXTRACT(DAY FROM' : 'EXTRACT(HOUR FROM'} ${grouping}) as hour,
+          COUNT(*) as count
+        FROM audit_logs
+        WHERE 
+          action = 'LOGIN'
+          AND created_at >= NOW() - ${interval}
+        GROUP BY ${timeframe === '30d' ? 'EXTRACT(DAY FROM' : 'EXTRACT(HOUR FROM'} ${grouping})
+      ),
+      vote_stats AS (
+        SELECT 
+          ${timeframe === '30d' ? 'EXTRACT(DAY FROM' : 'EXTRACT(HOUR FROM'} ${grouping}) as hour,
+          COUNT(*) as count
+        FROM votes
+        WHERE created_at >= NOW() - ${interval}
+        GROUP BY ${timeframe === '30d' ? 'EXTRACT(DAY FROM' : 'EXTRACT(HOUR FROM'} ${grouping})
+      ),
+      active_users AS (
+        SELECT COUNT(DISTINCT user_id) as count
+        FROM audit_logs
+        WHERE created_at >= NOW() - ${interval}
+      )
+      SELECT
+        (SELECT COALESCE(hour || ':00', 'N/A') FROM login_stats ORDER BY count DESC LIMIT 1) as peak_login_hour,
+        (SELECT COALESCE(count, 0) FROM login_stats ORDER BY count DESC LIMIT 1) as peak_login_count,
+        (SELECT COALESCE(hour || ':00', 'N/A') FROM vote_stats ORDER BY count DESC LIMIT 1) as peak_voting_hour,
+        (SELECT COALESCE(count, 0) FROM vote_stats ORDER BY count DESC LIMIT 1) as peak_voting_count,
+        (SELECT COALESCE(count, 0) FROM active_users) as total_active_users
+    `;
+
+    console.log('Generated SQL Queries:');
+    console.log('Login Query:', loginQuery);
+    console.log('Voting Query:', votingQuery);
+    console.log('Peak Stats Query:', peakStatsQuery);
+
+    const [loginActivity, votingActivity, peakStats] = await Promise.all([
+      pool.query(loginQuery),
+      pool.query(votingQuery),
+      pool.query(peakStatsQuery)
     ]);
-    
-    // Format data for response
-    const systemLoadData = {
+
+    // Transform the data
+    const response = {
       summary: {
-        timeframe,
-        login_total: loginActivityResult.rows.reduce((sum, row) => sum + parseInt(row.count), 0),
-        voting_total: votingActivityResult.rows.reduce((sum, row) => sum + parseInt(row.count), 0)
+        peak_login_hour: peakStats.rows[0].peak_login_hour || 'N/A',
+        peak_login_count: parseInt(peakStats.rows[0].peak_login_count) || 0,
+        peak_voting_hour: peakStats.rows[0].peak_voting_hour || 'N/A',
+        peak_voting_count: parseInt(peakStats.rows[0].peak_voting_count) || 0,
+        total_active_users: parseInt(peakStats.rows[0].total_active_users) || 0
       },
-      login_activity: loginActivityResult.rows,
-      voting_activity: votingActivityResult.rows
+      login_activity: loginActivity.rows.map(row => ({
+        hour: parseInt(row.hour),
+        count: parseInt(row.count)
+      })),
+      voting_activity: votingActivity.rows.map(row => ({
+        hour: parseInt(row.hour),
+        count: parseInt(row.count)
+      }))
     };
-    
-    // Update cache
-    systemLoadCache[timeframe] = {
-      data: systemLoadData,
-      timestamp: now
-    };
-    
+
     res.status(200).json({
       success: true,
-      data: systemLoadData,
-      cached: false
+      data: response
     });
+
   } catch (error) {
-    console.error('Error fetching system load data:', error);
+    console.error('Error in getSystemLoad:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      timeframe: req.query.timeframe
+    });
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch system load data: ' + error.message
+      error: 'Failed to fetch system load data',
+      details: error.message
     });
   }
 };
 
-/**
- * Reset system load data cache
- * For admin use when data needs to be refreshed immediately
- */
-exports.resetSystemLoadCache = (req, res) => {
-  try {
-    const { timeframe } = req.query;
-    
-    if (timeframe && systemLoadCache[timeframe]) {
-      // Reset specific timeframe cache
-      systemLoadCache[timeframe] = { data: null, timestamp: 0 };
-      res.status(200).json({
-        success: true,
-        message: `Cache for timeframe ${timeframe} has been reset`
-      });
-    } else {
-      // Reset all caches
-      Object.keys(systemLoadCache).forEach(key => {
-        if (key !== 'TTL') {
-          systemLoadCache[key] = { data: null, timestamp: 0 };
-        }
-      });
-      res.status(200).json({
-        success: true,
-        message: 'All system load caches have been reset'
-      });
-    }
-  } catch (error) {
-    console.error('Error resetting system load cache:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to reset cache: ' + error.message
-    });
-  }
-};
+module.exports = {
+  getSystemLoad
+}; 

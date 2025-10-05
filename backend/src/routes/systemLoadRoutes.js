@@ -1,36 +1,19 @@
 const express = require('express');
 const router = express.Router();
-const { getSystemLoadData, resetSystemLoadCache } = require('../controllers/systemLoadController');
-const { verifyToken, isSuperAdmin, allowRoles } = require('../middlewares/authMiddleware');
-const { checkPermission } = require('../middlewares/permissionMiddleware');
+const { verifyToken, isSuperAdmin, isAdmin, allowRoles } = require('../middlewares/authMiddleware');
+const { getSystemLoad } = require('../controllers/systemLoadController');
+const { resetSystemLoadData, getResetStatus } = require('../controllers/systemLoadResetController');
 
-// Get system load data (login and voting activity)
-// Allow both Super Admin and Admin with 'reports' view permission
-router.get('/', 
-  verifyToken, 
-  (req, res, next) => {
-    // Super Admins always have access
-    if (req.user && req.user.role_id === 1) {
-      return next();
-    }
-    // For Admins, check specific permissions
-    checkPermission('reports', 'view')(req, res, next);
-  }, 
-  getSystemLoadData
-);
+// Middleware to allow both SuperAdmin and Admin
+const isAdminOrSuperAdmin = allowRoles("Super Admin", "Admin");
 
-// Reset system load data cache (admin and super admin with manage permission)
-router.post('/reset-cache', 
-  verifyToken,
-  (req, res, next) => {
-    // Super Admins always have access
-    if (req.user && req.user.role_id === 1) {
-      return next();
-    }
-    // For Admins, check specific permissions
-    checkPermission('system', 'manage')(req, res, next);
-  },
-  resetSystemLoadCache
-);
+// Get system load statistics
+router.get('/system-load', verifyToken, isAdminOrSuperAdmin, getSystemLoad);
 
-module.exports = router;
+// Reset system load data (only SuperAdmin can reset)
+router.post('/system-load/reset', verifyToken, isSuperAdmin, resetSystemLoadData);
+
+// Get reset status (only SuperAdmin can check reset status)
+router.get('/system-load/status', verifyToken, isSuperAdmin, getResetStatus);
+
+module.exports = router; 
