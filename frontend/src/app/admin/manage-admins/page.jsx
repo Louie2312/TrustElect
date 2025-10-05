@@ -270,14 +270,23 @@ export default function ManageAdminsPage() {
       {loading && <p>Loading admins...</p>}
       {error && <p className="text-red-500">{error}</p>}
 
-      {hasPermission('adminManagement', 'create') && (
+      <div className="flex gap-4 mb-4">
+        {hasPermission('adminManagement', 'create') && (
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="bg-[#01579B] text-white px-4 py-2 rounded"
+          >
+            Add New Admin
+          </button>
+        )}
+        
         <button
-          onClick={() => setShowAddModal(true)}
-          className="bg-[#01579B] text-white px-4 py-2 rounded mb-4"
+          onClick={() => router.push("/admin/manage-admins/archive")}
+          className="bg-gray-600 text-white px-4 py-2 rounded"
         >
-          Add New Admin
+          Archived
         </button>
-      )}
+      </div>
 
       <table className="w-full bg-white shadow-md rounded-lg overflow-hidden text-black">
         <thead>
