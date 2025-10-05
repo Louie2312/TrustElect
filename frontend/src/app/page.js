@@ -268,14 +268,14 @@ export default function Home() {
     <div className="relative min-h-screen bg-white flex flex-col">
       {/* Header Section - Updated to remove About button */}
       <header className="w-full flex justify-between items-center p-6 bg-[#01579B] shadow-md fixed top-0 left-0 right-0 z-50">
-        <h1 className="text-2xl font-bold flex items-center">
+        <h1 className="text-4xl font-bold flex items-center">
           {landingContent.logo?.imageUrl ? (
             <Image 
               src={`${formatImageUrl(landingContent.logo.imageUrl)}?timestamp=${new Date().getTime()}`}
               alt="Site Logo" 
-              width={50}
-              height={20} 
-              className="mr-2"
+              width={80}
+              height={40} 
+              className="mr-3"
               priority
               unoptimized={true}
               style={{ maxHeight: 'calc(51px - (0px * 2))' }}
@@ -321,9 +321,9 @@ export default function Home() {
             <Image 
               src={stiLogo} 
               alt="STI Logo" 
-              width={50}
-              height={20} 
-              className="mr-2"
+              width={80}
+              height={40} 
+              className="mr-3"
               priority
               style={{ maxHeight: 'calc(51px - (0px * 2))' }}
             />
