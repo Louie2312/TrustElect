@@ -36,7 +36,7 @@ export default function ArchivedAdminsPage() {
     if (!confirm("Are you sure you want to restore this Admin?")) return;
     try {
       const token = Cookies.get("token");
-      await axios.patch(`/api/admin/admins/${id}/restore`, {}, {
+      await axios.patch(`/api/admin/manage-admins/${id}/restore`, {}, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -59,7 +59,7 @@ export default function ArchivedAdminsPage() {
       const token = Cookies.get("token");
       console.log("Attempting to permanently delete admin ID:", selectedAdminId);
       
-      const response = await axios.delete(`/api/admin/admins/${selectedAdminId}/permanent-delete`, {
+      const response = await axios.delete(`/api/admin/manage-admins/${selectedAdminId}/permanent`, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
