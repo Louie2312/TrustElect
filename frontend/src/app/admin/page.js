@@ -214,6 +214,13 @@ export default function AdminDashboard() {
     completed: [],
     to_approve: []
   });
+  const [paginationState, setPaginationState] = useState({
+    ongoing: { page: 1, limit: 10, total: 0, totalPages: 0, hasMore: false },
+    upcoming: { page: 1, limit: 10, total: 0, totalPages: 0, hasMore: false },
+    completed: { page: 1, limit: 10, total: 0, totalPages: 0, hasMore: false },
+    to_approve: { page: 1, limit: 10, total: 0, totalPages: 0, hasMore: false }
+  });
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [stats, setStats] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -282,36 +289,13 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  // Load all elections data - memoized without activeTab dependency
-  const loadAllElections = useCallback(async () => {
+  // Load elections data for a specific tab with pagination
+  const loadElectionsForTab = useCallback(async (tabId, page = 1, limit = 10) => {
     try {
-      const statuses = ['ongoing', 'upcoming', 'completed'];
-      const results = {};
+      console.log(`Loading ${tabId} elections - page ${page}, limit ${limit}`);
       
-      await Promise.all(statuses.map(async (status) => {
-        try {
-          const response = await fetch(`/api/elections/status/${status}`, {
-            headers: {
-              'Authorization': `Bearer ${Cookies.get('token')}`,
-              'Content-Type': 'application/json'
-            }
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            results[status] = data || [];
-          } else {
-            console.error(`Error loading ${status} elections: ${response.status}`);
-            results[status] = [];
-          }
-        } catch (err) {
-          console.error(`Error fetching ${status} elections:`, err);
-          results[status] = [];
-        }
-      }));
-      
-      // Load pending approval elections
-      try {
+      if (tabId === 'to_approve') {
+        // Pending approval elections don't use pagination yet
         const response = await fetch(`/api/elections/admin-pending-approval`, {
           headers: {
             'Authorization': `Bearer ${Cookies.get('token')}`,
@@ -321,24 +305,69 @@ export default function AdminDashboard() {
         
         if (response.ok) {
           const data = await response.json();
-          results['to_approve'] = data || [];
+          return {
+            data: data || [],
+            pagination: {
+              page: 1,
+              limit: data.length,
+              total: data.length,
+              totalPages: 1,
+              hasMore: false
+            }
+          };
         } else {
           console.error(`Error loading pending approval elections: ${response.status}`);
-          results['to_approve'] = [];
+          return { data: [], pagination: { page: 1, limit, total: 0, totalPages: 0, hasMore: false } };
         }
-      } catch (err) {
-        console.error('Error fetching pending approval elections:', err);
-        results['to_approve'] = [];
+      } else {
+        // Regular status tabs use pagination
+        const response = await fetch(`/api/elections/status/${tabId}?page=${page}&limit=${limit}`, {
+          headers: {
+            'Authorization': `Bearer ${Cookies.get('token')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          return {
+            data: result.data || [],
+            pagination: result.pagination || { page, limit, total: 0, totalPages: 0, hasMore: false }
+          };
+        } else {
+          console.error(`Error loading ${tabId} elections: ${response.status}`);
+          return { data: [], pagination: { page, limit, total: 0, totalPages: 0, hasMore: false } };
+        }
+      }
+    } catch (err) {
+      console.error(`Error fetching ${tabId} elections:`, err);
+      return { data: [], pagination: { page, limit, total: 0, totalPages: 0, hasMore: false } };
+    }
+  }, []);
+
+  // Load all elections data - now uses pagination and loads tabs incrementally
+  const loadAllElections = useCallback(async () => {
+    try {
+      const statuses = ['ongoing', 'upcoming', 'completed', 'to_approve'];
+      const results = {};
+      const paginationInfo = {};
+      
+      // Load first page of each tab sequentially to avoid overwhelming the server
+      for (const status of statuses) {
+        const result = await loadElectionsForTab(status, 1, 10);
+        results[status] = result.data;
+        paginationInfo[status] = result.pagination;
       }
       
       setAllElections(results);
-      return results;
+      setPaginationState(paginationInfo);
+      return { results, paginationInfo };
     } catch (err) {
       console.error('Error in loadAllElections:', err);
       setError('Failed to load elections data');
       throw err;
     }
-  }, []);
+  }, [loadElectionsForTab]);
 
   // Load pending approvals only (for background refresh)
   const loadPendingApprovals = useCallback(async () => {
@@ -494,7 +523,7 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  // Single initialization effect - OPTIMIZED
+  // Optimized initialization effect with incremental loading
   useEffect(() => {
     let isMounted = true;
     
@@ -520,30 +549,70 @@ export default function AdminDashboard() {
         setIsLoading(true);
         setError(null);
         
-        // Load only critical data first
-        await Promise.all([
-          loadAllElections(),
-          loadStats(),
-          loadUIDesign(),
-          loadTotalUniqueVoters(), // Load total voters as critical data
-          loadSystemLoadData('7d') // Load system load data on initial load
-        ]);
+        console.log('Starting incremental dashboard loading...');
+        
+        // Phase 1: Load critical stats first (fast)
+        await loadStats();
         
         if (isMounted) {
-          setDataLoaded(true);
+          // Show UI with just stats data to improve perceived performance
           setIsLoading(false);
         }
         
-        // Load optional data in background (non-blocking) after critical data is loaded
-        setTimeout(() => {
+        // Phase 2: Load current tab data (medium priority)
+        const currentTabResult = await loadElectionsForTab(activeTab, 1, 10);
+        
+        if (isMounted) {
+          setElections(currentTabResult.data);
+          setAllElections(prev => ({
+            ...prev,
+            [activeTab]: currentTabResult.data
+          }));
+          setPaginationState(prev => ({
+            ...prev,
+            [activeTab]: currentTabResult.pagination
+          }));
+        }
+        
+        // Phase 3: Load remaining data in background (low priority)
+        setTimeout(async () => {
           if (isMounted) {
-            Promise.allSettled([
+            // Load UI design and total voters count
+            await Promise.allSettled([
+              loadUIDesign(),
+              loadTotalUniqueVoters()
+            ]);
+            
+            // Load other tabs data
+            const otherTabs = ['ongoing', 'upcoming', 'completed', 'to_approve'].filter(tab => tab !== activeTab);
+            
+            for (const tab of otherTabs) {
+              if (isMounted) {
+                const tabResult = await loadElectionsForTab(tab, 1, 10);
+                setAllElections(prev => ({
+                  ...prev,
+                  [tab]: tabResult.data
+                }));
+                setPaginationState(prev => ({
+                  ...prev,
+                  [tab]: tabResult.pagination
+                }));
+              }
+            }
+            
+            // Load optional visualization data
+            await Promise.allSettled([
+              loadSystemLoadData('7d'),
               loadLiveVoteCount().catch(err => {
                 console.log("[Admin] Live vote count not available:", err.message);
               })
             ]);
+            
+            if (isMounted) {
+              setDataLoaded(true);
+            }
           }
-        }, 1000); // 1 second delay to ensure UI is rendered first
+        }, 100);
         
       } catch (error) {
         console.error('Error loading dashboard data:', error);
@@ -559,45 +628,112 @@ export default function AdminDashboard() {
     // Set up intervals for auto-refresh (only after initial load)
     const intervals = [];
     
-    // Refresh pending approvals every 30 seconds (reduced frequency)
+    // Refresh stats every minute (high priority data)
     intervals.push(setInterval(() => {
-      if (isMounted && dataLoaded) {
-        loadAllElections().catch(err => {
-          console.log("[Admin] Error refreshing elections:", err.message);
-        });
-      }
-    }, 30000));
-    
-    // Refresh stats every 2 minutes (reduced frequency)
-    intervals.push(setInterval(() => {
-      if (isMounted && dataLoaded) {
+      if (isMounted) {
         loadStats().catch(err => {
           console.log("[Admin] Error refreshing stats:", err.message);
         });
       }
-    }, 120000));
+    }, 60000)); // 1 minute
     
-    // Refresh total voters every 5 minutes (reduced frequency)
+    // Refresh active tab data every 2 minutes
     intervals.push(setInterval(() => {
       if (isMounted && dataLoaded) {
-        loadTotalUniqueVoters().catch(err => {
-          console.log("[Admin] Total unique voters not available:", err.message);
-        });
+        loadElectionsForTab(activeTab, 1, 10)
+          .then(result => {
+            setElections(result.data);
+            setAllElections(prev => ({
+              ...prev,
+              [activeTab]: result.data
+            }));
+            setPaginationState(prev => ({
+              ...prev,
+              [activeTab]: result.pagination
+            }));
+          })
+          .catch(err => {
+            console.log(`[Admin] Error refreshing ${activeTab} elections:`, err.message);
+          });
       }
-    }, 300000)); // 5 minutes
+    }, 120000)); // 2 minutes
     
     return () => {
       isMounted = false;
       intervals.forEach(interval => clearInterval(interval));
     };
-  }, [permissionsLoading, hasPermission, dataLoaded, loadAllElections, loadStats, loadUIDesign, loadTotalUniqueVoters, loadLiveVoteCount, loadSystemLoadData]);
+  }, [
+    permissionsLoading, 
+    hasPermission, 
+    dataLoaded, 
+    activeTab,
+    loadElectionsForTab,
+    loadStats, 
+    loadUIDesign, 
+    loadTotalUniqueVoters, 
+    loadLiveVoteCount, 
+    loadSystemLoadData
+  ]);
 
-  // Handle tab change - update elections when tab or allElections change
+  // Handle tab change - update elections when tab changes and load data if needed
   useEffect(() => {
     if (allElections && allElections[activeTab]) {
       setElections(allElections[activeTab] || []);
+      
+      // If this tab has no data yet, load it
+      if (allElections[activeTab].length === 0 && !isLoading) {
+        loadElectionsForTab(activeTab, 1, 10)
+          .then(result => {
+            setElections(result.data);
+            setAllElections(prev => ({
+              ...prev,
+              [activeTab]: result.data
+            }));
+            setPaginationState(prev => ({
+              ...prev,
+              [activeTab]: result.pagination
+            }));
+          })
+          .catch(err => {
+            console.error(`Error loading ${activeTab} elections:`, err);
+          });
+      }
     }
-  }, [activeTab, allElections]);
+  }, [activeTab, allElections, isLoading, loadElectionsForTab]);
+  
+  // Function to load more elections for the current tab
+  const loadMoreElections = async () => {
+    const currentPagination = paginationState[activeTab];
+    if (!currentPagination.hasMore || isLoadingMore) return;
+    
+    try {
+      setIsLoadingMore(true);
+      const nextPage = currentPagination.page + 1;
+      
+      const result = await loadElectionsForTab(activeTab, nextPage, currentPagination.limit);
+      
+      if (result.data.length > 0) {
+        // Append new data to existing data
+        const updatedElections = [...allElections[activeTab], ...result.data];
+        
+        setElections(updatedElections);
+        setAllElections(prev => ({
+          ...prev,
+          [activeTab]: updatedElections
+        }));
+        
+        // Update pagination state
+        setPaginationState(prev => ({
+          ...prev,
+          [activeTab]: result.pagination
+        }));
+      }
+    } catch (error) {
+      console.error(`Error loading more ${activeTab} elections:`, error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
 
   // Ensure user ID is available from token - run once
   useEffect(() => {
@@ -1115,43 +1251,80 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {isLoading ? (
+      {isLoading && elections.length === 0 ? (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {elections.length > 0 ? (
-            elections.map((election, index) => (
-              <ElectionCard 
-                key={`${election.id}-${index}`} 
-                election={election} 
-                onClick={handleElectionClick}
-                onDeleteClick={handleDeleteClick}
-                canDelete={hasPermission('elections', 'delete')}
-                activeTab={activeTab}
-              />
-            ))
-          ) : (
-            <div className="col-span-full text-center py-12 bg-white rounded-lg shadow">
-              <div className="text-gray-400 mb-4">
-                {activeTab === 'ongoing' && <Clock className="w-16 h-16 mx-auto" />}
-                {activeTab === 'upcoming' && <Calendar className="w-16 h-16 mx-auto" />}
-                {activeTab === 'completed' && <CheckCircle className="w-16 h-16 mx-auto" />}
-                {activeTab === 'to_approve' && <AlertCircle className="w-16 h-16 mx-auto" />}
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {elections.length > 0 ? (
+              elections.map((election, index) => (
+                <ElectionCard 
+                  key={`${election.id}-${index}`} 
+                  election={election} 
+                  onClick={handleElectionClick}
+                  onDeleteClick={handleDeleteClick}
+                  canDelete={hasPermission('elections', 'delete')}
+                  activeTab={activeTab}
+                />
+              ))
+            ) : (
+              <div className="col-span-full text-center py-12 bg-white rounded-lg shadow">
+                <div className="text-gray-400 mb-4">
+                  {activeTab === 'ongoing' && <Clock className="w-16 h-16 mx-auto" />}
+                  {activeTab === 'upcoming' && <Calendar className="w-16 h-16 mx-auto" />}
+                  {activeTab === 'completed' && <CheckCircle className="w-16 h-16 mx-auto" />}
+                  {activeTab === 'to_approve' && <AlertCircle className="w-16 h-16 mx-auto" />}
+                </div>
+                <h3 className="text-2xl font-medium text-gray-900 mb-2">
+                  No {activeTab === 'to_approve' ? 'elections pending approval' : `${activeTab} elections`}
+                </h3>
+                <p className="text-lg text-gray-500 max-w-md mx-auto">
+                  {activeTab === 'ongoing' && 'There are currently no ongoing elections.'}
+                  {activeTab === 'upcoming' && 'No upcoming elections scheduled.'}
+                  {activeTab === 'completed' && 'No completed elections yet. Elections that have ended will be shown here.'}
+                  {activeTab === 'to_approve' && 'No elections are waiting for approval.'}
+                </p>
               </div>
-              <h3 className="text-2xl font-medium text-gray-900 mb-2">
-                No {activeTab === 'to_approve' ? 'elections pending approval' : `${activeTab} elections`}
-              </h3>
-              <p className="text-lg text-gray-500 max-w-md mx-auto">
-                {activeTab === 'ongoing' && 'There are currently no ongoing elections.'}
-                {activeTab === 'upcoming' && 'No upcoming elections scheduled.'}
-                {activeTab === 'completed' && 'No completed elections yet. Elections that have ended will be shown here.'}
-                {activeTab === 'to_approve' && 'No elections are waiting for approval.'}
-              </p>
+            )}
+          </div>
+          
+          {/* Load More Button */}
+          {paginationState[activeTab]?.hasMore && (
+            <div className="mt-8 flex justify-center">
+              <button
+                onClick={loadMoreElections}
+                disabled={isLoadingMore}
+                className="px-6 py-3 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 transition-colors duration-200 font-medium flex items-center justify-center min-w-[200px]"
+              >
+                {isLoadingMore ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-gray-800 mr-2"></div>
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    Load More
+                    <span className="ml-2 text-sm bg-gray-200 px-2 py-1 rounded-full">
+                      {paginationState[activeTab].page} of {paginationState[activeTab].totalPages}
+                    </span>
+                  </>
+                )}
+              </button>
             </div>
           )}
-        </div>
+          
+          {/* Loading indicator for background data loading */}
+          {isLoading && elections.length > 0 && (
+            <div className="mt-4 flex justify-center">
+              <div className="flex items-center text-sm text-gray-500">
+                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-gray-500 mr-2"></div>
+                Loading additional data...
+              </div>
+            </div>
+          )}
+        </>
       )}
       
       {/* Live Vote Count Section */}

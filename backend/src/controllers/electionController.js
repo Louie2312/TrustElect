@@ -322,13 +322,56 @@ exports.deleteElection = async (req, res) => {
 exports.getElectionsByStatus = async (req, res) => {
   try {
     const { status } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
     
-    const elections = await getElectionsByStatus(status);
+    // Validate pagination parameters
+    if (page < 1 || limit < 1 || limit > 50) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Invalid pagination parameters. Page must be >= 1 and limit must be between 1 and 50."
+      });
+    }
     
-    res.status(200).json(elections);
+    console.log(`Fetching ${status} elections - page ${page}, limit ${limit}`);
+    const elections = await getElectionsByStatus(status, page, limit);
+    
+    // Get total count for pagination metadata
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM elections e
+      WHERE e.status = $1 
+      AND (
+          e.needs_approval = FALSE 
+          OR e.needs_approval IS NULL
+          OR EXISTS (
+              SELECT 1 FROM users u 
+              WHERE u.id = e.created_by 
+              AND u.role_id = 1
+          )
+      )
+    `;
+    
+    const countResult = await pool.query(countQuery, [status]);
+    const total = parseInt(countResult.rows[0].total);
+    
+    res.status(200).json({
+      success: true,
+      data: elections,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasMore: page * limit < total
+      }
+    });
   } catch (error) {
     console.error(`Error fetching elections with status ${req.params.status}:`, error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
   }
 };
 

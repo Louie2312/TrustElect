@@ -22,49 +22,81 @@ const getElectionStatus = (date_from, date_to, start_time, end_time, needs_appro
 
 const getDisplayStatus = getElectionStatus;
 
-const getElectionsByStatus = async (status) => {
+const getElectionsByStatus = async (status, page = 1, limit = 10) => {
+  const offset = (page - 1) * limit;
+  
+  // First get just the election IDs with pagination
+  const electionIdsQuery = `
+    SELECT e.id
+    FROM elections e
+    WHERE e.status = $1 
+    AND (
+        e.needs_approval = FALSE 
+        OR e.needs_approval IS NULL
+        OR EXISTS (
+            SELECT 1 FROM users u 
+            WHERE u.id = e.created_by 
+            AND u.role_id = 1
+        )
+    )
+    ORDER BY e.date_from DESC
+    LIMIT $2 OFFSET $3
+  `;
+  
+  const electionIdsResult = await pool.query(electionIdsQuery, [status, limit, offset]);
+  const electionIds = electionIdsResult.rows.map(row => row.id);
+  
+  if (electionIds.length === 0) {
+    return [];
+  }
+  
+  // Then get the full election data for just those IDs using more efficient subqueries
   const result = await pool.query(`
-      SELECT 
-          e.id, 
-          e.title, 
-          e.description,
-          e.date_from,
-          e.date_to,
-          e.start_time,
-          e.end_time,
-          e.status,
-          e.created_at,
-          e.needs_approval,
-          COUNT(DISTINCT ev.id) AS voter_count,
-          COALESCE(COUNT(DISTINCT CASE WHEN v.id IS NOT NULL THEN CONCAT(v.student_id, '-', v.election_id) END), 0) AS vote_count,
-          EXISTS (
-              SELECT 1 FROM ballots b 
-              JOIN positions p ON b.id = p.ballot_id
-              WHERE b.election_id = e.id
-              LIMIT 1
-          ) AS ballot_exists
-      FROM elections e
-      LEFT JOIN eligible_voters ev ON e.id = ev.election_id
-      LEFT JOIN votes v ON e.id = v.election_id
-      LEFT JOIN ballots b ON e.id = b.election_id
-      WHERE e.status = $1 
-      AND (
-          e.needs_approval = FALSE 
-          OR e.needs_approval IS NULL
-          OR EXISTS (
-              SELECT 1 FROM users u 
-              WHERE u.id = e.created_by 
-              AND u.role_id = 1
-          )
-      )
-      GROUP BY e.id, b.id
-      ORDER BY e.date_from DESC
-  `, [status]);
+    SELECT 
+        e.id, 
+        e.title, 
+        e.description,
+        e.date_from,
+        e.date_to,
+        e.start_time,
+        e.end_time,
+        e.status,
+        e.created_at,
+        e.needs_approval,
+        (SELECT COUNT(*) FROM eligible_voters ev WHERE ev.election_id = e.id) AS voter_count,
+        (SELECT COUNT(DISTINCT student_id) FROM votes v WHERE v.election_id = e.id) AS vote_count,
+        EXISTS (
+            SELECT 1 FROM ballots b 
+            JOIN positions p ON b.id = p.ballot_id
+            WHERE b.election_id = e.id
+            LIMIT 1
+        ) AS ballot_exists
+    FROM elections e
+    WHERE e.id = ANY($1)
+    ORDER BY e.date_from DESC
+  `, [electionIds]);
   
   return result.rows;
 };
 
+// Simple in-memory cache for election statistics
+const statsCache = {
+  data: null,
+  timestamp: 0,
+  TTL: 5 * 60 * 1000 // 5 minutes cache TTL
+};
+
 const getElectionStatistics = async () => {
+  // Check if we have valid cached data
+  const now = Date.now();
+  if (statsCache.data && (now - statsCache.timestamp < statsCache.TTL)) {
+    console.log('Using cached election statistics');
+    return statsCache.data;
+  }
+  
+  console.log('Fetching fresh election statistics');
+  
+  // Use more efficient queries with subqueries instead of multiple joins
   const result = await pool.query(`
     SELECT 
       status,
@@ -75,11 +107,9 @@ const getElectionStatistics = async () => {
       SELECT 
         e.id,
         e.status,
-        COUNT(DISTINCT ev.id) as voter_count,
-        COALESCE(COUNT(DISTINCT CASE WHEN v.id IS NOT NULL THEN CONCAT(v.student_id, '-', v.election_id) END), 0) as vote_count
+        (SELECT COUNT(*) FROM eligible_voters ev WHERE ev.election_id = e.id) as voter_count,
+        (SELECT COUNT(DISTINCT student_id) FROM votes v WHERE v.election_id = e.id) as vote_count
       FROM elections e
-      LEFT JOIN eligible_voters ev ON e.id = ev.election_id
-      LEFT JOIN votes v ON e.id = v.election_id
       WHERE (
           e.needs_approval = FALSE 
           OR e.needs_approval IS NULL
@@ -89,10 +119,14 @@ const getElectionStatistics = async () => {
               AND u.role_id = 1
           )
       )
-      GROUP BY e.id
     ) as stats
     GROUP BY status
   `);
+  
+  // Update the cache
+  statsCache.data = result.rows;
+  statsCache.timestamp = now;
+  
   return result.rows;
 };
 
