@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
-import { Trash, RotateCcw } from "lucide-react";
+import { Trash } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 export default function DeletedDepartmentsPage() {
@@ -15,7 +15,8 @@ export default function DeletedDepartmentsPage() {
   const [error, setError] = useState("");
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedDepartmentId, setSelectedDepartmentId] = useState(null);
-  const [autoDeleteFilter, setAutoDeleteFilter] = useState("all");
+  const [autoDeleteEnabled, setAutoDeleteEnabled] = useState(false);
+  const [autoDeleteDays, setAutoDeleteDays] = useState(7);
 
   const fetchDeletedDepartments = async () => {
     try {
@@ -65,73 +66,72 @@ export default function DeletedDepartmentsPage() {
     }
   };
 
-  const filterByAutoDelete = (filter) => {
-    setAutoDeleteFilter(filter);
-    
-    if (filter === "all") {
-      setFilteredDepartments(deletedDepartments);
-      return;
-    }
 
-    const now = new Date();
-    const filtered = deletedDepartments.filter(dept => {
-      if (!dept.deleted_at) return false;
-      
-      const deletedDate = new Date(dept.deleted_at);
-      const daysDiff = Math.floor((now - deletedDate) / (1000 * 60 * 60 * 24));
-      
-      switch (filter) {
-        case "3days":
-          return daysDiff >= 3;
-        case "7days":
-          return daysDiff >= 7;
-        case "30days":
-          return daysDiff >= 30;
-        default:
-          return true;
-      }
-    });
+  const enableAutoDelete = () => {
+    if (!confirm(`Are you sure you want to enable auto-deletion? All deleted departments will be permanently deleted after ${autoDeleteDays} days.`)) return;
     
-    setFilteredDepartments(filtered);
+    setAutoDeleteEnabled(true);
+    toast.success(`Auto-deletion enabled for ${autoDeleteDays} days`);
+    
+    // Set up auto-deletion timer
+    const timer = setTimeout(() => {
+      performAutoDelete();
+    }, autoDeleteDays * 24 * 60 * 60 * 1000); // Convert days to milliseconds
+    
+    // Store timer ID for potential cancellation
+    localStorage.setItem('autoDeleteTimer', timer.toString());
   };
 
-  const restoreDepartment = async (id) => {
-    if (!confirm("Are you sure you want to restore this Department?")) return;
+  const disableAutoDelete = () => {
+    if (!confirm("Are you sure you want to disable auto-deletion?")) return;
+    
+    setAutoDeleteEnabled(false);
+    const timerId = localStorage.getItem('autoDeleteTimer');
+    if (timerId) {
+      clearTimeout(parseInt(timerId));
+      localStorage.removeItem('autoDeleteTimer');
+    }
+    toast.success("Auto-deletion disabled");
+  };
+
+  const performAutoDelete = async () => {
     try {
       const token = Cookies.get("token");
       
-      // Try multiple endpoints for restore
-      let success = false;
-      let response;
+      // Get all deleted departments that are older than the specified days
+      const now = new Date();
+      const cutoffDate = new Date(now.getTime() - (autoDeleteDays * 24 * 60 * 60 * 1000));
       
-      try {
-        // First try admin endpoint
-        response = await axios.patch(`/api/admin/departments/${id}/restore`, {}, {
-          headers: { Authorization: `Bearer ${token}` },
-          withCredentials: true,
-        });
-        success = true;
-      } catch (firstError) {
-        console.warn("Error on admin restore endpoint, trying fallback:", firstError.message);
-        
+      const departmentsToDelete = filteredDepartments.filter(dept => {
+        if (!dept.deleted_at) return false;
+        const deletedDate = new Date(dept.deleted_at);
+        return deletedDate <= cutoffDate;
+      });
+
+      if (departmentsToDelete.length === 0) {
+        toast.info("No departments found for auto-deletion");
+        return;
+      }
+
+      // Delete each department permanently
+      for (const dept of departmentsToDelete) {
         try {
-          // Try superadmin endpoint as fallback
-          response = await axios.patch(`/api/superadmin/departments/${id}/restore`, {}, {
+          await axios.delete(`/api/admin/departments/${dept.id}/permanent`, {
             headers: { Authorization: `Bearer ${token}` },
             withCredentials: true,
           });
-          success = true;
-        } catch (secondError) {
-          console.error("Error on superadmin restore endpoint:", secondError.message);
-          throw new Error("Failed to restore department");
+        } catch (error) {
+          console.error(`Error auto-deleting department ${dept.id}:`, error);
         }
       }
-      
-      toast.success("Department restored successfully");
+
+      toast.success(`${departmentsToDelete.length} departments auto-deleted successfully`);
       fetchDeletedDepartments();
+      setAutoDeleteEnabled(false);
+      localStorage.removeItem('autoDeleteTimer');
     } catch (error) {
-      console.error("Error restoring department:", error);
-      toast.error("Failed to restore department");
+      console.error("Error performing auto-deletion:", error);
+      toast.error("Failed to perform auto-deletion");
     }
   };
 
@@ -192,6 +192,12 @@ export default function DeletedDepartmentsPage() {
 
   useEffect(() => {
     fetchDeletedDepartments();
+    
+    // Check if there's an existing auto-delete timer
+    const existingTimer = localStorage.getItem('autoDeleteTimer');
+    if (existingTimer) {
+      setAutoDeleteEnabled(true);
+    }
   }, []);
 
   if (loading) {
@@ -214,25 +220,46 @@ export default function DeletedDepartmentsPage() {
           Back
         </button>
 
-        {/* Auto-Delete Filter */}
+        {/* Auto-Delete Controls */}
         <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
           <div className="flex items-center gap-4 mb-3">
-            <h3 className="text-sm font-semibold text-black">Auto-Delete Filter:</h3>
+            <h3 className="text-sm font-semibold text-black">Auto-Delete Settings:</h3>
           </div>
-          <div className="flex items-center gap-4">
-            <select
-              value={autoDeleteFilter}
-              onChange={(e) => filterByAutoDelete(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md text-sm text-black focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="all">All Deleted Departments</option>
-              <option value="3days">Ready for Auto-Delete (3+ days)</option>
-              <option value="7days">Ready for Auto-Delete (7+ days)</option>
-              <option value="30days">Ready for Auto-Delete (30+ days)</option>
-            </select>
-            {autoDeleteFilter !== "all" && (
-              <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                Showing departments deleted {autoDeleteFilter === "3days" ? "3+" : autoDeleteFilter === "7days" ? "7+" : "30+"} days ago
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-black">Delete after:</label>
+              <select
+                value={autoDeleteDays}
+                onChange={(e) => setAutoDeleteDays(parseInt(e.target.value))}
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm text-black focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                disabled={autoDeleteEnabled}
+              >
+                <option value={3}>3 days</option>
+                <option value={7}>7 days</option>
+                <option value={14}>14 days</option>
+                <option value={30}>30 days</option>
+                <option value={60}>60 days</option>
+              </select>
+            </div>
+            
+            {!autoDeleteEnabled ? (
+              <button
+                onClick={enableAutoDelete}
+                className="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 transition-colors"
+              >
+                Enable Auto-Delete
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <div className="text-sm text-green-600 bg-green-50 px-3 py-1 rounded">
+                  Auto-delete enabled for {autoDeleteDays} days
+                </div>
+                <button
+                  onClick={disableAutoDelete}
+                  className="bg-gray-500 text-white px-4 py-2 rounded text-sm hover:bg-gray-600 transition-colors"
+                >
+                  Disable
+                </button>
               </div>
             )}
           </div>
@@ -283,20 +310,12 @@ export default function DeletedDepartmentsPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-2">
                         <button
-                          onClick={() => restoreDepartment(department.id)}
-                          className="bg-yellow-500 text-white px-3 py-1 rounded text-sm flex items-center"
-                          title="Restore Department"
-                        >
-                          <RotateCcw className="w-4 h-4 mr-1" />
-                          Restore
-                        </button>
-                        <button
                           onClick={() => confirmPermanentDelete(department.id)}
                           className="bg-red-600 text-white px-3 py-1 rounded text-sm flex items-center"
                           title="Permanently Delete Department"
                         >
                           <Trash className="w-4 h-4 mr-1" />
-                          Delete
+                          Delete Now
                         </button>
                       </div>
                     </td>
