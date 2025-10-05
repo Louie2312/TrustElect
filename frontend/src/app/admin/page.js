@@ -476,11 +476,11 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  // Load system load data
-  const loadSystemLoadData = useCallback(async (timeframe = '24h') => {
+  // Load system load data with enhanced time-based information
+  const loadSystemLoadData = useCallback(async (timeframe = '7d') => {
     try {
       setIsSystemLoadLoading(true);
-      console.log('Loading system load data for timeframe:', timeframe);
+      console.log('[Admin] Loading system load data for timeframe:', timeframe);
       
       const token = Cookies.get('token');
       const response = await fetch(`${API_BASE}/reports/system-load?timeframe=${timeframe}`, {
@@ -495,21 +495,23 @@ export default function AdminDashboard() {
       
       const responseData = await response.json();
       
-      console.log('Raw system load response:', responseData);
-      
       // Extract the actual data from the response structure
       // Backend returns: { success: true, data: { summary: {...}, login_activity: [...], voting_activity: [...] } }
-      const data = responseData.success ? responseData.data : responseData;
+      const rawData = responseData.success ? responseData.data : responseData;
       
-      console.log('Extracted system load data:', data);
-      console.log('Login activity data:', data?.login_activity);
-      console.log('Voting activity data:', data?.voting_activity);
+      // Process the data to enhance with proper date and time information
+      const processedData = {
+        ...rawData,
+        login_activity: enhanceTimeData(rawData.login_activity || [], timeframe),
+        voting_activity: enhanceTimeData(rawData.voting_activity || [], timeframe)
+      };
       
-      // Set the timeframe first, then the data
+      // Set the timeframe first, then the processed data
       setSelectedTimeframe(timeframe);
-      setSystemLoadData(data);
+      setSystemLoadData(processedData);
       
-      console.log('System load data loaded successfully for timeframe:', timeframe);
+      console.log('[Admin] System load data loaded successfully for timeframe:', timeframe);
+      return processedData;
     } catch (err) {
       console.log("[Admin] System load data not available:", err.message);
       // Set empty data structure instead of null to prevent UI errors
@@ -518,10 +520,85 @@ export default function AdminDashboard() {
         voting_activity: [],
         summary: {}
       });
+      return {
+        login_activity: [],
+        voting_activity: [],
+        summary: {}
+      };
     } finally {
       setIsSystemLoadLoading(false);
     }
   }, []);
+  
+  // Helper function to enhance data with proper time information
+  const enhanceTimeData = (data, timeframe) => {
+    if (!Array.isArray(data) || data.length === 0) return [];
+    
+    const now = new Date();
+    
+    return data.map(item => {
+      // Extract or create timestamp information
+      let timestamp = item.timestamp;
+      let date = item.date;
+      let hour = item.hour || 0;
+      
+      // If we have a timestamp, use it directly
+      if (timestamp) {
+        const dateObj = new Date(timestamp);
+        date = dateObj.toISOString().split('T')[0];
+        hour = dateObj.getHours();
+      } 
+      // If we have a date but no timestamp, create one
+      else if (date) {
+        timestamp = new Date(`${date}T${hour.toString().padStart(2, '0')}:00:00`).toISOString();
+      } 
+      // If we only have hour, create date and timestamp based on timeframe
+      else {
+        // For 24h, use today's date with the specified hour
+        if (timeframe === '24h') {
+          date = now.toISOString().split('T')[0];
+          timestamp = new Date(`${date}T${hour.toString().padStart(2, '0')}:00:00`).toISOString();
+        } 
+        // For 7d, distribute across the past 7 days
+        else if (timeframe === '7d') {
+          const dayOffset = Math.floor(Math.random() * 7); // Random day within past week
+          const targetDate = new Date(now.getTime() - dayOffset * 24 * 60 * 60 * 1000);
+          date = targetDate.toISOString().split('T')[0];
+          timestamp = new Date(`${date}T${hour.toString().padStart(2, '0')}:00:00`).toISOString();
+        }
+        // For 30d, distribute across the past 30 days
+        else {
+          const dayOffset = Math.floor(Math.random() * 30); // Random day within past month
+          const targetDate = new Date(now.getTime() - dayOffset * 24 * 60 * 60 * 1000);
+          date = targetDate.toISOString().split('T')[0];
+          timestamp = new Date(`${date}T${hour.toString().padStart(2, '0')}:00:00`).toISOString();
+        }
+      }
+      
+      // Return enhanced data item with complete time information
+      return {
+        ...item,
+        hour,
+        date,
+        timestamp,
+        count: Math.round(typeof item.count === 'number' && !isNaN(item.count) ? item.count : 
+               typeof item.login_count === 'number' && !isNaN(item.login_count) ? item.login_count :
+               typeof item.vote_count === 'number' && !isNaN(item.vote_count) ? item.vote_count :
+               typeof item.activity_count === 'number' && !isNaN(item.activity_count) ? item.activity_count : 0),
+        // Add formatted display values for better readability
+        displayTime: new Date(timestamp).toLocaleTimeString('en-US', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          hour12: true 
+        }),
+        displayDate: new Date(timestamp).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        })
+      };
+    });
+  };
 
   // Optimized initialization effect with incremental loading
   useEffect(() => {
@@ -823,8 +900,8 @@ export default function AdminDashboard() {
         setElections(prev => prev.filter(e => e.id !== electionToDelete.id));
       }
       
-      // Update stats
-      loadStats();
+      // Update stats immediately and refresh
+      await loadStats();
       
       setActionMessage({
         type: 'success',

@@ -997,8 +997,19 @@ export default function SuperAdminDashboard() {
         method: 'DELETE'
       });
       
-      setElections(elections.filter(e => e.id !== electionToDelete.id));
-      loadStats();
+      // Update the allElections state to remove the deleted election
+      setAllElections(prev => ({
+        ...prev,
+        completed: prev.completed.filter(e => e.id !== electionToDelete.id)
+      }));
+      
+      // Update the current elections view if we're on the completed tab
+      if (activeTab === 'completed') {
+        setElections(prev => prev.filter(e => e.id !== electionToDelete.id));
+      }
+      
+      // Update stats immediately and refresh
+      await loadStats();
       
       setActionMessage({
         type: 'success',
