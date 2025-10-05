@@ -158,19 +158,19 @@ export default function ManageAdminsPage() {
       return;
     }
 
-    if (window.confirm("Are you sure you want to permanently delete this admin? This action CANNOT be undone!")) {
+    if (window.confirm("Are you sure you want to delete this admin? It will be moved to the deleted folder.")) {
       try {
         const token = Cookies.get("token");
-        await axios.delete(`/api/admin/admins/${adminId}/permanent-delete`, {
+        await axios.patch(`/api/admin/admins/${adminId}/delete`, {}, {
           headers: { Authorization: `Bearer ${token}` },
           withCredentials: true,
         });
 
-        toast.success("Admin permanently deleted");
+        toast.success("Admin moved to deleted folder");
         fetchAdmins();
       } catch (error) {
-        console.error("Error permanently deleting admin:", error);
-        toast.error("Failed to permanently delete admin");
+        console.error("Error deleting admin:", error);
+        toast.error("Failed to delete admin");
       }
     }
   };

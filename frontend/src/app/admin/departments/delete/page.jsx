@@ -10,10 +10,12 @@ import { toast } from "react-hot-toast";
 export default function DeletedDepartmentsPage() {
   const router = useRouter();
   const [deletedDepartments, setDeletedDepartments] = useState([]);
+  const [filteredDepartments, setFilteredDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedDepartmentId, setSelectedDepartmentId] = useState(null);
+  const [autoDeleteFilter, setAutoDeleteFilter] = useState("all");
 
   const fetchDeletedDepartments = async () => {
     try {
@@ -52,6 +54,7 @@ export default function DeletedDepartmentsPage() {
         // Filter for deleted departments (assuming there's an is_deleted field)
         const deletedDepts = departmentsArray.filter(dept => dept.is_deleted);
         setDeletedDepartments(deletedDepts);
+        setFilteredDepartments(deletedDepts);
       }
       
       setLoading(false);
@@ -60,6 +63,36 @@ export default function DeletedDepartmentsPage() {
       setError("Failed to load deleted departments.");
       setLoading(false);
     }
+  };
+
+  const filterByAutoDelete = (filter) => {
+    setAutoDeleteFilter(filter);
+    
+    if (filter === "all") {
+      setFilteredDepartments(deletedDepartments);
+      return;
+    }
+
+    const now = new Date();
+    const filtered = deletedDepartments.filter(dept => {
+      if (!dept.deleted_at) return false;
+      
+      const deletedDate = new Date(dept.deleted_at);
+      const daysDiff = Math.floor((now - deletedDate) / (1000 * 60 * 60 * 24));
+      
+      switch (filter) {
+        case "3days":
+          return daysDiff >= 3;
+        case "7days":
+          return daysDiff >= 7;
+        case "30days":
+          return daysDiff >= 30;
+        default:
+          return true;
+      }
+    });
+    
+    setFilteredDepartments(filtered);
   };
 
   const restoreDepartment = async (id) => {
@@ -181,10 +214,34 @@ export default function DeletedDepartmentsPage() {
           Back
         </button>
 
+        {/* Auto-Delete Filter */}
+        <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <div className="flex items-center gap-4 mb-3">
+            <h3 className="text-sm font-semibold text-black">Auto-Delete Filter:</h3>
+          </div>
+          <div className="flex items-center gap-4">
+            <select
+              value={autoDeleteFilter}
+              onChange={(e) => filterByAutoDelete(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm text-black focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="all">All Deleted Departments</option>
+              <option value="3days">Ready for Auto-Delete (3+ days)</option>
+              <option value="7days">Ready for Auto-Delete (7+ days)</option>
+              <option value="30days">Ready for Auto-Delete (30+ days)</option>
+            </select>
+            {autoDeleteFilter !== "all" && (
+              <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                Showing departments deleted {autoDeleteFilter === "3days" ? "3+" : autoDeleteFilter === "7days" ? "7+" : "30+"} days ago
+              </div>
+            )}
+          </div>
+        </div>
+
         {loading && <p>Loading deleted departments...</p>}
         {error && <p className="text-red-500">{error}</p>}
 
-        {deletedDepartments.length > 0 ? (
+        {filteredDepartments.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 bg-white rounded-lg shadow text-black">
               <thead className="bg-[#01579B] text-white">
@@ -204,7 +261,7 @@ export default function DeletedDepartmentsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {deletedDepartments.map((department) => (
+                {filteredDepartments.map((department) => (
                   <tr key={department.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium">{department.department_name}</div>

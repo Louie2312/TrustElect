@@ -8,10 +8,12 @@ import Cookies from "js-cookie";
 export default function DeletedAdminsPage() {
   const router = useRouter();
   const [deletedAdmins, setDeletedAdmins] = useState([]);
+  const [filteredAdmins, setFilteredAdmins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedAdminId, setSelectedAdminId] = useState(null);
+  const [autoDeleteFilter, setAutoDeleteFilter] = useState("all");
 
   const fetchDeletedAdmins = async () => {
     try {
@@ -21,13 +23,45 @@ export default function DeletedAdminsPage() {
         withCredentials: true,
       });
 
-      setDeletedAdmins(res.data.admins.filter(admin => admin.is_deleted));
+      const deleted = res.data.admins.filter(admin => admin.is_deleted);
+      setDeletedAdmins(deleted);
+      setFilteredAdmins(deleted);
       setLoading(false);
     } catch (error) {
       console.error("Error fetching deleted admins:", error);
       setError("Failed to load deleted admins.");
       setLoading(false);
     }
+  };
+
+  const filterByAutoDelete = (filter) => {
+    setAutoDeleteFilter(filter);
+    
+    if (filter === "all") {
+      setFilteredAdmins(deletedAdmins);
+      return;
+    }
+
+    const now = new Date();
+    const filtered = deletedAdmins.filter(admin => {
+      if (!admin.deleted_at) return false;
+      
+      const deletedDate = new Date(admin.deleted_at);
+      const daysDiff = Math.floor((now - deletedDate) / (1000 * 60 * 60 * 24));
+      
+      switch (filter) {
+        case "3days":
+          return daysDiff >= 3;
+        case "7days":
+          return daysDiff >= 7;
+        case "30days":
+          return daysDiff >= 30;
+        default:
+          return true;
+      }
+    });
+    
+    setFilteredAdmins(filtered);
   };
 
   const restoreAdmin = async (id) => {
@@ -99,6 +133,30 @@ export default function DeletedAdminsPage() {
         Back
       </button>
 
+      {/* Auto-Delete Filter */}
+      <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <div className="flex items-center gap-4 mb-3">
+          <h3 className="text-sm font-semibold text-black">Auto-Delete Filter:</h3>
+        </div>
+        <div className="flex items-center gap-4">
+          <select
+            value={autoDeleteFilter}
+            onChange={(e) => filterByAutoDelete(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-md text-sm text-black focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="all">All Deleted Admins</option>
+            <option value="3days">Ready for Auto-Delete (3+ days)</option>
+            <option value="7days">Ready for Auto-Delete (7+ days)</option>
+            <option value="30days">Ready for Auto-Delete (30+ days)</option>
+          </select>
+          {autoDeleteFilter !== "all" && (
+            <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+              Showing admins deleted {autoDeleteFilter === "3days" ? "3+" : autoDeleteFilter === "7days" ? "7+" : "30+"} days ago
+            </div>
+          )}
+        </div>
+      </div>
+
       {loading && <p>Loading deleted admins...</p>}
       {error && <p className="text-red-500">{error}</p>}
 
@@ -109,17 +167,19 @@ export default function DeletedAdminsPage() {
             <th className="p-3">Email</th>
             <th className="p-3">Employee #</th>
             <th className="p-3">Department</th>
+            <th className="p-3">Deleted Date</th>
             <th className="p-3">Actions</th>
           </tr>
         </thead>
         <tbody>
-          {deletedAdmins.length > 0 ? (
-            deletedAdmins.map((admin) => (
+          {filteredAdmins.length > 0 ? (
+            filteredAdmins.map((admin) => (
               <tr key={admin.id} className="text-center border-b">
                 <td className="p-3">{`${admin.first_name} ${admin.last_name}`}</td>
                 <td className="p-3">{admin.email}</td>
                 <td className="p-3">{admin.employee_number || '-'}</td>
                 <td className="p-3">{admin.department}</td>
+                <td className="p-3">{admin.deleted_at ? new Date(admin.deleted_at).toLocaleDateString() : 'Unknown'}</td>
                 <td className="p-3 flex justify-center gap-2">
                   <button onClick={() => restoreAdmin(admin.id)} className="bg-yellow-500 text-white px-3 py-1 rounded">
                     Restore
@@ -132,7 +192,7 @@ export default function DeletedAdminsPage() {
             ))
           ) : (
             <tr>
-              <td colSpan="5" className="p-3 text-center">No deleted admins found.</td>
+              <td colSpan="6" className="p-3 text-center">No deleted admins found.</td>
             </tr>
           )}
         </tbody>

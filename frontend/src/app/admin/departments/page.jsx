@@ -284,46 +284,46 @@ export default function AdminDepartmentsPage() {
       return;
     }
 
-    if (!confirm("Are you sure you want to permanently delete this department? This action CANNOT be undone!")) return;
+    if (!confirm("Are you sure you want to delete this department? It will be moved to the deleted folder.")) return;
     
     try {
       const token = Cookies.get("token");
       
-      // Try multiple API endpoints for permanent delete
+      // Try multiple API endpoints for delete (move to deleted folder)
       let success = false;
       let response;
       
       try {
-        // First try admin endpoint with permanent delete
-        response = await axios.delete(`/api/admin/departments/${id}/permanent`, {
+        // First try admin endpoint with delete
+        response = await axios.patch(`/api/admin/departments/${id}/delete`, {}, {
           headers: { Authorization: `Bearer ${token}` },
         });
         success = true;
       } catch (firstError) {
-        console.warn("Error on first permanent delete endpoint, trying fallback:", firstError.message);
+        console.warn("Error on first delete endpoint, trying fallback:", firstError.message);
         
         try {
-          // Try generic endpoint with permanent delete
-          response = await axios.delete(`/api/departments/${id}/permanent`, {
+          // Try generic endpoint with delete
+          response = await axios.patch(`/api/departments/${id}/delete`, {}, {
             headers: { Authorization: `Bearer ${token}` },
           });
           success = true;
         } catch (secondError) {
-          console.error("Error on generic permanent delete endpoint:", secondError.message);
+          console.error("Error on generic delete endpoint:", secondError.message);
           
           // Try superadmin endpoint as last resort
-          response = await axios.delete(`/api/superadmin/departments/${id}/permanent`, {
+          response = await axios.patch(`/api/superadmin/departments/${id}/delete`, {}, {
             headers: { Authorization: `Bearer ${token}` },
           });
           success = true;
         }
       }
       
-      toast.success(response.data.message || "Department permanently deleted");
+      toast.success(response.data.message || "Department moved to deleted folder");
       fetchDepartments();
     } catch (error) {
-      console.error("Error permanently deleting department:", error);
-      toast.error(error.response?.data?.message || "Failed to permanently delete department");
+      console.error("Error deleting department:", error);
+      toast.error(error.response?.data?.message || "Failed to delete department");
     }
   };
 
