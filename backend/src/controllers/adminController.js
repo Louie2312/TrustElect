@@ -110,7 +110,8 @@ exports.registerAdmin = async (req, res) => {
 
 exports.getAllAdmins = async (req, res) => {
   try {
-    const regularAdmins = await getAllAdmins();
+    const { getAllAdmins: getAllAdminsModel } = require('../models/adminModel');
+    const regularAdmins = await getAllAdminsModel(false); // Pass false for active only
     const superAdmins = await getSuperAdmins();
 
     const formattedSuperAdmins = superAdmins.map(admin => ({
