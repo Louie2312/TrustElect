@@ -278,6 +278,55 @@ export default function AdminDepartmentsPage() {
     }
   };
 
+  const handlePermanentDelete = async (id) => {
+    if (!hasPermission('departments', 'delete') && !checkRoleBasedPermission('delete')) {
+      toast.error("You don't have permission to delete departments");
+      return;
+    }
+
+    if (!confirm("Are you sure you want to permanently delete this department? This action CANNOT be undone!")) return;
+    
+    try {
+      const token = Cookies.get("token");
+      
+      // Try multiple API endpoints for permanent delete
+      let success = false;
+      let response;
+      
+      try {
+        // First try admin endpoint with permanent delete
+        response = await axios.delete(`/api/admin/departments/${id}/permanent`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        success = true;
+      } catch (firstError) {
+        console.warn("Error on first permanent delete endpoint, trying fallback:", firstError.message);
+        
+        try {
+          // Try generic endpoint with permanent delete
+          response = await axios.delete(`/api/departments/${id}/permanent`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          success = true;
+        } catch (secondError) {
+          console.error("Error on generic permanent delete endpoint:", secondError.message);
+          
+          // Try superadmin endpoint as last resort
+          response = await axios.delete(`/api/superadmin/departments/${id}/permanent`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          success = true;
+        }
+      }
+      
+      toast.success(response.data.message || "Department permanently deleted");
+      fetchDepartments();
+    } catch (error) {
+      console.error("Error permanently deleting department:", error);
+      toast.error(error.response?.data?.message || "Failed to permanently delete department");
+    }
+  };
+
   const handleAssignAdmin = (department) => {
     if (!hasPermission('departments', 'edit') && !checkRoleBasedPermission('edit')) {
       toast.error("You don't have permission to manage department admins");
@@ -393,6 +442,14 @@ export default function AdminDepartmentsPage() {
           <Archive className="w-5 h-5 mr-2" />
           Archived Departments
         </button>
+        
+        <button
+          onClick={() => router.push("/admin/departments/delete")}
+          className="flex items-center text-white bg-red-600 px-4 py-2 rounded hover:bg-red-700"
+        >
+          <Trash className="w-5 h-5 mr-2" />
+          Deleted Departments
+        </button>
       </div>
 
       {/* Departments Table */}
@@ -505,6 +562,14 @@ export default function AdminDepartmentsPage() {
                             title="Archive Department"
                           > 
                             <Archive className="w-4 h-4 mr-1" />
+                            Archive
+                          </button>
+                          <button
+                            onClick={() => handlePermanentDelete(department.id)}
+                            className="bg-red-600 text-white px-3 py-1 rounded text-sm flex items-center"
+                            title="Permanently Delete Department"
+                          > 
+                            <Trash className="w-4 h-4 mr-1" />
                             Delete
                           </button>
                         </div>

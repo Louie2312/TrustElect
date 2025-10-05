@@ -146,6 +146,35 @@ export default function ManageAdminsPage() {
     }
   };
 
+  const handlePermanentDeleteAdmin = async (adminId) => {
+    if (!hasPermission('adminManagement', 'delete')) {
+      toast.error("You don't have permission to delete admins");
+      return;
+    }
+
+    // Check if user is trying to delete themselves
+    if (currentUserId && parseInt(currentUserId) === parseInt(adminId)) {
+      toast.error("You cannot delete your own account.");
+      return;
+    }
+
+    if (window.confirm("Are you sure you want to permanently delete this admin? This action CANNOT be undone!")) {
+      try {
+        const token = Cookies.get("token");
+        await axios.delete(`/api/admin/admins/${adminId}/permanent-delete`, {
+          headers: { Authorization: `Bearer ${token}` },
+          withCredentials: true,
+        });
+
+        toast.success("Admin permanently deleted");
+        fetchAdmins();
+      } catch (error) {
+        console.error("Error permanently deleting admin:", error);
+        toast.error("Failed to permanently delete admin");
+      }
+    }
+  };
+
   const unlockAdminAccount = async (adminId) => {
     if (!hasPermission('adminManagement', 'edit')) {
       toast.error("You don't have permission to unlock admin accounts");
@@ -286,6 +315,13 @@ export default function ManageAdminsPage() {
         >
           Archived
         </button>
+        
+        <button
+          onClick={() => router.push("/admin/manage-admins/delete")}
+          className="bg-red-600 text-white px-4 py-2 rounded"
+        >
+          Deleted
+        </button>
       </div>
 
       <table className="w-full bg-white shadow-md rounded-lg overflow-hidden text-black">
@@ -356,6 +392,14 @@ export default function ManageAdminsPage() {
                       className="bg-yellow-500 text-white px-1.5 py-0.5 rounded text-xs whitespace-nowrap"
                     >
                       Archive
+                    </button>
+                  )}
+                  {hasPermission('adminManagement', 'delete') && !isCurrentUser(admin) && (
+                    <button
+                      onClick={() => handlePermanentDeleteAdmin(admin.id)}
+                      className="bg-red-600 text-white px-1.5 py-0.5 rounded text-xs whitespace-nowrap"
+                    >
+                      Delete
                     </button>
                   )}
                   {hasPermission('adminManagement', 'edit') && (
