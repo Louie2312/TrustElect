@@ -710,7 +710,7 @@ export default function SuperAdminDashboard() {
 
   return (
     <div className="container mx-auto px-4 py-8 min-h-screen">
-      <h1 className="text-3xl font-bold mb-2 text-black">Dashboard</h1>      
+      <h1 className="text-4xl font-bold mb-3 text-black">Dashboard</h1>      
      
       {actionMessage && (
         <div className={`mb-4 p-4 rounded-lg shadow ${actionMessage.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' : 'bg-red-100 text-red-800 border-l-4 border-red-500'}`}>
@@ -721,20 +721,20 @@ export default function SuperAdminDashboard() {
      
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="font-medium mb-2 text-black">Total Elections</h3>
-          <p className="text-3xl font-bold text-black">
+          <h3 className="text-xl font-medium mb-2 text-black">Total Elections</h3>
+          <p className="text-4xl font-bold text-black">
             {Number(stats.reduce((sum, stat) => sum + parseInt(stat.count || 0), 0)).toLocaleString()}
           </p>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="font-medium mb-2 text-black">Total Voters</h3>
-          <p className="text-3xl font-bold text-black">
+          <h3 className="text-xl font-medium mb-2 text-black">Total Voters</h3>
+          <p className="text-4xl font-bold text-black">
             {Number(totalUniqueVoters).toLocaleString()}
           </p>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="font-medium mb-2 text-black">Total Votes Cast</h3>
-          <p className="text-3xl font-bold text-black">
+          <h3 className="text-xl font-medium mb-2 text-black">Total Votes Cast</h3>
+          <p className="text-4xl font-bold text-black">
             {Number(stats.reduce((sum, stat) => sum + parseInt(stat.total_votes || 0), 0)).toLocaleString()}
           </p>
         </div>
@@ -750,7 +750,7 @@ export default function SuperAdminDashboard() {
             return (
               <button
                 key={tab.id}
-                className={`flex items-center justify-center px-6 py-3 font-medium text-sm transition-colors duration-200 flex-1 
+                className={`flex items-center justify-center px-6 py-3 font-medium text-base transition-colors duration-200 flex-1 
                   ${activeTab === tab.id 
                     ? 'bg-gray-200 text-black font-bold rounded-md' 
                     : hasPending 
@@ -784,7 +784,7 @@ export default function SuperAdminDashboard() {
       </div>
   
        <div className="mb-6 flex justify-between items-center">
-        <h2 className="text-xl font-bold text-black">
+        <h2 className="text-2xl font-bold text-black">
           {activeTab === 'ongoing' && 'Ongoing Elections'}
           {activeTab === 'upcoming' && 'Upcoming Elections'}
           {activeTab === 'completed' && 'Completed Elections'}
@@ -836,10 +836,10 @@ export default function SuperAdminDashboard() {
                 {activeTab === 'completed' && <CheckCircle className="w-16 h-16 mx-auto" />}
                 {activeTab === 'to_approve' && <AlertCircle className="w-16 h-16 mx-auto" />}
               </div>
-              <h3 className="text-xl font-medium text-gray-900 mb-2">
+              <h3 className="text-2xl font-medium text-gray-900 mb-2">
                 No {activeTab === 'to_approve' ? 'elections pending approval' : `${activeTab} elections`}
               </h3>
-              <p className="text-black max-w-md mx-auto">
+              <p className="text-lg text-black max-w-md mx-auto">
                 {activeTab === 'ongoing' && 'There are currently no ongoing elections.'}
                 {activeTab === 'upcoming' && 'No upcoming elections scheduled.'}
                 {activeTab === 'completed' && 'No completed elections yet. Elections that have ended will be shown here.'}
@@ -926,10 +926,10 @@ export default function SuperAdminDashboard() {
       {/* System Load Reports - Direct Display */}
       <div className="mt-8 bg-white rounded-lg shadow-lg p-6 border border-gray-200">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-bold text-black flex items-center">
+          <h2 className="text-2xl font-bold text-black flex items-center">
             <BarChart className="mr-2 text-black" />
             System Load Reports
-            <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+            <span className="ml-2 text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
               Analytics
             </span>
           </h2>
@@ -1026,7 +1026,7 @@ export default function SuperAdminDashboard() {
                         <div className="p-1.5 bg-blue-500 rounded">
                           <Clock className="w-4 h-4 text-white" />
                         </div>
-                        <h3 className="text-sm font-semibold text-black">Peak Login Hour</h3>
+                        <h3 className="text-base font-semibold text-black">Peak Login Hour</h3>
                       </div>
                       <p className="text-2xl font-bold text-black mb-1">
                         {formatTime(chartConfig.login.peak.hour)}
@@ -1040,7 +1040,7 @@ export default function SuperAdminDashboard() {
                         <div className="p-1.5 bg-green-500 rounded">
                           <Activity className="w-4 h-4 text-white" />
                         </div>
-                        <h3 className="text-sm font-semibold text-black">Peak Voting Hour</h3>
+                        <h3 className="text-base font-semibold text-black">Peak Voting Hour</h3>
                       </div>
                       <p className="text-2xl font-bold text-black mb-1">
                         {formatTime(chartConfig.voting.peak.hour)}
@@ -1054,7 +1054,7 @@ export default function SuperAdminDashboard() {
                         <div className="p-1.5 bg-purple-500 rounded">
                           <Users className="w-4 h-4 text-white" />
                         </div>
-                        <h3 className="text-sm font-semibold text-black">Total Activity</h3>
+                        <h3 className="text-base font-semibold text-black">Total Activity</h3>
                       </div>
                       <p className="text-2xl font-bold text-black mb-1">
                         {Math.round(chartConfig.login.total + chartConfig.voting.total).toLocaleString()}
@@ -1086,7 +1086,7 @@ export default function SuperAdminDashboard() {
                       ) : (
                         <>
                           <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-lg text-black font-bold">Login Activity</h3>
+                            <h3 className="text-xl text-black font-bold">Login Activity</h3>
                             <div className="flex items-center gap-2 text-xs text-gray-600">
                               <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                               <span>Peak: {formatTime(chartConfig.login.peak.hour)} ({Math.round(chartConfig.login.peak.count).toLocaleString()} logins)</span>
@@ -1167,7 +1167,7 @@ export default function SuperAdminDashboard() {
                       ) : (
                         <>
                           <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-lg text-black font-bold">Voting Activity</h3>
+                            <h3 className="text-xl text-black font-bold">Voting Activity</h3>
                             <div className="flex items-center gap-2 text-xs text-gray-600">
                               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                               <span>Peak: {formatTime(chartConfig.voting.peak.hour)} ({Math.round(chartConfig.voting.peak.count).toLocaleString()} votes)</span>
