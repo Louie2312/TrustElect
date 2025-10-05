@@ -477,6 +477,7 @@ export default function AdminDashboard() {
   }, []);
 
   // Load system load data with enhanced time-based information
+  // Using 7d as default for better data visualization
   const loadSystemLoadData = useCallback(async (timeframe = '7d') => {
     try {
       setIsSystemLoadLoading(true);
