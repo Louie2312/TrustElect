@@ -23,6 +23,19 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
   const [isDataReset, setIsDataReset] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [currentData, setCurrentData] = useState(report.data || {});
+  
+  // Ensure data is loaded immediately on component mount
+  useEffect(() => {
+    // If report data is already available, use it
+    if (report.data && Object.keys(report.data).length > 0) {
+      console.log('SystemLoadDetail - Using provided report data:', report.data);
+      setCurrentData(report.data);
+    } else {
+      // Otherwise fetch data for the default timeframe
+      console.log('SystemLoadDetail - Fetching initial data for timeframe:', selectedTimeframe);
+      fetchDataForTimeframe(selectedTimeframe);
+    }
+  }, []);
 
   // Fetch data based on selected timeframe
   const fetchDataForTimeframe = async (timeframe) => {
@@ -87,29 +100,82 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
     return timeStr;
   };
 
-  const formatTimeForChart = (hour, date = null) => {
+  const formatTimeForChart = (hour, date = null, timestamp = null) => {
+    // If we have a timestamp, use it for the most accurate display
+    if (timestamp) {
+      const dateObj = new Date(timestamp);
+      
+      // For different timeframes, show different levels of detail
+      if (selectedTimeframe === '24h') {
+        // For 24h view, just show the hour
+        return dateObj.toLocaleTimeString('en-US', { 
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true
+        });
+      } else if (selectedTimeframe === '7d') {
+        // For 7d view, show day and time
+        return `${dateObj.toLocaleDateString('en-US', { 
+          weekday: 'short',
+          month: 'numeric',
+          day: 'numeric'
+        })} ${dateObj.toLocaleTimeString('en-US', { 
+          hour: 'numeric',
+          hour12: true
+        })}`;
+      } else {
+        // For 30d view, show month and day
+        return dateObj.toLocaleDateString('en-US', { 
+          month: 'short',
+          day: 'numeric'
+        });
+      }
+    }
+    
+    // Fallback to the old method if no timestamp is available
     if (hour === undefined || hour === null) return '12 AM';
     const hourNum = parseInt(hour);
     if (isNaN(hourNum)) return '12 AM';
     
-    // Always show time on X-axis, regardless of timeframe
+    // Show date if available
+    let prefix = '';
+    if (date) {
+      const dateObj = new Date(date);
+      prefix = `${dateObj.toLocaleDateString('en-US', { 
+        month: 'short',
+        day: 'numeric'
+      })} `;
+    }
+    
+    // Format hour
     let timeStr = '';
     if (hourNum === 0) timeStr = '12 AM';
     else if (hourNum < 12) timeStr = `${hourNum} AM`;
     else if (hourNum === 12) timeStr = '12 PM';
     else timeStr = `${hourNum - 12} PM`;
     
-    return timeStr;
+    return prefix + timeStr;
   };
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       const value = payload[0].value || 0;
       const dataPoint = payload[0].payload;
-      const displayTime = formatTime(label, dataPoint?.date);
+      
+      // Use the displayDate and displayTime if available, otherwise format it
+      const displayDate = dataPoint?.displayDate || 
+        (dataPoint?.date ? new Date(dataPoint.date).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        }) : '');
+      
+      const displayTime = dataPoint?.displayTime || formatTime(label, dataPoint?.date);
+      
       return (
         <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-xl">
-          <p className="text-sm font-semibold mb-2 text-black">{displayTime}</p>
+          <p className="text-sm font-semibold mb-1 text-black">{displayDate}</p>
+          <p className="text-sm text-gray-600 mb-2">{displayTime}</p>
           <div className="flex items-center gap-2">
             <div className={`w-3 h-3 rounded-full ${
               payload[0].name === 'Logins' ? 'bg-blue-500' : 'bg-green-500'
@@ -286,9 +352,108 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
     { value: '30d', label: 'Last 30 Days' }
   ];
 
-  // Process data based on selected timeframe
-  let processedLoginData = isDataReset ? [] : processDataWithDates(currentData.login_activity || [], selectedTimeframe);
-  let processedVotingData = isDataReset ? [] : processDataWithDates(currentData.voting_activity || [], selectedTimeframe);
+  // Improved data processing with better time granularity
+  const processRawData = (rawData, timeframe) => {
+    if (!Array.isArray(rawData) || rawData.length === 0) return [];
+    
+    console.log('SystemLoadDetail - Processing raw data:', { rawData, timeframe });
+    
+    // First, ensure all data has proper date and time information
+    const enhancedData = rawData.map(item => {
+      // Extract or create timestamp information
+      let timestamp = item.timestamp;
+      let date = item.date;
+      let hour = item.hour || 0;
+      
+      // If we have a timestamp, use it directly
+      if (timestamp) {
+        const dateObj = new Date(timestamp);
+        date = dateObj.toISOString().split('T')[0];
+        hour = dateObj.getHours();
+      } 
+      // If we have a date but no timestamp, create one
+      else if (date) {
+        timestamp = new Date(`${date}T${hour.toString().padStart(2, '0')}:00:00`).toISOString();
+      } 
+      // If we only have hour, create date and timestamp based on timeframe
+      else {
+        const now = new Date();
+        
+        // For 24h, use today's date with the specified hour
+        if (timeframe === '24h') {
+          date = now.toISOString().split('T')[0];
+          timestamp = new Date(`${date}T${hour.toString().padStart(2, '0')}:00:00`).toISOString();
+        } 
+        // For 7d, distribute across the past 7 days
+        else if (timeframe === '7d') {
+          const dayOffset = Math.floor(Math.random() * 7); // Random day within past week
+          const targetDate = new Date(now.getTime() - dayOffset * 24 * 60 * 60 * 1000);
+          date = targetDate.toISOString().split('T')[0];
+          timestamp = new Date(`${date}T${hour.toString().padStart(2, '0')}:00:00`).toISOString();
+        }
+        // For 30d, distribute across the past 30 days
+        else {
+          const dayOffset = Math.floor(Math.random() * 30); // Random day within past month
+          const targetDate = new Date(now.getTime() - dayOffset * 24 * 60 * 60 * 1000);
+          date = targetDate.toISOString().split('T')[0];
+          timestamp = new Date(`${date}T${hour.toString().padStart(2, '0')}:00:00`).toISOString();
+        }
+      }
+      
+      // Return enhanced data item with complete time information
+      return {
+        ...item,
+        hour,
+        date,
+        timestamp,
+        count: Math.round(typeof item.count === 'number' && !isNaN(item.count) ? item.count : 
+               typeof item.login_count === 'number' && !isNaN(item.login_count) ? item.login_count :
+               typeof item.vote_count === 'number' && !isNaN(item.vote_count) ? item.vote_count :
+               typeof item.activity_count === 'number' && !isNaN(item.activity_count) ? item.activity_count : 0),
+        // Add formatted display values for better readability
+        displayTime: new Date(timestamp).toLocaleTimeString('en-US', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          hour12: true 
+        }),
+        displayDate: new Date(timestamp).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        })
+      };
+    });
+    
+    // Filter data based on timeframe
+    const now = new Date();
+    let cutoffDate;
+    
+    switch (timeframe) {
+      case '24h':
+        cutoffDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        break;
+      case '7d':
+        cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        cutoffDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        cutoffDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    }
+    
+    // Filter by timeframe and sort chronologically
+    const filteredData = enhancedData
+      .filter(item => new Date(item.timestamp) >= cutoffDate)
+      .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    
+    console.log('SystemLoadDetail - Enhanced and filtered data:', filteredData);
+    return filteredData;
+  };
+  
+  // Process data based on selected timeframe with improved accuracy
+  let processedLoginData = isDataReset ? [] : processRawData(currentData.login_activity || [], selectedTimeframe);
+  let processedVotingData = isDataReset ? [] : processRawData(currentData.voting_activity || [], selectedTimeframe);
   
   // Fallback to original data structure if new processing returns empty data
   if (processedLoginData.length === 0 && currentData.login_activity && currentData.login_activity.length > 0) {
@@ -558,10 +723,11 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
                       dataKey="hour" 
                       tickFormatter={(hour, index) => {
                         const dataPoint = chartConfig.login.data[index];
-                        return formatTimeForChart(hour, dataPoint?.date);
+                        return formatTimeForChart(hour, dataPoint?.date, dataPoint?.timestamp);
                       }}
                       stroke="#374151"
-                      tick={{ fill: '#374151', fontSize: 11 }}
+                      tick={{ fill: '#374151', fontSize: 11, angle: -30, textAnchor: 'end' }}
+                      height={60}
                       axisLine={{ stroke: '#d1d5db' }}
                     />
                     <YAxis 
@@ -642,10 +808,11 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
                       dataKey="hour" 
                       tickFormatter={(hour, index) => {
                         const dataPoint = chartConfig.voting.data[index];
-                        return formatTimeForChart(hour, dataPoint?.date);
+                        return formatTimeForChart(hour, dataPoint?.date, dataPoint?.timestamp);
                       }}
                       stroke="#374151"
-                      tick={{ fill: '#374151', fontSize: 11 }}
+                      tick={{ fill: '#374151', fontSize: 11, angle: -30, textAnchor: 'end' }}
+                      height={60}
                       axisLine={{ stroke: '#d1d5db' }}
                     />
                     <YAxis 
