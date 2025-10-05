@@ -17,43 +17,19 @@ import {
 } from 'recharts';
 
 export default function SystemLoadDetail({ report, onClose, onDownload }) {
-  // Change default timeframe to 7d for better data visibility
-  const [selectedTimeframe, setSelectedTimeframe] = useState('7d');
+  const [selectedTimeframe, setSelectedTimeframe] = useState('24h');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [isDataReset, setIsDataReset] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [currentData, setCurrentData] = useState(report.data || {});
-  
-  // Ensure data is loaded immediately on component mount
-  useEffect(() => {
-    // If report data is already available, use it but still fetch 7d data
-    if (report.data && Object.keys(report.data).length > 0) {
-      console.log('SystemLoadDetail - Using provided report data:', report.data);
-      setCurrentData(report.data);
-      
-      // If the provided data was for a different timeframe, fetch 7d data anyway
-      if (report.timeframe !== '7d') {
-        console.log('SystemLoadDetail - Fetching 7d data for better visualization');
-        fetchDataForTimeframe('7d');
-      }
-    } else {
-      // Otherwise fetch data for the default timeframe (7d)
-      console.log('SystemLoadDetail - Fetching initial data for timeframe: 7d');
-      fetchDataForTimeframe('7d');
-    }
-  }, []);
 
   // Fetch data based on selected timeframe
   const fetchDataForTimeframe = async (timeframe) => {
     setIsLoading(true);
     try {
-      console.log(`SystemLoadDetail - Fetching data for timeframe: ${timeframe}`);
-      
       const token = document.cookie.split('token=')[1]?.split(';')[0];
-      // Add debug parameter to help troubleshoot 30-day issues
-      const debugParam = timeframe === '30d' ? '&debug=true' : '';
-      const response = await fetch(`/api/reports/system-load?timeframe=${timeframe}${debugParam}`, {
+      const response = await fetch(`/api/reports/system-load?timeframe=${timeframe}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -111,121 +87,29 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
     return timeStr;
   };
 
-  const formatTimeForChart = (hour, date = null, timestamp = null) => {
-    // If we have a timestamp, use it for the most accurate display
-    if (timestamp) {
-      const dateObj = new Date(timestamp);
-      
-      // For different timeframes, show different levels of detail
-      if (selectedTimeframe === '24h') {
-        // For 24h view, just show the hour
-        return dateObj.toLocaleTimeString('en-US', { 
-          hour: 'numeric',
-          hour12: true
-        });
-      } else if (selectedTimeframe === '7d') {
-        // For 7d view, show weekday and time
-        const weekday = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
-        const monthDay = dateObj.toLocaleDateString('en-US', { 
-          month: 'short',
-          day: 'numeric'
-        });
-        const time = dateObj.toLocaleTimeString('en-US', { 
-          hour: 'numeric',
-          hour12: true
-        });
-        
-        // Return a compact format for the chart
-        return `${weekday}, ${monthDay}`;
-      } else {
-        // For 30d view, show month and day with weekday
-        const weekday = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
-        const monthDay = dateObj.toLocaleDateString('en-US', { 
-          month: 'short',
-          day: 'numeric'
-        });
-        return `${weekday} ${monthDay}`;
-      }
-    }
-    
-    // Fallback to the old method if no timestamp is available
+  const formatTimeForChart = (hour, date = null) => {
     if (hour === undefined || hour === null) return '12 AM';
     const hourNum = parseInt(hour);
     if (isNaN(hourNum)) return '12 AM';
     
-    // Show date if available
-    let prefix = '';
-    if (date) {
-      const dateObj = new Date(date);
-      prefix = `${dateObj.toLocaleDateString('en-US', { 
-        month: 'short',
-        day: 'numeric'
-      })} `;
-    }
-    
-    // Format hour
+    // Always show time on X-axis, regardless of timeframe
     let timeStr = '';
     if (hourNum === 0) timeStr = '12 AM';
     else if (hourNum < 12) timeStr = `${hourNum} AM`;
     else if (hourNum === 12) timeStr = '12 PM';
     else timeStr = `${hourNum - 12} PM`;
     
-    return prefix + timeStr;
+    return timeStr;
   };
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       const value = payload[0].value || 0;
       const dataPoint = payload[0].payload;
-      
-      // Use the displayDate and displayTime if available, otherwise format it
-      const displayDate = dataPoint?.displayDate || 
-        (dataPoint?.date ? new Date(dataPoint.date).toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric'
-        }) : '');
-      
-      const displayTime = dataPoint?.displayTime || formatTime(label, dataPoint?.date);
-      
-      // Format title based on timeframe
-      let title = displayDate;
-      let subtitle = displayTime;
-      
-      if (selectedTimeframe === '7d') {
-        // For 7d, show weekday, date and time
-        if (dataPoint?.timestamp) {
-          const dateObj = new Date(dataPoint.timestamp);
-          title = dateObj.toLocaleDateString('en-US', {
-            weekday: 'long',
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-          });
-          subtitle = dateObj.toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-          });
-        }
-      } else if (selectedTimeframe === '30d') {
-        // For 30d, show full date
-        if (dataPoint?.timestamp) {
-          const dateObj = new Date(dataPoint.timestamp);
-          title = dateObj.toLocaleDateString('en-US', {
-            weekday: 'long',
-            month: 'long',
-            day: 'numeric',
-            year: 'numeric'
-          });
-          subtitle = "Daily Summary";
-        }
-      }
-      
+      const displayTime = formatTime(label, dataPoint?.date);
       return (
         <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-xl">
-          <p className="text-sm font-semibold mb-1 text-black">{title}</p>
-          <p className="text-sm text-gray-600 mb-2">{subtitle}</p>
+          <p className="text-sm font-semibold mb-2 text-black">{displayTime}</p>
           <div className="flex items-center gap-2">
             <div className={`w-3 h-3 rounded-full ${
               payload[0].name === 'Logins' ? 'bg-blue-500' : 'bg-green-500'
@@ -234,22 +118,6 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
               {payload[0].name}: <span className="font-bold text-black">{Math.round(value).toLocaleString()}</span>
             </p>
           </div>
-          {selectedTimeframe === '7d' && (
-            <p className="text-xs text-gray-500 mt-1">
-              {dataPoint.count > 0 ? 
-                `Showing aggregated data for ${subtitle.toLowerCase()} time period` : 
-                'No activity during this time period'}
-            </p>
-          )}
-          {selectedTimeframe === '30d' && (
-            <p className="text-xs text-gray-500 mt-1">
-              {dataPoint.isSampleData ? 
-                'Sample data - No actual data available for this timeframe' : 
-                dataPoint.count > 0 ? 
-                  'Showing aggregated data for the entire day' : 
-                  'No activity on this day'}
-            </p>
-          )}
         </div>
       );
     }
@@ -424,122 +292,8 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
     
     console.log('SystemLoadDetail - Processing raw data:', { rawData, timeframe });
     
-    const now = new Date();
-    let cutoffDate;
-    
-    switch (timeframe) {
-      case '24h':
-        cutoffDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        break;
-      case '7d':
-        cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case '30d':
-        cutoffDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        break;
-      default:
-        cutoffDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    }
-    
-    // Generate a complete time series for the selected timeframe
-    const timeSeriesMap = new Map();
-    
-    // For 24h: Generate hourly slots for the past 24 hours
-    if (timeframe === '24h') {
-      for (let i = 0; i < 24; i++) {
-        const slotTime = new Date(now.getTime() - i * 60 * 60 * 1000);
-        const hour = slotTime.getHours();
-        const dateStr = slotTime.toISOString().split('T')[0];
-        const key = `${dateStr}-${hour}`;
-        timeSeriesMap.set(key, {
-          hour: hour,
-          date: dateStr,
-          timestamp: new Date(`${dateStr}T${hour.toString().padStart(2, '0')}:00:00`).toISOString(),
-          count: 0,
-          displayTime: slotTime.toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
-            minute: '2-digit',
-            hour12: true 
-          }),
-          displayDate: slotTime.toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-          })
-        });
-      }
-    } 
-    // For 7d: Generate daily slots for the past 7 days
-    else if (timeframe === '7d') {
-      for (let i = 0; i < 7; i++) {
-        const slotDate = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-        const dateStr = slotDate.toISOString().split('T')[0];
-        
-        // Create entries for key hours of the day (morning, noon, evening)
-        [9, 12, 15, 18].forEach(hour => {
-          const key = `${dateStr}-${hour}`;
-          const slotTime = new Date(`${dateStr}T${hour.toString().padStart(2, '0')}:00:00`);
-          timeSeriesMap.set(key, {
-            hour: hour,
-            date: dateStr,
-            timestamp: slotTime.toISOString(),
-            count: 0,
-            displayTime: slotTime.toLocaleTimeString('en-US', { 
-              hour: '2-digit', 
-              minute: '2-digit',
-              hour12: true 
-            }),
-            displayDate: slotTime.toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric'
-            })
-          });
-        });
-      }
-    } 
-    // For 30d: Generate daily slots for the past 30 days
-    else if (timeframe === '30d') {
-      // Debug log to verify this code is being executed
-      console.log('SystemLoadDetail - Generating 30d time series data');
-      
-      // Create a full 30-day time series with one data point per day
-      for (let i = 0; i < 30; i++) {
-        const slotDate = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-        const dateStr = slotDate.toISOString().split('T')[0];
-        
-        // Use noon (12:00) as the representative time for each day
-        const key = `${dateStr}-12`;
-        const slotTime = new Date(`${dateStr}T12:00:00`);
-        
-        // Create a data point for this day
-        timeSeriesMap.set(key, {
-          hour: 12, // Always use noon as the hour for consistency
-          date: dateStr,
-          timestamp: slotTime.toISOString(),
-          count: 0, // Initialize with zero count
-          displayTime: slotTime.toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
-            minute: '2-digit',
-            hour12: true 
-          }),
-          displayDate: slotTime.toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-          }),
-          // Add day of month for easier debugging
-          day: slotDate.getDate(),
-          month: slotDate.getMonth() + 1
-        });
-      }
-      
-      // Debug log to verify data was created
-      console.log('SystemLoadDetail - Generated 30d time series data points:', timeSeriesMap.size);
-    }
-    
-    // Process and enhance the raw data
-    const enhancedData = rawData.map((item, index) => {
+    // First, ensure all data has proper date and time information
+    const enhancedData = rawData.map(item => {
       // Extract or create timestamp information
       let timestamp = item.timestamp;
       let date = item.date;
@@ -557,48 +311,28 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
       } 
       // If we only have hour, create date and timestamp based on timeframe
       else {
+        const now = new Date();
+        
         // For 24h, use today's date with the specified hour
         if (timeframe === '24h') {
           date = now.toISOString().split('T')[0];
           timestamp = new Date(`${date}T${hour.toString().padStart(2, '0')}:00:00`).toISOString();
         } 
-        // For 7d, use a day from the past week
+        // For 7d, distribute across the past 7 days
         else if (timeframe === '7d') {
-          // Use a consistent day based on the hour value to ensure deterministic results
-          const dayOffset = Math.min(6, hour % 7);
+          const dayOffset = Math.floor(Math.random() * 7); // Random day within past week
           const targetDate = new Date(now.getTime() - dayOffset * 24 * 60 * 60 * 1000);
           date = targetDate.toISOString().split('T')[0];
           timestamp = new Date(`${date}T${hour.toString().padStart(2, '0')}:00:00`).toISOString();
         }
-        // For 30d, distribute data across the past 30 days more evenly
-        else if (timeframe === '30d') {
-          // Use the index to distribute data across 30 days
-          const dayOffset = Math.min(29, index % 30);
-          const targetDate = new Date(now.getTime() - dayOffset * 24 * 60 * 60 * 1000);
-          date = targetDate.toISOString().split('T')[0];
-          
-          // Always use noon (12:00) for 30d data for consistency
-          hour = 12;
-          timestamp = new Date(`${date}T12:00:00`).toISOString();
-          
-          console.log(`SystemLoadDetail - 30d: Item ${index} assigned to day ${dayOffset} (${date})`);
-        }
-        // Fallback for any other timeframe
+        // For 30d, distribute across the past 30 days
         else {
-          const dayOffset = Math.floor(Math.random() * 30);
+          const dayOffset = Math.floor(Math.random() * 30); // Random day within past month
           const targetDate = new Date(now.getTime() - dayOffset * 24 * 60 * 60 * 1000);
           date = targetDate.toISOString().split('T')[0];
           timestamp = new Date(`${date}T${hour.toString().padStart(2, '0')}:00:00`).toISOString();
         }
       }
-      
-      // Calculate count
-      const count = Math.round(
-        typeof item.count === 'number' && !isNaN(item.count) ? item.count : 
-        typeof item.login_count === 'number' && !isNaN(item.login_count) ? item.login_count :
-        typeof item.vote_count === 'number' && !isNaN(item.vote_count) ? item.vote_count :
-        typeof item.activity_count === 'number' && !isNaN(item.activity_count) ? item.activity_count : 0
-      );
       
       // Return enhanced data item with complete time information
       return {
@@ -606,7 +340,11 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
         hour,
         date,
         timestamp,
-        count,
+        count: Math.round(typeof item.count === 'number' && !isNaN(item.count) ? item.count : 
+               typeof item.login_count === 'number' && !isNaN(item.login_count) ? item.login_count :
+               typeof item.vote_count === 'number' && !isNaN(item.vote_count) ? item.vote_count :
+               typeof item.activity_count === 'number' && !isNaN(item.activity_count) ? item.activity_count : 0),
+        // Add formatted display values for better readability
         displayTime: new Date(timestamp).toLocaleTimeString('en-US', { 
           hour: '2-digit', 
           minute: '2-digit',
@@ -620,101 +358,31 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
       };
     });
     
-    // Merge the raw data with our time series
-    enhancedData.forEach(item => {
-      const dateObj = new Date(item.timestamp);
-      const dateStr = dateObj.toISOString().split('T')[0];
-      let key;
-      
-      if (timeframe === '24h') {
-        key = `${dateStr}-${item.hour}`;
-      } else if (timeframe === '7d') {
-        // Find the closest time slot (morning, noon, evening)
-        const hour = item.hour;
-        let slotHour;
-        if (hour < 10) slotHour = 9;
-        else if (hour < 13) slotHour = 12;
-        else if (hour < 16) slotHour = 15;
-        else slotHour = 18;
-        key = `${dateStr}-${slotHour}`;
-      }       else if (timeframe === '30d') {
-        // For 30d, aggregate by day using noon as the representative time
-        key = `${dateStr}-12`;
-        
-        // Debug log for 30d data merging
-        console.log(`SystemLoadDetail - 30d: Processing data point for ${dateStr} with count ${item.count}`);
-      }
-      
-      if (timeSeriesMap.has(key)) {
-        const existing = timeSeriesMap.get(key);
-        const newCount = existing.count + item.count;
-        
-        // Debug log for 30d data merging
-        if (timeframe === '30d') {
-          console.log(`SystemLoadDetail - 30d: Merging data for ${dateStr}, existing: ${existing.count}, adding: ${item.count}, new total: ${newCount}`);
-        }
-        
-        timeSeriesMap.set(key, {
-          ...existing,
-          count: newCount
-        });
-      } else if (timeframe === '30d') {
-        // If we don't find a matching key for 30d, this is unusual and should be logged
-        console.log(`SystemLoadDetail - 30d: WARNING - No matching time slot found for ${dateStr} with hour ${item.hour}`);
-      }
-    });
+    // Filter data based on timeframe
+    const now = new Date();
+    let cutoffDate;
     
-    // Convert the map to an array and filter by the cutoff date
-    let result = Array.from(timeSeriesMap.values())
+    switch (timeframe) {
+      case '24h':
+        cutoffDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        break;
+      case '7d':
+        cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        cutoffDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        cutoffDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    }
+    
+    // Filter by timeframe and sort chronologically
+    const filteredData = enhancedData
       .filter(item => new Date(item.timestamp) >= cutoffDate)
       .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     
-    // Special handling for 30d data to ensure we have data points
-    if (timeframe === '30d' && result.length === 0) {
-      console.log('SystemLoadDetail - No 30d data after filtering, generating sample data');
-      
-      // Generate sample data for the past 30 days if no data is available
-      result = [];
-      for (let i = 0; i < 30; i++) {
-        const slotDate = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-        const dateStr = slotDate.toISOString().split('T')[0];
-        const timestamp = new Date(`${dateStr}T12:00:00`).toISOString();
-        
-        // Create more realistic sample data with varying activity levels
-        // Higher activity on weekdays, lower on weekends
-        const isWeekend = slotDate.getDay() === 0 || slotDate.getDay() === 6;
-        const baseCount = isWeekend ? Math.floor(Math.random() * 3) + 1 : Math.floor(Math.random() * 8) + 3;
-        
-        result.push({
-          hour: 12,
-          date: dateStr,
-          timestamp,
-          count: baseCount,
-          displayTime: slotDate.toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
-            minute: '2-digit',
-            hour12: true 
-          }),
-          displayDate: slotDate.toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-          }),
-          day: slotDate.getDate(),
-          month: slotDate.getMonth() + 1,
-          weekday: slotDate.toLocaleDateString('en-US', { weekday: 'short' }),
-          isSampleData: true // Mark as sample data
-        });
-      }
-      
-      // Sort by date (most recent first)
-      result.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-      
-      console.log('SystemLoadDetail - Generated sample 30d data:', result.slice(0, 5), '... (showing first 5 items)');
-    }
-    
-    console.log(`SystemLoadDetail - Enhanced and filtered data for ${timeframe}:`, result);
-    return result;
+    console.log('SystemLoadDetail - Enhanced and filtered data:', filteredData);
+    return filteredData;
   };
   
   // Process data based on selected timeframe with improved accuracy
@@ -989,19 +657,11 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
                       dataKey="hour" 
                       tickFormatter={(hour, index) => {
                         const dataPoint = chartConfig.login.data[index];
-                        return formatTimeForChart(hour, dataPoint?.date, dataPoint?.timestamp);
+                        return formatTimeForChart(hour, dataPoint?.date);
                       }}
                       stroke="#374151"
-                      tick={{ 
-                        fill: '#374151', 
-                        fontSize: 11, 
-                        angle: selectedTimeframe === '24h' ? -30 : -45, 
-                        textAnchor: 'end' 
-                      }}
-                      height={selectedTimeframe === '24h' ? 60 : 80}
+                      tick={{ fill: '#374151', fontSize: 11 }}
                       axisLine={{ stroke: '#d1d5db' }}
-                      // For 7d and 30d, don't show all ticks to avoid overcrowding
-                      interval={selectedTimeframe === '24h' ? 0 : selectedTimeframe === '7d' ? 3 : 2}
                     />
                     <YAxis 
                       stroke="#374151"
@@ -1081,19 +741,11 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
                       dataKey="hour" 
                       tickFormatter={(hour, index) => {
                         const dataPoint = chartConfig.voting.data[index];
-                        return formatTimeForChart(hour, dataPoint?.date, dataPoint?.timestamp);
+                        return formatTimeForChart(hour, dataPoint?.date);
                       }}
                       stroke="#374151"
-                      tick={{ 
-                        fill: '#374151', 
-                        fontSize: 11, 
-                        angle: selectedTimeframe === '24h' ? -30 : -45, 
-                        textAnchor: 'end' 
-                      }}
-                      height={selectedTimeframe === '24h' ? 60 : 80}
+                      tick={{ fill: '#374151', fontSize: 11 }}
                       axisLine={{ stroke: '#d1d5db' }}
-                      // For 7d and 30d, don't show all ticks to avoid overcrowding
-                      interval={selectedTimeframe === '24h' ? 0 : selectedTimeframe === '7d' ? 3 : 2}
                     />
                     <YAxis 
                       stroke="#374151"
