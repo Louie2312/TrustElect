@@ -247,7 +247,7 @@ export default function AuditLogsPage() {
     if (!role) return 'Unknown';
 
     switch (role.toLowerCase()) {
-      case 'systemadmin': return 'System Admin';
+      case 'systemadmin': return 'Root Admin';
       case 'admin': return 'Admin';
       case 'student': return 'Student';
       default: return role;
@@ -387,7 +387,7 @@ export default function AuditLogsPage() {
                 <option value="all">All Roles</option>
                 <option value="Student">Students</option>
                 <option value="Admin">Administrators</option>
-                <option value="SystemAdmin">System Admins</option>
+                <option value="SystemAdmin">Root Admins</option>
               </select>
             </div>
             
@@ -500,7 +500,7 @@ export default function AuditLogsPage() {
             <option value="all">All Users</option>
             <option value="Student">Students</option>
             <option value="Admin">Admins</option>
-            <option value="SystemAdmin">System Admins</option>
+            <option value="SystemAdmin">Root Admins</option>
           </select>
         </div>
         
