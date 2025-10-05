@@ -3,6 +3,16 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import Cookies from "js-cookie";
 
+// Mr/Ms STI position order for sorting
+const mrMsSTIPositionOrder = {
+  "Mr. STI": 1,
+  "Ms. STI": 2,
+  "Mr. STI 1st Runner-up": 3,
+  "Ms. STI 1st Runner-up": 4,
+  "Mr. STI 2nd Runner-up": 5,
+  "Ms. STI 2nd Runner-up": 6
+};
+
 
 
 export const useMrMsSTIPositions = () => {

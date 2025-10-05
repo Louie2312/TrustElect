@@ -23,6 +23,16 @@ const studentCouncilPositionOrder = {
   "Sergeant at Arms": 8
 };
 
+// Mr/Ms STI position order for sorting
+const mrMsSTIPositionOrder = {
+  "Mr. STI": 1,
+  "Ms. STI": 2,
+  "Mr. STI 1st Runner-up": 3,
+  "Ms. STI 1st Runner-up": 4,
+  "Mr. STI 2nd Runner-up": 5,
+  "Ms. STI 2nd Runner-up": 6
+};
+
 function formatNameSimple(lastName, firstName, fallback) {
   const cap = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
   if ((!lastName && !firstName) && fallback) {
