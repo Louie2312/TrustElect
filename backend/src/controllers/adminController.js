@@ -191,6 +191,7 @@ exports.updateAdmin = async (req, res) => {
 exports.softDeleteAdmin = async (req, res) => {
   try {
     const { id } = req.params;
+    const { action } = req.query; // Check if it's archive or delete
 
     // Check if user is trying to delete themselves
     if (req.user.id === parseInt(id)) {
@@ -203,12 +204,16 @@ exports.softDeleteAdmin = async (req, res) => {
       return res.status(403).json({ message: "Only Super Admins can delete other Super Admins." });
     }
 
-    const deletedAdmin = await softDeleteAdmin(id);
+    const deletedAdmin = await softDeleteAdmin(id, action);
     if (!deletedAdmin) {
       return res.status(404).json({ message: "Admin not found." });
     }
 
-    return res.json({ message: "Admin deleted successfully (soft delete).", admin: deletedAdmin });
+    const message = action === 'delete' 
+      ? "Admin moved to deleted folder successfully." 
+      : "Admin archived successfully.";
+    
+    return res.json({ message, admin: deletedAdmin });
   } catch (error) {
     console.error("Error deleting admin:", error);
     res.status(500).json({ message: "Internal Server Error.", error: error.message });

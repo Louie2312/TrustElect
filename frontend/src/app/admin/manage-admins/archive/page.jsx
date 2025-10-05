@@ -22,7 +22,7 @@ export default function ArchivedAdminsPage() {
         withCredentials: true,
       });
 
-      setArchivedAdmins(res.data.admins.filter(admin => !admin.is_active));
+      setArchivedAdmins(res.data.admins.filter(admin => !admin.is_active && (admin.is_deleted === false || admin.is_deleted === null)));
       setLoading(false);
     } catch (error) {
       console.error("Error fetching archived admins:", error);

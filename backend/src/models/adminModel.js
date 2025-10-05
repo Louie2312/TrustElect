@@ -106,10 +106,10 @@ const getAllAdmins = async () => {
   try {
     const query = `
       SELECT users.id, users.first_name, users.last_name, users.email, users.is_active, 
-             admins.employee_number, admins.department, users.is_locked, users.locked_until
+             users.is_deleted, admins.employee_number, admins.department, users.is_locked, users.locked_until
       FROM users
       JOIN admins ON users.id = admins.user_id
-      WHERE users.role_id = 2;
+      WHERE users.role_id = 2 AND (users.is_deleted IS NULL OR users.is_deleted = FALSE);
     `;
     const result = await pool.query(query);
     return result.rows;
@@ -228,14 +228,16 @@ const updateAdmin = async (id, fields) => {
 };
 
 
-const softDeleteAdmin = async (id) => {
+const softDeleteAdmin = async (id, action = 'archive') => {
   try {
+    // Add a field to distinguish between archived and deleted
+    const isDeleted = action === 'delete';
     const query = `
       UPDATE users 
-      SET is_active = FALSE, updated_at = NOW() 
+      SET is_active = FALSE, is_deleted = $2, updated_at = NOW() 
       WHERE id = $1 AND role_id = 2 RETURNING *;
     `;
-    const result = await pool.query(query, [id]);
+    const result = await pool.query(query, [id, isDeleted]);
     return result.rows[0] || null;
   } catch (error) {
     console.error("Error deleting admin:", error);

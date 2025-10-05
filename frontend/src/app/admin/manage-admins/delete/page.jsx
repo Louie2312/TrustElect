@@ -23,7 +23,7 @@ export default function DeletedAdminsPage() {
         withCredentials: true,
       });
 
-      const deleted = res.data.admins.filter(admin => admin.is_deleted);
+      const deleted = res.data.admins.filter(admin => admin.is_deleted === true);
       setDeletedAdmins(deleted);
       setFilteredAdmins(deleted);
       setLoading(false);
