@@ -45,6 +45,7 @@ export default function LoginForm({ onClose }) {
   const router = useRouter();
 
   // Add keyboard event handlers - Fixed to always trigger, let functions handle validation
+  // These key handlers will still work alongside the global handler for redundancy
   const handleLoginKeyDown = (e) => {
     if (e.key === 'Enter' && !loading) {
       e.preventDefault();
@@ -87,6 +88,42 @@ export default function LoginForm({ onClose }) {
     }
   };
 
+  // Global keyboard event handler
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      if (e.key === 'Enter' && !loading) {
+        e.preventDefault();
+        
+        // Determine which action to take based on current step and resetStep
+        if (step === 1) {
+          handleLogin();
+        } else if (step === 2) {
+          handleOtpVerification();
+        } else if (step === 3) {
+          handlePasswordChange();
+        } else if (step === 4) {
+          if (resetStep === 1) {
+            handleForgotPassword();
+          } else if (resetStep === 2) {
+            handleVerifyResetOTP();
+          } else if (resetStep === 3) {
+            handleResetPassword();
+          }
+        }
+      }
+    };
+
+    // Add global event listener
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown);
+    };
+  }, [step, resetStep, loading, email, password, otp, newPassword, confirmPassword, 
+      forgotEmail, resetOtp, resetPassword, confirmResetPassword]);
+  
+  // Cooldown timer effect
   useEffect(() => {
     let interval;
     if (cooldownActive && cooldownTime > 0) {
@@ -481,10 +518,11 @@ export default function LoginForm({ onClose }) {
     setResendMessage("");
     setDevOtp("");
     try {
-      // Updated: same-origin path
+      // Updated: same-origin path + credentials
       const response = await axios.post(
         `/api/auth/forgot-password`,
-        { email: forgotEmail }
+        { email: forgotEmail },
+        { withCredentials: true }
       );
       
       if (response.data.devMode && response.data.otp) {
@@ -555,7 +593,10 @@ export default function LoginForm({ onClose }) {
         {error && <p className="text-red-500 text-sm text-center">{error}</p>}
 
         {step === 1 && (
-          <div>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            handleLogin();
+          }}>
             {resendMessage && (
               <div className="mb-4 p-2 bg-green-100 text-green-700 rounded text-sm text-center">
                 {resendMessage}
@@ -600,6 +641,7 @@ export default function LoginForm({ onClose }) {
 
             <div className="text-right mt-2">
               <button 
+                type="button"
                 onClick={toggleForgotPassword}
                 className="cursor-pointer text-sm text-[#01579B] hover:underline"
               >
@@ -608,17 +650,20 @@ export default function LoginForm({ onClose }) {
             </div>
 
             <Button
-              onClick={handleLogin}
+              type="submit"
               className="cursor-pointer mt-4 w-full bg-[#003399] hover:bg-blue-800 text-white"
               disabled={loading}
             >
               {loading ? "Logging in..." : "Login"}
             </Button>
-          </div>
+          </form>
         )}
 
         {step === 2 && (
-          <div>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            handleOtpVerification();
+          }}>
             <h2 className="text-[#01579B] font-semibold mb-2">Enter OTP</h2>
             <p className="text-sm text-gray-700 mb-2">
               A verification code has been sent to your email.
@@ -640,7 +685,7 @@ export default function LoginForm({ onClose }) {
             )}
             
             <Button
-              onClick={handleOtpVerification}
+              type="submit"
               className="cursor-pointer mt-4 w-full bg-[#FFDF00] hover:bg-[#00FF00] text-black"
               disabled={loading}
             >
@@ -650,6 +695,7 @@ export default function LoginForm({ onClose }) {
 
             <div className="mt-4 text-center">
               <button 
+                type="button"
                 onClick={handleResendOTP}
                 disabled={resendLoading || cooldownActive}
                 className={`text-sm ${cooldownActive ? 'text-gray-400 cursor-not-allowed' : 'text-[#01579B] hover:underline'}`}
@@ -662,11 +708,14 @@ export default function LoginForm({ onClose }) {
                 <p className="text-xs mt-1 text-gray-600">{resendMessage}</p>
               )}
             </div>
-          </div>
+          </form>
         )}
         
         {step === 3 && (
-          <div>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            handlePasswordChange();
+          }}>
             <p className="text-sm text-gray-700 mb-4">
               This is your first login. Please change your password to continue.
             </p>
@@ -718,20 +767,23 @@ export default function LoginForm({ onClose }) {
             </ul>
             
             <Button
-              onClick={handlePasswordChange}
+              type="submit"
               className="cursor-pointer mt-2 w-full bg-[#003399] hover:bg-blue-800 text-white"
               disabled={loading}
             >
               {loading ? "Updating..." : "Change Password"}
             </Button>
-          </div>
+          </form>
         )}
 
         {step === 4 && (
-          <div>
+          <div className="reset-password-container">
             
             {resetStep === 1 && (
-              <div>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                handleForgotPassword();
+              }}>
                 <p className="text-sm text-gray-700 mb-3">
                   Enter your STI email address to receive a password reset code.
                 </p>
@@ -746,7 +798,7 @@ export default function LoginForm({ onClose }) {
                 />
                 
                 <Button
-                  onClick={handleForgotPassword}
+                  type="submit"
                   className="w-full bg-[#003399] hover:bg-blue-800 text-white"
                   disabled={loading}
                 >
@@ -755,17 +807,21 @@ export default function LoginForm({ onClose }) {
                 
                 <div className="mt-4 text-center">
                   <button
+                    type="button"
                     onClick={toggleForgotPassword}
                     className="text-sm text-[#01579B] hover:underline"
                   >
                     Back to Login
                   </button>
                 </div>
-              </div>
+              </form>
             )}
             
             {resetStep === 2 && (
-              <div>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                handleVerifyResetOTP();
+              }}>
                 <p className="text-sm text-gray-700 mb-3">
                   Enter the 6-digit verification code sent to your email.
                 </p>
@@ -787,7 +843,7 @@ export default function LoginForm({ onClose }) {
                 )}
                 
                 <Button
-                  onClick={handleVerifyResetOTP}
+                  type="submit"
                   className="w-full bg-[#003399] hover:bg-blue-800 text-white"
                   disabled={loading}
                 >
@@ -797,6 +853,7 @@ export default function LoginForm({ onClose }) {
                 {/* Resend OTP button with cooldown */}
                 <div className="mt-4 text-center">
                   <button 
+                    type="button"
                     onClick={handleResendResetOTP}
                     disabled={resendLoading || cooldownActive}
                     className={`text-sm ${cooldownActive ? 'text-gray-400 cursor-not-allowed' : 'text-[#01579B] hover:underline'}`}
@@ -806,11 +863,14 @@ export default function LoginForm({ onClose }) {
                      "Resend code"}
                   </button>
                 </div>
-              </div>
+              </form>
             )}
             
             {resetStep === 3 && (
-              <div>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                handleResetPassword();
+              }}>
                 <p className="text-sm text-gray-700 mb-3">
                   Create a new password.
                 </p>
@@ -856,13 +916,13 @@ export default function LoginForm({ onClose }) {
                 </div>
                 
                 <Button
-                  onClick={handleResetPassword}
+                  type="submit"
                   className="w-full bg-[#003399] hover:bg-blue-800 text-white mt-4"
                   disabled={loading}
                 >
                   {loading ? "Updating..." : "Reset Password"}
                 </Button>
-              </div>
+              </form>
             )}
           </div>
         )}
