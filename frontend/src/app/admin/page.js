@@ -214,13 +214,6 @@ export default function AdminDashboard() {
     completed: [],
     to_approve: []
   });
-  const [paginationState, setPaginationState] = useState({
-    ongoing: { page: 1, limit: 10, total: 0, totalPages: 0, hasMore: false },
-    upcoming: { page: 1, limit: 10, total: 0, totalPages: 0, hasMore: false },
-    completed: { page: 1, limit: 10, total: 0, totalPages: 0, hasMore: false },
-    to_approve: { page: 1, limit: 10, total: 0, totalPages: 0, hasMore: false }
-  });
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [stats, setStats] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -289,13 +282,36 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  // Load elections data for a specific tab with pagination
-  const loadElectionsForTab = useCallback(async (tabId, page = 1, limit = 10) => {
+  // Load all elections data - memoized without activeTab dependency
+  const loadAllElections = useCallback(async () => {
     try {
-      console.log(`Loading ${tabId} elections - page ${page}, limit ${limit}`);
+      const statuses = ['ongoing', 'upcoming', 'completed'];
+      const results = {};
       
-      if (tabId === 'to_approve') {
-        // Pending approval elections don't use pagination yet
+      await Promise.all(statuses.map(async (status) => {
+        try {
+          const response = await fetch(`/api/elections/status/${status}`, {
+            headers: {
+              'Authorization': `Bearer ${Cookies.get('token')}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            results[status] = data || [];
+          } else {
+            console.error(`Error loading ${status} elections: ${response.status}`);
+            results[status] = [];
+          }
+        } catch (err) {
+          console.error(`Error fetching ${status} elections:`, err);
+          results[status] = [];
+        }
+      }));
+      
+      // Load pending approval elections
+      try {
         const response = await fetch(`/api/elections/admin-pending-approval`, {
           headers: {
             'Authorization': `Bearer ${Cookies.get('token')}`,
@@ -305,69 +321,24 @@ export default function AdminDashboard() {
         
         if (response.ok) {
           const data = await response.json();
-          return {
-            data: data || [],
-            pagination: {
-              page: 1,
-              limit: data.length,
-              total: data.length,
-              totalPages: 1,
-              hasMore: false
-            }
-          };
+          results['to_approve'] = data || [];
         } else {
           console.error(`Error loading pending approval elections: ${response.status}`);
-          return { data: [], pagination: { page: 1, limit, total: 0, totalPages: 0, hasMore: false } };
+          results['to_approve'] = [];
         }
-      } else {
-        // Regular status tabs use pagination
-        const response = await fetch(`/api/elections/status/${tabId}?page=${page}&limit=${limit}`, {
-          headers: {
-            'Authorization': `Bearer ${Cookies.get('token')}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (response.ok) {
-          const result = await response.json();
-          return {
-            data: result.data || [],
-            pagination: result.pagination || { page, limit, total: 0, totalPages: 0, hasMore: false }
-          };
-        } else {
-          console.error(`Error loading ${tabId} elections: ${response.status}`);
-          return { data: [], pagination: { page, limit, total: 0, totalPages: 0, hasMore: false } };
-        }
-      }
-    } catch (err) {
-      console.error(`Error fetching ${tabId} elections:`, err);
-      return { data: [], pagination: { page, limit, total: 0, totalPages: 0, hasMore: false } };
-    }
-  }, []);
-
-  // Load all elections data - now uses pagination and loads tabs incrementally
-  const loadAllElections = useCallback(async () => {
-    try {
-      const statuses = ['ongoing', 'upcoming', 'completed', 'to_approve'];
-      const results = {};
-      const paginationInfo = {};
-      
-      // Load first page of each tab sequentially to avoid overwhelming the server
-      for (const status of statuses) {
-        const result = await loadElectionsForTab(status, 1, 10);
-        results[status] = result.data;
-        paginationInfo[status] = result.pagination;
+      } catch (err) {
+        console.error('Error fetching pending approval elections:', err);
+        results['to_approve'] = [];
       }
       
       setAllElections(results);
-      setPaginationState(paginationInfo);
-      return { results, paginationInfo };
+      return results;
     } catch (err) {
       console.error('Error in loadAllElections:', err);
       setError('Failed to load elections data');
       throw err;
     }
-  }, [loadElectionsForTab]);
+  }, []);
 
   // Load pending approvals only (for background refresh)
   const loadPendingApprovals = useCallback(async () => {
@@ -476,12 +447,11 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  // Load system load data with enhanced time-based information
-  // Using 7d as default for better data visualization
-  const loadSystemLoadData = useCallback(async (timeframe = '7d') => {
+  // Load system load data
+  const loadSystemLoadData = useCallback(async (timeframe = '24h') => {
     try {
       setIsSystemLoadLoading(true);
-      console.log('[Admin] Loading system load data for timeframe:', timeframe);
+      console.log('Loading system load data for timeframe:', timeframe);
       
       const token = Cookies.get('token');
       const response = await fetch(`${API_BASE}/reports/system-load?timeframe=${timeframe}`, {
@@ -496,23 +466,21 @@ export default function AdminDashboard() {
       
       const responseData = await response.json();
       
+      console.log('Raw system load response:', responseData);
+      
       // Extract the actual data from the response structure
       // Backend returns: { success: true, data: { summary: {...}, login_activity: [...], voting_activity: [...] } }
-      const rawData = responseData.success ? responseData.data : responseData;
+      const data = responseData.success ? responseData.data : responseData;
       
-      // Process the data to enhance with proper date and time information
-      const processedData = {
-        ...rawData,
-        login_activity: enhanceTimeData(rawData.login_activity || [], timeframe),
-        voting_activity: enhanceTimeData(rawData.voting_activity || [], timeframe)
-      };
+      console.log('Extracted system load data:', data);
+      console.log('Login activity data:', data?.login_activity);
+      console.log('Voting activity data:', data?.voting_activity);
       
-      // Set the timeframe first, then the processed data
+      // Set the timeframe first, then the data
       setSelectedTimeframe(timeframe);
-      setSystemLoadData(processedData);
+      setSystemLoadData(data);
       
-      console.log('[Admin] System load data loaded successfully for timeframe:', timeframe);
-      return processedData;
+      console.log('System load data loaded successfully for timeframe:', timeframe);
     } catch (err) {
       console.log("[Admin] System load data not available:", err.message);
       // Set empty data structure instead of null to prevent UI errors
@@ -521,87 +489,12 @@ export default function AdminDashboard() {
         voting_activity: [],
         summary: {}
       });
-      return {
-        login_activity: [],
-        voting_activity: [],
-        summary: {}
-      };
     } finally {
       setIsSystemLoadLoading(false);
     }
   }, []);
-  
-  // Helper function to enhance data with proper time information
-  const enhanceTimeData = (data, timeframe) => {
-    if (!Array.isArray(data) || data.length === 0) return [];
-    
-    const now = new Date();
-    
-    return data.map(item => {
-      // Extract or create timestamp information
-      let timestamp = item.timestamp;
-      let date = item.date;
-      let hour = item.hour || 0;
-      
-      // If we have a timestamp, use it directly
-      if (timestamp) {
-        const dateObj = new Date(timestamp);
-        date = dateObj.toISOString().split('T')[0];
-        hour = dateObj.getHours();
-      } 
-      // If we have a date but no timestamp, create one
-      else if (date) {
-        timestamp = new Date(`${date}T${hour.toString().padStart(2, '0')}:00:00`).toISOString();
-      } 
-      // If we only have hour, create date and timestamp based on timeframe
-      else {
-        // For 24h, use today's date with the specified hour
-        if (timeframe === '24h') {
-          date = now.toISOString().split('T')[0];
-          timestamp = new Date(`${date}T${hour.toString().padStart(2, '0')}:00:00`).toISOString();
-        } 
-        // For 7d, distribute across the past 7 days
-        else if (timeframe === '7d') {
-          const dayOffset = Math.floor(Math.random() * 7); // Random day within past week
-          const targetDate = new Date(now.getTime() - dayOffset * 24 * 60 * 60 * 1000);
-          date = targetDate.toISOString().split('T')[0];
-          timestamp = new Date(`${date}T${hour.toString().padStart(2, '0')}:00:00`).toISOString();
-        }
-        // For 30d, distribute across the past 30 days
-        else {
-          const dayOffset = Math.floor(Math.random() * 30); // Random day within past month
-          const targetDate = new Date(now.getTime() - dayOffset * 24 * 60 * 60 * 1000);
-          date = targetDate.toISOString().split('T')[0];
-          timestamp = new Date(`${date}T${hour.toString().padStart(2, '0')}:00:00`).toISOString();
-        }
-      }
-      
-      // Return enhanced data item with complete time information
-      return {
-        ...item,
-        hour,
-        date,
-        timestamp,
-        count: Math.round(typeof item.count === 'number' && !isNaN(item.count) ? item.count : 
-               typeof item.login_count === 'number' && !isNaN(item.login_count) ? item.login_count :
-               typeof item.vote_count === 'number' && !isNaN(item.vote_count) ? item.vote_count :
-               typeof item.activity_count === 'number' && !isNaN(item.activity_count) ? item.activity_count : 0),
-        // Add formatted display values for better readability
-        displayTime: new Date(timestamp).toLocaleTimeString('en-US', { 
-          hour: '2-digit', 
-          minute: '2-digit',
-          hour12: true 
-        }),
-        displayDate: new Date(timestamp).toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric'
-        })
-      };
-    });
-  };
 
-  // Optimized initialization effect with incremental loading
+  // Single initialization effect - OPTIMIZED
   useEffect(() => {
     let isMounted = true;
     
@@ -627,70 +520,30 @@ export default function AdminDashboard() {
         setIsLoading(true);
         setError(null);
         
-        console.log('Starting incremental dashboard loading...');
-        
-        // Phase 1: Load critical stats first (fast)
-        await loadStats();
+        // Load only critical data first
+        await Promise.all([
+          loadAllElections(),
+          loadStats(),
+          loadUIDesign(),
+          loadTotalUniqueVoters(), // Load total voters as critical data
+          loadSystemLoadData('7d') // Load system load data on initial load
+        ]);
         
         if (isMounted) {
-          // Show UI with just stats data to improve perceived performance
+          setDataLoaded(true);
           setIsLoading(false);
         }
         
-        // Phase 2: Load current tab data (medium priority)
-        const currentTabResult = await loadElectionsForTab(activeTab, 1, 10);
-        
-        if (isMounted) {
-          setElections(currentTabResult.data);
-          setAllElections(prev => ({
-            ...prev,
-            [activeTab]: currentTabResult.data
-          }));
-          setPaginationState(prev => ({
-            ...prev,
-            [activeTab]: currentTabResult.pagination
-          }));
-        }
-        
-        // Phase 3: Load remaining data in background (low priority)
-        setTimeout(async () => {
+        // Load optional data in background (non-blocking) after critical data is loaded
+        setTimeout(() => {
           if (isMounted) {
-            // Load UI design and total voters count
-            await Promise.allSettled([
-              loadUIDesign(),
-              loadTotalUniqueVoters()
-            ]);
-            
-            // Load other tabs data
-            const otherTabs = ['ongoing', 'upcoming', 'completed', 'to_approve'].filter(tab => tab !== activeTab);
-            
-            for (const tab of otherTabs) {
-              if (isMounted) {
-                const tabResult = await loadElectionsForTab(tab, 1, 10);
-                setAllElections(prev => ({
-                  ...prev,
-                  [tab]: tabResult.data
-                }));
-                setPaginationState(prev => ({
-                  ...prev,
-                  [tab]: tabResult.pagination
-                }));
-              }
-            }
-            
-            // Load optional visualization data
-            await Promise.allSettled([
-              loadSystemLoadData('7d'),
+            Promise.allSettled([
               loadLiveVoteCount().catch(err => {
                 console.log("[Admin] Live vote count not available:", err.message);
               })
             ]);
-            
-            if (isMounted) {
-              setDataLoaded(true);
-            }
           }
-        }, 100);
+        }, 1000); // 1 second delay to ensure UI is rendered first
         
       } catch (error) {
         console.error('Error loading dashboard data:', error);
@@ -706,112 +559,45 @@ export default function AdminDashboard() {
     // Set up intervals for auto-refresh (only after initial load)
     const intervals = [];
     
-    // Refresh stats every minute (high priority data)
+    // Refresh pending approvals every 30 seconds (reduced frequency)
     intervals.push(setInterval(() => {
-      if (isMounted) {
+      if (isMounted && dataLoaded) {
+        loadAllElections().catch(err => {
+          console.log("[Admin] Error refreshing elections:", err.message);
+        });
+      }
+    }, 30000));
+    
+    // Refresh stats every 2 minutes (reduced frequency)
+    intervals.push(setInterval(() => {
+      if (isMounted && dataLoaded) {
         loadStats().catch(err => {
           console.log("[Admin] Error refreshing stats:", err.message);
         });
       }
-    }, 60000)); // 1 minute
+    }, 120000));
     
-    // Refresh active tab data every 2 minutes
+    // Refresh total voters every 5 minutes (reduced frequency)
     intervals.push(setInterval(() => {
       if (isMounted && dataLoaded) {
-        loadElectionsForTab(activeTab, 1, 10)
-          .then(result => {
-            setElections(result.data);
-            setAllElections(prev => ({
-              ...prev,
-              [activeTab]: result.data
-            }));
-            setPaginationState(prev => ({
-              ...prev,
-              [activeTab]: result.pagination
-            }));
-          })
-          .catch(err => {
-            console.log(`[Admin] Error refreshing ${activeTab} elections:`, err.message);
-          });
+        loadTotalUniqueVoters().catch(err => {
+          console.log("[Admin] Total unique voters not available:", err.message);
+        });
       }
-    }, 120000)); // 2 minutes
+    }, 300000)); // 5 minutes
     
     return () => {
       isMounted = false;
       intervals.forEach(interval => clearInterval(interval));
     };
-  }, [
-    permissionsLoading, 
-    hasPermission, 
-    dataLoaded, 
-    activeTab,
-    loadElectionsForTab,
-    loadStats, 
-    loadUIDesign, 
-    loadTotalUniqueVoters, 
-    loadLiveVoteCount, 
-    loadSystemLoadData
-  ]);
+  }, [permissionsLoading, hasPermission, dataLoaded, loadAllElections, loadStats, loadUIDesign, loadTotalUniqueVoters, loadLiveVoteCount, loadSystemLoadData]);
 
-  // Handle tab change - update elections when tab changes and load data if needed
+  // Handle tab change - update elections when tab or allElections change
   useEffect(() => {
     if (allElections && allElections[activeTab]) {
       setElections(allElections[activeTab] || []);
-      
-      // If this tab has no data yet, load it
-      if (allElections[activeTab].length === 0 && !isLoading) {
-        loadElectionsForTab(activeTab, 1, 10)
-          .then(result => {
-            setElections(result.data);
-            setAllElections(prev => ({
-              ...prev,
-              [activeTab]: result.data
-            }));
-            setPaginationState(prev => ({
-              ...prev,
-              [activeTab]: result.pagination
-            }));
-          })
-          .catch(err => {
-            console.error(`Error loading ${activeTab} elections:`, err);
-          });
-      }
     }
-  }, [activeTab, allElections, isLoading, loadElectionsForTab]);
-  
-  // Function to load more elections for the current tab
-  const loadMoreElections = async () => {
-    const currentPagination = paginationState[activeTab];
-    if (!currentPagination.hasMore || isLoadingMore) return;
-    
-    try {
-      setIsLoadingMore(true);
-      const nextPage = currentPagination.page + 1;
-      
-      const result = await loadElectionsForTab(activeTab, nextPage, currentPagination.limit);
-      
-      if (result.data.length > 0) {
-        // Append new data to existing data
-        const updatedElections = [...allElections[activeTab], ...result.data];
-        
-        setElections(updatedElections);
-        setAllElections(prev => ({
-          ...prev,
-          [activeTab]: updatedElections
-        }));
-        
-        // Update pagination state
-        setPaginationState(prev => ({
-          ...prev,
-          [activeTab]: result.pagination
-        }));
-      }
-    } catch (error) {
-      console.error(`Error loading more ${activeTab} elections:`, error);
-    } finally {
-      setIsLoadingMore(false);
-    }
-  };
+  }, [activeTab, allElections]);
 
   // Ensure user ID is available from token - run once
   useEffect(() => {
@@ -1329,80 +1115,43 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {isLoading && elections.length === 0 ? (
+      {isLoading ? (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
         </div>
       ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {elections.length > 0 ? (
-              elections.map((election, index) => (
-                <ElectionCard 
-                  key={`${election.id}-${index}`} 
-                  election={election} 
-                  onClick={handleElectionClick}
-                  onDeleteClick={handleDeleteClick}
-                  canDelete={hasPermission('elections', 'delete')}
-                  activeTab={activeTab}
-                />
-              ))
-            ) : (
-              <div className="col-span-full text-center py-12 bg-white rounded-lg shadow">
-                <div className="text-gray-400 mb-4">
-                  {activeTab === 'ongoing' && <Clock className="w-16 h-16 mx-auto" />}
-                  {activeTab === 'upcoming' && <Calendar className="w-16 h-16 mx-auto" />}
-                  {activeTab === 'completed' && <CheckCircle className="w-16 h-16 mx-auto" />}
-                  {activeTab === 'to_approve' && <AlertCircle className="w-16 h-16 mx-auto" />}
-                </div>
-                <h3 className="text-2xl font-medium text-gray-900 mb-2">
-                  No {activeTab === 'to_approve' ? 'elections pending approval' : `${activeTab} elections`}
-                </h3>
-                <p className="text-lg text-gray-500 max-w-md mx-auto">
-                  {activeTab === 'ongoing' && 'There are currently no ongoing elections.'}
-                  {activeTab === 'upcoming' && 'No upcoming elections scheduled.'}
-                  {activeTab === 'completed' && 'No completed elections yet. Elections that have ended will be shown here.'}
-                  {activeTab === 'to_approve' && 'No elections are waiting for approval.'}
-                </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {elections.length > 0 ? (
+            elections.map((election, index) => (
+              <ElectionCard 
+                key={`${election.id}-${index}`} 
+                election={election} 
+                onClick={handleElectionClick}
+                onDeleteClick={handleDeleteClick}
+                canDelete={hasPermission('elections', 'delete')}
+                activeTab={activeTab}
+              />
+            ))
+          ) : (
+            <div className="col-span-full text-center py-12 bg-white rounded-lg shadow">
+              <div className="text-gray-400 mb-4">
+                {activeTab === 'ongoing' && <Clock className="w-16 h-16 mx-auto" />}
+                {activeTab === 'upcoming' && <Calendar className="w-16 h-16 mx-auto" />}
+                {activeTab === 'completed' && <CheckCircle className="w-16 h-16 mx-auto" />}
+                {activeTab === 'to_approve' && <AlertCircle className="w-16 h-16 mx-auto" />}
               </div>
-            )}
-          </div>
-          
-          {/* Load More Button */}
-          {paginationState[activeTab]?.hasMore && (
-            <div className="mt-8 flex justify-center">
-              <button
-                onClick={loadMoreElections}
-                disabled={isLoadingMore}
-                className="px-6 py-3 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 transition-colors duration-200 font-medium flex items-center justify-center min-w-[200px]"
-              >
-                {isLoadingMore ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-gray-800 mr-2"></div>
-                    Loading...
-                  </>
-                ) : (
-                  <>
-                    Load More
-                    <span className="ml-2 text-sm bg-gray-200 px-2 py-1 rounded-full">
-                      {paginationState[activeTab].page} of {paginationState[activeTab].totalPages}
-                    </span>
-                  </>
-                )}
-              </button>
+              <h3 className="text-2xl font-medium text-gray-900 mb-2">
+                No {activeTab === 'to_approve' ? 'elections pending approval' : `${activeTab} elections`}
+              </h3>
+              <p className="text-lg text-gray-500 max-w-md mx-auto">
+                {activeTab === 'ongoing' && 'There are currently no ongoing elections.'}
+                {activeTab === 'upcoming' && 'No upcoming elections scheduled.'}
+                {activeTab === 'completed' && 'No completed elections yet. Elections that have ended will be shown here.'}
+                {activeTab === 'to_approve' && 'No elections are waiting for approval.'}
+              </p>
             </div>
           )}
-          
-          {/* Loading indicator for background data loading */}
-          {isLoading && elections.length > 0 && (
-            <div className="mt-4 flex justify-center">
-              <div className="flex items-center text-sm text-gray-500">
-                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-gray-500 mr-2"></div>
-                Loading additional data...
-              </div>
-            </div>
-          )}
-        </>
+        </div>
       )}
       
       {/* Live Vote Count Section */}
