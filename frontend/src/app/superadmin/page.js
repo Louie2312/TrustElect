@@ -5,7 +5,7 @@ import { Calendar, Clock, Users, CheckCircle, XCircle, AlertCircle, Trash2, BarC
 import Link from 'next/link';
 import Cookies from 'js-cookie';
 import axios from 'axios';
-import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell, ReferenceLine, LineChart, Line, Area, AreaChart } from 'recharts';
+import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell, ReferenceLine } from 'recharts';
 import { generatePdfReport } from '@/utils/pdfGenerator';
 import toast from 'react-hot-toast';
 
@@ -1559,7 +1559,7 @@ export default function SuperAdminDashboard() {
                           </div>
                           <div className="h-[200px]">
                             <ResponsiveContainer width="100%" height="100%">
-                              <LineChart data={chartConfig.login.data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                              <RechartsBarChart data={chartConfig.login.data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                                 <defs>
                                   <linearGradient id={chartConfig.login.gradient.id} x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="5%" stopColor={chartConfig.login.gradient.color} stopOpacity={0.9}/>
@@ -1585,7 +1585,7 @@ export default function SuperAdminDashboard() {
                                 />
                                 <Tooltip 
                                   content={<CustomTooltip />}
-                                  cursor={{ stroke: '#3B82F6', strokeWidth: 2, strokeDasharray: '5 5' }}
+                                  cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }}
                                 />
                                 <ReferenceLine 
                                   y={chartConfig.login.average} 
@@ -1599,16 +1599,14 @@ export default function SuperAdminDashboard() {
                                   stroke="#6b7280" 
                                   strokeDasharray="5 5" 
                                 />
-                                <Area
-                                  type="monotone"
-                                  dataKey="count"
-                                  stroke={chartConfig.login.gradient.color}
+                                <Bar 
+                                  dataKey="count" 
+                                  name="Logins" 
                                   fill={`url(#${chartConfig.login.gradient.id})`}
-                                  strokeWidth={3}
-                                  dot={{ fill: chartConfig.login.gradient.color, strokeWidth: 2, r: 4 }}
-                                  activeDot={{ r: 6, stroke: chartConfig.login.gradient.color, strokeWidth: 2, fill: '#fff' }}
+                                  radius={[6, 6, 0, 0]}
+                                  animationDuration={2000}
                                 />
-                              </LineChart>
+                              </RechartsBarChart>
                             </ResponsiveContainer>
                           </div>
                         </>
@@ -1642,7 +1640,7 @@ export default function SuperAdminDashboard() {
                           </div>
                           <div className="h-[200px]">
                             <ResponsiveContainer width="100%" height="100%">
-                              <LineChart data={chartConfig.voting.data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                              <RechartsBarChart data={chartConfig.voting.data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                                 <defs>
                                   <linearGradient id={chartConfig.voting.gradient.id} x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="5%" stopColor={chartConfig.voting.gradient.color} stopOpacity={0.9}/>
@@ -1668,7 +1666,7 @@ export default function SuperAdminDashboard() {
                                 />
                                 <Tooltip 
                                   content={<CustomTooltip />}
-                                  cursor={{ stroke: '#10B981', strokeWidth: 2, strokeDasharray: '5 5' }}
+                                  cursor={{ fill: 'rgba(16, 185, 129, 0.1)' }}
                                 />
                                 <ReferenceLine 
                                   y={chartConfig.voting.average} 
@@ -1682,16 +1680,14 @@ export default function SuperAdminDashboard() {
                                   stroke="#6b7280" 
                                   strokeDasharray="5 5" 
                                 />
-                                <Area
-                                  type="monotone"
-                                  dataKey="count"
-                                  stroke={chartConfig.voting.gradient.color}
+                                <Bar 
+                                  dataKey="count" 
+                                  name="Votes" 
                                   fill={`url(#${chartConfig.voting.gradient.id})`}
-                                  strokeWidth={3}
-                                  dot={{ fill: chartConfig.voting.gradient.color, strokeWidth: 2, r: 4 }}
-                                  activeDot={{ r: 6, stroke: chartConfig.voting.gradient.color, strokeWidth: 2, fill: '#fff' }}
+                                  radius={[6, 6, 0, 0]}
+                                  animationDuration={2000}
                                 />
-                              </LineChart>
+                              </RechartsBarChart>
                             </ResponsiveContainer>
                           </div>
                         </>
