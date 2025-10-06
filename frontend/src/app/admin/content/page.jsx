@@ -539,14 +539,9 @@ export default function ContentManagement() {
           formData.append('removeLogo', 'true');
         }
       } else if (section === 'hero') {
+        // Handle hero section - preserve all existing content
         contentData = {
-          title: landingContent.hero.title,
-          subtitle: landingContent.hero.subtitle,
-          videoUrl: landingContent.hero.videoUrl,
-          posterImage: landingContent.hero.posterImage,
-          carouselImages: landingContent.hero.carouselImages,
-          bgColor: landingContent.hero.bgColor,
-          textColor: landingContent.hero.textColor,
+          ...landingContent.hero, // Preserve all existing content
           backgroundImage: landingContent.hero.backgroundImage
         };
         
@@ -591,8 +586,11 @@ export default function ContentManagement() {
           window.carouselFiles = [];
         }
       } else if (section === 'features') {
-        // Handle features section
-        contentData = { ...landingContent[section] };
+        // Handle features section - preserve all existing content
+        contentData = { 
+          ...landingContent.features, // Preserve all existing content
+          backgroundImage: landingContent.features.backgroundImage
+        };
         
         // Handle features background image upload
         if (landingContent.features.backgroundImage && landingContent.features.backgroundImage.startsWith('blob:')) {
@@ -614,9 +612,9 @@ export default function ContentManagement() {
           }
         });
       } else if (section === 'header') {
-        // Handle header section
+        // Handle header section - preserve all existing content
         contentData = {
-          bgColor: landingContent.header.bgColor,
+          ...landingContent.header, // Preserve all existing content
           backgroundImage: landingContent.header.backgroundImage
         };
         
@@ -633,17 +631,9 @@ export default function ContentManagement() {
           }
         }
       } else if (section === 'callToAction') {
-        // Handle CTA section
+        // Handle CTA section - preserve all existing content
         contentData = {
-          title: landingContent.callToAction.title,
-          subtitle: landingContent.callToAction.subtitle,
-          buttonText: landingContent.callToAction.buttonText,
-          buttonUrl: landingContent.callToAction.buttonUrl,
-          enabled: landingContent.callToAction.enabled,
-          videoUrl: landingContent.callToAction.videoUrl,
-          bgColor: landingContent.callToAction.bgColor,
-          textColor: landingContent.callToAction.textColor,
-          purpose: landingContent.callToAction.purpose,
+          ...landingContent.callToAction, // Preserve all existing content
           backgroundImage: landingContent.callToAction.backgroundImage
         };
 

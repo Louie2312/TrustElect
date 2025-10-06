@@ -488,7 +488,6 @@ const updateSectionContent = async (req, res) => {
         
           
           const videoUrl = normalizeFilePath(`/uploads/videos/${ctaVideoFile.filename}`);
-          console.log('CTA Video URL:', videoUrl);
           
           // Save media to database
           try {
@@ -502,15 +501,13 @@ const updateSectionContent = async (req, res) => {
               url: videoUrl,
               altText: 'CTA video'
             });
-            console.log('CTA video media saved successfully:', videoMedia);
+
           } catch (error) {
             console.error('Error saving CTA video media:', error);
           }
 
           contentData.videoUrl = videoUrl;
-          console.log('CTA contentData after video processing:', contentData);
         } else if (req.body.removeCtaVideo === 'true') {
-          console.log('Removing CTA video');
           contentData.videoUrl = null;
         } else {
           console.log('No CTA video file found in request');

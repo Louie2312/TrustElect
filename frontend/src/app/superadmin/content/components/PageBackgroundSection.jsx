@@ -142,8 +142,16 @@ const PageBackgroundSection = ({
           </p>
         </div>
 
-        {/* Save Button */}
-        <div className="flex justify-end mt-4">
+        {/* Action Buttons */}
+        <div className="flex justify-between mt-4">
+          {currentBackground && (
+            <button
+              onClick={removeBackground}
+              className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors"
+            >
+              Remove Background
+            </button>
+          )}
           <button
             onClick={() => onSave && onSave(section)}
             className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"

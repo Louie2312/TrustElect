@@ -831,8 +831,9 @@ export default function ContentManagement() {
           formData.append('removeLogo', 'true');
         }
       } else if (section === 'header') {
+        // Handle header section - preserve all existing content
         contentData = {
-          bgColor: landingContent.header.bgColor,
+          ...landingContent.header, // Preserve all existing content
           backgroundImage: landingContent.header.backgroundImage
         };
         
@@ -848,14 +849,9 @@ export default function ContentManagement() {
           }
         }
       } else if (section === 'hero') {
+        // Handle hero section - preserve all existing content
         contentData = {
-          title: landingContent.hero.title,
-          subtitle: landingContent.hero.subtitle,
-          videoUrl: landingContent.hero.videoUrl,
-          posterImage: landingContent.hero.posterImage,
-          carouselImages: landingContent.hero.carouselImages,
-          bgColor: landingContent.hero.bgColor,
-          textColor: landingContent.hero.textColor,
+          ...landingContent.hero, // Preserve all existing content
           backgroundImage: landingContent.hero.backgroundImage
         };
         
@@ -907,12 +903,11 @@ export default function ContentManagement() {
         const themeFeatureSectionBg = activeTheme?.colors?.featureSectionBg || "#f9fafb";
 
         contentData = {
+          ...landingContent.features, // Preserve all existing content
           sectionBgColor: themeFeatureSectionBg,
           backgroundImage: landingContent.features.backgroundImage,
           columns: landingContent.features.columns.map(column => ({
-            title: column.title,
-            description: column.description,
-            imageUrl: column.imageUrl,
+            ...column, // Preserve all existing column properties
             bgColor: themeFeatureBg,
             textColor: themeFeatureText
           }))
@@ -962,15 +957,7 @@ export default function ContentManagement() {
         });
       } else if (section === 'callToAction') {
         contentData = {
-          title: landingContent.callToAction.title,
-          subtitle: landingContent.callToAction.subtitle,
-          buttonText: landingContent.callToAction.buttonText,
-          buttonUrl: landingContent.callToAction.buttonUrl,
-          enabled: landingContent.callToAction.enabled,
-          videoUrl: landingContent.callToAction.videoUrl,
-          bgColor: landingContent.callToAction.bgColor,
-          textColor: landingContent.callToAction.textColor,
-          purpose: landingContent.callToAction.purpose || 'default',
+          ...landingContent.callToAction, // Preserve all existing content
           backgroundImage: landingContent.callToAction.backgroundImage
         };
         
