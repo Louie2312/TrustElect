@@ -1805,9 +1805,9 @@ export default function ElectionDetailsPage() {
           </div>
         </>
       ) : activeTab === 'partial' ? (
-        <div ref={partialCountingRef} className={`${isFullScreen ? 'fixed inset-0 bg-gray-100 z-50 overflow-hidden flex flex-col' : ''}`}>
+        <div ref={partialCountingRef} className={`${isFullScreen ? 'fixed inset-0 bg-gray-100 z-50 overflow-y-auto' : ''}`}>
           {/* Vote Summary Section */}
-          <div className={`bg-white rounded-lg shadow-lg ${isFullScreen ? 'flex-shrink-0 mx-4 mt-2 mb-2 p-4' : 'p-4 mb-6'}`}>
+          <div className={`bg-white rounded-lg shadow-lg ${isFullScreen ? 'sticky top-0 z-10 mx-6 mt-6 mb-8 p-8' : 'p-4 mb-6'}`}>
             <div className="flex items-center justify-between">
               <div className={`flex items-center ${isFullScreen ? 'space-x-16' : 'space-x-8'}`}>
                 <div className="flex items-center">
@@ -1858,27 +1858,27 @@ export default function ElectionDetailsPage() {
           </div>
 
           {/* Partial Counting Results */}
-          <div className={`bg-white rounded-lg shadow-lg ${isFullScreen ? 'flex-1 mx-4 mb-2 p-4 overflow-hidden' : 'p-6'}`}>
-            <div className={`flex justify-between items-center ${isFullScreen ? 'mb-4' : 'mb-8'}`}>
+          <div className={`bg-white rounded-lg shadow-lg ${isFullScreen ? 'mx-6 mb-6 p-8' : 'p-6'}`}>
+            <div className="flex justify-between items-center mb-8">
               <div className="flex items-center gap-4">
-                <h2 className={`${isFullScreen ? 'text-2xl' : 'text-xl'} font-semibold text-black`}>
+                <h2 className={`${isFullScreen ? 'text-4xl' : 'text-xl'} font-semibold text-black`}>
                   {isFullScreen && election?.positions?.length > 1 ? 'Live Election Results' : 'Partial Vote Counting'}
                 </h2>
                 {isFullScreen && election?.positions?.length > 1 && (
-                  <div className="flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-800 rounded-full">
-                    <Play className="w-3 h-3" />
-                    <span className="text-xs font-medium">Auto-rotating every 10s</span>
+                  <div className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-800 rounded-full">
+                    <Play className="w-4 h-4" />
+                    <span className="text-sm font-medium">Auto-rotating every 10s</span>
                   </div>
                 )}
               </div>
               <div className="flex items-center gap-3">
                 {isFullScreen && election?.status === 'ongoing' && (
-                  <div className="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-800 rounded-full">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-xs font-medium">Live Updates</span>
+                  <div className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-full">
+                    <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className={`${isFullScreen ? 'text-base' : 'text-sm'} font-medium`}>Live Updates</span>
                   </div>
                 )}
-                <div className={`px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium`}>
+                <div className={`px-4 py-2 bg-yellow-100 text-yellow-800 rounded-full ${isFullScreen ? 'text-base' : 'text-sm'} font-medium`}>
                   Partial Results
                 </div>
               </div>
@@ -1887,9 +1887,9 @@ export default function ElectionDetailsPage() {
             {election.positions && election.positions.length > 0 ? (
               election.positions.length > 1 ? (
                 // Carousel mode for fullscreen with multiple positions
-                <div className={`${isFullScreen ? 'h-full flex flex-col' : 'space-y-8'}`}>
+                <div className="space-y-8">
                   {/* Position indicator */}
-                  <div className={`flex justify-center items-center gap-4 ${isFullScreen ? 'mb-4' : 'mb-8'}`}>
+                  <div className="flex justify-center items-center gap-4 mb-8">
                     <div className="flex items-center gap-2">
                       {election.positions.map((_, index) => (
                         <button
@@ -1901,7 +1901,7 @@ export default function ElectionDetailsPage() {
                         />
                       ))}
                     </div>
-                    <div className={`text-gray-600 ${isFullScreen ? 'text-sm' : 'text-lg'}`}>
+                    <div className="text-gray-600 text-lg">
                       {currentPositionIndex + 1} of {election.positions.length}
                     </div>
                   </div>
@@ -1912,41 +1912,41 @@ export default function ElectionDetailsPage() {
                     const { top3, others } = getTop3AndOtherCandidates(position.candidates || []);
                     
                     return (
-                      <div className={`transition-all duration-500 ease-in-out ${isFullScreen ? 'flex-1 flex flex-col' : ''}`}>
-                        <h3 className={`font-bold text-center text-black ${isFullScreen ? 'text-3xl mb-6' : 'text-5xl mb-12'}`}>
+                      <div className="transition-all duration-500 ease-in-out">
+                        <h3 className="text-5xl font-bold text-center text-black mb-12">
                           {position.name}
                         </h3>
 
                         {/* Top 3 Candidates - Compact display */}
                         {top3.length > 0 && (
-                          <div className={`grid grid-cols-3 ${isFullScreen ? 'gap-4 mb-4 flex-1' : 'gap-8 mb-8'}`}>
+                          <div className="grid grid-cols-3 gap-8 mb-8">
                             {top3.map((candidate, index) => (
                               <div 
                                 key={candidate.id} 
-                                className={`flex flex-col items-center text-center ${isFullScreen ? 'p-3 rounded-lg shadow-md' : 'p-6 rounded-xl shadow-lg'} ${
+                                className={`flex flex-col items-center text-center p-6 rounded-xl shadow-lg ${
                                   index === 0 ? 'bg-gradient-to-b from-blue-50 to-blue-100 border-2 border-blue-400' :
                                   index === 1 ? 'bg-gradient-to-b from-gray-50 to-gray-100 border-2 border-gray-400' :
                                   'bg-gradient-to-b from-orange-50 to-orange-100 border-2 border-orange-400'
                                 }`}
                               >
-                                <div className={`relative ${isFullScreen ? 'mb-2' : 'mb-4'}`}>
-                                  <div className={`relative ${isFullScreen ? 'w-24 h-32' : 'w-40 h-48'}`}>
+                                <div className="relative mb-4">
+                                  <div className="relative w-40 h-48">
                                     {candidate.image_url && !imageErrors[candidate.id] ? (
                                       <Image
                                         src={candidateImages[candidate.id] || getImageUrl(candidate.image_url)}
                                         alt={`${candidate.first_name} ${candidate.last_name}`}
                                         fill
-                                        sizes={isFullScreen ? "96px" : "160px"}
+                                        sizes="160px"
                                         className="object-cover rounded-lg shadow-md"
                                         priority
                                         onError={() => handleImageError(candidate.id)}
                                       />
                                     ) : (
-                                      <div className={`${isFullScreen ? 'w-24 h-32' : 'w-40 h-48'} rounded-lg bg-gray-200 flex items-center justify-center shadow-md`}>
-                                        <User className={`${isFullScreen ? 'w-12 h-12' : 'w-20 h-20'} text-gray-400`} />
+                                      <div className="w-40 h-48 rounded-lg bg-gray-200 flex items-center justify-center shadow-md">
+                                        <User className="w-20 h-20 text-gray-400" />
                                       </div>
                                     )}
-                                    <div className={`absolute -top-2 -right-2 rounded-full ${isFullScreen ? 'p-1 text-xs' : 'p-2 text-base'} font-bold shadow-lg ${
+                                    <div className={`absolute -top-2 -right-2 rounded-full p-2 text-base font-bold shadow-lg ${
                                       index === 0 ? 'bg-blue-500 text-white' :
                                       index === 1 ? 'bg-gray-500 text-white' :
                                       'bg-orange-500 text-white'
@@ -1957,19 +1957,19 @@ export default function ElectionDetailsPage() {
                                 </div>
                                 
                                 <div className="w-full">
-                                  <h4 className={`font-bold text-black ${isFullScreen ? 'text-sm mb-1' : 'text-2xl mb-2'}`}>
+                                  <h4 className="font-bold text-black text-2xl mb-2">
                                     {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}
                                   </h4>
                                   {candidate.party && (
-                                    <div className={`${isFullScreen ? 'px-2 py-0.5' : 'px-3 py-1'} bg-white rounded-full ${isFullScreen ? 'mb-2' : 'mb-3'} shadow-sm`}>
-                                      <span className={`text-black font-medium ${isFullScreen ? 'text-xs' : 'text-base'}`}>{candidate.party}</span>
+                                    <div className="px-3 py-1 bg-white rounded-full mb-3 shadow-sm">
+                                      <span className="text-black font-medium text-base">{candidate.party}</span>
                                     </div>
                                   )}
-                                  <div className={`${isFullScreen ? 'mt-2' : 'mt-3'}`}>
-                                    <div className={`text-black ${isFullScreen ? 'text-sm mb-1' : 'text-xl mb-2'} font-semibold`}>
+                                  <div className="mt-3">
+                                    <div className="text-xl text-black mb-2 font-semibold">
                                       {Number(candidate.vote_count || 0).toLocaleString()} Votes ({election.voter_count ? ((candidate.vote_count / election.voter_count) * 100).toFixed(2) : '0.00'}%)
                                     </div>
-                                    <div className={`w-full ${isFullScreen ? 'h-1' : 'h-2'} bg-gray-200 rounded-full overflow-hidden`}>
+                                    <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
                                       <div 
                                         className={`h-full rounded-full transition-all duration-1000 ${
                                           index === 0 ? 'bg-blue-500' : index === 1 ? 'bg-gray-500' : 'bg-orange-500'
@@ -1985,7 +1985,7 @@ export default function ElectionDetailsPage() {
                         )}
 
                         {/* Other Candidates - Compact grid */}
-                        {others.length > 0 && !isFullScreen && (
+                        {others.length > 0 && (
                           <div>
                             <h4 className="font-bold text-black mb-6 text-2xl text-center">Other Candidates</h4>
                             <div className="grid grid-cols-5 gap-4">
