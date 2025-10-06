@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import Cookies from 'js-cookie';
-import { HeroSection, FeaturesSection, CTASection, ThemesSection, CandidatesSection, LogoSection } from './components';
+import { HeroSection, FeaturesSection, CTASection, ThemesSection, CandidatesSection, LogoSection, PageBackgroundSection } from './components';
 import * as utils from './utils';
 import { updateAllBackgrounds, updateCTASettings } from './utils/themeUtils';
 import usePermissions from "../../../hooks/usePermissions";
@@ -930,6 +930,12 @@ export default function ContentManagement() {
             >
               Themes
             </button>
+            <button 
+              className={`px-3 py-2 text-sm ${activeTab === 'backgrounds' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-black'}`}
+              onClick={() => setActiveTab('backgrounds')}
+            >
+              Page Background
+            </button>
           </div>
           
           <div className="p-4">
@@ -1017,6 +1023,57 @@ export default function ContentManagement() {
                 handleBulkBackgroundUpdate={handleBulkBackgroundUpdate}
                 handleCTAUpdate={handleCTAUpdate}
               />
+            )}
+
+            {/* Page Background Section */}
+            {activeTab === 'backgrounds' && (
+              <div className="space-y-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-blue-800 mb-2">Page Background Management</h3>
+                  <p className="text-blue-700 text-sm">
+                    Upload background images for different sections of your landing page. 
+                    These backgrounds will override the default color backgrounds.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Header Background */}
+                  <PageBackgroundSection
+                    landingContent={landingContent}
+                    setLandingContent={setLandingContent}
+                    section="header"
+                    sectionName="Header"
+                    onSave={saveSectionContent}
+                  />
+
+                  {/* Hero Background */}
+                  <PageBackgroundSection
+                    landingContent={landingContent}
+                    setLandingContent={setLandingContent}
+                    section="hero"
+                    sectionName="Hero Section"
+                    onSave={saveSectionContent}
+                  />
+
+                  {/* Features Background */}
+                  <PageBackgroundSection
+                    landingContent={landingContent}
+                    setLandingContent={setLandingContent}
+                    section="features"
+                    sectionName="Features Section"
+                    onSave={saveSectionContent}
+                  />
+
+                  {/* CTA Background */}
+                  <PageBackgroundSection
+                    landingContent={landingContent}
+                    setLandingContent={setLandingContent}
+                    section="callToAction"
+                    sectionName="Call to Action Section"
+                    onSave={saveSectionContent}
+                  />
+                </div>
+              </div>
             )}
           </div>
         </div>

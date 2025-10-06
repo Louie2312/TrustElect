@@ -4,6 +4,7 @@ import CTASection from './CTASection';
 import ThemesSection from './ThemesSection';
 import CandidatesSection from './CandidatesSection';
 import LogoSection from './LogoSection';
+import PageBackgroundSection from './PageBackgroundSection';
 
 export {
   HeroSection,
@@ -11,5 +12,6 @@ export {
   CTASection,
   ThemesSection,
   CandidatesSection,
-  LogoSection
+  LogoSection,
+  PageBackgroundSection
 }; 

@@ -810,6 +810,46 @@ const deleteTheme = async (req, res) => {
   }
 };
 
+/**
+ * Upload background image for a specific section
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+const uploadBackground = async (req, res) => {
+  try {
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image file provided' });
+    }
+
+    const section = req.body.section;
+
+    if (!section) {
+      return res.status(400).json({ error: 'Section parameter is required' });
+    }
+
+    // Generate URL for the uploaded image
+    const imageUrl = `/uploads/images/${req.file.filename}`;
+
+    console.log('Background uploaded successfully:', {
+      section,
+      filename: req.file.filename,
+      imageUrl,
+      size: req.file.size
+    });
+
+    res.status(200).json({
+      message: 'Background uploaded successfully',
+      imageUrl: imageUrl,
+      filename: req.file.filename
+    });
+
+  } catch (error) {
+    console.error('Error in uploadBackground controller:', error);
+    res.status(500).json({ error: 'Failed to upload background image' });
+  }
+};
+
 module.exports = {
   getAllContent,
   getSectionContent,
@@ -824,5 +864,6 @@ module.exports = {
   applyTheme,
   getThemeById,
   updateTheme,
-  deleteTheme
+  deleteTheme,
+  uploadBackground
 };

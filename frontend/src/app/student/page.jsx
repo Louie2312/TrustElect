@@ -440,17 +440,25 @@ export default function StudentDashboard() {
       <div className="landing-page-container">
         {/* Hero Section */}
         <section 
-          className="text-white py-12 px-6"
+          className="text-white py-12 px-6 relative"
           style={{
             backgroundColor: landingContent.hero?.bgColor || '#01579B',
             color: landingContent.hero?.textColor || '#ffffff',
-            backgroundImage: landingContent.hero?.posterImage ? `url(${formatImageUrl(landingContent.hero.posterImage)})` : 'none',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
+            backgroundImage: landingContent.hero?.backgroundImage ? `url(${landingContent.hero.backgroundImage})` : 
+                           (landingContent.hero?.posterImage ? `url(${formatImageUrl(landingContent.hero.posterImage)})` : 'none'),
+            backgroundSize: landingContent.hero?.backgroundSize || 'cover',
+            backgroundPosition: landingContent.hero?.backgroundPosition || 'center',
             backgroundRepeat: 'no-repeat'
           }}
         >
-          <div className="container mx-auto max-w-6xl">
+          {/* Background Overlay */}
+          {landingContent.hero?.backgroundOverlay && (
+            <div 
+              className="absolute inset-0 bg-black"
+              style={{ opacity: landingContent.hero?.overlayOpacity || 0.5 }}
+            ></div>
+          )}
+          <div className="container mx-auto max-w-6xl relative z-10">
             <h1 
               className="text-3xl md:text-4xl font-bold leading-tight mb-4"
               style={{ color: landingContent.hero?.textColor || '#ffffff' }}
