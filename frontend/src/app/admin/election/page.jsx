@@ -245,6 +245,7 @@ export default function ElectionPage() {
     );
   };
 
+  // Show loading state while permissions are being checked
   if (loading || permissionsLoading) {
     return (
       <div className="flex h-full w-full items-center justify-center p-6 bg-gray-50 min-h-screen">
@@ -253,8 +254,8 @@ export default function ElectionPage() {
     );
   }
   
-  // If the user doesn't have permission to view elections, show an access denied message
-  if (!hasPermission('elections', 'view')) {
+  // Only show access denied if permissions have loaded and user definitely doesn't have permission
+  if (!permissionsLoading && !hasPermission('elections', 'view')) {
     return (
       <div className="p-6 bg-gray-50 min-h-screen">
         <div className="bg-white p-8 rounded-lg shadow-md text-center">
