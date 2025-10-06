@@ -13,7 +13,11 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  ReferenceLine
+  ReferenceLine,
+  LineChart,
+  Line,
+  Area,
+  AreaChart
 } from 'recharts';
 
 export default function SystemLoadDetail({ report, onClose, onDownload }) {
@@ -1046,7 +1050,7 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
               </div>
               <div className="h-[350px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartConfig.login.data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <LineChart data={chartConfig.login.data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                     <defs>
                       <linearGradient id={chartConfig.login.gradient.id} x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor={chartConfig.login.gradient.color} stopOpacity={0.9}/>
@@ -1080,7 +1084,7 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
                     />
                     <Tooltip 
                       content={<CustomTooltip />}
-                      cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }}
+                      cursor={{ stroke: '#3B82F6', strokeWidth: 2, strokeDasharray: '5 5' }}
                     />
                     <ReferenceLine 
                       y={chartConfig.login.average} 
@@ -1094,14 +1098,16 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
                       stroke="#6b7280" 
                       strokeDasharray="5 5" 
                     />
-                    <Bar 
-                      dataKey="count" 
-                      name="Logins" 
+                    <Area
+                      type="monotone"
+                      dataKey="count"
+                      stroke={chartConfig.login.gradient.color}
                       fill={`url(#${chartConfig.login.gradient.id})`}
-                      radius={[6, 6, 0, 0]}
-                      animationDuration={2000}
+                      strokeWidth={3}
+                      dot={{ fill: chartConfig.login.gradient.color, strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6, stroke: chartConfig.login.gradient.color, strokeWidth: 2, fill: '#fff' }}
                     />
-                  </BarChart>
+                  </LineChart>
                 </ResponsiveContainer>
               </div>
                 </>
@@ -1138,7 +1144,7 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
               </div>
               <div className="h-[350px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartConfig.voting.data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <LineChart data={chartConfig.voting.data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                     <defs>
                       <linearGradient id={chartConfig.voting.gradient.id} x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor={chartConfig.voting.gradient.color} stopOpacity={0.9}/>
@@ -1172,7 +1178,7 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
                     />
                     <Tooltip 
                       content={<CustomTooltip />}
-                      cursor={{ fill: 'rgba(16, 185, 129, 0.1)' }}
+                      cursor={{ stroke: '#10B981', strokeWidth: 2, strokeDasharray: '5 5' }}
                     />
                     <ReferenceLine 
                       y={chartConfig.voting.average} 
@@ -1186,14 +1192,16 @@ export default function SystemLoadDetail({ report, onClose, onDownload }) {
                       stroke="#6b7280" 
                       strokeDasharray="5 5" 
                     />
-                    <Bar 
-                      dataKey="count" 
-                      name="Votes" 
+                    <Area
+                      type="monotone"
+                      dataKey="count"
+                      stroke={chartConfig.voting.gradient.color}
                       fill={`url(#${chartConfig.voting.gradient.id})`}
-                      radius={[6, 6, 0, 0]}
-                      animationDuration={2000}
+                      strokeWidth={3}
+                      dot={{ fill: chartConfig.voting.gradient.color, strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6, stroke: chartConfig.voting.gradient.color, strokeWidth: 2, fill: '#fff' }}
                     />
-                  </BarChart>
+                  </LineChart>
                 </ResponsiveContainer>
               </div>
                 </>
