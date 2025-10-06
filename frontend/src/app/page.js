@@ -283,10 +283,10 @@ export default function Home() {
   };
 
   return (
-    <div className="relative min-h-screen bg-white flex flex-col">
+    <div className="relative min-h-screen flex flex-col">
       {/* Header Section - Updated to remove About button */}
       <header 
-        className="w-full flex justify-between items-center p-6 shadow-md fixed top-0 left-0 right-0 z-50 relative"
+        className="w-full flex justify-between items-center p-6 shadow-md fixed top-0 left-0 right-0 z-50"
         style={{
           backgroundColor: landingContent.header?.bgColor || '#01579B',
           backgroundImage: landingContent.header?.backgroundImage ? `url(${formatImageUrl(landingContent.header.backgroundImage)})` : 'none',
@@ -369,9 +369,9 @@ export default function Home() {
         </nav>
       </header>
 
-      <main className="flex-grow pt-24">
+      <main className="flex-grow">
         <section 
-        className="text-white py-16 px-6 min-h-[600px] flex items-center relative"
+        className="text-white py-16 px-6 min-h-screen flex items-center relative pt-24"
         style={{
           backgroundColor: landingContent.hero?.bgColor || '#01579B',
           color: landingContent.hero?.textColor || '#ffffff',
