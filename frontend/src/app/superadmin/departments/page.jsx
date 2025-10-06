@@ -89,7 +89,9 @@ export default function DepartmentsPage() {
   const filteredDepartments = departments.filter(dept => {
     const matchesSearch = dept.department_name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filter === "All" || dept.department_type === filter;
-    return matchesSearch && matchesFilter;
+    // Only show active departments (not archived or deleted)
+    const isActive = !dept.is_archived && !dept.is_deleted;
+    return matchesSearch && matchesFilter && isActive;
   });
 
   const handleDelete = async (id) => {

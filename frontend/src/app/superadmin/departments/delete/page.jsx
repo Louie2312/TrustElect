@@ -27,26 +27,26 @@ export default function DeletedDepartmentsPage() {
       let success = false;
 
       try {
-        // First try admin endpoint
-        const res = await axios.get("/api/admin/departments", {
+        // First try superadmin endpoint
+        const res = await axios.get("/api/superadmin/departments", {
           headers: { Authorization: `Bearer ${token}` },
           withCredentials: true,
         });
         departmentsArray = res.data.departments || res.data || [];
         success = true;
       } catch (firstError) {
-        console.warn("Error on admin endpoint, trying fallback:", firstError.message);
+        console.warn("Error on superadmin endpoint, trying fallback:", firstError.message);
         
         try {
-          // Try superadmin endpoint as fallback
-          const res = await axios.get("/api/superadmin/departments", {
+          // Try admin endpoint as fallback
+          const res = await axios.get("/api/admin/departments", {
             headers: { Authorization: `Bearer ${token}` },
             withCredentials: true,
           });
           departmentsArray = res.data.departments || res.data || [];
           success = true;
         } catch (secondError) {
-          console.error("Error on superadmin endpoint:", secondError.message);
+          console.error("Error on admin endpoint:", secondError.message);
           throw new Error("Failed to load departments after trying all endpoints");
         }
       }
@@ -116,7 +116,7 @@ export default function DeletedDepartmentsPage() {
       // Delete each department permanently
       for (const dept of departmentsToDelete) {
         try {
-          await axios.delete(`/api/admin/departments/${dept.id}/permanent`, {
+          await axios.delete(`/api/superadmin/departments/${dept.id}/permanent`, {
             headers: { Authorization: `Bearer ${token}` },
             withCredentials: true,
           });
@@ -150,24 +150,24 @@ export default function DeletedDepartmentsPage() {
       let response;
       
       try {
-        // First try admin endpoint
-        response = await axios.delete(`/api/admin/departments/${selectedDepartmentId}/permanent`, {
+        // First try superadmin endpoint
+        response = await axios.delete(`/api/superadmin/departments/${selectedDepartmentId}/permanent`, {
           headers: { Authorization: `Bearer ${token}` },
           withCredentials: true,
         });
         success = true;
       } catch (firstError) {
-        console.warn("Error on admin permanent delete endpoint, trying fallback:", firstError.message);
+        console.warn("Error on superadmin permanent delete endpoint, trying fallback:", firstError.message);
         
         try {
-          // Try superadmin endpoint as fallback
-          response = await axios.delete(`/api/superadmin/departments/${selectedDepartmentId}/permanent`, {
+          // Try admin endpoint as fallback
+          response = await axios.delete(`/api/admin/departments/${selectedDepartmentId}/permanent`, {
             headers: { Authorization: `Bearer ${token}` },
             withCredentials: true,
           });
           success = true;
         } catch (secondError) {
-          console.error("Error on superadmin permanent delete endpoint:", secondError.message);
+          console.error("Error on admin permanent delete endpoint:", secondError.message);
           throw new Error("Failed to permanently delete department");
         }
       }
@@ -214,7 +214,7 @@ export default function DeletedDepartmentsPage() {
         <h1 className="text-2xl font-bold mb-4 text-black">Deleted Departments</h1>
 
         <button 
-          onClick={() => router.push("/admin/departments")} 
+          onClick={() => router.push("/superadmin/departments")} 
           className="bg-[#01579B] text-white px-4 py-2 rounded mb-4"
         >
           Back
