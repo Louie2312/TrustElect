@@ -444,7 +444,7 @@ export default function StudentDashboard() {
           style={{
             backgroundColor: landingContent.hero?.bgColor || '#01579B',
             color: landingContent.hero?.textColor || '#ffffff',
-            backgroundImage: landingContent.hero?.backgroundImage ? `url(${landingContent.hero.backgroundImage})` : 
+            backgroundImage: landingContent.hero?.backgroundImage ? `url(${formatImageUrl(landingContent.hero.backgroundImage)})` : 
                            (landingContent.hero?.posterImage ? `url(${formatImageUrl(landingContent.hero.posterImage)})` : 'none'),
             backgroundSize: 'cover',
             backgroundPosition: 'center',

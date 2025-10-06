@@ -271,7 +271,7 @@ export default function Home() {
         className="w-full flex justify-between items-center p-6 shadow-md fixed top-0 left-0 right-0 z-50 relative"
         style={{
           backgroundColor: landingContent.header?.bgColor || '#01579B',
-          backgroundImage: landingContent.header?.backgroundImage ? `url(${landingContent.header.backgroundImage})` : 'none',
+          backgroundImage: landingContent.header?.backgroundImage ? `url(${formatImageUrl(landingContent.header.backgroundImage)})` : 'none',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat'
@@ -357,7 +357,7 @@ export default function Home() {
         style={{
           backgroundColor: landingContent.hero?.bgColor || '#01579B',
           color: landingContent.hero?.textColor || '#ffffff',
-          backgroundImage: landingContent.hero?.backgroundImage ? `url(${landingContent.hero.backgroundImage})` : 'none',
+          backgroundImage: landingContent.hero?.backgroundImage ? `url(${formatImageUrl(landingContent.hero.backgroundImage)})` : 'none',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat'
@@ -623,7 +623,7 @@ export default function Home() {
           style={{
             backgroundColor: landingContent.callToAction?.bgColor || '#1e3a8a',
             color: landingContent.callToAction?.textColor || '#ffffff',
-            backgroundImage: landingContent.callToAction?.backgroundImage ? `url(${landingContent.callToAction.backgroundImage})` : 'none',
+            backgroundImage: landingContent.callToAction?.backgroundImage ? `url(${formatImageUrl(landingContent.callToAction.backgroundImage)})` : 'none',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat'
@@ -718,7 +718,7 @@ export default function Home() {
         className="py-20 px-6 relative"
         style={{
           backgroundColor: landingContent.features?.sectionBgColor || '#f9fafb',
-          backgroundImage: landingContent.features?.backgroundImage ? `url(${landingContent.features.backgroundImage})` : 'none',
+          backgroundImage: landingContent.features?.backgroundImage ? `url(${formatImageUrl(landingContent.features.backgroundImage)})` : 'none',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat'
