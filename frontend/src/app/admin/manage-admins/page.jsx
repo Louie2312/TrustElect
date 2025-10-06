@@ -312,15 +312,17 @@ export default function ManageAdminsPage() {
         <button
           onClick={() => router.push("/admin/manage-admins/archive")}
           className="bg-gray-600 text-white px-4 py-2 rounded"
+          title="View Archived Folder"
         >
-          Archived
+          Archived Folder
         </button>
         
         <button
           onClick={() => router.push("/admin/manage-admins/delete")}
           className="bg-red-600 text-white px-4 py-2 rounded"
+          title="View Deleted Folder"
         >
-          Deleted
+          Deleted Folder
         </button>
       </div>
 
@@ -390,6 +392,7 @@ export default function ManageAdminsPage() {
                     <button
                       onClick={() => handleDeleteAdmin(admin.id)}
                       className="bg-yellow-500 text-white px-1.5 py-0.5 rounded text-xs whitespace-nowrap"
+                      title="Move to Archived Folder"
                     >
                       Archive
                     </button>
@@ -398,6 +401,7 @@ export default function ManageAdminsPage() {
                     <button
                       onClick={() => handlePermanentDeleteAdmin(admin.id)}
                       className="bg-red-600 text-white px-1.5 py-0.5 rounded text-xs whitespace-nowrap"
+                      title="Move to Deleted Folder"
                     >
                       Delete
                     </button>

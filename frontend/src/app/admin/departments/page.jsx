@@ -438,17 +438,19 @@ export default function AdminDepartmentsPage() {
         <button
           onClick={() => router.push("/admin/departments/archive")}
           className="flex items-center text-white bg-gray-600 px-4 py-2 rounded hover:bg-gray-700"
+          title="View Archived Folder"
         >
           <Archive className="w-5 h-5 mr-2" />
-          Archived Departments
+          Archived Folder
         </button>
         
         <button
           onClick={() => router.push("/admin/departments/delete")}
           className="flex items-center text-white bg-red-600 px-4 py-2 rounded hover:bg-red-700"
+          title="View Deleted Folder"
         >
           <Trash className="w-5 h-5 mr-2" />
-          Deleted Departments
+          Deleted Folder
         </button>
       </div>
 
@@ -559,7 +561,7 @@ export default function AdminDepartmentsPage() {
                           <button
                             onClick={() => handleArchive(department.id)}
                             className="bg-orange-500 text-white px-3 py-1 rounded text-sm flex items-center"
-                            title="Archive Department"
+                            title="Move to Archived Folder"
                           > 
                             <Archive className="w-4 h-4 mr-1" />
                             Archive
@@ -567,7 +569,7 @@ export default function AdminDepartmentsPage() {
                           <button
                             onClick={() => handlePermanentDelete(department.id)}
                             className="bg-red-600 text-white px-3 py-1 rounded text-sm flex items-center"
-                            title="Permanently Delete Department"
+                            title="Move to Deleted Folder"
                           > 
                             <Trash className="w-4 h-4 mr-1" />
                             Delete

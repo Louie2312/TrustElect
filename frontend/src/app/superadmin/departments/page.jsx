@@ -93,7 +93,7 @@ export default function DepartmentsPage() {
   });
 
   const handleDelete = async (id) => {
-    if (!confirm("Are you sure you want to archive this department? It will be moved to the archive.")) return;
+    if (!confirm("Are you sure you want to archive this department? It will be moved to the archived folder.")) return;
     
     try {
       const token = Cookies.get("token");
@@ -106,6 +106,23 @@ export default function DepartmentsPage() {
     } catch (error) {
       console.error("Error archiving department:", error);
       toast.error(error.response?.data?.message || "Failed to archive department");
+    }
+  };
+
+  const handlePermanentDelete = async (id) => {
+    if (!confirm("Are you sure you want to delete this department? It will be moved to the deleted folder.")) return;
+    
+    try {
+      const token = Cookies.get("token");
+      const res = await axios.delete(`/api/superadmin/departments/${id}?action=delete`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      toast.success(res.data.message || "Department moved to deleted folder");
+      fetchDepartments();
+    } catch (error) {
+      console.error("Error deleting department:", error);
+      toast.error(error.response?.data?.message || "Failed to delete department");
     }
   };
 
@@ -165,9 +182,19 @@ export default function DepartmentsPage() {
         <button
           onClick={() => router.push("/superadmin/departments/archive")}
           className="flex items-center text-white bg-gray-600 px-4 py-2 rounded hover:bg-gray-700"
+          title="View Archived Folder"
         >
           <Archive className="w-5 h-5 mr-2" />
-          Archived Departments
+          Archived Folder
+        </button>
+        
+        <button
+          onClick={() => router.push("/superadmin/departments/delete")}
+          className="flex items-center text-white bg-red-600 px-4 py-2 rounded hover:bg-red-700"
+          title="View Deleted Folder"
+        >
+          <Trash className="w-5 h-5 mr-2" />
+          Deleted Folder
         </button>
       </div>
 
@@ -265,10 +292,18 @@ export default function DepartmentsPage() {
                         <button
                           onClick={() => handleDelete(department.id)}
                           className="bg-orange-500 text-white px-3 py-1 rounded text-sm flex items-center"
-                          title="Archive Department"
+                          title="Move to Archived Folder"
                         >
                           <Archive className="w-4 h-4 mr-1" />
                           Archive
+                        </button>
+                        <button
+                          onClick={() => handlePermanentDelete(department.id)}
+                          className="bg-red-600 text-white px-3 py-1 rounded text-sm flex items-center"
+                          title="Move to Deleted Folder"
+                        >
+                          <Trash className="w-4 h-4 mr-1" />
+                          Delete
                         </button>
                       </div>
                     </td>

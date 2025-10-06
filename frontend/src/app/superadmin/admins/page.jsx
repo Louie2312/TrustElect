@@ -109,11 +109,11 @@ export default function AdminsPage() {
     // Check if user is trying to delete themselves
     const currentUserId = Cookies.get("userId");
     if (currentUserId && parseInt(currentUserId) === parseInt(id)) {
-      alert("You cannot delete your own account.");
+      alert("You cannot archive your own account.");
       return;
     }
 
-    if (!confirm("Are you sure you want to delete this Admin?")) return;
+    if (!confirm("Are you sure you want to archive this Admin? It will be moved to the archived folder.")) return;
     try {
       const token = Cookies.get("token");
       const userRole = Cookies.get("role");
@@ -127,7 +127,37 @@ export default function AdminsPage() {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
-      alert("Admin Archived. Admin moved to archive.");
+      alert("Admin Archived. Admin moved to archived folder.");
+      fetchAdmins();
+    } catch (error) {
+      console.error("Error archiving admin:", error);
+      alert("Failed to archive Admin.");
+    }
+  };
+
+  const permanentDeleteAdmin = async (id) => {
+    // Check if user is trying to delete themselves
+    const currentUserId = Cookies.get("userId");
+    if (currentUserId && parseInt(currentUserId) === parseInt(id)) {
+      alert("You cannot delete your own account.");
+      return;
+    }
+
+    if (!confirm("Are you sure you want to delete this Admin? It will be moved to the deleted folder.")) return;
+    try {
+      const token = Cookies.get("token");
+      const userRole = Cookies.get("role");
+      
+      // Use the correct endpoint based on user role with delete action parameter
+      const endpoint = userRole === 'Super Admin' 
+        ? `/api/admin/admins/${id}?action=delete`
+        : `/api/admin/manage-admins/${id}?action=delete`;
+      
+      await axios.delete(endpoint, {
+        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
+      });
+      alert("Admin moved to deleted folder.");
       fetchAdmins();
     } catch (error) {
       console.error("Error deleting admin:", error);
@@ -292,8 +322,16 @@ export default function AdminsPage() {
                       <button
                         onClick={() => deleteAdmin(admin.id)}
                         className="bg-yellow-500 text-white px-1.5 py-0.5 rounded text-xs whitespace-nowrap"
+                        title="Move to Archived Folder"
                       >
                         Archive
+                      </button>
+                      <button
+                        onClick={() => permanentDeleteAdmin(admin.id)}
+                        className="bg-red-600 text-white px-1.5 py-0.5 rounded text-xs whitespace-nowrap"
+                        title="Move to Deleted Folder"
+                      >
+                        Delete
                       </button>
                       <button
                         onClick={() => {
@@ -323,12 +361,23 @@ export default function AdminsPage() {
         </tbody>
       </table>
 
-      <button
-        onClick={() => router.push("/superadmin/admins/archive")}
-        className="mt-10 bg-gray-600 text-white px-4 py-2 rounded mb-4"
-      >
-        Archived
-      </button>
+      <div className="mt-10 flex gap-4">
+        <button
+          onClick={() => router.push("/superadmin/admins/archive")}
+          className="bg-gray-600 text-white px-4 py-2 rounded"
+          title="View Archived Folder"
+        >
+          Archived Folder
+        </button>
+        
+        <button
+          onClick={() => router.push("/superadmin/admins/delete")}
+          className="bg-red-600 text-white px-4 py-2 rounded"
+          title="View Deleted Folder"
+        >
+          Deleted Folder
+        </button>
+      </div>
 
       {showResetModal && selectedAdmin && (
         <ResetPasswordModal admin={selectedAdmin} onClose={() => setShowResetModal(false)} />
