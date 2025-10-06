@@ -18,14 +18,23 @@ export default function Home() {
     logo: {
       imageUrl: null
     },
+    header: {
+      bgColor: "#01579B",
+      backgroundImage: null
+    },
     hero: {
       title: "TrustElect Voting Platform",
       subtitle: "STI TrustElect Voting System",
       videoUrl: null,
       posterImage: null,
-      carouselImages: []
+      carouselImages: [],
+      bgColor: "#1e40af",
+      textColor: "#ffffff",
+      backgroundImage: null
     },
     features: {
+      sectionBgColor: "#f9fafb",
+      backgroundImage: null,
       columns: [
         {
           title: "Easy Setup",
@@ -51,7 +60,8 @@ export default function Home() {
       enabled: true,
       videoUrl: null,
       bgColor: "#1e3a8a",
-      textColor: "#ffffff"
+      textColor: "#ffffff",
+      backgroundImage: null
     }
   });
 
@@ -120,6 +130,10 @@ export default function Home() {
           logo: {
             imageUrl: response.data.logo?.imageUrl || landingContent.logo.imageUrl
           },
+          header: {
+            bgColor: response.data.header?.bgColor || landingContent.header?.bgColor || "#01579B",
+            backgroundImage: response.data.header?.backgroundImage || null
+          },
           hero: {
             title: newHero.title || landingContent.hero.title,
             subtitle: newHero.subtitle || landingContent.hero.subtitle,
@@ -127,9 +141,12 @@ export default function Home() {
             posterImage: newHero.posterImage || null,
             carouselImages: newHero.carouselImages || [], // FIX: Added missing carouselImages property
             bgColor: newHero.bgColor || landingContent.hero.bgColor || "#1e40af",
-            textColor: newHero.textColor || landingContent.hero.textColor || "#ffffff"
+            textColor: newHero.textColor || landingContent.hero.textColor || "#ffffff",
+            backgroundImage: newHero.backgroundImage || null
           },
           features: {
+            sectionBgColor: newFeatures.sectionBgColor || landingContent.features.sectionBgColor || "#f9fafb",
+            backgroundImage: newFeatures.backgroundImage || null,
             columns: (newFeatures.columns || []).map((column, index) => {
               const existingColumn = landingContent.features.columns[index] || {};
               
@@ -150,7 +167,8 @@ export default function Home() {
             enabled: typeof newCTA.enabled !== 'undefined' ? newCTA.enabled : true,
             videoUrl: newCTA.videoUrl || null,
             bgColor: newCTA.bgColor || landingContent.callToAction.bgColor || "#1e3a8a",
-            textColor: newCTA.textColor || landingContent.callToAction.textColor || "#ffffff"
+            textColor: newCTA.textColor || landingContent.callToAction.textColor || "#ffffff",
+            backgroundImage: newCTA.backgroundImage || null
           }
         };
 
