@@ -505,6 +505,15 @@ export default function ContentManagement() {
   };
 
   const saveSectionContent = async (section) => {
+    console.log('saveSectionContent called with section:', section);
+    
+    if (!section) {
+      console.error('No section provided to saveSectionContent');
+      setSaveStatus('Error: No section specified for saving');
+      setTimeout(() => setSaveStatus(''), 3000);
+      return;
+    }
+    
     setIsLoading(true);
     setSaveStatus(`Saving ${section} content...`);
     

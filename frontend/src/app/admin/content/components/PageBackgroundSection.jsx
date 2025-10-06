@@ -47,11 +47,6 @@ const PageBackgroundSection = ({
       }));
 
       toast.success(`${sectionName} background updated successfully! Click Save to apply changes.`);
-      
-      // Auto-save after successful upload
-      if (onSave) {
-        onSave();
-      }
 
     } catch (error) {
       console.error('Error uploading background:', error);
@@ -74,11 +69,6 @@ const PageBackgroundSection = ({
       }
     }));
     toast.success(`${sectionName} background removed`);
-    
-    // Auto-save after removal
-    if (onSave) {
-      onSave();
-    }
   };
 
   const currentBackground = landingContent[section]?.backgroundImage;
@@ -150,6 +140,16 @@ const PageBackgroundSection = ({
           <p className="text-sm text-blue-700">
             The uploaded image will automatically cover the entire section while keeping all content visible on top.
           </p>
+        </div>
+
+        {/* Save Button */}
+        <div className="flex justify-end mt-4">
+          <button
+            onClick={() => onSave && onSave(section)}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
+          >
+            Save Changes
+          </button>
         </div>
       </div>
     </div>
