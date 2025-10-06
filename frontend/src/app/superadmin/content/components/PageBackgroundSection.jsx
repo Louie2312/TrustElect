@@ -37,7 +37,7 @@ const PageBackgroundSection = ({
       // Create a local URL for immediate preview
       const localUrl = URL.createObjectURL(file);
       
-      // Update the landing content with the new background image
+      // Update the landing content with the new background image for preview
       setLandingContent(prev => ({
         ...prev,
         [section]: {
@@ -46,7 +46,7 @@ const PageBackgroundSection = ({
         }
       }));
 
-      toast.success(`${sectionName} background updated successfully! Click Save to apply changes.`);
+      toast.success(`${sectionName} background uploaded! Click Save to apply changes.`);
 
     } catch (error) {
       console.error('Error uploading background:', error);

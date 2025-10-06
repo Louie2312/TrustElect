@@ -715,7 +715,8 @@ export default function ContentManagement() {
               posterImage: response.data.content.posterImage || null,
               carouselImages: response.data.content.carouselImages || [],
               bgColor: response.data.content.bgColor || "#1e40af",
-              textColor: response.data.content.textColor || "#ffffff"
+              textColor: response.data.content.textColor || "#ffffff",
+              backgroundImage: response.data.content.backgroundImage || null
             };
           } else {
             newContent[section] = response.data.content;
