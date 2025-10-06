@@ -16,20 +16,17 @@ export default function ArchivedAdminsPage() {
   const fetchArchivedAdmins = async () => {
     try {
       const token = Cookies.get("token");
-      const res = await axios.get("/api/admin/admins", {
+      const res = await axios.get("/api/superadmin/admins", {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
 
-      console.log("SUPERADMIN - All admins from API:", res.data.admins);
-      console.log("SUPERADMIN - Filtering for archived (is_active = false):");
+ 
       
       const allAdmins = res.data.admins;
       const archivedAdmins = allAdmins.filter(admin => !admin.is_active);
       
-      console.log("SUPERADMIN - Archived admins after filtering:", archivedAdmins);
-      console.log("SUPERADMIN - Total admins:", allAdmins.length);
-      console.log("SUPERADMIN - Archived admins count:", archivedAdmins.length);
+ 
 
       setArchivedAdmins(archivedAdmins);
       setLoading(false);
@@ -45,7 +42,7 @@ export default function ArchivedAdminsPage() {
     if (!confirm("Are you sure you want to restore this Admin?")) return;
     try {
       const token = Cookies.get("token");
-      await axios.patch(`/api/admin/admins/${id}/restore`, {}, {
+      await axios.patch(`/api/superadmin/admins/${id}/restore`, {}, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -68,7 +65,7 @@ export default function ArchivedAdminsPage() {
       const token = Cookies.get("token");
       console.log("Attempting to permanently delete admin ID:", selectedAdminId);
       
-      const response = await axios.delete(`/api/admin/admins/${selectedAdminId}/permanent-delete`, {
+      const response = await axios.delete(`/api/superadmin/admins/${selectedAdminId}/permanent-delete`, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });

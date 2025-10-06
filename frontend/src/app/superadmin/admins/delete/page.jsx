@@ -21,7 +21,7 @@ export default function DeletedAdminsPage() {
   const fetchDeletedAdmins = async () => {
     try {
       const token = Cookies.get("token");
-      const res = await axios.get("/api/admin/admins", {
+      const res = await axios.get("/api/superadmin/admins", {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -83,17 +83,17 @@ export default function DeletedAdminsPage() {
         return;
       }
 
-      // Delete each admin permanently
-      for (const admin of adminsToDelete) {
-        try {
-          await axios.delete(`/api/admin/manage-admins/${admin.id}/permanent`, {
-            headers: { Authorization: `Bearer ${token}` },
-            withCredentials: true,
-          });
-        } catch (error) {
-          console.error(`Error auto-deleting admin ${admin.id}:`, error);
-        }
-      }
+       // Delete each admin permanently
+       for (const admin of adminsToDelete) {
+         try {
+           await axios.delete(`/api/superadmin/admins/${admin.id}/permanent-delete`, {
+             headers: { Authorization: `Bearer ${token}` },
+             withCredentials: true,
+           });
+         } catch (error) {
+           console.error(`Error auto-deleting admin ${admin.id}:`, error);
+         }
+       }
 
       toast.success(`${adminsToDelete.length} admins auto-deleted successfully`);
       fetchDeletedAdmins();
@@ -116,7 +116,7 @@ export default function DeletedAdminsPage() {
       const token = Cookies.get("token");
       console.log("Attempting to permanently delete admin ID:", selectedAdminId);
       
-      const response = await axios.delete(`/api/admin/manage-admins/${selectedAdminId}/permanent`, {
+      const response = await axios.delete(`/api/superadmin/admins/${selectedAdminId}/permanent-delete`, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });

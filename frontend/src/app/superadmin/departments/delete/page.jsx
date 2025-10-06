@@ -32,7 +32,9 @@ export default function DeletedDepartmentsPage() {
           headers: { Authorization: `Bearer ${token}` },
           withCredentials: true,
         });
-        departmentsArray = res.data.departments || res.data || [];
+        const allDepartments = res.data.departments || res.data || [];
+        // Filter for deleted departments
+        departmentsArray = allDepartments.filter(dept => dept.is_deleted === true);
         success = true;
       } catch (firstError) {
         console.warn("Error on superadmin endpoint, trying fallback:", firstError.message);
@@ -43,7 +45,9 @@ export default function DeletedDepartmentsPage() {
             headers: { Authorization: `Bearer ${token}` },
             withCredentials: true,
           });
-          departmentsArray = res.data.departments || res.data || [];
+          const allDepartments = res.data.departments || res.data || [];
+          // Filter for deleted departments
+          departmentsArray = allDepartments.filter(dept => dept.is_deleted === true);
           success = true;
         } catch (secondError) {
           console.error("Error on admin endpoint:", secondError.message);
@@ -52,10 +56,8 @@ export default function DeletedDepartmentsPage() {
       }
 
       if (success) {
-        // Filter for deleted departments (assuming there's an is_deleted field)
-        const deletedDepts = departmentsArray.filter(dept => dept.is_deleted);
-        setDeletedDepartments(deletedDepts);
-        setFilteredDepartments(deletedDepts);
+        setDeletedDepartments(departmentsArray);
+        setFilteredDepartments(departmentsArray);
       }
       
       setLoading(false);
