@@ -2342,15 +2342,13 @@ export default function ElectionDetailsPage() {
                       
                       <div className="grid grid-cols-6 gap-2">
                         {bulletinData.voterCodes.slice(carouselContent.page * 50, (carouselContent.page + 1) * 50).map((voter, index) => (
-                          <div key={voter.voteToken || index} className="bg-white rounded p-2 border hover:shadow-md transition-shadow">
-                            <div className="flex flex-col items-center w-full">
-                              <span className="font-mono text-sm bg-blue-100 text-black px-2 py-1 rounded mb-1 text-center whitespace-nowrap w-full font-bold">
-                                {voter.verificationCode}
-                              </span>
-                              <span className="text-xs text-gray-500 text-center">
-                                {new Date(voter.voteDate).toLocaleDateString()}
-                              </span>
-                            </div>
+                          <div key={voter.voteToken || index} className="bg-white rounded p-2 border hover:shadow-md transition-shadow flex flex-col items-center">
+                            <span className="font-mono text-base bg-blue-100 text-black px-3 py-2 rounded mb-1 text-center whitespace-nowrap font-bold">
+                              {voter.verificationCode}
+                            </span>
+                            <span className="text-xs text-gray-500 text-center">
+                              {new Date(voter.voteDate).toLocaleDateString()}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -2422,15 +2420,13 @@ export default function ElectionDetailsPage() {
                           </h5>
                           <div className="grid grid-cols-6 gap-2">
                             {currentPageVoters.map((voter, voterIndex) => (
-                              <div key={voterIndex} className="bg-white rounded p-2 border text-center hover:shadow-md transition-shadow">
-                                <div className="flex flex-col items-center w-full">
-                                  <span className="font-mono text-sm bg-blue-100 text-black px-2 py-1 rounded mb-1 whitespace-nowrap w-full font-bold">
-                                    {voter.verificationCode}
-                                  </span>
-                                  <span className="text-xs text-gray-500">
-                                    {new Date(voter.voteDate || voter.vote_date).toLocaleDateString()}
-                                  </span>
-                                </div>
+                              <div key={voterIndex} className="bg-white rounded p-2 border text-center hover:shadow-md transition-shadow flex flex-col items-center">
+                                <span className="font-mono text-base bg-blue-100 text-black px-3 py-2 rounded mb-1 whitespace-nowrap font-bold">
+                                  {voter.verificationCode}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  {new Date(voter.voteDate || voter.vote_date).toLocaleDateString()}
+                                </span>
                               </div>
                             ))}
                           </div>
@@ -2626,15 +2622,13 @@ export default function ElectionDetailsPage() {
                   ) : (
                     <div className="grid grid-cols-6 gap-2">
                       {bulletinData.voterCodes.slice(currentCodesPage * 50, (currentCodesPage + 1) * 50).map((voter, index) => (
-                        <div key={voter.voteToken || index} className="bg-white rounded p-2 border hover:shadow-md transition-shadow">
-                          <div className="flex flex-col items-center w-full">
-                            <span className="font-mono text-sm bg-blue-100 text-black px-2 py-1 rounded mb-1 text-center whitespace-nowrap w-full font-bold">
-                              {voter.verificationCode}
-                            </span>
-                            <span className="text-xs text-gray-500 text-center">
-                              {new Date(voter.voteDate).toLocaleDateString()}
-                            </span>
-                          </div>
+                        <div key={voter.voteToken || index} className="bg-white rounded p-2 border hover:shadow-md transition-shadow flex flex-col items-center">
+                          <span className="font-mono text-base bg-blue-100 text-black px-3 py-2 rounded mb-1 text-center whitespace-nowrap font-bold">
+                            {voter.verificationCode}
+                          </span>
+                          <span className="text-xs text-gray-500 text-center">
+                            {new Date(voter.voteDate).toLocaleDateString()}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -2730,15 +2724,13 @@ export default function ElectionDetailsPage() {
                                   .find(pos => pos.id === election.positions[currentCandidatesPage].id)
                                   ?.candidates?.find(c => c.id === candidate.id)
                                   ?.voters?.slice(0, 50).map((voter, voterIndex) => (
-                                    <div key={voterIndex} className="bg-white rounded p-2 border text-center hover:shadow-md transition-shadow">
-                                      <div className="flex flex-col items-center w-full">
-                                        <span className="font-mono text-sm bg-blue-100 text-black px-2 py-1 rounded mb-1 whitespace-nowrap w-full font-bold">
-                                          {voter.verificationCode}
-                                        </span>
-                                        <span className="text-xs text-gray-500">
-                                          {new Date(voter.voteDate || voter.vote_date).toLocaleDateString()}
-                                        </span>
-                                      </div>
+                                    <div key={voterIndex} className="bg-white rounded p-2 border text-center hover:shadow-md transition-shadow flex flex-col items-center">
+                                      <span className="font-mono text-base bg-blue-100 text-black px-3 py-2 rounded mb-1 whitespace-nowrap font-bold">
+                                        {voter.verificationCode}
+                                      </span>
+                                      <span className="text-xs text-gray-500">
+                                        {new Date(voter.voteDate || voter.vote_date).toLocaleDateString()}
+                                      </span>
                                     </div>
                                   )) || []}
                               </div>
