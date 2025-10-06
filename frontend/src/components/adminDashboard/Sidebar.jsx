@@ -136,6 +136,20 @@ export default function Sidebar() {
               Elections
             </button>
           )}
+
+           {/* Only show Admin Management if user has permission */}
+          {!permissionsLoading && hasPermission('adminManagement', 'view') && (
+            <button 
+              className={`block w-full text-left p-3 rounded transition-colors ${
+                isActiveRoute("/admin/manage-admins") 
+                  ? "bg-[#01579B] text-white shadow-md" 
+                  : "hover:bg-[#01579B] hover:text-white"
+              }`} 
+              onClick={() => router.push("/admin/manage-admins")}
+            >
+              Admin Management
+            </button>
+          )}
           
           {/* Only show Students if user has permission */}
           {!permissionsLoading && hasPermission('users', 'view') && (
@@ -147,7 +161,7 @@ export default function Sidebar() {
               }`} 
               onClick={() => router.push("/admin/students")}
             >
-              Students
+              Students Management
             </button>
           )}
           
@@ -161,7 +175,7 @@ export default function Sidebar() {
               }`} 
               onClick={() => router.push("/admin/departments")}
             >
-              Departments
+              Departments Management
             </button>
           )}
           
@@ -190,21 +204,7 @@ export default function Sidebar() {
             >
               Audit Logs
             </button>
-          )}
-
-          {/* Only show Admin Management if user has permission */}
-          {!permissionsLoading && hasPermission('adminManagement', 'view') && (
-            <button 
-              className={`block w-full text-left p-3 rounded transition-colors ${
-                isActiveRoute("/admin/manage-admins") 
-                  ? "bg-[#01579B] text-white shadow-md" 
-                  : "hover:bg-[#01579B] hover:text-white"
-              }`} 
-              onClick={() => router.push("/admin/manage-admins")}
-            >
-              Admin Management
-            </button>
-          )}
+          )}    
 
           {/* Only show Maintenance if user has permission */}
           {!permissionsLoading && hasPermission('maintenance', 'view') && (
@@ -232,6 +232,19 @@ export default function Sidebar() {
             >
               Reports
             </button>
+
+             <button 
+              className={`block w-full text-left p-3 rounded transition-colors ${
+                isActiveRoute("/admin/reports") 
+                  ? "bg-[#01579B] text-white shadow-md" 
+                  : "hover:bg-[#01579B] hover:text-white"
+              }`} 
+              onClick={() => router.push("/admin/reports")}
+            >
+              Results Verification
+            </button>
+
+            
         </nav>
       </aside>   
     </>
