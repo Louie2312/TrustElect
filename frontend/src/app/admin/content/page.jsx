@@ -77,6 +77,10 @@ export default function ContentManagement() {
     logo: {
       imageUrl: null
     },
+    header: {
+      bgColor: "#01579B",
+      backgroundImage: null
+    },
     hero: {
       title: "",
       subtitle: "",
@@ -84,10 +88,12 @@ export default function ContentManagement() {
       posterImage: null,
       carouselImages: [],
       bgColor: "#1e40af",
-      textColor: "#ffffff" 
+      textColor: "#ffffff",
+      backgroundImage: null
     },
     features: {
-      columns: []
+      columns: [],
+      backgroundImage: null
     },
     callToAction: {
       title: "",
@@ -98,7 +104,8 @@ export default function ContentManagement() {
       textColor: "#ffffff",  
       mediaType: null,
       mediaPosition: null,
-      purpose: null
+      purpose: null,
+      backgroundImage: null
     },
     candidates: {
       title: "",
@@ -530,7 +537,8 @@ export default function ContentManagement() {
           posterImage: landingContent.hero.posterImage,
           carouselImages: landingContent.hero.carouselImages,
           bgColor: landingContent.hero.bgColor,
-          textColor: landingContent.hero.textColor
+          textColor: landingContent.hero.textColor,
+          backgroundImage: landingContent.hero.backgroundImage
         };
   
         // Append hero video file if selected
@@ -572,6 +580,12 @@ export default function ContentManagement() {
             formData.append(`featureImage${index}`, featureInput.files[0]);
           }
         });
+      } else if (section === 'header') {
+        // Handle header section
+        contentData = {
+          bgColor: landingContent.header.bgColor,
+          backgroundImage: landingContent.header.backgroundImage
+        };
       } else if (section === 'callToAction') {
         // Handle CTA section
         contentData = {
@@ -583,7 +597,8 @@ export default function ContentManagement() {
           videoUrl: landingContent.callToAction.videoUrl,
           bgColor: landingContent.callToAction.bgColor,
           textColor: landingContent.callToAction.textColor,
-          purpose: landingContent.callToAction.purpose
+          purpose: landingContent.callToAction.purpose,
+          backgroundImage: landingContent.callToAction.backgroundImage
         };
 
         // Append CTA video file if selected

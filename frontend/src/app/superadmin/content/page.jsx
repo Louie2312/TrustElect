@@ -71,6 +71,10 @@ export default function ContentManagement() {
     logo: {
       imageUrl: null
     },
+    header: {
+      bgColor: "#01579B",
+      backgroundImage: null
+    },
     hero: {
       title: "",
       subtitle: "",
@@ -81,12 +85,14 @@ export default function ContentManagement() {
       posterImage: null,
       carouselImages: [],
       bgColor: "#1e40af",
-      textColor: "#ffffff"
+      textColor: "#ffffff",
+      backgroundImage: null
     },
     features: {
       title: "",
       subtitle: "",
-      columns: []
+      columns: [],
+      backgroundImage: null
     },
     callToAction: {
       title: "",
@@ -95,7 +101,8 @@ export default function ContentManagement() {
       actionLink: "",
       enabled: true,
       bgColor: "#1e3a8a",
-      textColor: "#ffffff"
+      textColor: "#ffffff",
+      backgroundImage: null
     },
     candidates: {
       title: "Election Candidates",
@@ -814,6 +821,11 @@ export default function ContentManagement() {
         if (landingContent.logo.imageUrl === null) {
           formData.append('removeLogo', 'true');
         }
+      } else if (section === 'header') {
+        contentData = {
+          bgColor: landingContent.header.bgColor,
+          backgroundImage: landingContent.header.backgroundImage
+        };
       } else if (section === 'hero') {
         contentData = {
           title: landingContent.hero.title,
@@ -822,7 +834,8 @@ export default function ContentManagement() {
           posterImage: landingContent.hero.posterImage,
           carouselImages: landingContent.hero.carouselImages,
           bgColor: landingContent.hero.bgColor,
-          textColor: landingContent.hero.textColor
+          textColor: landingContent.hero.textColor,
+          backgroundImage: landingContent.hero.backgroundImage
         };
 
         const videoInput = document.querySelector('#hero-video-input');
@@ -861,8 +874,8 @@ export default function ContentManagement() {
         const themeFeatureSectionBg = activeTheme?.colors?.featureSectionBg || "#f9fafb";
 
         contentData = {
-
           sectionBgColor: themeFeatureSectionBg,
+          backgroundImage: landingContent.features.backgroundImage,
           columns: landingContent.features.columns.map(column => ({
             title: column.title,
             description: column.description,
@@ -912,7 +925,8 @@ export default function ContentManagement() {
           videoUrl: landingContent.callToAction.videoUrl,
           bgColor: landingContent.callToAction.bgColor,
           textColor: landingContent.callToAction.textColor,
-          purpose: landingContent.callToAction.purpose || 'default'
+          purpose: landingContent.callToAction.purpose || 'default',
+          backgroundImage: landingContent.callToAction.backgroundImage
         };
 
         // Append CTA video file if selected

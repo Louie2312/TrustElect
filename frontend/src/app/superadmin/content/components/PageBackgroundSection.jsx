@@ -34,35 +34,19 @@ const PageBackgroundSection = ({
     setIsUploading(true);
 
     try {
-      const formData = new FormData();
-      formData.append('image', file);
-      formData.append('section', section);
-
-      const token = Cookies.get('token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/content/upload-background`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
-
-      const data = await response.json();
+      // Create a local URL for immediate preview
+      const localUrl = URL.createObjectURL(file);
       
       // Update the landing content with the new background image
       setLandingContent(prev => ({
         ...prev,
         [section]: {
           ...prev[section],
-          backgroundImage: data.imageUrl
+          backgroundImage: localUrl
         }
       }));
 
-      toast.success(`${sectionName} background updated successfully!`);
+      toast.success(`${sectionName} background updated successfully! Click Save to apply changes.`);
       
       // Auto-save after successful upload
       if (onSave) {
@@ -128,7 +112,10 @@ const PageBackgroundSection = ({
         )}
 
         {/* Upload Section */}
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+        <div 
+          className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer"
+          onClick={() => fileInputRef.current?.click()}
+        >
           <input
             ref={fileInputRef}
             type="file"
@@ -148,13 +135,9 @@ const PageBackgroundSection = ({
             </div>
             
             <div>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-                className="text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
-              >
-                {isUploading ? 'Uploading...' : 'Upload Background Image'}
-              </button>
+              <div className="text-blue-600 hover:text-blue-700 font-medium">
+                {isUploading ? 'Uploading...' : 'Click to Upload Background Image'}
+              </div>
               <p className="text-sm text-gray-500 mt-1">
                 PNG, JPG, JPEG up to 5MB
               </p>
