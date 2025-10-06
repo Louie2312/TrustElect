@@ -673,7 +673,7 @@ export default function ElectionDetailsPage() {
 
   // Bulletin pagination functions
   const goToNextCodesPage = () => {
-    const codesPerPage = 40; // 40 codes per page
+    const codesPerPage = 50; // 50 codes per page
     const totalPages = Math.ceil(bulletinData.voterCodes.length / codesPerPage);
     if (currentCodesPage < totalPages - 1) {
       setCurrentCodesPage(prev => prev + 1);
@@ -748,7 +748,7 @@ export default function ElectionDetailsPage() {
   };
 
   const getBulletinCarouselContent = () => {
-    const voterPages = Math.ceil(bulletinData.voterCodes.length / 40);
+    const voterPages = Math.ceil(bulletinData.voterCodes.length / 50);
     
     // Calculate total candidate pages (including pagination for candidates with 40+ votes)
     let totalCandidatePages = 0;
@@ -2244,9 +2244,9 @@ export default function ElectionDetailsPage() {
           )}
 
           <div className={`flex items-center justify-between mb-6 ${isBulletinFullScreen ? 'sticky top-0 z-10 bg-white p-4 rounded-lg shadow-lg' : ''}`}>
-            <h2 className={`text-xl font-semibold text-black flex items-center ${isBulletinFullScreen ? 'text-3xl' : ''}`}>
+            <h2 className={`text-xl font-semibold text-black flex items-center ${isBulletinFullScreen ? 'text-4xl' : ''}`}>
               <FileText className={`w-5 h-5 mr-2 ${isBulletinFullScreen ? 'w-8 h-8' : ''}`} />
-              Public Bulletin
+              Election Bulletin
             </h2>
             <div className="flex items-center gap-3">
               {isBulletinFullScreen && (
@@ -2255,13 +2255,15 @@ export default function ElectionDetailsPage() {
                   <span className="text-sm font-medium">Auto-rotating every 5s</span>
                 </div>
               )}
-              <button
-                onClick={toggleBulletinFullScreen}
-                className="flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-              >
-                <FileText className="w-4 h-4 mr-2" />
-                {isBulletinFullScreen ? 'Exit Fullscreen' : 'View Bulletin'}
-              </button>
+              {!isBulletinFullScreen && (
+                <button
+                  onClick={toggleBulletinFullScreen}
+                  className="flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  View Bulletin
+                </button>
+              )}
             </div>
           </div>
 
@@ -2338,11 +2340,11 @@ export default function ElectionDetailsPage() {
                         </div>
                       </div>
                       
-                      <div className="grid grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2">
-                        {bulletinData.voterCodes.slice(carouselContent.page * 40, (carouselContent.page + 1) * 40).map((voter, index) => (
-                          <div key={voter.voteToken || index} className="bg-white rounded p-2 border hover:shadow-md transition-shadow">
+                      <div className="grid grid-cols-5 gap-3">
+                        {bulletinData.voterCodes.slice(carouselContent.page * 50, (carouselContent.page + 1) * 50).map((voter, index) => (
+                          <div key={voter.voteToken || index} className="bg-white rounded p-3 border hover:shadow-md transition-shadow">
                             <div className="flex flex-col items-center w-full">
-                              <span className="font-mono text-base bg-blue-100 text-blue-800 px-2 py-1 rounded mb-1 text-center whitespace-nowrap w-full">
+                              <span className="font-mono text-lg bg-blue-100 text-black px-3 py-2 rounded mb-2 text-center whitespace-nowrap w-full font-bold">
                                 {voter.verificationCode}
                               </span>
                               <span className="text-xs text-gray-500 text-center">
@@ -2418,11 +2420,11 @@ export default function ElectionDetailsPage() {
                           <h5 className="text-sm font-medium text-gray-700 mb-2">
                             Voter Codes ({candidateVoters.length}):
                           </h5>
-                          <div className="grid grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2">
+                          <div className="grid grid-cols-5 gap-3">
                             {currentPageVoters.map((voter, voterIndex) => (
-                              <div key={voterIndex} className="bg-white rounded p-2 border text-center hover:shadow-md transition-shadow">
+                              <div key={voterIndex} className="bg-white rounded p-3 border text-center hover:shadow-md transition-shadow">
                                 <div className="flex flex-col items-center w-full">
-                                  <span className="font-mono text-base bg-blue-100 text-blue-800 px-2 py-1 rounded whitespace-nowrap w-full">
+                                  <span className="font-mono text-lg bg-blue-100 text-black px-3 py-2 rounded mb-2 whitespace-nowrap w-full font-bold">
                                     {voter.verificationCode}
                                   </span>
                                   <span className="text-xs text-gray-500">
@@ -2590,10 +2592,10 @@ export default function ElectionDetailsPage() {
                       <div className="text-sm text-gray-500">
                         Total: {bulletinData.voterCodes.length} voters
                       </div>
-                      {bulletinData.voterCodes.length > 40 && (
+                      {bulletinData.voterCodes.length > 50 && (
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-gray-600">
-                            Page {currentCodesPage + 1} of {Math.ceil(bulletinData.voterCodes.length / 40)}
+                            Page {currentCodesPage + 1} of {Math.ceil(bulletinData.voterCodes.length / 50)}
                           </span>
                           <div className="flex gap-1">
                             <button
@@ -2605,7 +2607,7 @@ export default function ElectionDetailsPage() {
                             </button>
                             <button
                               onClick={goToNextCodesPage}
-                              disabled={currentCodesPage >= Math.ceil(bulletinData.voterCodes.length / 40) - 1}
+                              disabled={currentCodesPage >= Math.ceil(bulletinData.voterCodes.length / 50) - 1}
                               className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               Next
@@ -2622,11 +2624,11 @@ export default function ElectionDetailsPage() {
                       <p className="text-gray-500">No voters yet</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2">
-                      {bulletinData.voterCodes.slice(currentCodesPage * 40, (currentCodesPage + 1) * 40).map((voter, index) => (
-                        <div key={voter.voteToken || index} className="bg-white rounded p-2 border hover:shadow-md transition-shadow">
+                    <div className="grid grid-cols-5 gap-3">
+                      {bulletinData.voterCodes.slice(currentCodesPage * 50, (currentCodesPage + 1) * 50).map((voter, index) => (
+                        <div key={voter.voteToken || index} className="bg-white rounded p-3 border hover:shadow-md transition-shadow">
                           <div className="flex flex-col items-center w-full">
-                            <span className="font-mono text-base bg-blue-100 text-blue-800 px-2 py-1 rounded mb-1 text-center whitespace-nowrap w-full">
+                            <span className="font-mono text-lg bg-blue-100 text-black px-3 py-2 rounded mb-2 text-center whitespace-nowrap w-full font-bold">
                               {voter.verificationCode}
                             </span>
                             <span className="text-xs text-gray-500 text-center">
@@ -2723,14 +2725,14 @@ export default function ElectionDetailsPage() {
                                   ?.candidates?.find(c => c.id === candidate.id)
                                   ?.voters?.length || 0}):
                               </h5>
-                              <div className="grid grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2">
+                              <div className="grid grid-cols-5 gap-3">
                                 {bulletinData.candidateVotes
                                   .find(pos => pos.id === election.positions[currentCandidatesPage].id)
                                   ?.candidates?.find(c => c.id === candidate.id)
                                   ?.voters?.slice(0, 50).map((voter, voterIndex) => (
-                                    <div key={voterIndex} className="bg-white rounded p-2 border text-center hover:shadow-md transition-shadow">
+                                    <div key={voterIndex} className="bg-white rounded p-3 border text-center hover:shadow-md transition-shadow">
                                       <div className="flex flex-col items-center w-full">
-                                        <span className="font-mono text-base bg-blue-100 text-blue-800 px-2 py-1 rounded whitespace-nowrap w-full">
+                                        <span className="font-mono text-lg bg-blue-100 text-black px-3 py-2 rounded mb-2 whitespace-nowrap w-full font-bold">
                                           {voter.verificationCode}
                                         </span>
                                         <span className="text-xs text-gray-500">
