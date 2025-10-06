@@ -446,18 +446,11 @@ export default function StudentDashboard() {
             color: landingContent.hero?.textColor || '#ffffff',
             backgroundImage: landingContent.hero?.backgroundImage ? `url(${landingContent.hero.backgroundImage})` : 
                            (landingContent.hero?.posterImage ? `url(${formatImageUrl(landingContent.hero.posterImage)})` : 'none'),
-            backgroundSize: landingContent.hero?.backgroundSize || 'cover',
-            backgroundPosition: landingContent.hero?.backgroundPosition || 'center',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat'
           }}
         >
-          {/* Background Overlay */}
-          {landingContent.hero?.backgroundOverlay && (
-            <div 
-              className="absolute inset-0 bg-black"
-              style={{ opacity: landingContent.hero?.overlayOpacity || 0.5 }}
-            ></div>
-          )}
           <div className="container mx-auto max-w-6xl relative z-10">
             <h1 
               className="text-3xl md:text-4xl font-bold leading-tight mb-4"

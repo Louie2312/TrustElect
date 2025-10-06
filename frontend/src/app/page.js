@@ -272,18 +272,11 @@ export default function Home() {
         style={{
           backgroundColor: landingContent.header?.bgColor || '#01579B',
           backgroundImage: landingContent.header?.backgroundImage ? `url(${landingContent.header.backgroundImage})` : 'none',
-          backgroundSize: landingContent.header?.backgroundSize || 'cover',
-          backgroundPosition: landingContent.header?.backgroundPosition || 'center',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat'
         }}
       >
-        {/* Background Overlay */}
-        {landingContent.header?.backgroundOverlay && (
-          <div 
-            className="absolute inset-0 bg-black"
-            style={{ opacity: landingContent.header?.overlayOpacity || 0.5 }}
-          ></div>
-        )}
         <h1 className="text-4xl font-bold flex items-center relative z-10">
           {landingContent.logo?.imageUrl ? (
             <Image 
@@ -365,18 +358,11 @@ export default function Home() {
           backgroundColor: landingContent.hero?.bgColor || '#01579B',
           color: landingContent.hero?.textColor || '#ffffff',
           backgroundImage: landingContent.hero?.backgroundImage ? `url(${landingContent.hero.backgroundImage})` : 'none',
-          backgroundSize: landingContent.hero?.backgroundSize || 'cover',
-          backgroundPosition: landingContent.hero?.backgroundPosition || 'center',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat'
         }}
       >
-        {/* Background Overlay */}
-        {landingContent.hero?.backgroundOverlay && (
-          <div 
-            className="absolute inset-0 bg-black"
-            style={{ opacity: landingContent.hero?.overlayOpacity || 0.5 }}
-          ></div>
-        )}
         <div className="container mx-auto max-w-7xl flex flex-col lg:flex-row items-center">
           <div className="lg:w-1/4 space-y-6 pr-0 lg:pr-16 z-10 relative">
             <h1 
@@ -638,18 +624,11 @@ export default function Home() {
             backgroundColor: landingContent.callToAction?.bgColor || '#1e3a8a',
             color: landingContent.callToAction?.textColor || '#ffffff',
             backgroundImage: landingContent.callToAction?.backgroundImage ? `url(${landingContent.callToAction.backgroundImage})` : 'none',
-            backgroundSize: landingContent.callToAction?.backgroundSize || 'cover',
-            backgroundPosition: landingContent.callToAction?.backgroundPosition || 'center',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat'
           }}
         >
-          {/* Background Overlay */}
-          {landingContent.callToAction?.backgroundOverlay && (
-            <div 
-              className="absolute inset-0 bg-black"
-              style={{ opacity: landingContent.callToAction?.overlayOpacity || 0.5 }}
-            ></div>
-          )}
           <div className="container mx-auto max-w-6xl">
             {/* Changed to flex layout with video on left and content on right */}
             <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
@@ -740,18 +719,11 @@ export default function Home() {
         style={{
           backgroundColor: landingContent.features?.sectionBgColor || '#f9fafb',
           backgroundImage: landingContent.features?.backgroundImage ? `url(${landingContent.features.backgroundImage})` : 'none',
-          backgroundSize: landingContent.features?.backgroundSize || 'cover',
-          backgroundPosition: landingContent.features?.backgroundPosition || 'center',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat'
         }}
       >
-        {/* Background Overlay */}
-        {landingContent.features?.backgroundOverlay && (
-          <div 
-            className="absolute inset-0 bg-black"
-            style={{ opacity: landingContent.features?.overlayOpacity || 0.5 }}
-          ></div>
-        )}
         <div className="container mx-auto max-w-6xl">
           <h2 className="text-3xl font-bold text-center mb-12 text-gray-800">
             Key Features

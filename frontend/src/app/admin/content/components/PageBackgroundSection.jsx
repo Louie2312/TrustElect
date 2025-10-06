@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { Upload, X, Image as ImageIcon, Trash2 } from "lucide-react";
 import { toast } from "react-hot-toast";
+import Cookies from "js-cookie";
 
 const PageBackgroundSection = ({ 
   landingContent, 
@@ -37,8 +38,8 @@ const PageBackgroundSection = ({
       formData.append('image', file);
       formData.append('section', section);
 
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/content/upload-background', {
+      const token = Cookies.get('token');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/content/upload-background`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -161,103 +162,11 @@ const PageBackgroundSection = ({
           </div>
         </div>
 
-        {/* Background Options */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Background Size
-            </label>
-            <select
-              value={landingContent[section]?.backgroundSize || 'cover'}
-              onChange={(e) => setLandingContent(prev => ({
-                ...prev,
-                [section]: {
-                  ...prev[section],
-                  backgroundSize: e.target.value
-                }
-              }))}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="cover">Cover (Fill entire section)</option>
-              <option value="contain">Contain (Fit within section)</option>
-              <option value="100% 100%">Stretch (Fill exactly)</option>
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Background Position
-            </label>
-            <select
-              value={landingContent[section]?.backgroundPosition || 'center'}
-              onChange={(e) => setLandingContent(prev => ({
-                ...prev,
-                [section]: {
-                  ...prev[section],
-                  backgroundPosition: e.target.value
-                }
-              }))}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="center">Center</option>
-              <option value="top">Top</option>
-              <option value="bottom">Bottom</option>
-              <option value="left">Left</option>
-              <option value="right">Right</option>
-              <option value="top left">Top Left</option>
-              <option value="top right">Top Right</option>
-              <option value="bottom left">Bottom Left</option>
-              <option value="bottom right">Bottom Right</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Background Overlay */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Background Overlay (Optional)
-          </label>
-          <div className="flex items-center space-x-4">
-            <input
-              type="checkbox"
-              checked={landingContent[section]?.backgroundOverlay || false}
-              onChange={(e) => setLandingContent(prev => ({
-                ...prev,
-                [section]: {
-                  ...prev[section],
-                  backgroundOverlay: e.target.checked
-                }
-              }))}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <span className="text-sm text-gray-600">Add dark overlay for better text readability</span>
-          </div>
-          
-          {landingContent[section]?.backgroundOverlay && (
-            <div className="mt-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Overlay Opacity
-              </label>
-              <input
-                type="range"
-                min="0.1"
-                max="0.9"
-                step="0.1"
-                value={landingContent[section]?.overlayOpacity || 0.5}
-                onChange={(e) => setLandingContent(prev => ({
-                  ...prev,
-                  [section]: {
-                    ...prev[section],
-                    overlayOpacity: parseFloat(e.target.value)
-                  }
-                }))}
-                className="w-full"
-              />
-              <div className="text-xs text-gray-500 text-center">
-                {Math.round((landingContent[section]?.overlayOpacity || 0.5) * 100)}%
-              </div>
-            </div>
-          )}
+        {/* Simple Info */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <p className="text-sm text-blue-700">
+            The uploaded image will automatically cover the entire section while keeping all content visible on top.
+          </p>
         </div>
       </div>
     </div>
