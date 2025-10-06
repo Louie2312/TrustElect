@@ -138,21 +138,16 @@ const getSectionContent = async (req, res) => {
  * @param {Object} res 
  */
 const updateSectionContent = async (req, res) => {
-  console.log('=== Content Upload Debug Info ===');
-  console.log('Section:', req.params.section);
-  console.log('Content-Type:', req.headers['content-type']);
-  console.log('Content-Length:', req.headers['content-length']);
-  console.log('User-Agent:', req.headers['user-agent']);
-  console.log('Request body keys:', Object.keys(req.body || {}));
-  console.log('Request files:', Object.keys(req.files || {}));
-  console.log('Raw body content field:', req.body.content);
-  console.log('================================');
-  
+
   const uploadFields = [
     { name: 'logo', maxCount: 1 },
     { name: 'heroVideo', maxCount: 1 },
     { name: 'heroPoster', maxCount: 1 },
-    { name: 'ctaVideo', maxCount: 1 }
+    { name: 'ctaVideo', maxCount: 1 },
+    { name: 'headerBackground', maxCount: 1 },
+    { name: 'heroBackground', maxCount: 1 },
+    { name: 'featuresBackground', maxCount: 1 },
+    { name: 'ctaBackground', maxCount: 1 }
   ];
   
   // Support up to 10 feature cards and carousel images
@@ -399,6 +394,30 @@ const updateSectionContent = async (req, res) => {
           contentData.textColor = "#ffffff"; 
         }
         
+        // Handle hero background image
+        const heroBackgroundFile = req.files?.heroBackground?.[0];
+        if (heroBackgroundFile) {
+          const backgroundUrl = normalizeFilePath(`/uploads/images/${heroBackgroundFile.filename}`);
+          console.log('Processing hero background:', heroBackgroundFile.filename);
+          
+          try {
+            await contentModel.saveMedia({
+              filename: heroBackgroundFile.filename,
+              originalFilename: heroBackgroundFile.originalname,
+              fileType: 'image',
+              mimeType: heroBackgroundFile.mimetype,
+              fileSize: heroBackgroundFile.size,
+              path: heroBackgroundFile.path,
+              url: backgroundUrl,
+              altText: 'Hero background image'
+            });
+            contentData.backgroundImage = backgroundUrl;
+          } catch (error) {
+            console.error('Error saving hero background media:', error);
+            contentData.backgroundImage = backgroundUrl;
+          }
+        }
+        
         console.log('Content data after hero processing:', contentData);
       } else if (section === 'features') {
         if (contentData.columns && Array.isArray(contentData.columns)) {
@@ -437,21 +456,36 @@ const updateSectionContent = async (req, res) => {
             }
           }
         }
+        
+        // Handle features background image
+        const featuresBackgroundFile = req.files?.featuresBackground?.[0];
+        if (featuresBackgroundFile) {
+          const backgroundUrl = normalizeFilePath(`/uploads/images/${featuresBackgroundFile.filename}`);
+          console.log('Processing features background:', featuresBackgroundFile.filename);
+          
+          try {
+            await contentModel.saveMedia({
+              filename: featuresBackgroundFile.filename,
+              originalFilename: featuresBackgroundFile.originalname,
+              fileType: 'image',
+              mimeType: featuresBackgroundFile.mimetype,
+              fileSize: featuresBackgroundFile.size,
+              path: featuresBackgroundFile.path,
+              url: backgroundUrl,
+              altText: 'Features background image'
+            });
+            contentData.backgroundImage = backgroundUrl;
+          } catch (error) {
+            console.error('Error saving features background media:', error);
+            contentData.backgroundImage = backgroundUrl;
+          }
+        }
       } else if (section === 'callToAction') {
-        console.log('=== CTA SECTION PROCESSING ===');
-        console.log('Request files:', Object.keys(req.files || {}));
-        console.log('Request body keys:', Object.keys(req.body || {}));
         
         // Process CTA video if uploaded or handle removal
         const ctaVideoFile = req.files?.ctaVideo?.[0];
         if (ctaVideoFile) {
-          console.log('Processing CTA video:', {
-            filename: ctaVideoFile.filename,
-            originalname: ctaVideoFile.originalname,
-            mimetype: ctaVideoFile.mimetype,
-            size: ctaVideoFile.size,
-            path: ctaVideoFile.path
-          });
+        
           
           const videoUrl = normalizeFilePath(`/uploads/videos/${ctaVideoFile.filename}`);
           console.log('CTA Video URL:', videoUrl);
@@ -487,6 +521,54 @@ const updateSectionContent = async (req, res) => {
         }
         if (contentData.textColor && !isValidColorFormat(contentData.textColor)) {
           contentData.textColor = "#ffffff";
+        }
+        
+        // Handle CTA background image
+        const ctaBackgroundFile = req.files?.ctaBackground?.[0];
+        if (ctaBackgroundFile) {
+          const backgroundUrl = normalizeFilePath(`/uploads/images/${ctaBackgroundFile.filename}`);
+          console.log('Processing CTA background:', ctaBackgroundFile.filename);
+          
+          try {
+            await contentModel.saveMedia({
+              filename: ctaBackgroundFile.filename,
+              originalFilename: ctaBackgroundFile.originalname,
+              fileType: 'image',
+              mimeType: ctaBackgroundFile.mimetype,
+              fileSize: ctaBackgroundFile.size,
+              path: ctaBackgroundFile.path,
+              url: backgroundUrl,
+              altText: 'CTA background image'
+            });
+            contentData.backgroundImage = backgroundUrl;
+          } catch (error) {
+            console.error('Error saving CTA background media:', error);
+            contentData.backgroundImage = backgroundUrl;
+          }
+        }
+      } else if (section === 'header') {
+        // Handle header background image
+        const headerBackgroundFile = req.files?.headerBackground?.[0];
+        if (headerBackgroundFile) {
+          const backgroundUrl = normalizeFilePath(`/uploads/images/${headerBackgroundFile.filename}`);
+          console.log('Processing header background:', headerBackgroundFile.filename);
+          
+          try {
+            await contentModel.saveMedia({
+              filename: headerBackgroundFile.filename,
+              originalFilename: headerBackgroundFile.originalname,
+              fileType: 'image',
+              mimeType: headerBackgroundFile.mimetype,
+              fileSize: headerBackgroundFile.size,
+              path: headerBackgroundFile.path,
+              url: backgroundUrl,
+              altText: 'Header background image'
+            });
+            contentData.backgroundImage = backgroundUrl;
+          } catch (error) {
+            console.error('Error saving header background media:', error);
+            contentData.backgroundImage = backgroundUrl;
+          }
         }
       }
 

@@ -549,6 +549,18 @@ export default function ContentManagement() {
           textColor: landingContent.hero.textColor,
           backgroundImage: landingContent.hero.backgroundImage
         };
+        
+        // Handle hero background image upload
+        if (landingContent.hero.backgroundImage && landingContent.hero.backgroundImage.startsWith('blob:')) {
+          try {
+            const response = await fetch(landingContent.hero.backgroundImage);
+            const blob = await response.blob();
+            const file = new File([blob], 'hero-background.jpg', { type: 'image/jpeg' });
+            formData.append('heroBackground', file);
+          } catch (error) {
+            console.error('Error converting hero background blob to file:', error);
+          }
+        }
   
         // Append hero video file if selected
         const videoInput = document.querySelector('#hero-video-input');
@@ -582,6 +594,18 @@ export default function ContentManagement() {
         // Handle features section
         contentData = { ...landingContent[section] };
         
+        // Handle features background image upload
+        if (landingContent.features.backgroundImage && landingContent.features.backgroundImage.startsWith('blob:')) {
+          try {
+            const response = await fetch(landingContent.features.backgroundImage);
+            const blob = await response.blob();
+            const file = new File([blob], 'features-background.jpg', { type: 'image/jpeg' });
+            formData.append('featuresBackground', file);
+          } catch (error) {
+            console.error('Error converting features background blob to file:', error);
+          }
+        }
+        
         // Handle feature images
         landingContent.features.columns.forEach((feature, index) => {
           const featureInput = document.querySelector(`#feature-image-${index}`);
@@ -595,6 +619,19 @@ export default function ContentManagement() {
           bgColor: landingContent.header.bgColor,
           backgroundImage: landingContent.header.backgroundImage
         };
+        
+        // Handle header background image upload
+        if (landingContent.header.backgroundImage && landingContent.header.backgroundImage.startsWith('blob:')) {
+          // Convert blob URL to file and upload
+          try {
+            const response = await fetch(landingContent.header.backgroundImage);
+            const blob = await response.blob();
+            const file = new File([blob], 'header-background.jpg', { type: 'image/jpeg' });
+            formData.append('headerBackground', file);
+          } catch (error) {
+            console.error('Error converting header background blob to file:', error);
+          }
+        }
       } else if (section === 'callToAction') {
         // Handle CTA section
         contentData = {
@@ -609,6 +646,18 @@ export default function ContentManagement() {
           purpose: landingContent.callToAction.purpose,
           backgroundImage: landingContent.callToAction.backgroundImage
         };
+
+        // Handle CTA background image upload
+        if (landingContent.callToAction.backgroundImage && landingContent.callToAction.backgroundImage.startsWith('blob:')) {
+          try {
+            const response = await fetch(landingContent.callToAction.backgroundImage);
+            const blob = await response.blob();
+            const file = new File([blob], 'cta-background.jpg', { type: 'image/jpeg' });
+            formData.append('ctaBackground', file);
+          } catch (error) {
+            console.error('Error converting CTA background blob to file:', error);
+          }
+        }
 
         // Append CTA video file if selected
         const ctaVideoInput = document.querySelector('#cta-video-input');
