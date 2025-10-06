@@ -161,7 +161,7 @@ export default function DeletedAdminsPage() {
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4 text-black">Deleted Admins</h1>
 
-      <button onClick={() => router.push("/admin/manage-admins")} className="bg-[#01579B] text-white px-4 py-2 rounded mb-4">
+      <button onClick={() => router.push("/superadmin/admins")} className="bg-[#01579B] text-white px-4 py-2 rounded mb-4">
         Back
       </button>
 
