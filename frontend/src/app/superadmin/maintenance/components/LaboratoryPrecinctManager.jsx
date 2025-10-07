@@ -230,8 +230,8 @@ const LaboratoryPrecinctManager = ({ precincts = [] }) => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold text-gray-800">Laboratory Precinct Management</h2>
-        <p className="text-sm text-gray-600">Click on a laboratory to manage its IP addresses</p>
+        <h2 className="text-xl font-semibold text-black">Laboratory Precinct Management</h2>
+        <p className="text-sm text-black">Click on a laboratory to manage its IP addresses</p>
       </div>
 
       {/* Laboratory Grid - Display as columns */}
@@ -242,19 +242,19 @@ const LaboratoryPrecinctManager = ({ precincts = [] }) => {
             className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow"
           >
             <div className="flex justify-between items-start mb-3">
-              <h3 className="font-semibold text-lg text-gray-800">{lab.name}</h3>
+              <h3 className="font-semibold text-lg text-black">{lab.name}</h3>
               <button
                 onClick={() => toggleShowIPs(lab.id)}
-                className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
+                className="text-xs px-2 py-1 bg-gray-100 text-black rounded hover:bg-gray-200"
               >
                 {showIPs[lab.id] ? 'Hide IPs' : 'Show IPs'}
               </button>
             </div>
             
-            <p className="text-gray-600 text-sm mb-3">{lab.description}</p>
+            <p className="text-black text-sm mb-3">{lab.description}</p>
             
             <div className="flex justify-between items-center mb-3">
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-black">
                 {lab.ip_count || 0} IP address(es)
               </span>
               <button
@@ -268,16 +268,16 @@ const LaboratoryPrecinctManager = ({ precincts = [] }) => {
             {/* Show IP addresses if toggled */}
             {showIPs[lab.id] && (
               <div className="mt-3 p-2 bg-gray-50 rounded text-xs">
-                <div className="text-gray-600 mb-2">IP Addresses:</div>
+                <div className="text-black mb-2">IP Addresses:</div>
                 <div className="space-y-1 max-h-32 overflow-y-auto">
                   {lab.active_ips && lab.active_ips.length > 0 ? (
                     lab.active_ips.map((ip, index) => (
-                      <div key={index} className="font-mono text-gray-700">
+                      <div key={index} className="font-mono text-black">
                         {ip}
                       </div>
                     ))
                   ) : (
-                    <div className="text-gray-500">No IP addresses configured</div>
+                    <div className="text-black">No IP addresses</div>
                   )}
                 </div>
               </div>
@@ -290,7 +290,7 @@ const LaboratoryPrecinctManager = ({ precincts = [] }) => {
       {selectedLab && (
         <div className="bg-gray-50 p-6 rounded-lg">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">{selectedLab.name} - IP Addresses</h3>
+            <h3 className="text-lg font-semibold text-black">{selectedLab.name} - IP Addresses</h3>
             <div className="flex gap-2">
               <button
                 onClick={() => setShowAddIP(!showAddIP)}
@@ -310,16 +310,16 @@ const LaboratoryPrecinctManager = ({ precincts = [] }) => {
           {/* Add Single IP Form */}
           {showAddIP && (
             <div className="mb-6 p-4 bg-white rounded-lg border">
-              <h4 className="font-semibold mb-3">Add Single IP Address</h4>
+              <h4 className="font-semibold mb-3 text-black">Add Single IP Address</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-black mb-1">
                     IP Type
                   </label>
                   <select
                     value={newIP.ip_type}
                     onChange={(e) => setNewIP({ ...newIP, ip_type: e.target.value })}
-                    className="w-full p-2 border border-gray-300 rounded-md"
+                    className="w-full p-2 border border-gray-300 rounded-md text-black"
                   >
                     <option value="single">Single IP</option>
                     <option value="range">IP Range</option>
@@ -329,7 +329,7 @@ const LaboratoryPrecinctManager = ({ precincts = [] }) => {
                 
                 {newIP.ip_type === 'single' && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-black mb-1">
                       IP Address
                     </label>
                     <input
@@ -337,7 +337,7 @@ const LaboratoryPrecinctManager = ({ precincts = [] }) => {
                       value={newIP.ip_address}
                       onChange={(e) => setNewIP({ ...newIP, ip_address: e.target.value })}
                       placeholder="192.168.1.1"
-                      className="w-full p-2 border border-gray-300 rounded-md"
+                      className="w-full p-2 border border-gray-300 rounded-md text-black"
                     />
                   </div>
                 )}
@@ -345,7 +345,7 @@ const LaboratoryPrecinctManager = ({ precincts = [] }) => {
                 {newIP.ip_type === 'range' && (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-black mb-1">
                         Start IP
                       </label>
                       <input
@@ -357,7 +357,7 @@ const LaboratoryPrecinctManager = ({ precincts = [] }) => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-black mb-1">
                         End IP
                       </label>
                       <input
@@ -373,7 +373,7 @@ const LaboratoryPrecinctManager = ({ precincts = [] }) => {
                 
                 {newIP.ip_type === 'subnet' && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-black mb-1">
                       Subnet Mask
                     </label>
                     <input
@@ -407,7 +407,7 @@ const LaboratoryPrecinctManager = ({ precincts = [] }) => {
           {showBulkAdd && (
             <div className="mb-6 p-4 bg-white rounded-lg border">
               <h4 className="font-semibold mb-3">Bulk Add IP Addresses</h4>
-              <p className="text-sm text-gray-600 mb-3">
+              <p className="text-sm text-black mb-3">
                 Paste IP addresses below, one per line. Each IP will be added as a single IP address.
               </p>
               <textarea
@@ -437,7 +437,7 @@ const LaboratoryPrecinctManager = ({ precincts = [] }) => {
           {/* IP Addresses List */}
           <div className="space-y-2">
             {ipAddresses.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">No IP addresses configured</p>
+              <p className="text-black text-center py-4">No IP addresses configured</p>
             ) : (
               ipAddresses.map((ip) => (
                 <div
@@ -453,7 +453,7 @@ const LaboratoryPrecinctManager = ({ precincts = [] }) => {
                         {ip.ip_type === 'range' && `${ip.ip_range_start} - ${ip.ip_range_end}`}
                         {ip.ip_type === 'subnet' && ip.subnet_mask}
                       </span>
-                      <span className="text-xs text-gray-500">({ip.ip_type})</span>
+                      <span className="text-xs text-black">({ip.ip_type})</span>
                       {!ip.ip_active && (
                         <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded">
                           Inactive
