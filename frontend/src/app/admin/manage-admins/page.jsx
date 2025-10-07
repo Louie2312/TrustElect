@@ -8,6 +8,7 @@ import AddAdminModal from "@/components/Modals/AddAdminModal";
 import EditAdminModal from "@/components/Modals/EditAdminModal";
 import ResetPasswordModal from "@/components/Modals/ResetPasswordModal";
 import EditAdminPermissionsModal from "@/components/Modals/EditAdminPermissionsModal";
+import ConfirmationModal from "@/components/Modals/ConfirmationModal";
 import { toast } from "react-hot-toast";
 import usePermissions from "@/hooks/usePermissions";
 
@@ -22,7 +23,10 @@ export default function ManageAdminsPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState(null);
+  const [selectedAdminId, setSelectedAdminId] = useState(null);
   const [searchQuery, setSearchQuery] = useState(""); 
   const [departmentFilter, setDepartmentFilter] = useState(""); 
   const [currentUserId, setCurrentUserId] = useState(null);
@@ -124,20 +128,24 @@ export default function ManageAdminsPage() {
       return;
     }
 
-    if (window.confirm("Are you sure you want to archive this admin?")) {
-      try {
-        const token = Cookies.get("token");
-        await axios.delete(`/api/admin/manage-admins/${adminId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-          withCredentials: true,
-        });
+    setSelectedAdminId(adminId);
+    setShowArchiveModal(true);
+  };
 
-        toast.success("Admin archived successfully");
-        fetchAdmins();
-      } catch (error) {
-        console.error("Error archiving admin:", error);
-        toast.error("Failed to archive admin");
-      }
+  const confirmArchiveAdmin = async () => {
+    try {
+      const token = Cookies.get("token");
+      await axios.delete(`/api/admin/manage-admins/${selectedAdminId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
+      });
+
+      toast.success("Admin archived successfully");
+      setShowArchiveModal(false);
+      fetchAdmins();
+    } catch (error) {
+      console.error("Error archiving admin:", error);
+      toast.error("Failed to archive admin");
     }
   };
 
@@ -153,20 +161,24 @@ export default function ManageAdminsPage() {
       return;
     }
 
-    if (window.confirm("Are you sure you want to delete this admin? It will be moved to the deleted folder.")) {
-      try {
-        const token = Cookies.get("token");
-        await axios.delete(`/api/admin/manage-admins/${adminId}?action=delete`, {
-          headers: { Authorization: `Bearer ${token}` },
-          withCredentials: true,
-        });
+    setSelectedAdminId(adminId);
+    setShowDeleteModal(true);
+  };
 
-        toast.success("Admin moved to deleted folder");
-        fetchAdmins();
-      } catch (error) {
-        console.error("Error deleting admin:", error);
-        toast.error("Failed to delete admin");
-      }
+  const confirmPermanentDeleteAdmin = async () => {
+    try {
+      const token = Cookies.get("token");
+      await axios.delete(`/api/admin/manage-admins/${selectedAdminId}?action=delete`, {
+        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
+      });
+
+      toast.success("Admin moved to deleted folder");
+      setShowDeleteModal(false);
+      fetchAdmins();
+    } catch (error) {
+      console.error("Error deleting admin:", error);
+      toast.error("Failed to delete admin");
     }
   };
 
@@ -504,6 +516,30 @@ export default function ManageAdminsPage() {
           }}
         />
       )}
+
+      <ConfirmationModal
+        isOpen={showArchiveModal}
+        onClose={() => setShowArchiveModal(false)}
+        onConfirm={confirmArchiveAdmin}
+        title="Confirm Archive"
+        message="Are you sure you want to archive this admin? The admin will be moved to the archived folder."
+        confirmText="Archive"
+        cancelText="Cancel"
+        type="warning"
+        isLoading={false}
+      />
+
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={confirmPermanentDeleteAdmin}
+        title="Confirm Delete"
+        message="Are you sure you want to delete this admin? The admin will be moved to the deleted folder."
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+        isLoading={false}
+      />
       </div>
     </div>
   );

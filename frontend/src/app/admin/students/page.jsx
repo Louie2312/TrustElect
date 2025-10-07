@@ -40,6 +40,8 @@ export default function StudentsListPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [showResetModal, setShowResetModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedStudentId, setSelectedStudentId] = useState(null);
 
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -321,15 +323,20 @@ export default function StudentsListPage() {
   };
   
   const deleteStudent = async (id) => {
-    if (!confirm("Are you sure you want to archive this student?")) return;
+    setSelectedStudentId(id);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteStudent = async () => {
     try {
       const token = Cookies.get("token");
-      await axios.delete(`/api/students/${id}`, {
+      await axios.delete(`/api/students/${selectedStudentId}`, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
 
       toast.success("Student moved to archive.");
+      setShowDeleteModal(false);
       fetchStudents(); 
     } catch (error) {
       console.error("Error deleting student:", error);
@@ -381,15 +388,8 @@ export default function StudentsListPage() {
   // Batch delete functions
   const handleBatchDelete = async () => {
     if (!selectedCourseForDelete) {
-      toast.error("Please select a course to delete students from.");
       return;
     }
-
-    const confirmMessage = deleteType === "archive" 
-      ? `Are you sure you want to archive ALL students from ${selectedCourseForDelete}? This action cannot be undone.`
-      : `Are you sure you want to PERMANENTLY DELETE ALL students from ${selectedCourseForDelete}? This action cannot be undone and will remove all data permanently.`;
-
-    if (!confirm(confirmMessage)) return;
 
     setIsDeleting(true);
     try {
@@ -424,12 +424,6 @@ export default function StudentsListPage() {
 
   // Delete all students function
   const handleDeleteAllStudents = async () => {
-    const confirmMessage = deleteAllType === "archive" 
-      ? `Are you sure you want to archive ALL ${students.length} students? This action cannot be undone.`
-      : `Are you sure you want to PERMANENTLY DELETE ALL ${students.length} students? This action cannot be undone and will remove all data permanently.`;
-
-    if (!confirm(confirmMessage)) return;
-
     setIsDeletingAll(true);
     try {
       const token = Cookies.get("token");
@@ -1081,6 +1075,18 @@ export default function StudentsListPage() {
         cancelText="Cancel"
         type={deleteAllType === "archive" ? "warning" : "danger"}
         isLoading={isDeletingAll}
+      />
+
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={confirmDeleteStudent}
+        title="Confirm Archive"
+        message="Are you sure you want to archive this student? The student will be moved to the archived folder."
+        confirmText="Archive"
+        cancelText="Cancel"
+        type="warning"
+        isLoading={false}
       />
       </div>
   );

@@ -38,6 +38,8 @@ export default function ManageStudents() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [showResetModal, setShowResetModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedStudentId, setSelectedStudentId] = useState(null);
 
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -268,19 +270,22 @@ export default function ManageStudents() {
   };
   
   const deleteStudent = async (id) => {
-    if (!confirm("Are you sure you want to archive this student?")) return;
+    setSelectedStudentId(id);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteStudent = async () => {
     try {
       const token = Cookies.get("token");
-      await axios.delete(`/api/superadmin/students/${id}`, {
+      await axios.delete(`/api/superadmin/students/${selectedStudentId}`, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
 
-      alert("Student moved to archive.");
+      setShowDeleteModal(false);
       fetchStudents(); 
     } catch (error) {
       console.error("Error deleting student:", error);
-      alert("Failed to delete student.");
     }
   };
 
@@ -296,11 +301,10 @@ export default function ManageStudents() {
         }
       );
   
-      alert("Student account unlocked successfully.");
+      // Using toast notification instead of alert
       fetchStudents();
     } catch (error) {
       console.error("Error unlocking student account:", error);
-      alert("Failed to unlock student account.");
     }
   };
 
@@ -328,15 +332,8 @@ export default function ManageStudents() {
   // Batch delete functions
   const handleBatchDelete = async () => {
     if (!selectedCourseForDelete) {
-      alert("Please select a course to delete students from.");
       return;
     }
-
-    const confirmMessage = deleteType === "archive" 
-      ? `Are you sure you want to archive ALL students from ${selectedCourseForDelete}? This action cannot be undone.`
-      : `Are you sure you want to PERMANENTLY DELETE ALL students from ${selectedCourseForDelete}? This action cannot be undone and will remove all data permanently.`;
-
-    if (!confirm(confirmMessage)) return;
 
     setIsDeleting(true);
     try {
@@ -354,16 +351,12 @@ export default function ManageStudents() {
       );
 
       if (response.data.success) {
-        alert(response.data.message);
         setShowBatchDeleteModal(false);
         setSelectedCourseForDelete("");
         fetchStudents(); // Refresh the student list
-      } else {
-        alert(response.data.message || "Failed to delete students.");
       }
     } catch (error) {
       console.error("Error in batch delete:", error);
-      alert(error.response?.data?.message || "Failed to delete students.");
     } finally {
       setIsDeleting(false);
     }
@@ -371,12 +364,6 @@ export default function ManageStudents() {
 
   // Delete all students function
   const handleDeleteAllStudents = async () => {
-    const confirmMessage = deleteAllType === "archive" 
-      ? `Are you sure you want to archive ALL ${students.length} students? This action cannot be undone.`
-      : `Are you sure you want to PERMANENTLY DELETE ALL ${students.length} students? This action cannot be undone and will remove all data permanently.`;
-
-    if (!confirm(confirmMessage)) return;
-
     setIsDeletingAll(true);
     try {
       const token = Cookies.get("token");
@@ -390,15 +377,11 @@ export default function ManageStudents() {
       });
 
       if (response.data.success) {
-        alert(response.data.message);
         setShowDeleteAllModal(false);
         fetchStudents(); // Refresh the student list
-      } else {
-        alert(response.data.message || "Failed to delete all students.");
       }
     } catch (error) {
       console.error("Error in delete all students:", error);
-      alert(error.response?.data?.message || "Failed to delete all students.");
     } finally {
       setIsDeletingAll(false);
     }
@@ -1015,6 +998,18 @@ export default function ManageStudents() {
         cancelText="Cancel"
         type={deleteAllType === "archive" ? "warning" : "danger"}
         isLoading={isDeletingAll}
+      />
+
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={confirmDeleteStudent}
+        title="Confirm Archive"
+        message="Are you sure you want to archive this student? The student will be moved to the archived folder."
+        confirmText="Archive"
+        cancelText="Cancel"
+        type="warning"
+        isLoading={false}
       />
     </div>
   );

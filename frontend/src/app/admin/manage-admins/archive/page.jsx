@@ -12,7 +12,9 @@ export default function ArchivedAdminsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
   const [selectedAdminId, setSelectedAdminId] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
 
   const fetchArchivedAdmins = async () => {
@@ -34,18 +36,21 @@ export default function ArchivedAdminsPage() {
 
 
   const restoreAdmin = async (id) => {
-    if (!confirm("Are you sure you want to restore this Admin?")) return;
+    setSelectedAdminId(id);
+    setShowRestoreModal(true);
+  };
+
+  const confirmRestoreAdmin = async () => {
     try {
       const token = Cookies.get("token");
-      await axios.patch(`/api/admin/manage-admins/${id}/restore`, {}, {
+      await axios.patch(`/api/admin/manage-admins/${selectedAdminId}/restore`, {}, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
-      alert("Admin restored successfully.");
+      setShowRestoreModal(false);
       fetchArchivedAdmins(); 
     } catch (error) {
       console.error("Error restoring admin:", error);
-      alert("Failed to restore Admin.");
     }
   };
 
@@ -56,6 +61,7 @@ export default function ArchivedAdminsPage() {
   };
 
   const permanentlyDeleteAdmin = async () => {
+    setIsDeleting(true);
     try {
       const token = Cookies.get("token");
       console.log("Attempting to permanently delete admin ID:", selectedAdminId);
@@ -67,7 +73,6 @@ export default function ArchivedAdminsPage() {
       
       console.log("Delete response:", response.data);
       setShowConfirmModal(false);
-      alert("Admin permanently deleted.");
       fetchArchivedAdmins(); 
     } catch (error) {
       console.error("Error permanently deleting admin:", error);
@@ -78,8 +83,9 @@ export default function ArchivedAdminsPage() {
         errorMessage = error.response.data.message || errorMessage;
       }
       
-      alert(errorMessage);
       setShowConfirmModal(false);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -152,6 +158,18 @@ export default function ArchivedAdminsPage() {
         cancelText="Cancel"
         type="danger"
         isLoading={isDeleting}
+      />
+
+      <ConfirmationModal
+        isOpen={showRestoreModal}
+        onClose={() => setShowRestoreModal(false)}
+        onConfirm={confirmRestoreAdmin}
+        title="Confirm Restore"
+        message="Are you sure you want to restore this admin?"
+        confirmText="Restore"
+        cancelText="Cancel"
+        type="info"
+        isLoading={false}
       />
 
     </div>

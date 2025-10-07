@@ -8,6 +8,7 @@ import AddAdminModal from "@/components/Modals/AddAdminModal";
 import EditAdminModal from "@/components/Modals/EditAdminModal";
 import ResetPasswordModal from "@/components/Modals/ResetPasswordModal";
 import EditAdminPermissionsModal from "@/components/Modals/EditAdminPermissionsModal";
+import ConfirmationModal from "@/components/Modals/ConfirmationModal";
 import { toast } from "react-hot-toast";
 
 export default function AdminsPage() {
@@ -20,7 +21,10 @@ export default function AdminsPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState(null);
+  const [selectedAdminId, setSelectedAdminId] = useState(null);
   const [searchQuery, setSearchQuery] = useState(""); 
   const [departmentFilter, setDepartmentFilter] = useState(""); 
   const [currentUserId, setCurrentUserId] = useState(null);
@@ -109,29 +113,31 @@ export default function AdminsPage() {
     // Check if user is trying to delete themselves
     const currentUserId = Cookies.get("userId");
     if (currentUserId && parseInt(currentUserId) === parseInt(id)) {
-      alert("You cannot archive your own account.");
       return;
     }
 
-    if (!confirm("Are you sure you want to archive this Admin? It will be moved to the archived folder.")) return;
+    setSelectedAdminId(id);
+    setShowArchiveModal(true);
+  };
+
+  const confirmArchiveAdmin = async () => {
     try {
       const token = Cookies.get("token");
       const userRole = Cookies.get("role");
       
       // Use the correct endpoint based on user role
       const endpoint = userRole === 'Super Admin' 
-        ? `/api/admin/admins/${id}`
-        : `/api/admin/manage-admins/${id}`;
+        ? `/api/admin/admins/${selectedAdminId}`
+        : `/api/admin/manage-admins/${selectedAdminId}`;
       
       await axios.delete(endpoint, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
-      alert("Admin Archived. Admin moved to archived folder.");
+      setShowArchiveModal(false);
       fetchAdmins();
     } catch (error) {
       console.error("Error archiving admin:", error);
-      alert("Failed to archive Admin.");
     }
   };
 
@@ -139,29 +145,31 @@ export default function AdminsPage() {
     // Check if user is trying to delete themselves
     const currentUserId = Cookies.get("userId");
     if (currentUserId && parseInt(currentUserId) === parseInt(id)) {
-      alert("You cannot delete your own account.");
       return;
     }
 
-    if (!confirm("Are you sure you want to delete this Admin? It will be moved to the deleted folder.")) return;
+    setSelectedAdminId(id);
+    setShowDeleteModal(true);
+  };
+
+  const confirmPermanentDeleteAdmin = async () => {
     try {
       const token = Cookies.get("token");
       const userRole = Cookies.get("role");
       
       // Use the correct endpoint based on user role with delete action parameter
       const endpoint = userRole === 'Super Admin' 
-        ? `/api/admin/admins/${id}?action=delete`
-        : `/api/admin/manage-admins/${id}?action=delete`;
+        ? `/api/admin/admins/${selectedAdminId}?action=delete`
+        : `/api/admin/manage-admins/${selectedAdminId}?action=delete`;
       
       await axios.delete(endpoint, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
-      alert("Admin moved to deleted folder.");
+      setShowDeleteModal(false);
       fetchAdmins();
     } catch (error) {
       console.error("Error deleting admin:", error);
-      alert("Failed to delete Admin.");
     }
   };
 
@@ -177,11 +185,10 @@ export default function AdminsPage() {
         }
       );
   
-      alert("Admin account unlocked successfully.");
+      // Using toast notification instead of alert
       fetchAdmins();
     } catch (error) {
       console.error("Error unlocking admin account:", error);
-      alert("Failed to unlock admin account.");
     }
   };
 
@@ -436,6 +443,30 @@ export default function AdminsPage() {
           }}
         />
       )}
+
+      <ConfirmationModal
+        isOpen={showArchiveModal}
+        onClose={() => setShowArchiveModal(false)}
+        onConfirm={confirmArchiveAdmin}
+        title="Confirm Archive"
+        message="Are you sure you want to archive this admin? The admin will be moved to the archived folder."
+        confirmText="Archive"
+        cancelText="Cancel"
+        type="warning"
+        isLoading={false}
+      />
+
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={confirmPermanentDeleteAdmin}
+        title="Confirm Delete"
+        message="Are you sure you want to delete this admin? The admin will be moved to the deleted folder."
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+        isLoading={false}
+      />
     </div>
   );
 }
