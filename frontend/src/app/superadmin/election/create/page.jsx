@@ -860,7 +860,7 @@ export default function CreateElectionPage() {
             {[
               { 
                 category: 'programs', 
-                label: 'Programs', 
+                label: 'Programs' , 
                 items: maintenanceData.programs.sort(sortPrograms),
                 sortFn: sortPrograms
               },
