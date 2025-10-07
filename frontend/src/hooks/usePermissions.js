@@ -61,24 +61,20 @@ export default function usePermissions() {
 
   if (typeof window !== 'undefined' && !window.GLOBAL_PERMISSIONS_TIMESTAMP) {
     window.GLOBAL_PERMISSIONS_TIMESTAMP = Date.now();
-    console.log('Initialized global permissions timestamp');
   }
 
   const fetchPermissions = useCallback(async (userId) => {
     if (!userId) {
-      console.log('No user ID provided for permissions fetch');
       setPermissionsLoading(false);
       return false;
     }
 
     setPermissionsLoading(true);
-    console.log(`Fetching permissions for user ID: ${userId}`);
     
     try {
       const userRole = Cookies.get('role');
       
       if (userRole === 'Super Admin') {
-        console.log('User is a Super Admin, granting all permissions without API call');
         const allPermissions = {
           users: { canView: true, canCreate: true, canEdit: true, canDelete: true },
           elections: { canView: true, canCreate: true, canEdit: true, canDelete: true },
@@ -101,7 +97,6 @@ export default function usePermissions() {
       const cacheParam = `_t=${Date.now()}`;
       const requestUrl = `${url}?${cacheParam}`;
       
-      console.log(`Making permissions request to: ${requestUrl}`);
       
       const token = Cookies.get('token');
       if (!token) {
@@ -115,8 +110,6 @@ export default function usePermissions() {
       });
 
       if (response.data && response.data.permissions) {
-        console.log(`Permissions fetched successfully for user ${userId}:`, response.data.permissions);
-        console.log('adminManagement permissions:', response.data.permissions.adminManagement);
         setPermissions(response.data.permissions);
         setPermissionsLastUpdated(Date.now());
         setPermissionsLoading(false);
@@ -131,7 +124,6 @@ export default function usePermissions() {
       
       const userRole = Cookies.get('role');
       if (userRole === 'Super Admin') {
-        console.log('User is a Super Admin, granting all permissions by default');
         setPermissions({
           users: { canView: true, canCreate: true, canEdit: true, canDelete: true },
           elections: { canView: true, canCreate: true, canEdit: true, canDelete: true },
@@ -142,7 +134,6 @@ export default function usePermissions() {
           auditLog: { canView: true, canCreate: true, canEdit: true, canDelete: true }
         });
       } else {
-        console.log('Setting default permissions due to fetch error');
         setPermissions({
           users: { canView: true, canCreate: false, canEdit: false, canDelete: false },
           elections: { canView: true, canCreate: false, canEdit: false, canDelete: false },
@@ -162,7 +153,6 @@ export default function usePermissions() {
 
   const refreshPermissions = useCallback(() => {
     const userId = userData?.id || Cookies.get('userId');
-    console.log('Refreshing permissions for user:', userId);
 
     if (userId) {
       return fetchPermissions(userId);
@@ -196,23 +186,20 @@ export default function usePermissions() {
   useEffect(() => {
     const handlePermissionUpdate = (event) => {
       const { adminId, timestamp } = event.detail;
-      console.log(`Permission update event received for admin: ${adminId}, timestamp: ${timestamp}`);
       
       // Check if this update applies to the current user
       if (userData?.id && userData.id.toString() === adminId.toString()) {
-        console.log('Updating permissions for current user based on event');
         const userId = userData.id;
-        fetchPermissions(userId); // Call directly instead of through refreshPermissions
+        fetchPermissions(userId); 
       }
     };
 
     const checkGlobalPermissionsUpdate = () => {
       if (typeof window !== 'undefined' && window.GLOBAL_PERMISSIONS_TIMESTAMP) {
         if (window.GLOBAL_PERMISSIONS_TIMESTAMP > permissionsLastUpdated) {
-          console.log('Global permissions timestamp updated, refreshing permissions');
           const userId = userData?.id || Cookies.get('userId');
           if (userId) {
-            fetchPermissions(userId); // Call directly instead of through refreshPermissions
+            fetchPermissions(userId); 
           }
         }
       }

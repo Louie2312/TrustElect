@@ -66,7 +66,6 @@ const AdminPermissionsModal = ({ admin, onClose, onSave }) => {
           };
         }
         
-        console.log('Fetched permissions for admin:', JSON.stringify(formattedPermissions));
         setPermissions(formattedPermissions);
       }
     } catch (error) {
@@ -114,21 +113,15 @@ const AdminPermissionsModal = ({ admin, onClose, onSave }) => {
   // Function to validate permissions after saving
   const validatePermissions = async (adminId) => {
     try {
-      console.log('Validating permissions for admin:', adminId);
       const token = Cookies.get("token");
       
       // More robust URL construction
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
       
-      // We'll skip the validation API call since it's returning 404
-      // Instead, we'll directly compare the local state with what we intended to save
-      
-      console.log('Manually validating permissions instead of using API');
-      console.log('Permissions we attempted to save:', permissions);
+
       
       // Instead of calling an API that doesn't exist, we'll return success
       // and rely on the save operation's success
-      console.log('All permissions validated successfully based on local state!');
       return true;
     } catch (error) {
       console.error('Error validating permissions:', error);
@@ -142,16 +135,8 @@ const AdminPermissionsModal = ({ admin, onClose, onSave }) => {
       setError("");
       
       const token = Cookies.get('token');
-      
-      // Log permissions being saved for debugging
-      console.log('Saving permissions:', JSON.stringify(permissions));
-      
-      // Use relative URL to avoid double /api prefix
       const apiUrl = `/api/admin-permissions/${admin.id}`;
-      
-      console.log('Making API request to:', apiUrl);
-      
-      // Try a simpler request first to avoid network issues
+            
       try {
         const response = await axios.put(
           apiUrl,
@@ -164,16 +149,10 @@ const AdminPermissionsModal = ({ admin, onClose, onSave }) => {
             timeout: 15000 // 15 seconds timeout
           }
         );
-        
-        console.log('Permissions update response:', response.data);
-        console.log('Permissions updated successfully for admin:', admin.id);
+
       } catch (requestError) {
         console.error('First request attempt failed:', requestError);
-        
-        // If the first attempt fails, try a simpler fallback approach
-        console.log('Trying fallback approach...');
-        
-        // Fallback to fetch API which might handle some network issues better
+
         const fetchResponse = await fetch(apiUrl, {
           method: 'PUT',
           headers: {
@@ -188,7 +167,6 @@ const AdminPermissionsModal = ({ admin, onClose, onSave }) => {
         }
         
         const responseData = await fetchResponse.json();
-        console.log('Fetch API fallback succeeded:', responseData);
       }
       
       // Validate that permissions were saved correctly
@@ -201,7 +179,6 @@ const AdminPermissionsModal = ({ admin, onClose, onSave }) => {
         
         const currentUserId = Cookies.get('userId');
         if (currentUserId === admin.id.toString()) {
-          console.log('Updated own permissions, forcing immediate refresh');
         }
         
         // Trigger refresh with a small delay

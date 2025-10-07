@@ -246,8 +246,6 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 export const generateReport = async (reportId, data) => {
   try {
-    console.log('Generating report:', { reportId, data }); // Debug log
-
     const response = await fetch('/api/reports/download', {
       method: 'POST',
       headers: {

@@ -73,7 +73,6 @@ export default function AdminAddStudentModal({ onClose, onSuccess, departmentCou
           if (token) {
             const tokenData = JSON.parse(atob(token.split('.')[1]));
             if (tokenData && tokenData.id) {
-              console.log("Using user ID from token:", tokenData.id);
               // Set the cookie for future use
               Cookies.set("userId", tokenData.id, { path: "/", secure: false, sameSite: "strict" });
               
@@ -88,7 +87,6 @@ export default function AdminAddStudentModal({ onClose, onSuccess, departmentCou
 
       const studentData = { ...formData, password: generatedPassword, createdBy: adminId };
 
-      console.log("Submitting student:", studentData);
 
       const res = await axios.post(
         "/api/students", 

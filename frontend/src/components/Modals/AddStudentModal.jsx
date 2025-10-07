@@ -127,7 +127,6 @@ export default function AddStudentModal({ onClose }) {
         console.error("Error fetching courses from direct API:", error);
 
         try {
-          console.log("Trying maintenance API as fallback");
           const maintenanceResponse = await axios.get("/api/maintenance/programs", {
             headers: { Authorization: `Bearer ${token}` }
           });
@@ -538,7 +537,6 @@ export default function AddStudentModal({ onClose }) {
           if (token) {
             const tokenData = JSON.parse(atob(token.split('.')[1]));
             if (tokenData && tokenData.id) {
-              console.log("Using user ID from token:", tokenData.id);
               Cookies.set("userId", tokenData.id, { path: "/", secure: false, sameSite: "strict" });
               
               return tokenData.id;
@@ -572,8 +570,6 @@ export default function AddStudentModal({ onClose }) {
         password: generatedPassword,
         createdBy: superAdminId
       };
-
-      console.log("Submitting student:", studentData); 
 
       const res = await axios.post("/api/superadmin/students", studentData, {
         headers: { Authorization: `Bearer ${token}` },

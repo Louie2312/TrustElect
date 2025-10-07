@@ -40,7 +40,6 @@ const addHeader = (doc, title, description) => {
   try {
     // Use PNG logo from public/images/sti_logo.png instead of SVG
     doc.addImage('/images/sti_logo.png', 'PNG', 14, 10, 30, 30); // x, y, width, height
-    console.log('STI logo added successfully to PDF');
   } catch (error) {
     console.error('Error adding STI logo to PDF:', error);
     console.warn('Proceeding without logo');

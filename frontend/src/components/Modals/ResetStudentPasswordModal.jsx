@@ -12,7 +12,6 @@ export default function ResetStudentPasswordModal({ student, onClose }) {
     try {
       const token = Cookies.get("token");
   
-      console.log("Debugging Reset Password Request:", { studentId: student.id, newPassword });
   
       
       const res = await axios.post(

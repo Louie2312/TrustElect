@@ -33,9 +33,7 @@ export default function Sidebar() {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
-  
-      console.log("Sidebar updated admin profile:", res.data);
-  
+    
       // Update Sidebar Name
       const firstName = res.data.firstName || "";
       const lastName = res.data.lastName || "";
@@ -60,7 +58,6 @@ export default function Sidebar() {
     fetchProfile(); 
   
     const updateProfile = () => {
-      console.log("Sidebar: Admin profile updated, refetching...");
       fetchProfile(); 
     };
   

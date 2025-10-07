@@ -8,9 +8,6 @@ import UpdateDepartmentModal from "@/components/Modals/UpdateDepartmentModal";
 import AssignAdminModal from "@/components/Modals/AssignAdminModal";
 
 function DepartmentTable({ departments, fetchDepartments }) {
-  console.log("DepartmentTable received departments:", departments);
-  console.log("Is Array:", Array.isArray(departments));
-  console.log("Length:", Array.isArray(departments) ? departments.length : 'Not an array');
   
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);

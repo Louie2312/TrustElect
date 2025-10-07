@@ -29,9 +29,7 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
     const userRole = Cookies.get("role");
     const isSuperAdmin = userRole === 'Super Admin';
     const isAdmin = userRole === 'Admin';
-    
-    console.log("Permission check - userRole:", userRole, "isSuperAdmin:", isSuperAdmin, "isAdmin:", isAdmin);
-    
+        
     // Allow access for both Super Admin and Admin users
     if (!isSuperAdmin && !isAdmin) {
       setError("Access denied. Only Super Admin and Admin can manage admin permissions.");
@@ -52,15 +50,9 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
       setLoading(true);
       const token = Cookies.get("token");
       const userRole = Cookies.get("role");
-      
-      console.log("Fetching permissions for admin:", admin.id);
-      console.log("Current user role:", userRole);
-      
-      // Use the same endpoint for both admin and superadmin (the working one)
+ 
       const endpoint = `/api/admin-permissions/${admin.id}`;
-      
-      console.log("Using unified endpoint:", endpoint);
-      console.log("User role:", userRole);
+
       
       const response = await axios.get(endpoint, {
         headers: { Authorization: `Bearer ${token}` }
@@ -159,16 +151,11 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
   // Function to validate permissions after saving
   const validatePermissions = async (adminId) => {
     try {
-      console.log('Validating permissions for admin:', adminId);
       const token = Cookies.get("token");
       
       // More robust URL construction
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
 
-      console.log('Manually validating permissions instead of using API');
-      console.log('Permissions we attempted to save:', permissions);
-      
-      console.log('All permissions validated successfully based on local state!');
       return true;
     } catch (error) {
       console.error('Error validating permissions:', error);
@@ -181,7 +168,6 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
       setSaving(true);
       const token = Cookies.get("token");
       
-      // Format permissions to match the expected API structure
       const formattedPermissions = {
         users: permissions.users || { canView: false, canCreate: false, canEdit: false, canDelete: false },
         elections: permissions.elections || { canView: false, canCreate: false, canEdit: false, canDelete: false },
@@ -192,14 +178,10 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
         maintenance: permissions.maintenance || { canView: false, canCreate: false, canEdit: false, canDelete: false }
       };
       
-      console.log('Saving permissions:', JSON.stringify(formattedPermissions));
 
-      // Use the same endpoint for both admin and superadmin (the working one)
       const apiUrl = `/api/admin-permissions/${admin.id}`;
       const userRole = Cookies.get("role");
-      
-      console.log('Using unified save endpoint:', apiUrl);
-      console.log('User role:', userRole);
+ 
       
       const response = await axios.put(
         apiUrl,
@@ -212,10 +194,7 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
           timeout: 15000 
         }
       );
-      
-      console.log('Successfully saved permissions to:', apiUrl);
-      console.log('Permissions update response:', response.data);
-      console.log('Permissions updated successfully for admin:', admin.id);
+
 
       await validatePermissions(admin.id);
 
@@ -225,7 +204,6 @@ export default function EditAdminPermissionsModal({ admin, onClose, onSave }) {
 
         const currentUserId = Cookies.get('userId');
         if (currentUserId === admin.id.toString()) {
-          console.log('Updated own permissions, forcing immediate refresh');
         }
 
         setTimeout(() => {

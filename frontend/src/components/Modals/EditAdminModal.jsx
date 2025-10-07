@@ -239,8 +239,7 @@ export default function EditAdminModal({ admin, onClose, onSuccess }) {
         employeeNumber: formData.employeeNumber,
         department: formData.department
       };
-      
-      console.log("Sending update for admin ID:", admin.id, updateData);
+
       
       // Use the correct endpoint based on user role
       const endpoint = userRole === 'Super Admin' 

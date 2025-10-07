@@ -320,7 +320,6 @@ export default function AddAdminModal({ onClose }) {
           if (token) {
             const tokenData = JSON.parse(atob(token.split('.')[1]));
             if (tokenData && tokenData.id) {
-              console.log("Using user ID from token:", tokenData.id);
               const id = tokenData.id;
               Cookies.set("userId", id, { path: "/", secure: false, sameSite: "strict" });
               
@@ -360,7 +359,6 @@ export default function AddAdminModal({ onClose }) {
         createdBy: adminId,
         permissions: { ...permissions }
       };
-      console.log("Submitting admin:", adminData);
       // Try admin endpoint first, fallback to superadmin
       let res;
       try {

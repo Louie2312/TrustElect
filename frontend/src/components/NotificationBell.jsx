@@ -47,8 +47,6 @@ const NotificationBell = () => {
   useEffect(() => {
     const role = Cookies.get('role');
     setUserRole(role || '');
-    console.log(`User role from cookie: ${role}`);
-    console.log(`Normalized role: ${normalizeRole(role)}`);
   }, []);
 
   const {
@@ -262,11 +260,9 @@ const NotificationBell = () => {
             electionDetails = { status: 'unknown' };
           }
           
-          console.log('Processed election details:', electionDetails);
           
          
           const electionStatus = electionDetails.status?.toLowerCase() || '';
-          console.log(`Election status: ${electionStatus}`);
           
         
           const studentStatusResponse = await fetch(`${API_URL}/elections/student/status/${entity_id}`, {
@@ -381,7 +377,6 @@ const NotificationBell = () => {
         const extractedId = idMatch ? idMatch[0] : null;
         
         if (extractedId) {
-          console.log(`Extracted ID ${extractedId} from notification message`);
           notification.entity_id = extractedId;
         } else {
           console.error('Could not extract ID from notification message');
@@ -394,7 +389,6 @@ const NotificationBell = () => {
       
   
       const normalizedRole = normalizeRole(userRole);
-      console.log(`Using role: ${normalizedRole} for navigation`);
       
 
       if (normalizedRole === 'student') {
@@ -402,7 +396,6 @@ const NotificationBell = () => {
           const token = Cookies.get('token');
           const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
           
-          console.log(`Processing notification with entity_id: ${notification.entity_id}`);
           
    
           const electionResponse = await fetch(`${API_URL}/elections/${notification.entity_id}/details`, {
@@ -416,7 +409,6 @@ const NotificationBell = () => {
           }
           
           const electionData = await electionResponse.json();
-          console.log('Raw election API response:', JSON.stringify(electionData));
         
           let electionDetails;
           if (electionData.data) {
@@ -446,7 +438,6 @@ const NotificationBell = () => {
           }
           
           const eligibilityData = await eligibilityResponse.json();
-          console.log('Student eligibility data (raw):', JSON.stringify(eligibilityData));
           
 
           let hasVoted = false;
@@ -469,17 +460,13 @@ const NotificationBell = () => {
             
             if (statusResponse.ok) {
               const statusData = await statusResponse.json();
-              console.log('Student status data (raw):', JSON.stringify(statusData));
             
               if (statusData.hasVoted !== undefined) {
                 hasVoted = Boolean(statusData.hasVoted);
-                console.log('Setting hasVoted from status endpoint:', hasVoted);
               } else if (statusData.data && statusData.data.hasVoted !== undefined) {
                 hasVoted = Boolean(statusData.data.hasVoted);
-                console.log('Setting hasVoted from status data object:', hasVoted);
               } else if (statusData.eligible && statusData.vote_receipt_url) {
                 hasVoted = true;
-                console.log('Setting hasVoted based on status vote_receipt_url existence');
               }
             }
           }
@@ -503,10 +490,7 @@ const NotificationBell = () => {
             
             }
           }
-          
-          console.log(`FINAL hasVoted value: ${hasVoted}`);
-          
-        
+
           let targetUrl;
           
           if (electionStatus === 'ongoing') {
@@ -522,10 +506,8 @@ const NotificationBell = () => {
           } else if (electionStatus === 'completed') {
          
             targetUrl = `/student/elections/${notification.entity_id}/results`;
-            console.log('Election is completed, directing to results page');
           } else if (electionStatus === 'upcoming') {
          
-            console.log('Election is upcoming, directing to dashboard');
             router.push('/student');
            
             setTimeout(() => {
@@ -555,7 +537,6 @@ const NotificationBell = () => {
       }
       
       const link = await getNotificationLink(notification);
-      console.log(`Fallback navigation to: ${link}`);
       router.push(link);
 
       setIsOpen(false);
@@ -575,11 +556,9 @@ const NotificationBell = () => {
 
     const limit = Number(itemsPerPage);
     const offset = 0;
-    
-    console.log(`Refreshing notifications with limit=${limit}, offset=${offset}`);
+
     
     fetchNotifications(limit, offset).then(data => {
-      console.log(`Refreshed with ${data.length} notifications`);
       setAllNotifications(data || []);
       setLoading(false);
       setHasMore(data && data.length >= itemsPerPage);

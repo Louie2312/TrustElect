@@ -29,9 +29,7 @@ export default function Sidebar() {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
-  
-      console.log("Sidebar updated student profile:", res.data);
-  
+    
       // Update Sidebar Name
       const firstName = res.data.firstName || "";
       const lastName = res.data.lastName || "";
@@ -56,7 +54,6 @@ export default function Sidebar() {
     fetchProfile(); 
   
     const updateProfile = () => {
-      console.log("Sidebar: Profile updated, refetching...");
       fetchProfile(); 
     };
   

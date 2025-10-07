@@ -30,7 +30,6 @@ export default function Sidebar() {
         withCredentials: true,
       });
   
-      console.log("Sidebar updated profile:", res.data);
 
       const firstName = res.data.firstName || "Louie";
       const lastName = res.data.lastName || "Admin";
@@ -52,7 +51,6 @@ export default function Sidebar() {
     fetchProfile(); 
   
     const updateProfile = () => {
-      console.log("Sidebar: Profile updated, refetching...");
       fetchProfile(); 
     };
   
