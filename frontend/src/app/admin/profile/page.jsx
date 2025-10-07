@@ -35,13 +35,11 @@ export default function AdminProfilePage() {
         return;
       }
   
-      console.log("Fetching admin profile...");
       const res = await axios.get("/api/admin/profile", {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
   
-      console.log("Admin Profile Data:", res.data);
   
       setFirstName(res.data.firstName || "");
       setLastName(res.data.lastName || "");
@@ -93,7 +91,6 @@ export default function AdminProfilePage() {
         withCredentials: true,
       });
 
-      console.log("Upload response:", res.data);
 
       if (!res.data.filePath) {
         setUploadError("Error: Missing file path in response");

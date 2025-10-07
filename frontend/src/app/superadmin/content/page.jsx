@@ -123,7 +123,6 @@ export default function ContentManagement() {
 
   useEffect(() => {
     if (activeTheme) {
-      console.log("Active theme changed:", activeTheme.name);
     }
   }, [activeTheme]);
 

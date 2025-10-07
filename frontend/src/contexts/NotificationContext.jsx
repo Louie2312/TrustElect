@@ -6,24 +6,20 @@ import Cookies from 'js-cookie';
 const normalizeRole = (role) => {
   if (!role) return '';
   
-  console.log(`Normalizing role: "${role}"`);
   
  
   const lowercaseRole = typeof role === 'string' ? role.toLowerCase() : '';
   
  
   if (lowercaseRole.includes('super') && lowercaseRole.includes('admin')) {
-    console.log(`Role "${role}" normalized to "superadmin"`);
     return 'superadmin';
   } 
   
   if (lowercaseRole === 'admin') {
-    console.log(`Role "${role}" normalized to "admin"`);
     return 'admin';
   } 
   
   if (lowercaseRole === 'student') {
-    console.log(`Role "${role}" normalized to "student"`);
     return 'student';
   }
   
@@ -61,13 +57,11 @@ export const NotificationProvider = ({ children }) => {
     if (!token) {
       console.warn('No authentication token found in cookies');
     } else {
-      console.log(`Token found (length: ${token.length}), first 10 chars: ${token.substring(0, 10)}...`);
     }
     
     if (!role) {
       console.warn('No role found in cookies');
     } else {
-      console.log(`Role found: ${role}`);
     }
     
     const normalizedRole = normalizeRole(role);
@@ -88,8 +82,6 @@ export const NotificationProvider = ({ children }) => {
     const finalOffset = !isNaN(offsetNum) ? offsetNum : 0;
 
     const { token, role } = getAuthInfo();
-    console.log(`Fetching notifications for ${role} user, limit: ${finalLimit}, offset: ${finalOffset}`);
-    console.log(`Using API URL: ${API_URL}`);
 
     if (!token) {
       setError('Authentication required');
@@ -116,7 +108,6 @@ export const NotificationProvider = ({ children }) => {
       
       // Handle token expiration
       if (err.response && (err.response.status === 401 || err.response.status === 403)) {
-        console.log('Token expired or invalid, redirecting to login page');
         
         // Clear cookies
         Cookies.remove('token');
@@ -197,7 +188,6 @@ export const NotificationProvider = ({ children }) => {
       
       // Handle token expiration
       if (err.response && (err.response.status === 401 || err.response.status === 403)) {
-        console.log('Token expired or invalid, redirecting to login page');
         
         // Clear cookies
         Cookies.remove('token');
@@ -251,7 +241,6 @@ export const NotificationProvider = ({ children }) => {
       
       // Handle token expiration
       if (err.response && (err.response.status === 401 || err.response.status === 403)) {
-        console.log('Token expired or invalid, redirecting to login page');
         
         // Clear cookies
         Cookies.remove('token');
@@ -310,7 +299,6 @@ export const NotificationProvider = ({ children }) => {
       
       // Handle token expiration
       if (err.response && (err.response.status === 401 || err.response.status === 403)) {
-        console.log('Token expired or invalid, redirecting to login page');
         
         // Clear cookies
         Cookies.remove('token');
@@ -331,32 +319,24 @@ export const NotificationProvider = ({ children }) => {
     const { token, role } = getAuthInfo();
     
     if (token) {
-      console.log(`Initial loading for ${role} user...`);
-      
-      // Slightly delay the initial loads to ensure cookies/auth are ready
+
       const initialLoadTimeout = setTimeout(() => {
         countUnreadNotifications();
-        // When called with no arguments, we should still update the notifications state
         fetchNotifications(10, 0).then(data => {
           setNotifications(data || []);
         });
       }, 500);
       
       return () => clearTimeout(initialLoadTimeout);
-    } else {
-      console.log('No token found, skipping initial load');
-    }
+    } 
   }, [fetchNotifications, countUnreadNotifications]);
 
-  // Setup polling for unread count and new notifications (every 30 seconds)
   useEffect(() => {
     const { token, role } = getAuthInfo();
     if (!token) return;
     
-    console.log(`Setting up notification polling for ${role} user...`);
     
     const interval = setInterval(() => {
-      console.log('Polling for new notifications...');
       countUnreadNotifications();
       
       // Optionally refresh notifications list if the panel is open
@@ -368,7 +348,6 @@ export const NotificationProvider = ({ children }) => {
     }, 30000); // 30 seconds
     
     return () => {
-      console.log('Clearing notification polling interval');
       clearInterval(interval);
     }
   }, [fetchNotifications, countUnreadNotifications, notifications.length]);

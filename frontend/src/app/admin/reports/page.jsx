@@ -135,7 +135,6 @@ export default function AdminReportsPage() {
           const summaryResponse = await axios.get(`${API_BASE}${endpoint}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
-          console.log('Election Summary Response:', summaryResponse.data);
           transformedData = summaryResponse.data;
           break;
 
@@ -179,7 +178,6 @@ export default function AdminReportsPage() {
           throw new Error('Report type not implemented');
       }
 
-      console.log('Transformed data:', transformedData);
       setReportData(transformedData);
       return transformedData;
     } catch (error) {

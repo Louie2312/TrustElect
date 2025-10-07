@@ -14,9 +14,7 @@ const API_BASE = '/api'; // Use relative path for proxy
 async function fetchWithAuth(url, options = {}) {
   const token = Cookies.get('token');
   const studentId = Cookies.get('studentId');
-  
-  console.log("Using token for fetch:", token ? 'Present' : 'Missing');
-  console.log("Using studentId for fetch:", studentId ? 'Present' : 'Missing');
+
   
   if (!token) {
     throw new Error('Authentication required. Please log in again.');
@@ -215,14 +213,11 @@ export default function StudentDashboard() {
   useEffect(() => {
     const fetchUIConfig = async () => {
       try {
-        console.log('Fetching UI config...');
         const response = await fetchWithAuth('/studentUI');
-        console.log('Raw UI Config response:', response);
+
         
         if (response && response.content) {
-          console.log('Setting UI config:', response.content);
-          console.log('UI config type:', response.content.type);
-          console.log('UI config use_landing_design:', response.content.use_landing_design);
+
           
           // Always fix inconsistencies client-side
           const updatedConfig = {
@@ -231,39 +226,31 @@ export default function StudentDashboard() {
             use_landing_design: response.content.type === 'landing' ? true : response.content.use_landing_design
           };
           
-          console.log('Final UI config with fixes:', updatedConfig);
           setUiConfig(updatedConfig);
           
           // Check if we should use landing design
           const shouldUseLandingDesign = updatedConfig.type === 'landing' || updatedConfig.use_landing_design === true;
           
           if (shouldUseLandingDesign) {
-            console.log('Landing design is enabled, fetching landing content...');
             try {
-              console.log('Fetching landing content...');
               const landingResponse = await fetch(`${API_BASE}/content`);
               if (!landingResponse.ok) {
                 throw new Error('Failed to fetch landing content');
               }
               const landingData = await landingResponse.json();
-              console.log('Raw landing content response:', landingData);
               
               if (landingData && landingData.content) {
-                console.log('Setting landing content:', landingData.content);
                 setLandingContent(landingData.content);
               } else {
                 // If content is directly in the response
-                console.log('Setting direct landing content:', landingData);
                 setLandingContent(landingData);
               }
             } catch (err) {
               console.error('Error fetching landing content:', err);
             }
           } else {
-            console.log('Landing design is disabled, not fetching landing content');
             // Clear landing content if landing design is disabled
             if (landingContent) {
-              console.log('Clearing existing landing content');
               setLandingContent(null);
             }
           }
@@ -273,26 +260,19 @@ export default function StudentDashboard() {
       }
     };
 
-    // Initial fetch
     fetchUIConfig();
     
-    // Set up polling every 5 seconds to check for changes
     const interval = setInterval(fetchUIConfig, 5000);
     
-    // Cleanup interval on component unmount
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch all elections
   useEffect(() => {
     const loadElections = async () => {
       try {
         setLoading(true);
-        // Fetch elections that the student is eligible for
-        console.log("Fetching all elections");
         const data = await fetchWithAuth('/students/elections');
         
-        console.log("Elections data received:", data);
         
         if (!Array.isArray(data)) {
           console.error("Data is not an array:", data);
@@ -306,7 +286,6 @@ export default function StudentDashboard() {
         
         // Filter elections based on the active tab
         const filtered = data.filter(election => election.status === activeTab);
-        console.log("Filtered elections:", filtered);
         
         setFilteredElements(filtered);
       } catch (err) {
@@ -396,18 +375,14 @@ export default function StudentDashboard() {
       return {};
     }
 
-    console.log('Getting background style with UI config:', uiConfig);
-    console.log('Landing content available:', !!landingContent);
 
     // For safety, always check both type and use_landing_design flag
     // We prioritize type='landing' even if use_landing_design is false
     const useLandingDesign = uiConfig.type === 'landing' || uiConfig.use_landing_design === true;
     
-    console.log(`Using landing design: ${useLandingDesign}, Type: ${uiConfig.type}, Flag: ${uiConfig.use_landing_design}`);
     
     // Using a single style approach for both designs
     if (uiConfig.background_image && !useLandingDesign) {
-      console.log('Using background image:', uiConfig.background_image);
       const imageUrl = formatImageUrl(uiConfig.background_image);
       
       if (!imageUrl) {
@@ -426,7 +401,6 @@ export default function StudentDashboard() {
       };
     }
 
-    console.log('Using default background style');
     return {
       backgroundColor: '#f0f2f5'
     };

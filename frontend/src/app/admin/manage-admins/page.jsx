@@ -31,14 +31,9 @@ export default function ManageAdminsPage() {
 
   // Check if user has admin management permissions
   useEffect(() => {
-    console.log('Checking admin management permissions...');
-    console.log('hasPermission result:', hasPermission('adminManagement', 'view'));
-    console.log('permissionsLoading:', permissionsLoading);
-    console.log('Current permissions:', permissions);
-    console.log('adminManagement permissions:', permissions?.adminManagement);
+
     
     if (!permissionsLoading && !hasPermission('adminManagement', 'view')) {
-      console.log('User does not have admin management view permission');
       router.push('/admin');
       toast.error("You don't have permission to access Admin Management");
       return;
@@ -496,10 +491,8 @@ export default function ManageAdminsPage() {
               // Create a global timestamp update as well
               if (typeof window !== 'undefined' && window.GLOBAL_PERMISSIONS_TIMESTAMP) {
                 window.GLOBAL_PERMISSIONS_TIMESTAMP = Date.now();
-                console.log('Updated global permissions timestamp:', window.GLOBAL_PERMISSIONS_TIMESTAMP);
               }
               
-              console.log(`Permission update confirmed for admin #${selectedAdmin.id}`);
               toast.success(`Permissions updated for ${selectedAdmin.first_name} ${selectedAdmin.last_name}`);
             } catch (e) {
               console.warn('Could not store permission update timestamp:', e);

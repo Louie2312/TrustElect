@@ -177,7 +177,6 @@ export default function ReportsPage() {
             headers: { Authorization: `Bearer ${token}` }
           });
 
-          console.log('Raw login data:', loginResponse.data);
           transformedData = {
             total_attempts: loginResponse.data.data.total_attempts,
             locked_accounts: loginResponse.data.data.locked_accounts,
@@ -291,11 +290,9 @@ export default function ReportsPage() {
         case 8: // Voter Participation Report
           endpoint = '/reports/voter-participation';
           try {
-            console.log('Fetching voter participation data...');
             const participationResponse = await axios.get(`${API_BASE}${endpoint}`, {
               headers: { Authorization: `Bearer ${token}` }
             });
-            console.log('Voter participation response:', participationResponse.data);
 
             if (!participationResponse.data.success) {
               throw new Error(participationResponse.data.error || 'Failed to fetch voter participation data');
@@ -332,11 +329,9 @@ export default function ReportsPage() {
         case 9: // Candidate List Report
           endpoint = '/reports/candidate-list';
           try {
-            console.log('Fetching candidate list data...');
             const candidateResponse = await axios.get(`${API_BASE}${endpoint}`, {
               headers: { Authorization: `Bearer ${token}` }
             });
-            console.log('Candidate list response:', candidateResponse.data);
 
             if (!candidateResponse.data.success) {
               throw new Error(candidateResponse.data.error || 'Failed to fetch candidate list data');
@@ -415,7 +410,6 @@ export default function ReportsPage() {
         });
       }
 
-      console.log('Transformed data:', transformedData);
       setReportData(transformedData);
       return transformedData;
     } catch (error) {

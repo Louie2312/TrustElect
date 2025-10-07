@@ -883,7 +883,6 @@ export default function SuperAdminDashboard() {
     intervals.push(setInterval(() => {
       if (isMounted) {
         loadStats().catch(err => {
-          console.log("[SuperAdmin] Error refreshing stats:", err.message);
         });
       }
     }, 30000));

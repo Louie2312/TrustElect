@@ -57,8 +57,6 @@ exports.updatePermissions = async (req, res) => {
 
     await setAdminPermissions(adminId, permissions);
  
-    console.log(`Successfully updated permissions for admin ${adminId}`);
-    
     res.json({ 
       message: "Admin permissions updated successfully",
       adminId,

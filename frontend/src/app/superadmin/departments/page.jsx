@@ -65,8 +65,7 @@ export default function DepartmentsPage() {
         },
         withCredentials: true
       });
-      
-      console.log("Admins Response:", res.data);
+
       
       const adminsArray = res.data.admins || res.data || [];
       
@@ -465,7 +464,6 @@ function AssignAdminModal({ department, admins: initialAdmins, onClose, onSucces
           withCredentials: true
         });
         
-        console.log("Fetched fresh admin data:", res.data);
         
         const adminsArray = res.data.admins || res.data || [];
         
@@ -581,7 +579,6 @@ function AssignAdminModal({ department, admins: initialAdmins, onClose, onSucces
           }
         ).then(res => {
           setProcessingAdminIds(prev => prev.filter(id => id !== admin.id));
-          console.log(`Successfully updated admin ${admin.id} departments`, res.data);
           return res;
         }).catch(err => {
           console.error(`Error updating admin ${admin.id}:`, err);

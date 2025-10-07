@@ -123,7 +123,6 @@ export default function ContentManagement() {
 
   useEffect(() => {
     if (activeTheme) {
-      console.log("Active theme changed:", activeTheme.name);
     }
   }, [activeTheme]);
 
@@ -136,10 +135,8 @@ export default function ContentManagement() {
 
   const validateFeatureCard1 = () => {
     if (landingContent.features?.columns?.[0]?.imageUrl) {
-      console.log("Feature Card 1 has an image URL:", landingContent.features.columns[0].imageUrl);
       return true;
     } else {
-      console.log("Feature Card 1 has no image URL");
       return false;
     }
   };
@@ -487,9 +484,7 @@ export default function ContentManagement() {
     updateFeature(0, 'imageUrl', localUrl);
   };
 
-  const saveSectionContent = async (section) => {
-    console.log('saveSectionContent called with section:', section);
-    
+  const saveSectionContent = async (section) => {    
     if (!section) {
       console.error('No section provided to saveSectionContent');
       setSaveStatus('Error: No section specified for saving');

@@ -27,13 +27,10 @@ export default function AdminDepartmentsPage() {
       return true;
     }
     
-    // Otherwise fall back to role-based check
     const role = Cookies.get('role');
     if (role === 'Super Admin') {
-      // Super admins have all permissions
       return true;
     } else if (role === 'Admin') {
-      // Admins can view, create, and edit departments
       if (action === 'view' || action === 'create' || action === 'edit') return true;
  
       return false;
@@ -43,7 +40,6 @@ export default function AdminDepartmentsPage() {
   }, [permissionsLoading, hasPermission]);
 
   useEffect(() => {
-    console.log("Departments page: Forcing permissions refresh");
     refreshPermissions();
     
     try {
@@ -51,7 +47,6 @@ export default function AdminDepartmentsPage() {
       if (userId) {
         const lastUpdate = localStorage.getItem(`admin_permissions_updated_${userId}`);
         if (lastUpdate) {
-          console.log('Found recent permission update in storage');
           localStorage.removeItem(`admin_permissions_updated_${userId}`);
           refreshPermissions();
         }
@@ -60,7 +55,6 @@ export default function AdminDepartmentsPage() {
       console.warn("Error checking localStorage:", e);
     }
     
-    // Fetch admins on component mount
     fetchAdmins();
   }, [refreshPermissions]);
 
@@ -71,7 +65,6 @@ export default function AdminDepartmentsPage() {
         throw new Error("No authentication token found");
       }
 
-      // Try multiple endpoints to get all admins
       let adminsArray = [];
       let success = false;
 
@@ -84,7 +77,6 @@ export default function AdminDepartmentsPage() {
         withCredentials: true
       });
       
-      console.log("SuperAdmin admins API response:", res.data);
       adminsArray = res.data.admins || res.data || [];
       success = true;
 
@@ -95,9 +87,7 @@ export default function AdminDepartmentsPage() {
           !(admin.role_id === 1 || (admin.department === "Administration" && !admin.employee_number))
         );
         
-        console.log(`Successfully loaded ${filteredAdmins.length} admins:`, filteredAdmins);
         filteredAdmins.forEach(admin => {
-          console.log(`Admin: ${admin.first_name} ${admin.last_name}, Department: ${admin.department}`);
         });
         setAdmins(filteredAdmins);
       }
@@ -138,7 +128,6 @@ export default function AdminDepartmentsPage() {
           withCredentials: true
         });
         
-        console.log("Admin departments API response:", res.data);
         departmentsArray = res.data.departments || res.data || [];
         success = true;
       } catch (firstError) {
@@ -154,7 +143,6 @@ export default function AdminDepartmentsPage() {
             withCredentials: true
           });
           
-          console.log("SuperAdmin departments API response:", res.data);
           departmentsArray = res.data.departments || res.data || [];
           success = true;
         } catch (secondError) {
@@ -169,10 +157,7 @@ export default function AdminDepartmentsPage() {
               },
               withCredentials: true
             });
-            
-            console.log("Admin profile response:", profileRes.data);
-            
-            // If the admin has a department, create a simplified array with just that department
+  
             if (profileRes.data.department) {
               departmentsArray = [{
                 id: 1, // Use a placeholder ID
@@ -194,7 +179,6 @@ export default function AdminDepartmentsPage() {
       }
       
       if (success) {
-        console.log(`Successfully loaded ${departmentsArray.length} departments:`, departmentsArray);
         setDepartments(departmentsArray);
         
         // Since we have fresh department data, update admin data
@@ -213,10 +197,8 @@ export default function AdminDepartmentsPage() {
   useEffect(() => {
     if (!permissionsLoading) {
       if (hasPermission('departments', 'view') || checkRoleBasedPermission('view')) {
-        console.log("User has departments view permission, fetching departments");
         fetchDepartments();
       } else {
-        console.log("User does not have departments view permission");
         setLoading(false);
       }
     }
@@ -486,7 +468,6 @@ export default function AdminDepartmentsPage() {
                   const departments = admin.department ? admin.department.split(',').map(d => d.trim()) : [];
                   const isAssigned = departments.includes(department.department_name);
                   if (isAssigned) {
-                    console.log(`Admin ${admin.first_name} ${admin.last_name} is assigned to ${department.department_name}`);
                   }
                   return isAssigned;
                 });
@@ -824,7 +805,6 @@ function AssignAdminModal({ department, admins: initialAdmins, onClose, onSucces
           withCredentials: true
         });
         
-        console.log("Fetched fresh admin data from superadmin:", res.data);
         adminsArray = res.data.admins || res.data || [];
         success = true;
 
@@ -943,7 +923,6 @@ function AssignAdminModal({ department, admins: initialAdmins, onClose, onSucces
           }
         ).then(res => {
           setProcessingAdminIds(prev => prev.filter(id => id !== admin.id));
-          console.log(`Successfully updated admin ${admin.id} departments`, res.data);
           return res;
         }).catch(err => {
           console.error(`Error updating admin ${admin.id}:`, err);

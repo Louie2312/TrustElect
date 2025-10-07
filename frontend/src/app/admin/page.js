@@ -295,7 +295,6 @@ export default function AdminDashboard() {
   // Load elections data for a specific tab with pagination
   const loadElectionsForTab = useCallback(async (tabId, page = 1, limit = 10) => {
     try {
-      console.log(`Loading ${tabId} elections - page ${page}, limit ${limit}`);
       
       if (tabId === 'to_approve') {
         // Pending approval elections don't use pagination yet
@@ -441,7 +440,6 @@ export default function AdminDashboard() {
         const activeStudents = data.students ? data.students.filter(student => student.is_active !== false) : [];
         setTotalUniqueVoters(activeStudents.length);
       } else {
-        // Fallback: try to get count from stats
         const statsResponse = await fetch('/api/elections/stats', {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -451,7 +449,6 @@ export default function AdminDashboard() {
         
         if (statsResponse.ok) {
           const statsData = await statsResponse.json();
-          // Sum up total voters from all election stats
           const totalVoters = statsData.reduce((sum, stat) => sum + parseInt(stat.total_voters || 0), 0);
           setTotalUniqueVoters(totalVoters);
         } else {
@@ -459,7 +456,6 @@ export default function AdminDashboard() {
         }
       }
     } catch (err) {
-      console.log("[Admin] Total unique voters not available:", err.message);
       setTotalUniqueVoters(0);
     }
   }, []);
@@ -472,7 +468,6 @@ export default function AdminDashboard() {
       setRefreshTime(new Date());
       return response;
     } catch (err) {
-      console.log("[Admin] Live vote count not available:", err.message);
       // Set empty data instead of null to prevent UI errors
       setLiveVoteData([]);
       return [];
@@ -483,7 +478,6 @@ export default function AdminDashboard() {
   const loadSystemLoadData = useCallback(async (timeframe = '7d') => {
     try {
       setIsSystemLoadLoading(true);
-      console.log('[Admin] Loading system load data for timeframe:', timeframe);
       
       const token = Cookies.get('token');
       const response = await fetch(`${API_BASE}/reports/system-load?timeframe=${timeframe}`, {
@@ -497,27 +491,20 @@ export default function AdminDashboard() {
       }
       
       const responseData = await response.json();
-      
-      // Extract the actual data from the response structure
-      // Backend returns: { success: true, data: { summary: {...}, login_activity: [...], voting_activity: [...] } }
+
       const rawData = responseData.success ? responseData.data : responseData;
       
-      // Process the data to enhance with proper date and time information
       const processedData = {
         ...rawData,
         login_activity: enhanceTimeData(rawData.login_activity || [], timeframe),
         voting_activity: enhanceTimeData(rawData.voting_activity || [], timeframe)
       };
-      
-      // Set the timeframe first, then the processed data
+
       setSelectedTimeframe(timeframe);
       setSystemLoadData(processedData);
       
-      console.log('[Admin] System load data loaded successfully for timeframe:', timeframe);
       return processedData;
     } catch (err) {
-      console.log("[Admin] System load data not available:", err.message);
-      // Set empty data structure instead of null to prevent UI errors
       setSystemLoadData({
         login_activity: [],
         voting_activity: [],
@@ -673,7 +660,6 @@ export default function AdminDashboard() {
         setIsLoading(true);
         setError(null);
         
-        console.log('Starting incremental dashboard loading...');
         
         // Phase 1: Load critical stats first (fast)
         await loadStats();
@@ -728,7 +714,6 @@ export default function AdminDashboard() {
             await Promise.allSettled([
               loadSystemLoadData('7d'),
               loadLiveVoteCount().catch(err => {
-                console.log("[Admin] Live vote count not available:", err.message);
               })
             ]);
             
@@ -756,7 +741,6 @@ export default function AdminDashboard() {
     intervals.push(setInterval(() => {
       if (isMounted) {
         loadStats().catch(err => {
-          console.log("[Admin] Error refreshing stats:", err.message);
         });
       }
     }, 60000)); // 1 minute
@@ -777,7 +761,6 @@ export default function AdminDashboard() {
             }));
           })
           .catch(err => {
-            console.log(`[Admin] Error refreshing ${activeTab} elections:`, err.message);
           });
       }
     }, 120000)); // 2 minutes
@@ -862,7 +845,6 @@ export default function AdminDashboard() {
   // Ensure user ID is available from token - run once
   useEffect(() => {
     const userId = ensureUserIdFromToken();
-    console.log('Admin Dashboard - Ensured User ID:', userId);
   }, []);
 
   const handleElectionClick = (electionId) => {
@@ -1015,7 +997,6 @@ export default function AdminDashboard() {
     const hourNum = parseInt(hour);
     if (isNaN(hourNum)) return '12 AM';
     
-    // Always show time on X-axis, regardless of timeframe
     let timeStr = '';
     if (hourNum === 0) timeStr = '12 AM';
     else if (hourNum < 12) timeStr = `${hourNum} AM`;
@@ -1060,18 +1041,13 @@ export default function AdminDashboard() {
   const processDataWithDates = (data, timeframe) => {
     if (!Array.isArray(data)) return [];
     
-    console.log('Processing data with dates:', { data, timeframe });
     
     const now = new Date();
     let processedData = [];
-    
-    // The backend returns data with hour and count fields
-    // For 24h: hour represents actual hour (0-23)
-    // For 7d: hour represents hour (0-23) but we want to show daily data
-    // For 30d: hour represents day of month (1-31) but we want to show daily data
+
     
     if (timeframe === '24h') {
-      // For 24h, use the data as-is since backend already provides hourly data
+
       processedData = data.map(item => ({
         hour: item.hour || 0,
         count: Math.round(typeof item.count === 'number' && !isNaN(item.count) ? item.count : 0),
@@ -1138,7 +1114,6 @@ export default function AdminDashboard() {
       });
     }
     
-    console.log('Processed data result:', processedData);
     return processedData;
   };
 
@@ -1597,12 +1572,10 @@ export default function AdminDashboard() {
               
               // Fallback to original data structure if new processing returns empty data
               if (processedLoginData.length === 0 && systemLoadData.login_activity && systemLoadData.login_activity.length > 0) {
-                console.log('Falling back to original login data structure');
                 processedLoginData = validateData(systemLoadData.login_activity);
               }
               
               if (processedVotingData.length === 0 && systemLoadData.voting_activity && systemLoadData.voting_activity.length > 0) {
-                console.log('Falling back to original voting data structure');
                 processedVotingData = validateData(systemLoadData.voting_activity);
               }
               

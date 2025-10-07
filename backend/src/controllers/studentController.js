@@ -1028,7 +1028,7 @@ exports.searchStudents = async (req, res) => {
     
     const searchTerm = `%${term}%`;
     const result = await pool.query(query, [searchTerm]);
-    console.log(`Search results for "${term}":`, result.rows);
+ 
     
     return res.status(200).json({
       success: true,

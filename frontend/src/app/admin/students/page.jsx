@@ -73,7 +73,6 @@ export default function StudentsListPage() {
   });
 
   useEffect(() => {
-    console.log("Students page: Forcing permissions refresh");
     refreshPermissions();
     
     // Get user role from token
@@ -92,7 +91,6 @@ export default function StudentsListPage() {
       if (userId) {
         const lastUpdate = localStorage.getItem(`admin_permissions_updated_${userId}`);
         if (lastUpdate) {
-          console.log('Found recent permission update in storage');
           localStorage.removeItem(`admin_permissions_updated_${userId}`);
           refreshPermissions();
         }

@@ -44,26 +44,12 @@ const upload = multer({
   }
 });
 
-// Middleware specifically for content uploads with increased limits
 const contentUploadMiddleware = (req, res, next) => {
-  // Set longer timeout for content uploads
-  req.setTimeout(300000); // 5 minutes
-  res.setTimeout(300000); // 5 minutes
-  
-  // Log upload attempt
-  console.log(`=== CONTENT UPLOAD MIDDLEWARE ===`);
-  console.log(`Section: ${req.params.section}`);
-  console.log(`Method: ${req.method}`);
-  console.log(`Content-Type: ${req.headers['content-type']}`);
-  console.log(`Content-Length: ${req.headers['content-length']}`);
-  console.log(`User-Agent: ${req.headers['user-agent']}`);
-  console.log(`================================`);
-  
-  // For multipart/form-data, we need to let multer handle everything
+  req.setTimeout(300000); 
+  res.setTimeout(300000); 
+
   if (req.headers['content-type'] && req.headers['content-type'].includes('multipart/form-data')) {
-    console.log('Multipart request detected - letting multer handle parsing');
-    
-    // Remove any existing body parsing middleware for this request
+
     req._body = false;
     req.body = {};
     
@@ -96,13 +82,8 @@ router.post('/themes/:id/activate', verifyToken, checkPermission('cms', 'edit'),
 router.post('/themes/:id/apply', verifyToken, checkPermission('cms', 'edit'), contentController.applyTheme);
 router.post('/themes', verifyToken, checkPermission('cms', 'create'), contentController.saveTheme);
 
-// Test endpoint for debugging uploads
 router.post('/test-upload', contentUploadMiddleware, (req, res) => {
-  console.log('Test upload endpoint hit');
-  console.log('Headers:', req.headers);
-  console.log('Body size:', req.body ? JSON.stringify(req.body).length : 0);
-  console.log('Files:', req.files);
-  
+
   res.json({
     message: 'Upload test successful',
     headers: {

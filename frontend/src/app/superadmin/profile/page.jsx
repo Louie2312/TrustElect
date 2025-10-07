@@ -39,13 +39,10 @@ export default function ProfilePage() {
         return;
       }
 
-      console.log("Fetching latest profile...");
       const res = await axios.get("/api/superadmin/profile", {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
-
-      console.log("Latest Profile Data:", res.data);
 
       setFirstName(res.data.firstName || "");
       setLastName(res.data.lastName || "");
@@ -85,8 +82,6 @@ export default function ProfilePage() {
         withCredentials: true,
       });
 
-      console.log("Upload response:", res.data);
-
       if (!res.data.filePath) {
         console.error("Error: filePath is missing in response", res.data);
         return;
@@ -98,7 +93,6 @@ export default function ProfilePage() {
       const imageUrl = `${finalBase}?timestamp=${new Date().getTime()}`;
 
       setProfilePic(imageUrl);
-      console.log("Profile Picture Updated:", imageUrl);
     } catch (error) {
       console.error("Error uploading file:", error);
     }
@@ -129,7 +123,6 @@ export default function ProfilePage() {
         }
       );
 
-      console.log("Profile updated:", firstName, lastName, profilePic);
       toast.success("Profile updated successfully!");
 
       await fetchProfile();
@@ -142,7 +135,6 @@ export default function ProfilePage() {
   };
 
   const validatePassword = (password) => {
-    // At least 8 characters, one uppercase, one number, one special character
     const regex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
     return regex.test(password);
   };

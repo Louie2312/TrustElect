@@ -202,7 +202,6 @@ export default function LoginForm({ onClose }) {
       setStep(2); 
     } catch (err) {
       if (err.response && err.response.status === 401) {
-        console.log("Login attempt failed: Invalid credentials");
         
         if (email.includes("admin") || email.includes("superadmin")) {
           setError("Invalid Email or Password.");
@@ -271,7 +270,6 @@ export default function LoginForm({ onClose }) {
       } else if (err.response && err.response.status === 401) {
         setError("Verification code has expired or already been used. Please request a new one.");
       } else {
-        console.log("OTP verification failed with error");
         setError(err.response?.data?.message || "Invalid verification code. Please try again.");
       }
     } finally {
