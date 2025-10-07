@@ -304,7 +304,12 @@ export default function CreateElectionPage() {
               { headers: { Authorization: `Bearer ${token}` } }
             );
             
-            maintenanceResults[category] = response.data.data.map(item => item.name);
+            if (category === 'precincts') {
+              // Keep full objects for precincts to access IDs
+              maintenanceResults[category] = response.data.data;
+            } else {
+              maintenanceResults[category] = response.data.data.map(item => item.name);
+            }
           } catch (error) {
             console.error(`Error fetching ${category}:`, error);
             maintenanceResults[category] = [];
@@ -642,6 +647,16 @@ export default function CreateElectionPage() {
         precinctPrograms: eventData.eligibleVoters.precinctPrograms
       };
   
+      // Prepare laboratory precincts data
+      const laboratoryPrecincts = eventData.eligibleVoters.precinct.map(precinct => {
+        // Find the precinct ID from the maintenance data
+        const precinctData = maintenanceData.precincts.find(p => p.name === precinct);
+        return {
+          laboratoryPrecinctId: precinctData?.id || precinct,
+          assignedCourses: eventData.eligibleVoters.precinctPrograms[precinct] || []
+        };
+      }).filter(lp => lp.assignedCourses.length > 0);
+
       const response = await axios.post(
         "/api/elections",
         {
@@ -652,7 +667,8 @@ export default function CreateElectionPage() {
           date_to: eventData.dateTo,
           start_time: eventData.startTime,
           end_time: eventData.endTime,
-          eligible_voters: optimizedEligibleVoters
+          eligible_voters: optimizedEligibleVoters,
+          laboratoryPrecincts: laboratoryPrecincts
         },
         {
           headers: {
@@ -983,39 +999,39 @@ export default function CreateElectionPage() {
             { 
               category: 'precinct', 
               label: 'Precinct', 
-              items: maintenanceData.precincts.sort(sortPrecincts),
+              items: maintenanceData.precincts.map(p => p.name).sort(sortPrecincts),
               sortFn: sortPrecincts,
               customRender: true,
               render: () => (
                 <div className="space-y-4">
-                  {maintenanceData.precincts.sort(sortPrecincts).map(precinct => (
-                    <div key={precinct} className="flex items-start space-x-4">
+                  {maintenanceData.precincts.sort((a, b) => sortPrecincts(a.name, b.name)).map(precinct => (
+                    <div key={precinct.id} className="flex items-start space-x-4">
                       <div className="flex-shrink-0">
                         <label 
                           className={`inline-flex items-center px-3 py-2 rounded-lg ${
-                            eventData.eligibleVoters.precinct.includes(precinct)
+                            eventData.eligibleVoters.precinct.includes(precinct.name)
                               ? 'bg-blue-100 border border-blue-300' 
                               : 'border border-gray-200'
                           }`}
                         >
                           <input
                             type="checkbox"
-                            checked={eventData.eligibleVoters.precinct.includes(precinct)}
-                            onChange={() => handleCheckboxChange('precinct', precinct)}
+                            checked={eventData.eligibleVoters.precinct.includes(precinct.name)}
+                            onChange={() => handleCheckboxChange('precinct', precinct.name)}
                             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"
                           />
-                          <span className="text-gray-700 font-medium">{precinct}</span>
+                          <span className="text-gray-700 font-medium">{precinct.name}</span>
                         </label>
                       </div>
 
-                      {eventData.eligibleVoters.precinct.includes(precinct) && (
+                      {eventData.eligibleVoters.precinct.includes(precinct.name) && (
                         <div className="flex-grow">
                           <div className="flex justify-between items-center mb-2">
                             <button
-                              onClick={() => toggleProgramSelection(precinct)}
+                              onClick={() => toggleProgramSelection(precinct.name)}
                               className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
                             >
-                              {visibleProgramSelections[precinct] ? (
+                              {visibleProgramSelections[precinct.name] ? (
                                 <>
                                   <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
@@ -1031,20 +1047,20 @@ export default function CreateElectionPage() {
                                 </>
                               )}
                             </button>
-                            {eventData.eligibleVoters.precinctPrograms[precinct]?.length > 0 && (
+                            {eventData.eligibleVoters.precinctPrograms[precinct.name]?.length > 0 && (
                               <span className="text-sm text-gray-500">
-                                {eventData.eligibleVoters.precinctPrograms[precinct]?.length} program(s) selected
+                                {eventData.eligibleVoters.precinctPrograms[precinct.name]?.length} program(s) selected
                               </span>
                             )}
                           </div>
 
-                          {visibleProgramSelections[precinct] && eventData.eligibleVoters.programs.length > 0 && (
+                          {visibleProgramSelections[precinct.name] && eventData.eligibleVoters.programs.length > 0 && (
                             <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                              <p className="text-sm font-medium text-gray-600 mb-2">Select programs for {precinct}:</p>
+                              <p className="text-sm font-medium text-gray-600 mb-2">Select programs for {precinct.name}:</p>
                               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                                 {eventData.eligibleVoters.programs.sort(sortPrograms).map(program => {
-                                  const isAssignedToOther = isProgramAssignedToOtherPrecinct(program, precinct);
-                                  const isChecked = eventData.eligibleVoters.precinctPrograms[precinct]?.includes(program) || false;
+                                  const isAssignedToOther = isProgramAssignedToOtherPrecinct(program, precinct.name);
+                                  const isChecked = eventData.eligibleVoters.precinctPrograms[precinct.name]?.includes(program) || false;
                                   
                                   return (
                                     <label 
@@ -1057,7 +1073,7 @@ export default function CreateElectionPage() {
                                       <input
                                         type="checkbox"
                                         checked={isChecked}
-                                        onChange={() => handlePrecinctProgramChange(precinct, program)}
+                                        onChange={() => handlePrecinctProgramChange(precinct.name, program)}
                                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"
                                         disabled={isAssignedToOther && !isChecked}
                                       />

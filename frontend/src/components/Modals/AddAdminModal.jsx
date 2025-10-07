@@ -389,7 +389,7 @@ export default function AddAdminModal({ onClose }) {
             <>
               <form className="space-y-3">
 
-                <label name="employeeNumber" className="text-black font-bold">Employee Number:</label>
+                <label name="employeeNumber" className="text-black font-bold">Employee Number: <span classnName="text-red-500">*</span></label>
                 <input 
                   type="text" 
                   name="employeeNumber" 
@@ -403,7 +403,7 @@ export default function AddAdminModal({ onClose }) {
                 {errors.employeeNumber && <p className="text-red-500 text-sm">{errors.employeeNumber}</p>}
 
 
-                <label name="firstName" className="text-black font-bold">First Name:</label>
+                <label name="firstName" className="text-black font-bold">First Name: <span classnName="text-red-500">*</span></label>
                 <input 
                   type="text" 
                   name="firstName" 
@@ -417,7 +417,7 @@ export default function AddAdminModal({ onClose }) {
                 />
                 {errors.firstName && <p className="text-red-500 text-sm">{errors.firstName}</p>}
 
-                <label name="lastName" className="text-black font-bold">Last Name:</label>
+                <label name="lastName" className="text-black font-bold">Last Name: <span classnName="text-red-500">*</span></label>
                 <input 
                   type="text" 
                   name="lastName" 
@@ -431,7 +431,7 @@ export default function AddAdminModal({ onClose }) {
                 />
                 {errors.lastName && <p className="text-red-500 text-sm">{errors.lastName}</p>}
 
-                <label name="email" className="text-black font-bold">Email:</label>
+                <label name="email" className="text-black font-bold">Email: <span classnName="text-red-500">*</span></label>
                 <input 
                   type="email" 
                   name="email" 

@@ -568,10 +568,10 @@ exports.checkStudentEligibility = async (req, res) => {
 
     // NEW: Check if student has laboratory assignment and validate IP
     const laboratoryAssignment = await pool.query(`
-      SELECT elp.laboratory_precinct_id, lp.name as laboratory_name
+      SELECT elp.laboratory_precinct_id, p.name as laboratory_name
       FROM eligible_voters ev
       JOIN election_laboratory_precincts elp ON ev.election_laboratory_precinct_id = elp.id
-      JOIN laboratory_precincts lp ON elp.laboratory_precinct_id = lp.id
+      JOIN precincts p ON elp.laboratory_precinct_id = p.id
       WHERE ev.student_id = $1 AND ev.election_id = $2
     `, [studentId, electionId]);
 
@@ -582,6 +582,8 @@ exports.checkStudentEligibility = async (req, res) => {
                        req.connection.remoteAddress || 
                        req.socket.remoteAddress;
       
+      // Import the validation function
+      const { validateStudentVotingIP } = require('../models/laboratoryPrecinctModel');
       const isValidIP = await validateStudentVotingIP(studentId, electionId, clientIP);
       
       if (!isValidIP) {
@@ -772,14 +774,14 @@ exports.submitVote = async (req, res) => {
     
     const { votes } = req.body;
 
-    // IP Validation for Laboratory Precincts
     const { getStudentLaboratoryAssignment, validateStudentVotingIP } = require('../models/laboratoryPrecinctModel');
-    const clientIP = req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
+    const clientIP = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+                     req.headers['x-real-ip'] || 
+                     req.connection.remoteAddress || 
+                     req.socket.remoteAddress;
     
-    // Get student's laboratory assignment for this election
     const labAssignment = await getStudentLaboratoryAssignment(studentId, electionId);
     
-    // If student has laboratory assignment, validate IP
     if (labAssignment) {
       const isValidIP = await validateStudentVotingIP(studentId, electionId, clientIP);
       
@@ -814,7 +816,6 @@ exports.submitVote = async (req, res) => {
 
     const election = electionCheck.rows[0];
     
-    // Only check needs_approval if not created by superadmin
     if (!election.is_superadmin_created && election.needs_approval) {
       await client.query('ROLLBACK');
       return res.status(403).json({
