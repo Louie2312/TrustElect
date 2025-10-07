@@ -690,7 +690,7 @@ export default function AddStudentModal({ onClose }) {
             )}
             {emailChecking && <p className="text-blue-500 text-sm">Checking email availability...</p>}
 
-            <label name="studentNumber" className="text-black font-bold">Student Number:</label>
+            <label name="studentNumber" className="text-black font-bold">Student Number:  <span className="text-red-500">*</span></label>
             <input 
               type="text" 
               name="studentNumber" 

@@ -5,6 +5,7 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
 import usePermissions from "@/hooks/usePermissions";
+import ConfirmationModal from "@/components/Modals/ConfirmationModal";
 
 export default function ArchivedStudents() {
   const router = useRouter();
@@ -269,18 +270,17 @@ export default function ArchivedStudents() {
         </tbody>
       </table>
 
-      {showConfirmModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg">
-            <h2 className="font-bold text-center text-black">Are you sure you want to delete this student?</h2>
-            
-            <div className="flex justify-center gap-4 mt-4">
-              <button onClick={permanentlyDeleteStudent} className="bg-red-700 text-white px-4 py-2 rounded">Delete</button>
-              <button onClick={() => setShowConfirmModal(false)} className="bg-gray-500 text-white px-4 py-2 rounded">Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmationModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={permanentlyDeleteStudent}
+        title="Confirm Permanent Deletion"
+        message="Are you sure you want to permanently delete this student? This action cannot be undone!"
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+        isLoading={isDeleting}
+      />
 
       {/* Batch Delete Modal - Only for superadmin */}
       {userRole === 'superadmin' && showBatchDeleteModal && (

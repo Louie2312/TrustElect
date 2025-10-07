@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
+import ConfirmationModal from "@/components/Modals/ConfirmationModal";
 
 export default function ArchivedAdminsPage() {
   const router = useRouter();
@@ -139,25 +140,17 @@ export default function ArchivedAdminsPage() {
         </tbody>
       </table>
 
-      {showConfirmModal && (
-        <div className="fixed inset-0  flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
-            <h2 className="font-bold text-lg mb-4 text-center text-black">Confirm Permanent Deletion</h2>
-            <p className="text-red-600 mb-4 text-center">
-              Are you sure you want to permanently delete this admin? This action CANNOT be undone!
-            </p>
-            
-            <div className="flex justify-center gap-4 mt-4">
-              <button onClick={permanentlyDeleteAdmin} className="bg-red-700 text-white px-4 py-2 rounded">
-                Delete Permanently
-              </button>
-              <button onClick={() => setShowConfirmModal(false)} className="bg-gray-500 text-white px-4 py-2 rounded">
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmationModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={permanentlyDeleteAdmin}
+        title="Confirm Permanent Deletion"
+        message="Are you sure you want to permanently delete this admin? This action CANNOT be undone!"
+        confirmText="Delete Permanently"
+        cancelText="Cancel"
+        type="danger"
+        isLoading={isDeleting}
+      />
 
     </div>
   );
