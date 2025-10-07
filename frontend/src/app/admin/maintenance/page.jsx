@@ -85,7 +85,6 @@ const AdminMaintenancePage = () => {
     setIsLoading(true);
     try {
       const token = Cookies.get("token");
-      const endpoint = API_ENDPOINTS[activeTab];
       
       let response;
       if (activeTab === "departments") {
@@ -100,7 +99,15 @@ const AdminMaintenancePage = () => {
           name: dept.department_name,
           department_type: dept.department_type
         })));
+      } else if (activeTab === "laboratoryPrecincts") {
+        // Fetch precincts for laboratory precinct management
+        response = await axios.get(
+          "/api/maintenance/precincts",
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setItems(response.data.data);
       } else {
+        const endpoint = API_ENDPOINTS[activeTab];
         response = await axios.get(
           `/api/maintenance/${endpoint}`,
           { headers: { Authorization: `Bearer ${token}` } }
