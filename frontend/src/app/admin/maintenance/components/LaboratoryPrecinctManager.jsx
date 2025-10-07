@@ -136,9 +136,18 @@ const LaboratoryPrecinctManager = ({ precincts = [] }) => {
   const handleAddIP = async () => {
     if (!selectedLab) return;
 
+    // Prepare data based on IP type to satisfy database constraints
+    const ipData = {
+      ip_type: newIP.ip_type,
+      ip_address: newIP.ip_type === 'single' ? newIP.ip_address : null,
+      ip_range_start: newIP.ip_type === 'range' ? newIP.ip_range_start : null,
+      ip_range_end: newIP.ip_type === 'range' ? newIP.ip_range_end : null,
+      subnet_mask: newIP.ip_type === 'subnet' ? newIP.subnet_mask : null
+    };
+
     try {
       const token = Cookies.get('token');
-      await axios.post(`/api/laboratory-precincts/${selectedLab.id}/ip-addresses`, newIP, {
+      await axios.post(`/api/laboratory-precincts/${selectedLab.id}/ip-addresses`, ipData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -168,10 +177,14 @@ const LaboratoryPrecinctManager = ({ precincts = [] }) => {
       
       // Add each IP address
       for (const ip of ipList) {
-        await axios.post(`/api/laboratory-precincts/${selectedLab.id}/ip-addresses`, {
+        const ipData = {
+          ip_type: 'single',
           ip_address: ip,
-          ip_type: 'single'
-        }, {
+          ip_range_start: null,
+          ip_range_end: null,
+          subnet_mask: null
+        };
+        await axios.post(`/api/laboratory-precincts/${selectedLab.id}/ip-addresses`, ipData, {
           headers: { Authorization: `Bearer ${token}` }
         });
       }
