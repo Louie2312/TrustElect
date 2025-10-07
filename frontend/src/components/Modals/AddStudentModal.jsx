@@ -612,7 +612,7 @@ export default function AddStudentModal({ onClose }) {
           )}
 
           <form className="space-y-3 w-full">
-            <label name="firstName" className="text-black font-bold">First Name:</label>
+            <label name="firstName" className="text-black font-bold">First Name:  <span className="text-red-500">*</span></label>
             <input 
               type="text" 
               name="firstName" 
@@ -623,7 +623,7 @@ export default function AddStudentModal({ onClose }) {
             />
             {errors.firstName && <p className="text-red-500 text-sm">{errors.firstName}</p>}
           
-            <label name="middleName" className="text-black font-bold">Middle Name:</label>
+            <label name="middleName" className="text-black font-bold">Middle Name: </label>
             <input 
               type="text" 
               name="middleName" 
@@ -633,7 +633,7 @@ export default function AddStudentModal({ onClose }) {
             />
             {errors.middleName && <p className="text-red-500 text-sm">{errors.middleName}</p>}
           
-            <label name="lastName" className="text-black font-bold">Last Name:</label>
+            <label name="lastName" className="text-black font-bold">Last Name: <span className="text-red-500">*</span></label>
             <input 
               type="text" 
               name="lastName" 
@@ -644,7 +644,7 @@ export default function AddStudentModal({ onClose }) {
             />
             {errors.lastName && <p className="text-red-500 text-sm">{errors.lastName}</p>}
             
-            <label name="email" className="text-black font-bold">Email:</label>
+            <label name="email" className="text-black font-bold">Email:  <span className="text-red-500">*</span></label>
             <div className="relative">
               <input 
                 type="email" 
