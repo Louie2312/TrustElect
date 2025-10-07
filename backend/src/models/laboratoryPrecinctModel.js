@@ -46,13 +46,43 @@ const getLaboratoryPrecinctById = async (id) => {
 const addIPAddress = async (laboratoryPrecinctId, ipData) => {
   const { ip_address, ip_type, ip_range_start, ip_range_end, subnet_mask } = ipData;
   
-  const result = await pool.query(`
-    INSERT INTO laboratory_ip_addresses 
-    (laboratory_precinct_id, ip_address, ip_type, ip_range_start, ip_range_end, subnet_mask)
-    VALUES ($1, $2, $3, $4, $5, $6) RETURNING *
-  `, [laboratoryPrecinctId, ip_address, ip_type, ip_range_start, ip_range_end, subnet_mask]);
+  console.log('Model - Adding IP address:', {
+    laboratoryPrecinctId,
+    ip_address,
+    ip_type,
+    ip_range_start,
+    ip_range_end,
+    subnet_mask
+  });
   
-  return result.rows[0];
+  try {
+    // First, let's check if the table exists and is accessible
+    const tableCheck = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'laboratory_ip_addresses'
+      );
+    `);
+    console.log('Table exists check:', tableCheck.rows[0]);
+    
+    // Check if the precinct exists
+    const precinctCheck = await pool.query(`
+      SELECT id, name FROM precincts WHERE id = $1
+    `, [laboratoryPrecinctId]);
+    console.log('Precinct check:', precinctCheck.rows[0]);
+    
+    const result = await pool.query(`
+      INSERT INTO laboratory_ip_addresses 
+      (laboratory_precinct_id, ip_address, ip_type, ip_range_start, ip_range_end, subnet_mask)
+      VALUES ($1, $2, $3, $4, $5, $6) RETURNING *
+    `, [laboratoryPrecinctId, ip_address, ip_type, ip_range_start, ip_range_end, subnet_mask]);
+    
+    console.log('Model - IP address added successfully:', result.rows[0]);
+    return result.rows[0];
+  } catch (error) {
+    console.error('Model - Error adding IP address:', error);
+    throw error;
+  }
 };
 
 const updateIPAddress = async (ipId, ipData) => {

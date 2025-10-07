@@ -29,8 +29,11 @@ exports.getLaboratoryPrecinctById = (req, res) =>
   handleResponse(res, getLaboratoryPrecinctById(req.params.id));
 
 exports.addIPAddress = (req, res) => {
-  const { laboratoryPrecinctId } = req.params;
+  const { id: laboratoryPrecinctId } = req.params;
   const ipData = req.body;
+  
+  console.log('Adding IP address for laboratory precinct:', laboratoryPrecinctId);
+  console.log('IP data received:', JSON.stringify(ipData, null, 2));
   
   // Validate IP data
   if (!ipData.ip_type) {
