@@ -40,6 +40,7 @@ const candidateListReportRoutes = require('./routes/candidateListReportRoutes');
 const adminActivityRoutes = require('./routes/adminActivityRoutes');
 const checkEmailRoutes = require('./routes/checkEmailRoutes');
 const superAdminCheckEmailRoutes = require('./routes/superAdminCheckEmailRoutes');
+const laboratoryPrecinctRoutes = require('./routes/laboratoryPrecinctRoutes');
 require('./cron/cron');
 app.use(cookieParser());
 app.use(helmet());
@@ -373,6 +374,7 @@ app.use('/api/uploads', express.static(path.join(__dirname, '../uploads'), {
 app.use('/api/students', studentRoutes);
 app.use('/api/studentUI', studentUIRoutes);
 app.use('/api/department-voter-reports', departmentVoterReportRoutes);
+app.use('/api/laboratory-precincts', laboratoryPrecinctRoutes);
 
 
 app.get("/api/healthcheck", (req, res) => {

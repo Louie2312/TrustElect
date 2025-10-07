@@ -9,6 +9,7 @@ import PartylistForm from "../../superadmin/maintenance/components/PartylistForm
 import PartylistCard from "../../superadmin/maintenance/components/PartylistCard";
 import PartylistDetails from "../../superadmin/maintenance/components/PartylistDetails";
 import PositionManager from "../../superadmin/maintenance/components/PositionManager";
+import LaboratoryPrecinctManager from "./components/LaboratoryPrecinctManager";
 
 const API_ENDPOINTS = {
   programs: "programs",
@@ -47,6 +48,7 @@ const AdminMaintenancePage = () => {
     { id: "genders", label: "Genders" },
     { id: "semesters", label: "Semesters" },
     { id: "precincts", label: "Precincts" },
+    { id: "laboratoryPrecincts", label: "Laboratory Precincts" },
     { id: "departments", label: "Departments" },
     { id: "partylists", label: "Partylist" },
     { id: "positions", label: "Positions" },
@@ -486,7 +488,9 @@ const AdminMaintenancePage = () => {
             onClose={handleClosePartylistDetails} 
           />
         ) : (
-          activeTab === "partylists" ? (
+          activeTab === "laboratoryPrecincts" ? (
+            <LaboratoryPrecinctManager />
+          ) : activeTab === "partylists" ? (
             <>
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-semibold text-black">Partylist</h2>

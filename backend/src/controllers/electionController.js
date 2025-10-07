@@ -14,17 +14,20 @@ const {
   approveElection,
   rejectElection,
   getPendingApprovalElections,
-  getAllElectionsWithCreator
+  getAllElectionsWithCreator,
+  createElectionLaboratoryPrecincts,
+  assignStudentsToLaboratoryPrecincts
 } = require("../models/electionModel");
 const pool = require("../config/db");
 const crypto = require('crypto');
 const notificationService = require('../services/notificationService');
 const cryptoService = require('../utils/cryptoService');
 const electionModel = require("../models/electionModel");
+const { validateStudentVotingIP } = require('../models/laboratoryPrecinctModel');
 
 exports.createElection = async (req, res) => {
   try {
-    const { title, description, date_from, date_to, start_time, end_time, election_type, eligible_voters } = req.body;
+    const { title, description, date_from, date_to, start_time, end_time, election_type, eligible_voters, laboratoryPrecincts } = req.body;
 
     const isAdmin = req.user.role_id === 2;
     const isSuperAdmin = req.user.role_id === 1;
@@ -33,10 +36,24 @@ exports.createElection = async (req, res) => {
     
     const result = await createElection(
       { title, description, dateFrom: date_from, dateTo: date_to, startTime: start_time, endTime: end_time, 
-        electionType: election_type, eligibleVoters: eligible_voters },
+        electionType: election_type, eligibleVoters: eligible_voters, laboratoryPrecincts: laboratoryPrecincts },
       req.user.id, 
       needsApproval
     );
+
+    // Handle laboratory precincts if provided
+    if (laboratoryPrecincts && laboratoryPrecincts.length > 0) {
+      try {
+        // Create election laboratory precincts
+        await createElectionLaboratoryPrecincts(result.election.id, laboratoryPrecincts);
+        
+        // Assign students to laboratory precincts
+        await assignStudentsToLaboratoryPrecincts(result.election.id, laboratoryPrecincts);
+      } catch (error) {
+        console.error("Error creating laboratory precincts:", error);
+        // Don't fail the election creation, just log the error
+      }
+    }
 
     // Send notifications if the election was created successfully
     if (result.election) {
@@ -548,6 +565,32 @@ exports.checkStudentEligibility = async (req, res) => {
 
 
     const hasVoted = eligibility.rows[0].has_voted;
+
+    // NEW: Check if student has laboratory assignment and validate IP
+    const laboratoryAssignment = await pool.query(`
+      SELECT elp.laboratory_precinct_id, lp.name as laboratory_name
+      FROM eligible_voters ev
+      JOIN election_laboratory_precincts elp ON ev.election_laboratory_precinct_id = elp.id
+      JOIN laboratory_precincts lp ON elp.laboratory_precinct_id = lp.id
+      WHERE ev.student_id = $1 AND ev.election_id = $2
+    `, [studentId, electionId]);
+
+    if (laboratoryAssignment.rows.length > 0) {
+      // Student has laboratory assignment - check IP
+      const clientIP = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+                       req.headers['x-real-ip'] || 
+                       req.connection.remoteAddress || 
+                       req.socket.remoteAddress;
+      
+      const isValidIP = await validateStudentVotingIP(studentId, electionId, clientIP);
+      
+      if (!isValidIP) {
+        return res.status(403).json({
+          eligible: false,
+          message: `You can only vote from ${laboratoryAssignment.rows[0].laboratory_name}. Please go to your assigned laboratory to cast your vote.`
+        });
+      }
+    }
 
     res.status(200).json({ 
       eligible: true,

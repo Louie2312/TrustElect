@@ -872,6 +872,85 @@ const updateEligibleVoters = async (electionId, students, criteria) => {
   }
 };
 
+// Laboratory precinct functions
+const createElectionLaboratoryPrecincts = async (electionId, laboratoryPrecincts) => {
+  const client = await pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+    
+    // Clear existing laboratory precincts for this election
+    await client.query(
+      'DELETE FROM election_laboratory_precincts WHERE election_id = $1',
+      [electionId]
+    );
+    
+    // Insert new laboratory precincts
+    for (const labPrecinct of laboratoryPrecincts) {
+      if (labPrecinct.assignedCourses && labPrecinct.assignedCourses.length > 0) {
+        await client.query(
+          `INSERT INTO election_laboratory_precincts 
+           (election_id, laboratory_precinct_id, assigned_courses) 
+           VALUES ($1, $2, $3)`,
+          [electionId, labPrecinct.laboratoryPrecinctId, labPrecinct.assignedCourses]
+        );
+      }
+    }
+    
+    await client.query('COMMIT');
+    return true;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+const assignStudentsToLaboratoryPrecincts = async (electionId, laboratoryPrecincts) => {
+  const client = await pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+    
+    // Get all eligible voters for this election
+    const eligibleVoters = await client.query(
+      'SELECT * FROM eligible_voters WHERE election_id = $1',
+      [electionId]
+    );
+    
+    // Assign each student to appropriate laboratory precinct
+    for (const voter of eligibleVoters.rows) {
+      for (const labPrecinct of laboratoryPrecincts) {
+        if (labPrecinct.assignedCourses.includes(voter.course_name)) {
+          // Get the election_laboratory_precinct_id
+          const elpResult = await client.query(
+            'SELECT id FROM election_laboratory_precincts WHERE election_id = $1 AND laboratory_precinct_id = $2',
+            [electionId, labPrecinct.laboratoryPrecinctId]
+          );
+          
+          if (elpResult.rows.length > 0) {
+            // Update eligible_voters with laboratory assignment
+            await client.query(
+              'UPDATE eligible_voters SET election_laboratory_precinct_id = $1 WHERE id = $2',
+              [elpResult.rows[0].id, voter.id]
+            );
+            break; // Student assigned to first matching lab
+          }
+        }
+      }
+    }
+    
+    await client.query('COMMIT');
+    return true;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
 module.exports = { 
   createElection, 
   getAllElections, 
@@ -890,5 +969,7 @@ module.exports = {
   getPendingApprovalElections,
   getAllElectionsWithCreator,
   getEligibleStudentsForCriteria,
-  updateEligibleVoters
+  updateEligibleVoters,
+  createElectionLaboratoryPrecincts,
+  assignStudentsToLaboratoryPrecincts
 };
