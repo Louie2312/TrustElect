@@ -46,7 +46,7 @@ const ConfirmationModal = ({
   const colors = getColors();
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+    <div className="fixed inset-0 flex items-center justify-center z-50 ">
       <div className="bg-white rounded-lg shadow-lg max-w-md w-full mx-4 p-6">
         {/* Title */}
         <h2 className="text-xl font-bold text-black text-center mb-4">
