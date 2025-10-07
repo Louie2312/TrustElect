@@ -423,7 +423,7 @@ const MaintenancePage = () => {
           />
         ) : (
           activeTab === "laboratoryPrecincts" ? (
-            <LaboratoryPrecinctManager />
+            <LaboratoryPrecinctManager precincts={items} />
           ) : activeTab === "partylists" ? (
             <>
               <div className="flex justify-between items-center mb-4">

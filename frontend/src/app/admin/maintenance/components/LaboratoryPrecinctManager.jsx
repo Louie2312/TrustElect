@@ -5,7 +5,7 @@ import axios from 'axios';
 import Cookies from 'js-cookie';
 import { toast } from 'react-hot-toast';
 
-const LaboratoryPrecinctManager = () => {
+const LaboratoryPrecinctManager = ({ precincts = [] }) => {
   const [laboratoryPrecincts, setLaboratoryPrecincts] = useState([]);
   const [selectedLab, setSelectedLab] = useState(null);
   const [ipAddresses, setIpAddresses] = useState([]);
@@ -20,10 +20,18 @@ const LaboratoryPrecinctManager = () => {
   });
   const [bulkIPs, setBulkIPs] = useState('');
   const [showBulkAdd, setShowBulkAdd] = useState(false);
+  const [showIPs, setShowIPs] = useState({});
 
   useEffect(() => {
-    fetchLaboratoryPrecincts();
-  }, []);
+    // Convert precincts to laboratory precincts format
+    const labPrecincts = precincts.map(precinct => ({
+      id: precinct.id || precinct,
+      name: precinct.name || precinct,
+      description: precinct.description || `Laboratory ${precinct.name || precinct}`,
+      ip_count: 0
+    }));
+    setLaboratoryPrecincts(labPrecincts);
+  }, [precincts]);
 
   const fetchLaboratoryPrecincts = async () => {
     try {
@@ -32,10 +40,32 @@ const LaboratoryPrecinctManager = () => {
       const response = await axios.get('/api/laboratory-precincts', {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setLaboratoryPrecincts(response.data.data);
+      
+      // Merge with existing precincts
+      const existingPrecincts = precincts.map(precinct => ({
+        id: precinct.id || precinct,
+        name: precinct.name || precinct,
+        description: precinct.description || `Laboratory ${precinct.name || precinct}`,
+        ip_count: 0
+      }));
+      
+      const labPrecincts = response.data.data || [];
+      const mergedPrecincts = existingPrecincts.map(precinct => {
+        const labPrecinct = labPrecincts.find(lp => lp.name === precinct.name);
+        return labPrecinct ? { ...precinct, ...labPrecinct } : precinct;
+      });
+      
+      setLaboratoryPrecincts(mergedPrecincts);
     } catch (error) {
       console.error('Error fetching laboratory precincts:', error);
-      toast.error('Failed to fetch laboratory precincts');
+      // Fallback to just using precincts
+      const labPrecincts = precincts.map(precinct => ({
+        id: precinct.id || precinct,
+        name: precinct.name || precinct,
+        description: precinct.description || `Laboratory ${precinct.name || precinct}`,
+        ip_count: 0
+      }));
+      setLaboratoryPrecincts(labPrecincts);
     } finally {
       setLoading(false);
     }
@@ -59,6 +89,13 @@ const LaboratoryPrecinctManager = () => {
     fetchIPAddresses(lab.id);
     setShowAddIP(false);
     setShowBulkAdd(false);
+  };
+
+  const toggleShowIPs = (labId) => {
+    setShowIPs(prev => ({
+      ...prev,
+      [labId]: !prev[labId]
+    }));
   };
 
   const handleAddIP = async () => {
@@ -159,39 +196,57 @@ const LaboratoryPrecinctManager = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold text-gray-800">Laboratory Precinct Management</h2>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowBulkAdd(!showBulkAdd)}
-            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-          >
-            Bulk Add IPs
-          </button>
-          <button
-            onClick={() => setShowAddIP(!showAddIP)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            Add Single IP
-          </button>
-        </div>
+        <p className="text-sm text-gray-600">Click on a laboratory to manage its IP addresses</p>
       </div>
 
-      {/* Laboratory Selection */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Laboratory Grid - Display as columns */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {laboratoryPrecincts.map((lab) => (
           <div
             key={lab.id}
-            onClick={() => handleLabSelect(lab)}
-            className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-              selectedLab?.id === lab.id
-                ? 'border-blue-500 bg-blue-50'
-                : 'border-gray-200 hover:border-gray-300'
-            }`}
+            className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow"
           >
-            <h3 className="font-semibold text-lg">{lab.name}</h3>
-            <p className="text-gray-600 text-sm">{lab.description}</p>
-            <p className="text-gray-500 text-xs mt-2">
-              {lab.ip_count || 0} IP address(es) configured
-            </p>
+            <div className="flex justify-between items-start mb-3">
+              <h3 className="font-semibold text-lg text-gray-800">{lab.name}</h3>
+              <button
+                onClick={() => toggleShowIPs(lab.id)}
+                className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
+              >
+                {showIPs[lab.id] ? 'Hide IPs' : 'Show IPs'}
+              </button>
+            </div>
+            
+            <p className="text-gray-600 text-sm mb-3">{lab.description}</p>
+            
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-xs text-gray-500">
+                {lab.ip_count || 0} IP address(es)
+              </span>
+              <button
+                onClick={() => handleLabSelect(lab)}
+                className="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Manage IPs
+              </button>
+            </div>
+
+            {/* Show IP addresses if toggled */}
+            {showIPs[lab.id] && (
+              <div className="mt-3 p-2 bg-gray-50 rounded text-xs">
+                <div className="text-gray-600 mb-2">IP Addresses:</div>
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {lab.active_ips && lab.active_ips.length > 0 ? (
+                    lab.active_ips.map((ip, index) => (
+                      <div key={index} className="font-mono text-gray-700">
+                        {ip}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-gray-500">No IP addresses configured</div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>
