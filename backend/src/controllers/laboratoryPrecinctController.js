@@ -28,40 +28,56 @@ exports.getLaboratoryPrecincts = (req, res) =>
 exports.getLaboratoryPrecinctById = (req, res) => 
   handleResponse(res, getLaboratoryPrecinctById(req.params.id));
 
-exports.addIPAddress = (req, res) => {
-  const { id: laboratoryPrecinctId } = req.params;
-  const ipData = req.body;
-  
-  // Validate IP data
-  if (!ipData.ip_type) {
-    return res.status(400).json({
+exports.addIPAddress = async (req, res) => {
+  try {
+    const { id: laboratoryPrecinctId } = req.params;
+    const ipData = req.body;
+    
+    console.log('Controller - Adding IP address for precinct:', laboratoryPrecinctId);
+    console.log('Controller - IP data received:', ipData);
+    
+    // Validate IP data
+    if (!ipData.ip_type) {
+      return res.status(400).json({
+        success: false,
+        message: "IP type is required"
+      });
+    }
+    
+    if (ipData.ip_type === 'single' && !ipData.ip_address) {
+      return res.status(400).json({
+        success: false,
+        message: "IP address is required for single IP type"
+      });
+    }
+    
+    if (ipData.ip_type === 'range' && (!ipData.ip_range_start || !ipData.ip_range_end)) {
+      return res.status(400).json({
+        success: false,
+        message: "IP range start and end are required for range type"
+      });
+    }
+    
+    if (ipData.ip_type === 'subnet' && !ipData.subnet_mask) {
+      return res.status(400).json({
+        success: false,
+        message: "Subnet mask is required for subnet type"
+      });
+    }
+    
+    const result = await addIPAddress(laboratoryPrecinctId, ipData);
+    res.json({
+      success: true,
+      message: "IP address added successfully",
+      data: result
+    });
+  } catch (error) {
+    console.error('Controller - Error adding IP address:', error);
+    res.status(500).json({
       success: false,
-      message: "IP type is required"
+      message: error.message || "Failed to add IP address"
     });
   }
-  
-  if (ipData.ip_type === 'single' && !ipData.ip_address) {
-    return res.status(400).json({
-      success: false,
-      message: "IP address is required for single IP type"
-    });
-  }
-  
-  if (ipData.ip_type === 'range' && (!ipData.ip_range_start || !ipData.ip_range_end)) {
-    return res.status(400).json({
-      success: false,
-      message: "IP range start and end are required for range type"
-    });
-  }
-  
-  if (ipData.ip_type === 'subnet' && !ipData.subnet_mask) {
-    return res.status(400).json({
-      success: false,
-      message: "Subnet mask is required for subnet type"
-    });
-  }
-  
-  handleResponse(res, addIPAddress(laboratoryPrecinctId, ipData));
 };
 
 exports.updateIPAddress = (req, res) => {

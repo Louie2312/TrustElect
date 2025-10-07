@@ -89,11 +89,11 @@ const getStudentLaboratoryAssignment = async (studentId, electionId) => {
   const result = await pool.query(`
     SELECT 
       elp.laboratory_precinct_id,
-      lp.name as laboratory_name,
+      p.name as laboratory_name,
       elp.assigned_courses
     FROM eligible_voters ev
     JOIN election_laboratory_precincts elp ON ev.election_laboratory_precinct_id = elp.id
-    JOIN laboratory_precincts lp ON elp.laboratory_precinct_id = lp.id
+    JOIN precincts p ON elp.laboratory_precinct_id = p.id
     WHERE ev.student_id = $1 AND ev.election_id = $2
   `, [studentId, electionId]);
   

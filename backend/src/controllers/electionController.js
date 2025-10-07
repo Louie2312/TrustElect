@@ -772,6 +772,26 @@ exports.submitVote = async (req, res) => {
     
     const { votes } = req.body;
 
+    // IP Validation for Laboratory Precincts
+    const { getStudentLaboratoryAssignment, validateStudentVotingIP } = require('../models/laboratoryPrecinctModel');
+    const clientIP = req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
+    
+    // Get student's laboratory assignment for this election
+    const labAssignment = await getStudentLaboratoryAssignment(studentId, electionId);
+    
+    // If student has laboratory assignment, validate IP
+    if (labAssignment) {
+      const isValidIP = await validateStudentVotingIP(studentId, electionId, clientIP);
+      
+      if (!isValidIP) {
+        await client.query('ROLLBACK');
+        return res.status(403).json({
+          success: false,
+          message: `Access denied. You can only vote from your assigned laboratory: ${labAssignment.laboratory_name}`
+        });
+      }
+    }
+
     const electionCheck = await client.query(
       `SELECT e.needs_approval, e.status, 
               EXISTS (
