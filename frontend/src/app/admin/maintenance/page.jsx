@@ -76,6 +76,8 @@ const AdminMaintenancePage = () => {
       fetchArchivedPartylists();
     } else if (activeTab === "positions") {
       fetchElectionTypes();
+    } else if (activeTab === "laboratoryPrecincts") {
+      fetchItems(); // This will fetch precincts when laboratoryPrecincts tab is active
     }
   }, [activeTab]);
 
@@ -490,7 +492,7 @@ const AdminMaintenancePage = () => {
           />
         ) : (
           activeTab === "laboratoryPrecincts" ? (
-            <LaboratoryPrecinctManager precincts={activeTab === "precincts" ? items : []} />
+            <LaboratoryPrecinctManager precincts={items} />
           ) : activeTab === "partylists" ? (
             <>
               <div className="flex justify-between items-center mb-4">

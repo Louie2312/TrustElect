@@ -67,12 +67,12 @@ const MaintenancePage = () => {
     try {
       const token = Cookies.get("token");
       const response = await axios.get(
-        "/api/laboratory-precincts",
+        "/api/maintenance/precincts",
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setPrecinctsData(response.data.data);
     } catch (error) {
-      console.error("Error fetching laboratory precincts:", error);
+      console.error("Error fetching precincts for laboratory:", error);
       setPrecinctsData([]);
     }
   };
