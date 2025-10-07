@@ -199,9 +199,7 @@ const handleFailedLogin = async (userId) => {
     const result = await pool.query(query, [MAX_FAILED_ATTEMPTS, LOCK_TIME_MINUTES, userId]);
 
     if (result.rows.length > 0) {
-      console.log(`User ${userId} failed login attempt: ${result.rows[0].login_attempts}`);
       if (result.rows[0].is_locked) {
-        console.log(`User ${userId} is now locked until ${result.rows[0].locked_until}`);
       }
     }
   } catch (error) {

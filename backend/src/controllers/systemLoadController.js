@@ -3,8 +3,6 @@ const pool = require('../config/db');
 const getSystemLoad = async (req, res) => {
   try {
     const { timeframe = '24h' } = req.query;
-    console.log('System Load Request - Timeframe:', timeframe);
-    
     let interval;
     let grouping;
     let dateFormat;
@@ -96,10 +94,6 @@ const getSystemLoad = async (req, res) => {
         (SELECT COALESCE(count, 0) FROM active_users) as total_active_users
     `;
 
-    console.log('Generated SQL Queries:');
-    console.log('Login Query:', loginQuery);
-    console.log('Voting Query:', votingQuery);
-    console.log('Peak Stats Query:', peakStatsQuery);
 
     const [loginActivity, votingActivity, peakStats] = await Promise.all([
       pool.query(loginQuery),

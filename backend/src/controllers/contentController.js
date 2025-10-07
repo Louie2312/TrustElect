@@ -43,7 +43,6 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage: storage,
   fileFilter: function (req, file, cb) {
-    console.log('Multer file filter - File:', file.originalname, 'Type:', file.mimetype, 'Size:', file.size);
     
     // Accept images and videos
     if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
@@ -94,11 +93,6 @@ const isValidColorFormat = (color) => {
 const getAllContent = async (req, res) => {
   try {
     const content = await contentModel.getAllContent();
-    console.log('=== CONTENT RETRIEVAL DEBUG ===');
-    console.log('Retrieved content keys:', Object.keys(content));
-    console.log('CTA content:', content.callToAction);
-    console.log('Hero content:', content.hero);
-    console.log('===============================');
     res.status(200).json(content);
   } catch (error) {
     console.error('Error in getAllContent controller:', error);
@@ -209,10 +203,7 @@ const updateSectionContent = async (req, res) => {
         console.error('Missing section parameter');
         return res.status(400).json({ error: 'Section parameter is required' });
       }
-      
-      console.log('Processing section:', section);
-      console.log('Request body content field exists:', !!req.body.content);
-      console.log('Request body content type:', typeof req.body.content);
+  
       
       // Get content data from request body with better error handling
       let contentData;
@@ -226,7 +217,6 @@ const updateSectionContent = async (req, res) => {
       
       try {
         contentData = JSON.parse(req.body.content);
-        console.log('Successfully parsed content data:', contentData);
       } catch (parseError) {
         console.error('JSON parse error:', parseError);
         console.error('Raw content field:', req.body.content);
@@ -266,7 +256,6 @@ const updateSectionContent = async (req, res) => {
             });
             
             contentData.imageUrl = fileUrl;
-            console.log('Logo media saved successfully:', logoFile.filename);
           } catch (error) {
             console.error('Error saving logo media:', error);
             // Still set the URL even if media save fails
@@ -283,26 +272,13 @@ const updateSectionContent = async (req, res) => {
           contentData.imageUrl = null;
         }
       } else if (section === 'hero') {
-        console.log('=== HERO SECTION PROCESSING ===');
-        console.log('Files received:', req.files);
-        console.log('Body data:', req.body);
-        console.log('Content data before processing:', contentData);
-        
-        // Process hero video if uploaded or handle removal
+
         const videoFile = req.files?.heroVideo?.[0];
         if (videoFile) {
-          console.log('Processing hero video:', {
-            filename: videoFile.filename,
-            originalname: videoFile.originalname,
-            mimetype: videoFile.mimetype,
-            size: videoFile.size,
-            path: videoFile.path
-          });
+     
           
           const videoUrl = normalizeFilePath(`/uploads/videos/${videoFile.filename}`);
-          console.log('Video URL:', videoUrl);
-          
-          // Save media to database
+
           try {
             const videoMedia = await contentModel.saveMedia({
               filename: videoFile.filename,
@@ -314,23 +290,19 @@ const updateSectionContent = async (req, res) => {
               url: videoUrl,
               altText: 'Hero video'
             });
-            console.log('Video media saved successfully:', videoMedia);
           } catch (error) {
             console.error('Error saving video media:', error);
           }
 
           contentData.videoUrl = videoUrl;
         } else if (req.body.removeHeroVideo === 'true') {
-          console.log('Removing hero video');
           contentData.videoUrl = null;
         } else {
-          console.log('No hero video file found in request');
         }
 
         const imageFile = req.files?.heroPoster?.[0];
         if (imageFile) {
           const imageUrl = normalizeFilePath(`/uploads/images/${imageFile.filename}`);
-          console.log('Saving image media:', imageFile.filename);
 
           try {
             const imageMedia = await contentModel.saveMedia({
@@ -350,7 +322,6 @@ const updateSectionContent = async (req, res) => {
             contentData.posterImage = imageUrl;
           }
         } else if (req.body.removeHeroPoster === 'true') {
-          console.log('Removing hero poster image');
           contentData.posterImage = null;
         }
 
@@ -360,7 +331,6 @@ const updateSectionContent = async (req, res) => {
           const carouselFile = req.files?.[`carouselImage${i}`]?.[0];
           if (carouselFile) {
             const imageUrl = normalizeFilePath(`/uploads/images/${carouselFile.filename}`);
-            console.log(`Processing carousel image ${i}:`, carouselFile.filename);
             
             try {
               await contentModel.saveMedia({
@@ -398,7 +368,6 @@ const updateSectionContent = async (req, res) => {
         const heroBackgroundFile = req.files?.heroBackground?.[0];
         if (heroBackgroundFile) {
           const backgroundUrl = normalizeFilePath(`/uploads/images/${heroBackgroundFile.filename}`);
-          console.log('Processing hero background:', heroBackgroundFile.filename);
           
           try {
             await contentModel.saveMedia({
@@ -418,7 +387,6 @@ const updateSectionContent = async (req, res) => {
           }
         }
         
-        console.log('Content data after hero processing:', contentData);
       } else if (section === 'features') {
         if (contentData.columns && Array.isArray(contentData.columns)) {
           for (let i = 0; i < contentData.columns.length; i++) {
@@ -461,7 +429,6 @@ const updateSectionContent = async (req, res) => {
         const featuresBackgroundFile = req.files?.featuresBackground?.[0];
         if (featuresBackgroundFile) {
           const backgroundUrl = normalizeFilePath(`/uploads/images/${featuresBackgroundFile.filename}`);
-          console.log('Processing features background:', featuresBackgroundFile.filename);
           
           try {
             await contentModel.saveMedia({
@@ -510,7 +477,6 @@ const updateSectionContent = async (req, res) => {
         } else if (req.body.removeCtaVideo === 'true') {
           contentData.videoUrl = null;
         } else {
-          console.log('No CTA video file found in request');
         }
 
         if (contentData.bgColor && !isValidColorFormat(contentData.bgColor)) {
@@ -524,7 +490,6 @@ const updateSectionContent = async (req, res) => {
         const ctaBackgroundFile = req.files?.ctaBackground?.[0];
         if (ctaBackgroundFile) {
           const backgroundUrl = normalizeFilePath(`/uploads/images/${ctaBackgroundFile.filename}`);
-          console.log('Processing CTA background:', ctaBackgroundFile.filename);
           
           try {
             await contentModel.saveMedia({
@@ -548,7 +513,6 @@ const updateSectionContent = async (req, res) => {
         const headerBackgroundFile = req.files?.headerBackground?.[0];
         if (headerBackgroundFile) {
           const backgroundUrl = normalizeFilePath(`/uploads/images/${headerBackgroundFile.filename}`);
-          console.log('Processing header background:', headerBackgroundFile.filename);
           
           try {
             await contentModel.saveMedia({
@@ -569,12 +533,10 @@ const updateSectionContent = async (req, res) => {
         }
       }
 
-      console.log('Final content data before database update:', contentData);
 
       // Update the content in the database
       const updatedContent = await contentModel.updateSectionContent(section, contentData);
       
-      console.log('Database update successful:', updatedContent);
       
       res.json({
         success: true,
@@ -907,15 +869,7 @@ const uploadBackground = async (req, res) => {
       return res.status(400).json({ error: 'Section parameter is required' });
     }
 
-    // Generate URL for the uploaded image
     const imageUrl = `/uploads/images/${req.file.filename}`;
-
-    console.log('Background uploaded successfully:', {
-      section,
-      filename: req.file.filename,
-      imageUrl,
-      size: req.file.size
-    });
 
     res.status(200).json({
       message: 'Background uploaded successfully',

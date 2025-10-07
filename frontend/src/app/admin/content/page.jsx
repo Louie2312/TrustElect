@@ -190,7 +190,6 @@ export default function ContentManagement() {
 
         setLandingContent(newContent);
         setInitialContent(JSON.stringify(newContent));
-        console.log('Content loaded:', newContent);
       }
     } catch (error) {
       console.error("Error fetching content:", error);
@@ -363,7 +362,6 @@ export default function ContentManagement() {
         return;
       }
 
-      console.log("Updating hero carousel images:", updatedImages);
       updateHero('carouselImages', updatedImages);
       setSaveStatus(`Carousel images uploaded successfully! (${newImages.length} images) Click Save to apply changes.`);
       setTimeout(() => setSaveStatus(""), 3000);
@@ -406,39 +404,24 @@ export default function ContentManagement() {
     const localUrl = URL.createObjectURL(file);
     
     if (type === 'heroVideo') {
-      console.log("Updating hero video URL:", localUrl);
       updateHero('videoUrl', localUrl);
       setSaveStatus("Hero video uploaded successfully! Click Save to apply changes.");
       setTimeout(() => setSaveStatus(""), 3000);
     } 
     else if (type === 'heroPoster') {
-      console.log("Updating hero poster image URL:", localUrl);
       updateHero('posterImage', localUrl);
       setSaveStatus("Hero poster image uploaded successfully! Click Save to apply changes.");
       setTimeout(() => setSaveStatus(""), 3000);
     }
     else if (type === 'ctaVideo') {
-      console.log("Updating CTA video URL:", localUrl);
       updateCTA('videoUrl', localUrl);
       setSaveStatus("CTA video uploaded successfully! Click Save to apply changes.");
       setTimeout(() => setSaveStatus(""), 3000);
     } 
     else if (type === 'featureImage') {
-      if (index === 0) {
-        console.log("FEATURE CARD 1 IMAGE UPLOAD - index:" + index);
-        console.log("Element ID:", e.target.id);
-        console.log("Element data-feature-index before:", e.target.getAttribute('data-feature-index'));
-      }
-
-      console.log(`Updating feature image ${index} with URL ${localUrl}`);
-
+    
       e.target.id = `feature-image-${index}`;
       e.target.setAttribute('data-feature-index', String(index));
-
-      if (index === 0) {
-        console.log("Element data-feature-index after:", e.target.getAttribute('data-feature-index'));
-        console.log("Element ID after:", e.target.id);
-      }
 
       updateFeature(index, 'imageUrl', localUrl);
       setSaveStatus(`Feature card ${index + 1} image uploaded successfully! Click Save to apply changes.`);
@@ -592,7 +575,7 @@ export default function ContentManagement() {
           backgroundImage: landingContent.features.backgroundImage
         };
         
-        // Handle features background image upload
+  
         if (landingContent.features.backgroundImage && landingContent.features.backgroundImage.startsWith('blob:')) {
           try {
             const response = await fetch(landingContent.features.backgroundImage);

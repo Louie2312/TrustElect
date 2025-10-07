@@ -67,9 +67,7 @@ export default function Home() {
 
   const checkApiConnection = async () => {
     try {
-      // Fix: Use relative path - Next.js rewrites will handle the routing
       await axios.head('/api/healthcheck', { timeout: 5000 });
-      console.log('API connection successful');
       setApiConnected(true);
       return true;
     } catch (error) {
@@ -181,7 +179,6 @@ export default function Home() {
       if (cachedContent) {
         setLandingContent(cachedContent);
       } else {
-        console.log("No cached content available, using defaults");
       }
     } finally {
       setIsLoading(false);
@@ -204,7 +201,6 @@ export default function Home() {
     // Add storage event listener to refresh content when admin updates are made
     const handleStorageChange = (e) => {
       if (e.key === 'contentUpdated') {
-        console.log('Content updated, refreshing landing page...');
         refreshContent();
       }
     };
@@ -327,10 +323,8 @@ export default function Home() {
                   }
                   
                   const fallbackUrl = fallbackUrls[index];
-                  console.log('Trying logo fallback URL:', fallbackUrl);
                   img.src = `${fallbackUrl}?timestamp=${new Date().getTime()}`;
                   img.onload = () => {
-                    console.log('Logo fallback URL worked:', fallbackUrl);
                   };
                   img.onerror = () => {
                     console.error('Logo fallback URL failed:', fallbackUrl);
@@ -341,7 +335,6 @@ export default function Home() {
                 tryNextFallback(0);
               }}
               onLoad={() => {
-                console.log('Logo loaded successfully:', landingContent.logo.imageUrl);
               }}
             />
           ) : (
@@ -462,7 +455,6 @@ export default function Home() {
                           <button
                             key={index}
                             onClick={() => {
-                              console.log(`Clicking carousel indicator ${index + 1}`);
                               setCurrentCarouselIndex(index);
                             }}
                             className={`w-3 h-3 rounded-full transition-colors ${
@@ -484,7 +476,6 @@ export default function Home() {
                             const newIndex = currentCarouselIndex === 0 
                               ? landingContent.hero.carouselImages.length - 1 
                               : currentCarouselIndex - 1;
-                            console.log(`Previous button clicked, changing from ${currentCarouselIndex} to ${newIndex}`);
                             setCurrentCarouselIndex(newIndex);
                           }}
                           className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors z-20"
@@ -497,7 +488,6 @@ export default function Home() {
                         <button
                           onClick={() => {
                             const newIndex = (currentCarouselIndex + 1) % landingContent.hero.carouselImages.length;
-                            console.log(`Next button clicked, changing from ${currentCarouselIndex} to ${newIndex}`);
                             setCurrentCarouselIndex(newIndex);
                           }}
                           className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors z-20"
@@ -528,13 +518,6 @@ export default function Home() {
               const heroPosterUrl = landingContent.hero && landingContent.hero.posterImage ? 
                 formatImageUrl(landingContent.hero.posterImage) : null;
 
-              // Debug logging to ensure we're not mixing up videos
-              console.log("=== VIDEO DEBUG INFO ===");
-              console.log("Hero section - Video URL:", heroVideoUrl);
-              console.log("Hero section - Poster URL:", heroPosterUrl);
-              console.log("CTA section - Video URL:", landingContent.callToAction?.videoUrl);
-              console.log("Full landing content:", landingContent);
-              console.log("=========================");
 
           if (heroVideoUrl) {
                 return (
@@ -602,7 +585,6 @@ export default function Home() {
                         img.src = `${fallbackUrl}?timestamp=${new Date().getTime()}`;
                         img.className = 'w-full h-full object-cover';
                         img.onload = () => {
-                          console.log('Fallback URL worked:', fallbackUrl); 
                           container.innerHTML = '';
                           container.appendChild(img);
                         };
@@ -616,7 +598,6 @@ export default function Home() {
                     }
                   }}
                   onLoad={() => {
-                    console.log('Hero poster loaded successfully:', posterWithTimestamp);
                   }}
                 />
               </div>
@@ -653,20 +634,14 @@ export default function Home() {
               {/* Video container - Left side, smaller size */}
               <div className="lg:w-1/2 w-full">
                 {(() => {
-                  console.log("=== CTA SECTION DEBUG ===");
-                  console.log("CTA video URL:", landingContent.callToAction?.videoUrl);
-                  console.log("CTA enabled:", landingContent.callToAction?.enabled);
-                  console.log("Formatted CTA video URL:", landingContent.callToAction?.videoUrl ? formatImageUrl(landingContent.callToAction.videoUrl) : null);
-                  
-                  // Safety check: Ensure CTA video is not accidentally using hero video
+
                   if (landingContent.callToAction?.videoUrl && landingContent.hero?.videoUrl && 
                       formatImageUrl(landingContent.callToAction.videoUrl) === formatImageUrl(landingContent.hero.videoUrl)) {
                     console.warn("WARNING: CTA video URL matches Hero video URL - this should not happen!");
                     console.warn("CTA video URL:", formatImageUrl(landingContent.callToAction.videoUrl));
                     console.warn("Hero video URL:", formatImageUrl(landingContent.hero.videoUrl));
                   }
-                  
-                  console.log("========================");
+
                   
                   return landingContent.callToAction?.videoUrl;
                 })() ? (
@@ -679,10 +654,8 @@ export default function Home() {
                       playsInline
                       className="w-full h-full object-cover"
                       onLoadStart={() => {
-                        console.log("CTA Video loading started:", landingContent.callToAction.videoUrl);
                       }}
                       onLoadedData={() => {
-                        console.log("CTA Video loaded successfully:", landingContent.callToAction.videoUrl);
                       }}
                       onError={(e) => {
                         console.error("Error loading CTA video:", landingContent.callToAction.videoUrl);
@@ -748,10 +721,6 @@ export default function Home() {
           </h2>
           <div className="grid md:grid-cols-3 gap-8">
             {landingContent.features.columns.map((feature, index) => {
-              if (index === 0) {
-                console.log("Feature Card 1 data:", feature);
-                console.log("Feature Card 1 image URL:", feature.imageUrl);
-              }
 
               let imageUrl = null;
               if (feature.imageUrl) {
@@ -768,9 +737,6 @@ export default function Home() {
                 }
               }
 
-              if (index === 0) {
-                console.log("Feature Card 1 final image URL:", imageUrl);
-              }
               
               return (
                 <div 

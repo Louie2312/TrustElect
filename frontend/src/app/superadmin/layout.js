@@ -15,8 +15,6 @@ export default function SuperAdminLayout({ children }) {
     const token = Cookies.get("token");
     const role = Cookies.get("role");
 
-    console.log("Checking token & role:", { token, role });
-
     if (!token || role !== "Super Admin") {
       console.warn("Unauthorized access detected. Redirecting to login...");
       router.push("/");

@@ -136,10 +136,8 @@ export default function ContentManagement() {
 
   const validateFeatureCard1 = () => {
     if (landingContent.features?.columns?.[0]?.imageUrl) {
-      console.log("Feature Card 1 has an image URL:", landingContent.features.columns[0].imageUrl);
       return true;
     } else {
-      console.log("Feature Card 1 has no image URL");
       return false;
     }
   };
@@ -388,7 +386,6 @@ export default function ContentManagement() {
         return;
       }
 
-      console.log("Updating hero carousel images:", updatedImages);
       updateHero('carouselImages', updatedImages);
       setSaveStatus(`Carousel images uploaded successfully! (${newImages.length} images) Click Save to apply changes.`);
       setTimeout(() => setSaveStatus(""), 3000);
@@ -429,7 +426,6 @@ export default function ContentManagement() {
     }
 
     if (type === 'studentBackground') {
-      console.log('Handling student background upload:', file);
       
       try {
         setSaveStatus('Uploading background image...');
@@ -449,44 +445,34 @@ export default function ContentManagement() {
         
         formData.append('content', JSON.stringify(contentData));
         
-        console.log('Uploading with content data:', contentData);
         
         // Get the token
         const token = Cookies.get('token');
         if (!token) {
           throw new Error('Authentication token not found');
         }
-        
-        // Make direct upload request - debug the request
-        console.log('FormData entries:');
-        for (let pair of formData.entries()) {
-          console.log(pair[0], pair[1]);
-        }
-        
-        // Make the request with proper headers
+
+
         const response = await axios.post(
           `${API_URL}/studentUI`,
           formData,
           {
             headers: {
               'Authorization': `Bearer ${token}`
-              // Don't manually set Content-Type with FormData - axios will set it with boundary
+ 
             }
           }
         );
-        
-        console.log('Background upload response:', response.data);
+
         
         if (response.data && response.data.content && response.data.content.background_image) {
-          // Update the UI with the server path
           const serverPath = response.data.content.background_image;
-          
-          // Update the landing content state
+
           const newContent = { ...landingContent };
           newContent.studentUI = {
             ...newContent.studentUI,
             backgroundImage: serverPath,
-            // If we're currently using landing design, switch to poster automatically
+
             type: newContent.studentUI.type === 'landing' ? 'poster' : newContent.studentUI.type,
             use_landing_design: newContent.studentUI.type === 'landing' ? false : newContent.studentUI.use_landing_design
           };
@@ -518,12 +504,10 @@ export default function ContentManagement() {
       }
       
       const localUrl = URL.createObjectURL(file);
-      console.log("Updating hero video URL:", localUrl);
       updateHero('videoUrl', localUrl);
     } 
     else if (type === 'heroPoster') {
       const localUrl = URL.createObjectURL(file);
-      console.log("Updating hero poster image URL:", localUrl);
       updateHero('posterImage', localUrl);
     }
     else if (type === 'ctaVideo') {
@@ -534,27 +518,13 @@ export default function ContentManagement() {
       }
       
       const localUrl = URL.createObjectURL(file);
-      console.log("Updating CTA video URL:", localUrl);
       updateCTA('videoUrl', localUrl);
     } 
     else if (type === 'featureImage') {
       const localUrl = URL.createObjectURL(file);
-      
-      if (index === 0) {
-        console.log("FEATURE CARD 1 IMAGE UPLOAD - index:" + index);
-        console.log("Element ID:", e.target.id);
-        console.log("Element data-feature-index before:", e.target.getAttribute('data-feature-index'));
-      }
-
-      console.log(`Updating feature image ${index} with URL ${localUrl}`);
-
+    
       e.target.id = `feature-image-${index}`;
       e.target.setAttribute('data-feature-index', String(index));
- 
-      if (index === 0) {
-        console.log("Element data-feature-index after:", e.target.getAttribute('data-feature-index'));
-        console.log("Element ID after:", e.target.id);
-      }
 
       updateFeature(index, 'imageUrl', localUrl);
     }
@@ -564,14 +534,12 @@ export default function ContentManagement() {
     if (type === 'studentBackground') {
       try {
         setSaveStatus('Removing background image...');
-        
-        // Get the token
+
         const token = Cookies.get('token');
         if (!token) {
           throw new Error('Authentication token not found');
         }
-        
-        // Create form data for the request
+
         const formData = new FormData();
         
         // Add the content JSON data
@@ -583,16 +551,7 @@ export default function ContentManagement() {
         
         formData.append('content', JSON.stringify(contentData));
         formData.append('removeBackground', 'true'); // Important flag
-        
-        console.log('Removing background with data:', contentData);
-        
-        // Debug the request
-        console.log('FormData entries:');
-        for (let pair of formData.entries()) {
-          console.log(pair[0], pair[1]);
-        }
-        
-        // Make the request to remove the background
+
         const response = await axios.post(
           `${API_URL}/studentUI`,
           formData,
@@ -603,21 +562,18 @@ export default function ContentManagement() {
             }
           }
         );
-        
-        console.log('Background removal response:', response.data);
+
         
         if (response.data && response.data.content) {
-          // Update the landing content state with server data
           const newContent = { ...landingContent };
           newContent.studentUI = {
             type: response.data.content.type || 'poster',
-            backgroundImage: null, // Force to null locally
+            backgroundImage: null, 
             use_landing_design: response.data.content.use_landing_design || false
           };
           
           setLandingContent(newContent);
-          
-          // Clear file input for student background
+
           const backgroundInput = document.querySelector('#student-background-input');
           if (backgroundInput) {
             backgroundInput.value = '';
@@ -700,7 +656,6 @@ export default function ContentManagement() {
   };
 
   const saveSectionContent = async (section) => {
-    console.log('saveSectionContent called with section:', section);
     
     if (!section) {
       console.error('No section provided to saveSectionContent');
@@ -717,9 +672,7 @@ export default function ContentManagement() {
       let contentData;
 
       if (section === 'studentUI') {
-        console.log('Saving student UI content:', landingContent.studentUI);
-        
-        // If type is landing, ensure use_landing_design is true
+
         const isLandingDesign = landingContent.studentUI?.type === 'landing';
         
         contentData = {
@@ -729,7 +682,6 @@ export default function ContentManagement() {
         
         // For landing design, we always remove the background image
         if (isLandingDesign) {
-          console.log('Landing design selected, removing background image');
           formData.append('removeBackground', 'true');
           contentData.existing_background_image = null;
         } 
@@ -738,23 +690,16 @@ export default function ContentManagement() {
           // If we already have a background image path in the state that's not a blob URL
           if (landingContent.studentUI?.backgroundImage && 
               !landingContent.studentUI.backgroundImage.startsWith('blob:')) {
-            console.log('Using existing background image:', landingContent.studentUI.backgroundImage);
             contentData.existing_background_image = landingContent.studentUI.backgroundImage;
           } 
           // If background image is explicitly null, remove it
           else if (landingContent.studentUI?.backgroundImage === null) {
-            console.log('Removing background image');
             formData.append('removeBackground', 'true');
           }
         }
 
         formData.append('content', JSON.stringify(contentData));
         
-        // Log what we're sending
-        console.log('Sending student UI update with data:', contentData);
-        for (let pair of formData.entries()) {
-          console.log(pair[0], pair[1]);
-        }
 
         const timestamp = new Date().getTime();
         const config = {
@@ -766,9 +711,8 @@ export default function ContentManagement() {
 
         // Special handling for landing design - use the direct endpoint
         if (isLandingDesign) {
-          console.log('Using direct force-landing endpoint for landing design');
           
-          const directResponse = await axios.post(
+         const directResponse = await axios.post(
             `${API_URL}/studentUI/force-landing`,
             {},
             {
@@ -778,8 +722,7 @@ export default function ContentManagement() {
               }
             }
           );
-          
-          console.log('Direct landing design response:', directResponse.data);
+
           
           if (directResponse.data && directResponse.data.content) {
             const newContent = { ...landingContent };
@@ -793,15 +736,14 @@ export default function ContentManagement() {
             setTimeout(() => setSaveStatus(''), 3000);
           }
         } 
-        // For poster design, use the regular endpoint
+
         else {
           const response = await axios.post(
             `${API_URL}/studentUI?t=${timestamp}`,
             formData,
             config
           );
-          
-          console.log('Student UI update response:', response.data);
+
   
           if (response.data && response.data.content) {
             const newContent = { ...landingContent };
@@ -831,9 +773,8 @@ export default function ContentManagement() {
           formData.append('removeLogo', 'true');
         }
       } else if (section === 'header') {
-        // Handle header section - preserve all existing content
         contentData = {
-          ...landingContent.header, // Preserve all existing content
+          ...landingContent.header, 
           backgroundImage: landingContent.header.backgroundImage
         };
         
@@ -849,13 +790,12 @@ export default function ContentManagement() {
           }
         }
       } else if (section === 'hero') {
-        // Handle hero section - preserve all existing content
+ 
         contentData = {
-          ...landingContent.hero, // Preserve all existing content
+          ...landingContent.hero, 
           backgroundImage: landingContent.hero.backgroundImage
         };
-        
-        // Handle hero background image upload
+
         if (landingContent.hero.backgroundImage && landingContent.hero.backgroundImage.startsWith('blob:')) {
           try {
             const response = await fetch(landingContent.hero.backgroundImage);

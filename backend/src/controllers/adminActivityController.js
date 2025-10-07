@@ -7,7 +7,6 @@ const auditLogModel = require('../models/auditLogModel');
  */
 exports.getAdminActivities = async (req, res) => {
   try {
-    console.log('Admin activities request received:', req.query);
     
     const {
       timeframe = 'all',
@@ -31,7 +30,6 @@ exports.getAdminActivities = async (req, res) => {
       search
     };
     
-    console.log('Filter options before processing:', filterOptions);
 
     // Add date filtering based on timeframe
     const now = new Date();
@@ -59,7 +57,6 @@ exports.getAdminActivities = async (req, res) => {
     }
 
     // Get activities and total count
-    console.log('Filter options:', filterOptions);
     
     let activities, count;
     try {
@@ -67,13 +64,11 @@ exports.getAdminActivities = async (req, res) => {
         auditLogModel.getAuditLogs(filterOptions),
         auditLogModel.getAuditLogsCount(filterOptions)
       ]);
-      console.log('Activities count:', activities.length, 'Total count:', count);
     } catch (dbError) {
       console.error('Database query error:', dbError);
       throw new Error(`Database query failed: ${dbError.message}`);
     }
 
-    // Get active admins (admins who exist in the system)
     let activeAdmins;
     try {
       const activeAdminsQuery = `
@@ -84,7 +79,6 @@ exports.getAdminActivities = async (req, res) => {
       `;
       const activeAdminsResult = await auditLogModel.executeQuery(activeAdminsQuery, []);
       activeAdmins = parseInt(activeAdminsResult.rows[0]?.count || 0);
-      console.log('Active admins count:', activeAdmins);
     } catch (error) {
       console.error('Error getting active admins:', error);
       activeAdmins = 0;
@@ -105,7 +99,6 @@ exports.getAdminActivities = async (req, res) => {
       const actionCountValues = filterOptions.start_date ? [filterOptions.start_date] : [];
       const actionCountResult = await auditLogModel.executeQuery(actionCountQuery, actionCountValues);
       mostCommonAction = actionCountResult.rows[0]?.action || 'N/A';
-      console.log('Most common action:', mostCommonAction);
     } catch (error) {
       console.error('Error getting most common action:', error);
     }

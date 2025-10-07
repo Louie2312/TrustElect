@@ -321,7 +321,6 @@ exports.uploadStudentsBatch = async (req, res) => {
     
     // If no good header row found, try to use the first row and clean it up
     if (maxMatches === 0) {
-      console.log('No clear header row found, using first row and attempting to clean up');
       headerRowIndex = 0;
     }
     
@@ -362,13 +361,6 @@ exports.uploadStudentsBatch = async (req, res) => {
       });
     }
 
-    // Log the raw Excel data for debugging
-    console.log('Raw Excel data (first 3 rows):', JSON.stringify(jsonData.slice(0, 3), null, 2));
-    console.log('Available columns:', Object.keys(jsonData[0] || {}));
-    console.log('Header row index:', headerRowIndex);
-    console.log('Original headers:', headers);
-    console.log('Cleaned headers:', cleanHeaders);
-
     jsonData = jsonData.map((row, index) => {
       const normalizedRow = {};
 
@@ -382,7 +374,6 @@ exports.uploadStudentsBatch = async (req, res) => {
 
         // Debug logging (only in development)
         if (process.env.NODE_ENV === 'production') {
-          console.log(`Row ${index + 2}: Processing column "${key}" -> normalized: "${normalizedKey}" -> value: "${row[key]}"`);
         }
       
         // Map various possible column names to our expected format
@@ -420,7 +411,6 @@ exports.uploadStudentsBatch = async (req, res) => {
       
       // Debug logging (only in development)
       if (process.env.NODE_ENV === 'development') {
-        console.log(`Row ${index + 2} normalized:`, normalizedRow);
       }
       return normalizedRow;
     });
@@ -568,7 +558,6 @@ exports.uploadStudentsBatch = async (req, res) => {
       }
     });
     
-    console.log(`Found ${invalidRows.length} invalid rows and ${validatedData.length} valid rows`);
     
     if (validatedData.length === 0 && invalidRows.length > 0) {
       return res.status(400).json({
@@ -608,7 +597,6 @@ exports.uploadStudentsBatch = async (req, res) => {
       }
     }
 
-    console.log(`Processing batch with ${validatedData.length} students`);
     const result = await processBatchStudents(validatedData, req.body.createdBy);
 
     try {
@@ -991,7 +979,6 @@ exports.validateStudentByNumber = async (req, res) => {
     `;
     
     const result = await pool.query(query, [studentNumber]);
-    console.log(`Query results for ${studentNumber}:`, result.rows);
     
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -1017,7 +1004,6 @@ exports.validateStudentByNumber = async (req, res) => {
 exports.searchStudents = async (req, res) => {
   try {
     const { term } = req.query;
-    console.log(`Searching for students with term: ${term}`);
     
     if (!term || term.length < 4) {
       return res.status(400).json({ 
@@ -1070,7 +1056,6 @@ exports.changePassword = async (req, res) => {
 
     const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(newPassword)) {
-      console.log("Password validation failed");
       return res.status(400).json({ 
         message: "Password must be at least 8 characters long, include an uppercase letter, a number, and a special character." 
       });

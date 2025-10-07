@@ -42,12 +42,6 @@ const verifyToken = async (req, res, next) => {
             req.user.normalizedRole = 'Student';
           }
           
-          console.log("Auth middleware - User role set:", {
-            id: req.user.id,
-            role_id: req.user.role_id,
-            normalizedRole: req.user.normalizedRole,
-            role: req.user.role
-          });
           
         } else {
           console.warn(`User with ID ${decoded.id} not found in database`);

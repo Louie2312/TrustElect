@@ -299,7 +299,6 @@ const PartylistSelectionModal = ({ partylists, onSelect, onCancel, currentPositi
         
         // If student is selected, fetch their partylist directly
         if (currentStudent && currentStudent.student_number) {
-          console.log('Fetching partylist for student:', currentStudent.student_number);
           try {
             const response = await axios.get(
               `/api/partylist-candidates/student/${currentStudent.student_number}`,
@@ -309,16 +308,13 @@ const PartylistSelectionModal = ({ partylists, onSelect, onCancel, currentPositi
               }
             );
             
-            console.log('Student partylist response:', response.data);
             
             if (response.data.success && response.data.data) {
               // Student is in a partylist
               const studentPartylist = response.data.data;
-              console.log('Setting student partylist:', studentPartylist);
               setFilteredPartylists([studentPartylist]);
             } else {
               // Student is not in any partylist
-              console.log('Student not in any partylist, showing Independent');
               setFilteredPartylists([{ name: "Independent", slogan: "", advocacy: "" }]);
             }
           } catch (error) {
@@ -328,7 +324,6 @@ const PartylistSelectionModal = ({ partylists, onSelect, onCancel, currentPositi
           }
         } else {
           // No student selected, fetch all partylists and their candidates
-          console.log('No student selected, showing all partylists');
           const candidatesPromises = partylists.map(async (party) => {
             if (!party || party.name === "Independent") return null;
             const response = await axios.get(
@@ -665,7 +660,6 @@ export default function BallotPage() {
           setStudentCouncilPositions(positionNames);
         } else {
 
-          console.log("No Student Council positions found, using default positions");
           setStudentCouncilPositions([ 
             "President",
             "Vice President",
@@ -798,7 +792,6 @@ export default function BallotPage() {
             createDefaultBallotStructure(electionData.election_type);
           }
         } catch (ballotError) {
-          console.log("No existing ballot found, creating default structure");
           createDefaultBallotStructure(electionData.election_type);
         }
       } catch (error) {
@@ -927,7 +920,6 @@ export default function BallotPage() {
         );
         if (scType) {
           studentCouncilTypeId = scType.id;
-          console.log("Found Student Council election type ID:", studentCouncilTypeId);
         }
       }
 
@@ -942,7 +934,6 @@ export default function BallotPage() {
         
         if (response.data.success && response.data.data && response.data.data.length > 0) {
           const scPositions = response.data.data;
-          console.log("Found Student Council positions from API for type ID:", scPositions);
           const positionNames = scPositions.map(pos => pos.name);
           positionNames.sort((a, b) => (studentCouncilPositionOrder[a] || 999) - (studentCouncilPositionOrder[b] || 999));
           setStudentCouncilPositions(positionNames);
@@ -969,7 +960,6 @@ export default function BallotPage() {
         );
         
         if (scPositions.length > 0) {
-          console.log("Found Student Council positions on reload:", scPositions);
           const positionNames = scPositions.map(pos => pos.name);
           positionNames.sort((a, b) => (studentCouncilPositionOrder[a] || 999) - (studentCouncilPositionOrder[b] || 999));
           setStudentCouncilPositions(positionNames);
@@ -989,7 +979,6 @@ export default function BallotPage() {
       // If we found the SC type, check for its positions directly
       if (scType && scType.id && allPositionsData[scType.id]) {
         const scPositions = allPositionsData[scType.id];
-        console.log("Found Student Council positions in localStorage by type ID:", scPositions);
         const positionNames = scPositions.map(pos => pos.name);
         positionNames.sort((a, b) => (studentCouncilPositionOrder[a] || 999) - (studentCouncilPositionOrder[b] || 999));
         setStudentCouncilPositions(positionNames);
@@ -1007,7 +996,6 @@ export default function BallotPage() {
           );
           
           if (foundSCPositions.length > 0) {
-            console.log("Found Student Council positions in localStorage on reload:", foundSCPositions);
             const positionNames = foundSCPositions.map(pos => pos.name);
             positionNames.sort((a, b) => (studentCouncilPositionOrder[a] || 999) - (studentCouncilPositionOrder[b] || 999));
             setStudentCouncilPositions(positionNames);
@@ -1435,9 +1423,7 @@ export default function BallotPage() {
       // Compress image if it's larger than 2MB
       let processedFile = file;
       if (file.size > 2 * 1024 * 1024) { // 2MB
-        console.log('Compressing image...', file.size, 'bytes');
         processedFile = await compressImage(file, 1000, 0.8);
-        console.log('Compressed image size:', processedFile.size, 'bytes');
       }
 
       // Create preview
@@ -1450,14 +1436,7 @@ export default function BallotPage() {
       // Prepare form data
       const formData = new FormData();
       formData.append('image', processedFile);
-      
-      console.log('FormData prepared:', {
-        fileSize: processedFile.size,
-        fileName: processedFile.name || 'compressed-image',
-        fileType: processedFile.type
-      });
-      
-      // Upload with timeout
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
@@ -1471,7 +1450,6 @@ export default function BallotPage() {
         
         clearTimeout(timeoutId);
         
-        console.log('Upload response:', imageResponse);
         
         if (!imageResponse.success || !imageResponse.filePath) {
           throw new Error(imageResponse.message || 'Failed to upload image');
@@ -1982,12 +1960,10 @@ export default function BallotPage() {
       
       if (candidate._pendingImage) {
         formData.append('image', candidate._pendingImage);
-        console.log('Adding image to formData:', candidate._pendingImage);
       }
   
       let response;
       if (candidate._isNew) {
-        console.log('Creating new candidate with image');
         response = await fetchWithAuth(
           `/positions/${positionId}/candidates`,
           {
@@ -1996,7 +1972,6 @@ export default function BallotPage() {
           }
         );
       } else if (candidate._pendingImage) {
-        console.log('Updating candidate with new image');
         response = await fetchWithAuth(
           `/candidates/${candidate.id}`,
           {
@@ -2005,7 +1980,6 @@ export default function BallotPage() {
           }
         );
       } else {
-        console.log('Updating candidate without image');
         const updateData = {
           firstName: candidate.first_name,
           lastName: candidate.last_name
@@ -2027,7 +2001,6 @@ export default function BallotPage() {
         );
       }
   
-      console.log('Response from server:', response);
   
       setBallot(prev => ({
         ...prev,
@@ -2556,7 +2529,6 @@ export default function BallotPage() {
                             const file = e.target.files[0];
                             // Show file size info
                             const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-                            console.log(`Selected file: ${file.name}, Size: ${fileSizeMB}MB`);
                             handleImageUpload(position.id, candidate.id, file);
                           }
                         }}

@@ -247,7 +247,6 @@ export default function SuperAdminDashboard() {
   // Load elections data for a specific tab with pagination
   const loadElectionsForTab = useCallback(async (tabId, page = 1, limit = 10) => {
     try {
-      console.log(`[SuperAdmin] Loading ${tabId} elections - page ${page}, limit ${limit}`);
       
       if (tabId === 'to_approve') {
         // Pending approval elections don't use pagination yet
@@ -421,12 +420,9 @@ export default function SuperAdminDashboard() {
     }
   }, []);
 
-  // Load system load data with enhanced time-based information
-  // Using 7d as default for better data visualization
   const loadSystemLoadData = useCallback(async (timeframe = '7d') => {
     try {
       setIsSystemLoadLoading(true);
-      console.log('[SuperAdmin] Loading system load data for timeframe:', timeframe);
       
       const token = Cookies.get('token');
       const response = await fetch(`${API_BASE}/reports/system-load?timeframe=${timeframe}`, {
@@ -440,27 +436,21 @@ export default function SuperAdminDashboard() {
       }
       
       const responseData = await response.json();
-      
-      // Extract the actual data from the response structure
-      // Backend returns: { success: true, data: { summary: {...}, login_activity: [...], voting_activity: [...] } }
+
       const rawData = responseData.success ? responseData.data : responseData;
-      
-      // Process the data to enhance with proper date and time information
+ 
       const processedData = {
         ...rawData,
         login_activity: enhanceTimeData(rawData.login_activity || [], timeframe),
         voting_activity: enhanceTimeData(rawData.voting_activity || [], timeframe)
       };
       
-      // Set the timeframe first, then the processed data
+
       setSelectedTimeframe(timeframe);
       setSystemLoadData(processedData);
       
-      console.log('[SuperAdmin] System load data loaded successfully for timeframe:', timeframe);
       return processedData;
     } catch (err) {
-      console.log("[SuperAdmin] System load data not available:", err.message);
-      // Set empty data structure instead of null to prevent UI errors
       setSystemLoadData({
         login_activity: [],
         voting_activity: [],
@@ -675,9 +665,7 @@ export default function SuperAdminDashboard() {
 
   const processDataWithDates = (data, timeframe) => {
     if (!Array.isArray(data)) return [];
-    
-    console.log('SuperAdmin - Processing data with dates:', { data, timeframe });
-    
+        
     const now = new Date();
     let processedData = [];
 
@@ -746,8 +734,6 @@ export default function SuperAdminDashboard() {
         return dateCompare;
       });
     }
-    
-    console.log('SuperAdmin - Processed data result:', processedData);
     return processedData;
   };
 
@@ -788,15 +774,13 @@ export default function SuperAdminDashboard() {
     };
 
     try {
-      await generatePdfReport(7, reportData); // 7 is the report ID for System Load
+      await generatePdfReport(7, reportData);
     } catch (error) {
       console.error('Error generating report:', error);
       toast.error('Failed to generate PDF report');
     }
   };
 
-
-  // Optimized initialization effect with incremental loading
   useEffect(() => {
     let isMounted = true;
     
@@ -811,7 +795,6 @@ export default function SuperAdminDashboard() {
         setIsLoading(true);
         setError(null);
         
-        console.log('[SuperAdmin] Starting incremental dashboard loading...');
         
         // Phase 1: Load critical stats first (fast)
         await loadStats();
@@ -866,7 +849,6 @@ export default function SuperAdminDashboard() {
             await Promise.allSettled([
               loadSystemLoadData('7d'),
               loadLiveVoteCount().catch(err => {
-                console.log("[SuperAdmin] Live vote count not available:", err.message);
               })
             ]);
             
@@ -1431,12 +1413,10 @@ export default function SuperAdminDashboard() {
               
               // Fallback to original data structure if new processing returns empty data
               if (processedLoginData.length === 0 && systemLoadData.login_activity && systemLoadData.login_activity.length > 0) {
-                console.log('SuperAdmin - Falling back to original login data structure');
                 processedLoginData = validateData(systemLoadData.login_activity);
               }
               
               if (processedVotingData.length === 0 && systemLoadData.voting_activity && systemLoadData.voting_activity.length > 0) {
-                console.log('SuperAdmin - Falling back to original voting data structure');
                 processedVotingData = validateData(systemLoadData.voting_activity);
               }
               

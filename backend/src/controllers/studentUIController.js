@@ -5,11 +5,9 @@ const fs = require('fs').promises;
 class StudentUIController {
   static async getConfig(req, res) {
     try {
-      console.log('Getting student UI config...');
       const config = await StudentUIModel.getConfig();
       
       if (!config) {
-        console.log('No config found, creating default...');
         const defaultConfig = await StudentUIModel.updateConfig('poster', null, false);
         return res.json({
           content: {
@@ -20,7 +18,6 @@ class StudentUIController {
         });
       }
 
-      console.log('Returning config:', config);
       res.json({
         content: {
           type: config.type,

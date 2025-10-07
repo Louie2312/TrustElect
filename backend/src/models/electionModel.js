@@ -90,11 +90,9 @@ const getElectionStatistics = async () => {
   // Check if we have valid cached data
   const now = Date.now();
   if (statsCache.data && (now - statsCache.timestamp < statsCache.TTL)) {
-    console.log('Using cached election statistics');
     return statsCache.data;
   }
   
-  console.log('Fetching fresh election statistics');
   
   // Use more efficient queries with subqueries instead of multiple joins
   const result = await pool.query(`

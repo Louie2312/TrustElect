@@ -11,7 +11,6 @@ exports.resetSystemLoadData = async (req, res) => {
   try {
     await client.query('BEGIN');
     
-    console.log('🔄 Resetting system load data...');
     
     // Check if system_load_logs table exists first
     const tableExists = await client.query(`
@@ -25,20 +24,14 @@ exports.resetSystemLoadData = async (req, res) => {
     if (tableExists.rows[0].exists) {
       // Clear login activity data
       await client.query('DELETE FROM system_load_logs WHERE activity_type = $1', ['login']);
-      console.log('✅ Cleared login activity data');
       
       // Clear voting activity data  
       await client.query('DELETE FROM system_load_logs WHERE activity_type = $1', ['voting']);
-      console.log('✅ Cleared voting activity data');
       
       // Clear all system load logs
       await client.query('DELETE FROM system_load_logs');
-      console.log('✅ Cleared all system load logs');
-    } else {
-      console.log('ℹ️ system_load_logs table does not exist, skipping log clearing');
-    }
+    } 
     
-    // Check if system_cache table exists and clear cache
     const cacheTableExists = await client.query(`
       SELECT EXISTS (
         SELECT FROM information_schema.tables 
@@ -52,25 +45,20 @@ exports.resetSystemLoadData = async (req, res) => {
         DELETE FROM system_cache 
         WHERE cache_key LIKE 'system_load_%' OR cache_key LIKE 'peak_hours_%'
       `);
-      console.log('✅ Cleared system cache');
-    } else {
-      console.log('ℹ️ system_cache table does not exist, skipping cache reset');
-    }
+    } 
     
-    // Clear any audit logs related to system load (if they exist)
+
     try {
       await client.query(`
         DELETE FROM audit_logs 
         WHERE action LIKE '%system_load%' OR action LIKE '%system load%'
       `);
-      console.log('✅ Cleared related audit logs');
     } catch (auditError) {
-      console.log('ℹ️ No audit logs to clear or table does not exist');
+
     }
     
     await client.query('COMMIT');
-    
-    console.log('🎉 System load data reset completed successfully');
+
     
     res.status(200).json({
       success: true,
@@ -85,7 +73,7 @@ exports.resetSystemLoadData = async (req, res) => {
     
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('❌ Error resetting system load data:', error);
+    console.error('Error resetting system load data:', error);
     
     res.status(500).json({
       success: false,
