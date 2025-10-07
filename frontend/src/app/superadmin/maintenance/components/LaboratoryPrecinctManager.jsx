@@ -136,9 +136,6 @@ const LaboratoryPrecinctManager = ({ precincts = [] }) => {
   const handleAddIP = async () => {
     if (!selectedLab) return;
 
-    console.log('Frontend - Adding IP address for lab:', selectedLab.id);
-    console.log('Frontend - IP data being sent:', newIP);
-
     try {
       const token = Cookies.get('token');
       await axios.post(`/api/laboratory-precincts/${selectedLab.id}/ip-addresses`, newIP, {

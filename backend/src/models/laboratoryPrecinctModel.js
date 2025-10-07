@@ -46,43 +46,13 @@ const getLaboratoryPrecinctById = async (id) => {
 const addIPAddress = async (laboratoryPrecinctId, ipData) => {
   const { ip_address, ip_type, ip_range_start, ip_range_end, subnet_mask } = ipData;
   
-  console.log('Model - Adding IP address:', {
-    laboratoryPrecinctId,
-    ip_address,
-    ip_type,
-    ip_range_start,
-    ip_range_end,
-    subnet_mask
-  });
+  const result = await pool.query(`
+    INSERT INTO laboratory_ip_addresses 
+    (laboratory_precinct_id, ip_address, ip_type, ip_range_start, ip_range_end, subnet_mask)
+    VALUES ($1, $2, $3, $4, $5, $6) RETURNING *
+  `, [laboratoryPrecinctId, ip_address, ip_type, ip_range_start, ip_range_end, subnet_mask]);
   
-  try {
-    // First, let's check if the table exists and is accessible
-    const tableCheck = await pool.query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_name = 'laboratory_ip_addresses'
-      );
-    `);
-    console.log('Table exists check:', tableCheck.rows[0]);
-    
-    // Check if the precinct exists
-    const precinctCheck = await pool.query(`
-      SELECT id, name FROM precincts WHERE id = $1
-    `, [laboratoryPrecinctId]);
-    console.log('Precinct check:', precinctCheck.rows[0]);
-    
-    const result = await pool.query(`
-      INSERT INTO laboratory_ip_addresses 
-      (laboratory_precinct_id, ip_address, ip_type, ip_range_start, ip_range_end, subnet_mask)
-      VALUES ($1, $2, $3, $4, $5, $6) RETURNING *
-    `, [laboratoryPrecinctId, ip_address, ip_type, ip_range_start, ip_range_end, subnet_mask]);
-    
-    console.log('Model - IP address added successfully:', result.rows[0]);
-    return result.rows[0];
-  } catch (error) {
-    console.error('Model - Error adding IP address:', error);
-    throw error;
-  }
+  return result.rows[0];
 };
 
 const updateIPAddress = async (ipId, ipData) => {
@@ -91,7 +61,7 @@ const updateIPAddress = async (ipId, ipData) => {
   const result = await pool.query(`
     UPDATE laboratory_ip_addresses 
     SET ip_address = $1, ip_type = $2, ip_range_start = $3, 
-        ip_range_end = $4, subnet_mask = $5, is_active = $6, updated_at = NOW()
+        ip_range_end = $4, subnet_mask = $5, is_active = $6
     WHERE id = $7 RETURNING *
   `, [ip_address, ip_type, ip_range_start, ip_range_end, subnet_mask, is_active, ipId]);
   
@@ -101,7 +71,7 @@ const updateIPAddress = async (ipId, ipData) => {
 const deleteIPAddress = async (ipId) => {
   const result = await pool.query(`
     UPDATE laboratory_ip_addresses 
-    SET is_active = FALSE, updated_at = NOW()
+    SET is_active = FALSE
     WHERE id = $1 RETURNING *
   `, [ipId]);
   return result.rows[0];
