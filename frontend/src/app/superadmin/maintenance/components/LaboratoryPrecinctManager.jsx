@@ -25,13 +25,48 @@ const LaboratoryPrecinctManager = ({ precincts = [] }) => {
   useEffect(() => {
     // Convert precincts to laboratory precincts format
     const labPrecincts = precincts.map(precinct => ({
-      id: precinct.id || precinct,
-      name: precinct.name || precinct,
-      description: precinct.description || `Laboratory ${precinct.name || precinct}`,
+      id: precinct.id,
+      name: precinct.name,
+      description: `Laboratory ${precinct.name}`,
       ip_count: 0
     }));
     setLaboratoryPrecincts(labPrecincts);
+    
+    // Also fetch IP data for each precinct
+    fetchIPDataForPrecincts(labPrecincts);
   }, [precincts]);
+
+  const fetchIPDataForPrecincts = async (precincts) => {
+    try {
+      const token = Cookies.get('token');
+      
+      // Fetch IP data for all precincts
+      const ipPromises = precincts.map(async (precinct) => {
+        try {
+          const response = await axios.get(`/api/laboratory-precincts/${precinct.id}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          return {
+            ...precinct,
+            ip_count: response.data.data?.length || 0,
+            active_ips: response.data.data?.filter(ip => ip.ip_active).map(ip => 
+              ip.ip_type === 'single' ? ip.ip_address :
+              ip.ip_type === 'range' ? `${ip.ip_range_start}-${ip.ip_range_end}` :
+              ip.ip_type === 'subnet' ? ip.subnet_mask : ip.ip_address
+            ) || []
+          };
+        } catch (error) {
+          console.error(`Error fetching IPs for ${precinct.name}:`, error);
+          return precinct;
+        }
+      });
+      
+      const precinctsWithIPs = await Promise.all(ipPromises);
+      setLaboratoryPrecincts(precinctsWithIPs);
+    } catch (error) {
+      console.error('Error fetching IP data for precincts:', error);
+    }
+  };
 
   const fetchLaboratoryPrecincts = async () => {
     try {

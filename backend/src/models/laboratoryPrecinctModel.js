@@ -3,7 +3,9 @@ const pool = require("../config/db");
 const getAllLaboratoryPrecincts = async () => {
   const result = await pool.query(`
     SELECT 
-      lp.*,
+      p.id,
+      p.name,
+      p.name as description,
       COUNT(lia.id) as ip_count,
       ARRAY_AGG(
         CASE 
@@ -11,11 +13,10 @@ const getAllLaboratoryPrecincts = async () => {
           ELSE NULL 
         END
       ) FILTER (WHERE lia.is_active = TRUE) as active_ips
-    FROM laboratory_precincts lp
-    LEFT JOIN laboratory_ip_addresses lia ON lp.id = lia.laboratory_precinct_id
-    WHERE lp.is_active = TRUE
-    GROUP BY lp.id, lp.name, lp.description, lp.is_active, lp.created_at, lp.updated_at
-    ORDER BY lp.name
+    FROM precincts p
+    LEFT JOIN laboratory_ip_addresses lia ON p.id = lia.laboratory_precinct_id
+    GROUP BY p.id, p.name
+    ORDER BY p.name
   `);
   return result.rows;
 };
@@ -23,7 +24,9 @@ const getAllLaboratoryPrecincts = async () => {
 const getLaboratoryPrecinctById = async (id) => {
   const result = await pool.query(`
     SELECT 
-      lp.*,
+      p.id,
+      p.name,
+      p.name as description,
       lia.id as ip_id,
       lia.ip_address,
       lia.ip_type,
@@ -32,9 +35,9 @@ const getLaboratoryPrecinctById = async (id) => {
       lia.subnet_mask,
       lia.is_active as ip_active,
       lia.created_at as ip_created_at
-    FROM laboratory_precincts lp
-    LEFT JOIN laboratory_ip_addresses lia ON lp.id = lia.laboratory_precinct_id
-    WHERE lp.id = $1 AND lp.is_active = TRUE
+    FROM precincts p
+    LEFT JOIN laboratory_ip_addresses lia ON p.id = lia.laboratory_precinct_id
+    WHERE p.id = $1
     ORDER BY lia.created_at
   `, [id]);
   return result.rows;

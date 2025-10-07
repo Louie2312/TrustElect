@@ -40,6 +40,7 @@ const AdminMaintenancePage = () => {
   const [showArchived, setShowArchived] = useState(false);
   const [selectedPartylist, setSelectedPartylist] = useState(null);
   const [electionTypesList, setElectionTypesList] = useState([]);
+  const [precinctsData, setPrecinctsData] = useState([]);
 
   const tabs = [
     { id: "programs", label: "Programs" },
@@ -75,8 +76,24 @@ const AdminMaintenancePage = () => {
       fetchArchivedPartylists();
     } else if (activeTab === "positions") {
       fetchElectionTypes();
+    } else if (activeTab === "laboratoryPrecincts") {
+      fetchPrecinctsForLaboratory();
     }
   }, [activeTab]);
+
+  const fetchPrecinctsForLaboratory = async () => {
+    try {
+      const token = Cookies.get("token");
+      const response = await axios.get(
+        "/api/maintenance/precincts",
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setPrecinctsData(response.data.data);
+    } catch (error) {
+      console.error("Error fetching precincts for laboratory:", error);
+      setPrecinctsData([]);
+    }
+  };
 
   const fetchItems = async () => {
     setIsLoading(true);
@@ -489,7 +506,7 @@ const AdminMaintenancePage = () => {
           />
         ) : (
           activeTab === "laboratoryPrecincts" ? (
-            <LaboratoryPrecinctManager precincts={items} />
+            <LaboratoryPrecinctManager precincts={precinctsData} />
           ) : activeTab === "partylists" ? (
             <>
               <div className="flex justify-between items-center mb-4">
