@@ -733,7 +733,7 @@ export default function CreateElectionPage() {
         {/* Election Details */}
         <div className="space-y-4">
           <div>
-            <label className="block font-medium text-black mb-1">Election Title</label>
+            <label className="block font-medium text-black mb-1">Election Title  <span className="text-red-500">*</span></label>
             <input
               type="text"
               name="title"
@@ -771,7 +771,7 @@ export default function CreateElectionPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block font-medium text-gray-700 mb-1">Start Date</label>
+              <label className="block font-medium text-gray-700 mb-1">Start Date  <span className="text-red-500">*</span></label>
               <input
                 type="date"
                 name="dateFrom"
@@ -783,7 +783,7 @@ export default function CreateElectionPage() {
               {errors.dateFrom && <p className="text-red-500 text-sm mt-1">{errors.dateFrom}</p>}
             </div>
             <div>
-              <label className="block font-medium text-gray-700 mb-1">End Date</label>
+              <label className="block font-medium text-gray-700 mb-1">End Date  <span className="text-red-500">*</span></label>
               <input
                 type="date"
                 name="dateTo"
