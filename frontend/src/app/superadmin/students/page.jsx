@@ -7,6 +7,8 @@ import Cookies from "js-cookie";
 import AddStudentModal from "@/components/Modals/AddStudentModal";
 import EditStudentModal from "@/components/Modals/EditStudentModal";
 import ResetStudentPasswordModal from "@/components/Modals/ResetStudentPasswordModal";
+import ConfirmationModal from "@/components/Modals/ConfirmationModal";
+import BatchActionModal from "@/components/Modals/BatchActionModal";
 import { useDropzone } from 'react-dropzone';
 import { debounce } from 'lodash';
 
@@ -962,120 +964,58 @@ export default function ManageStudents() {
         </div>
       )}
 
-      {/* Batch Delete Modal */}
-      {showBatchDeleteModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4 text-black">
-              {deleteType === "archive" ? "Batch Archive Students" : "Batch Delete Students"}
-            </h2>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Select Course:
-              </label>
-              <select 
-                value={selectedCourseForDelete} 
-                onChange={(e) => setSelectedCourseForDelete(e.target.value)}
-                className="w-full border p-2 rounded text-black"
-              >
-                <option value="">Select a course...</option>
-                {courses.map((course) => (
-                  <option key={course} value={course}>
-                    {course}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
-              <p className="text-sm text-yellow-700">
-                <strong>Warning:</strong> This will {deleteType === "archive" ? "archive" : "permanently delete"} ALL students from the selected course. 
-                {deleteType === "permanent" && " This action cannot be undone!"}
-              </p>
-            </div>
-
-            {selectedCourseForDelete && (
-              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
-                <p className="text-sm text-blue-700">
-                  <strong>Students to be affected:</strong> {students.filter(student => student.course_name === selectedCourseForDelete).length} students from {selectedCourseForDelete}
-                </p>
-              </div>
-            )}
-
-            <div className="flex justify-end gap-2">
-              <button 
-                onClick={() => {
-                  setShowBatchDeleteModal(false);
-                  setSelectedCourseForDelete("");
-                }} 
-                className="bg-gray-500 text-white px-4 py-2 rounded"
-                disabled={isDeleting}
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleBatchDelete}
-                className={`px-4 py-2 rounded text-white ${
-                  deleteType === "archive" 
-                    ? "bg-orange-600 hover:bg-orange-700" 
-                    : "bg-red-600 hover:bg-red-700"
-                }`}
-                disabled={isDeleting || !selectedCourseForDelete}
-              >
-                {isDeleting ? "Processing..." : (deleteType === "archive" ? "Archive All" : "Delete All")}
-              </button>
-            </div>
-          </div>
+      <BatchActionModal
+        isOpen={showBatchDeleteModal}
+        onClose={() => {
+          setShowBatchDeleteModal(false);
+          setSelectedCourseForDelete("");
+        }}
+        onConfirm={handleBatchDelete}
+        title={deleteType === "archive" ? "Batch Archive Students" : "Batch Delete Students"}
+        message={`This will ${deleteType === "archive" ? "archive" : "permanently delete"} ALL students from the selected course. ${deleteType === "permanent" ? "This action cannot be undone!" : ""}`}
+        confirmText={isDeleting ? "Processing..." : (deleteType === "archive" ? "Archive All" : "Delete All")}
+        cancelText="Cancel"
+        type={deleteType === "archive" ? "warning" : "danger"}
+        isLoading={isDeleting}
+      >
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Select Course:
+          </label>
+          <select 
+            value={selectedCourseForDelete} 
+            onChange={(e) => setSelectedCourseForDelete(e.target.value)}
+            className="w-full border p-2 rounded text-black"
+          >
+            <option value="">Select a course...</option>
+            {courses.map((course) => (
+              <option key={course} value={course}>
+                {course}
+              </option>
+            ))}
+          </select>
         </div>
-      )}
 
-      {/* Delete All Students Modal */}
-      {showDeleteAllModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4 text-black">
-              {deleteAllType === "archive" ? "Archive All Students" : "Delete All Students"}
-            </h2>
-            
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
-              <p className="text-sm text-red-700">
-                <strong>Danger:</strong> This will {deleteAllType === "archive" ? "archive" : "permanently delete"} ALL {students.length} students in the system. 
-                {deleteAllType === "permanent" && " This action cannot be undone and will remove all data permanently!"}
-              </p>
-            </div>
-
-            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
-              <p className="text-sm text-blue-700">
-                <strong>Students to be affected:</strong> {students.length} total students
-              </p>
-            </div>
-
-            <div className="flex justify-end gap-2">
-              <button 
-                onClick={() => {
-                  setShowDeleteAllModal(false);
-                }} 
-                className="bg-gray-500 text-white px-4 py-2 rounded"
-                disabled={isDeletingAll}
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleDeleteAllStudents}
-                className={`px-4 py-2 rounded text-white ${
-                  deleteAllType === "archive" 
-                    ? "bg-orange-500 hover:bg-orange-600" 
-                    : "bg-red-700 hover:bg-red-800"
-                }`}
-                disabled={isDeletingAll}
-              >
-                {isDeletingAll ? "Processing..." : (deleteAllType === "archive" ? "Archive All" : "Delete All")}
-              </button>
-            </div>
+        {selectedCourseForDelete && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
+            <p className="text-sm text-blue-700">
+              <strong>Students to be affected:</strong> {students.filter(student => student.course_name === selectedCourseForDelete).length} students from {selectedCourseForDelete}
+            </p>
           </div>
-        </div>
-      )}
+        )}
+      </BatchActionModal>
+
+      <ConfirmationModal
+        isOpen={showDeleteAllModal}
+        onClose={() => setShowDeleteAllModal(false)}
+        onConfirm={handleDeleteAllStudents}
+        title={deleteAllType === "archive" ? "Archive All Students" : "Delete All Students"}
+        message={`This will ${deleteAllType === "archive" ? "archive" : "permanently delete"} ALL ${students.length} students in the system. ${deleteAllType === "permanent" ? "This action cannot be undone and will remove all data permanently!" : ""}`}
+        confirmText={isDeletingAll ? "Processing..." : (deleteAllType === "archive" ? "Archive All" : "Delete All")}
+        cancelText="Cancel"
+        type={deleteAllType === "archive" ? "warning" : "danger"}
+        isLoading={isDeletingAll}
+      />
     </div>
   );
 }

@@ -13,6 +13,7 @@ export default function ArchivedStudents() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState(null);
   const [userRole, setUserRole] = useState(null);
 
@@ -77,19 +78,22 @@ export default function ArchivedStudents() {
   };
 
   const restoreStudent = async (id) => {
-    if (!confirm("Are you sure you want to restore this student?")) return;
+    setSelectedStudentId(id);
+    setShowRestoreModal(true);
+  };
+
+  const confirmRestoreStudent = async () => {
     try {
       const token = Cookies.get("token");
-      await axios.patch(`/api/students/${id}/restore`, {}, {
+      await axios.patch(`/api/students/${selectedStudentId}/restore`, {}, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
-      alert("Student restored successfully!");
       
-      setStudents((prevStudents) => prevStudents.filter((student) => student.id !== id));
+      setStudents((prevStudents) => prevStudents.filter((student) => student.id !== selectedStudentId));
+      setShowRestoreModal(false);
     } catch (error) {
       console.error("Error restoring student:", error);
-      alert("Failed to restore student.");
     }
   };
 
@@ -279,6 +283,18 @@ export default function ArchivedStudents() {
         confirmText="Delete"
         cancelText="Cancel"
         type="danger"
+        isLoading={isDeleting}
+      />
+
+      <ConfirmationModal
+        isOpen={showRestoreModal}
+        onClose={() => setShowRestoreModal(false)}
+        onConfirm={confirmRestoreStudent}
+        title="Confirm Restore"
+        message="Are you sure you want to restore this student?"
+        confirmText="Restore"
+        cancelText="Cancel"
+        type="info"
         isLoading={isDeleting}
       />
 
