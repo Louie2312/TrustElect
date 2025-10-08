@@ -70,15 +70,21 @@ const validateVotingIP = async (req, res, next) => {
       console.log(`[IP Validation] Laboratory assignment result:`, labAssignment);
     } catch (assignmentError) {
       console.error(`[IP Validation] Error getting laboratory assignment:`, assignmentError);
-      // If we can't get assignment, allow voting (backward compatibility)
-      console.log(`[IP Validation] Allowing access due to assignment error (backward compatibility)`);
-      return next();
+      // If we can't get assignment, deny access for security
+      console.log(`[IP Validation] Denying access due to assignment error`);
+      return res.status(403).json({
+        success: false,
+        message: 'Unable to verify laboratory assignment. Please contact your administrator.'
+      });
     }
     
-    // If no laboratory assignment, allow voting (backward compatibility)
+    // If no laboratory assignment, deny access for security
     if (!labAssignment) {
-      console.log(`[IP Validation] No laboratory assignment found for student ${studentId}, allowing access`);
-      return next();
+      console.log(`[IP Validation] No laboratory assignment found for student ${studentId}, denying access`);
+      return res.status(403).json({
+        success: false,
+        message: 'No laboratory assignment found. Please contact your administrator to assign you to a laboratory.'
+      });
     }
     
     console.log(`[IP Validation] Student assigned to laboratory: ${labAssignment.laboratory_name}`);
@@ -112,9 +118,12 @@ const validateVotingIP = async (req, res, next) => {
               }
             } catch (validationError) {
               console.error(`[IP Validation] Error validating IP:`, validationError);
-              // If IP validation fails due to database error, allow voting for now (backward compatibility)
-              console.log(`[IP Validation] Allowing access due to validation error (backward compatibility)`);
-              return next();
+              // If IP validation fails due to database error, deny access for security
+              console.log(`[IP Validation] Denying access due to validation error`);
+              return res.status(403).json({
+                success: false,
+                message: 'Unable to verify IP address. Please contact your administrator.'
+              });
             }
     
     console.log(`[IP Validation] IP ${clientIP} authorized for laboratory ${labAssignment.laboratory_name}`);
@@ -122,8 +131,11 @@ const validateVotingIP = async (req, res, next) => {
     next();
   } catch (error) {
     console.error('IP validation error:', error);
-    console.log(`[IP Validation] Allowing access due to general error (backward compatibility)`);
-    return next();
+    console.log(`[IP Validation] Denying access due to general error`);
+    return res.status(403).json({
+      success: false,
+      message: 'IP validation failed. Please contact your administrator.'
+    });
   }
 };
 
