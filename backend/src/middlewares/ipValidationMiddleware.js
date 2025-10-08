@@ -4,16 +4,30 @@ const validateVotingIP = async (req, res, next) => {
   try {
     const studentId = req.user?.studentId;
     const electionId = req.params?.id;
-    // Get client IP with better detection
+    // Get client IP with comprehensive detection
     let clientIP = req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
                    req.headers['x-real-ip'] ||
                    req.connection.remoteAddress ||
                    req.socket.remoteAddress ||
                    req.ip;
     
-    // Clean IPv6-mapped IPv4 addresses
-    if (clientIP && clientIP.startsWith('::ffff:')) {
-      clientIP = clientIP.substring(7);
+    // Clean and normalize IP addresses
+    if (clientIP) {
+      // Handle IPv6-mapped IPv4 addresses
+      if (clientIP.startsWith('::ffff:')) {
+        clientIP = clientIP.substring(7);
+      }
+      // Handle IPv6 localhost
+      if (clientIP === '::1') {
+        clientIP = '127.0.0.1';
+      }
+      // Remove port numbers if present
+      if (clientIP.includes(':')) {
+        const parts = clientIP.split(':');
+        if (parts.length === 2 && !isNaN(parts[1])) {
+          clientIP = parts[0];
+        }
+      }
     }
     
     // Validate required parameters
@@ -91,6 +105,13 @@ const validateVotingIP = async (req, res, next) => {
     
             // Validate IP against assigned laboratory
             try {
+              console.log(`[IP Validation] About to call validateStudentVotingIP with:`, {
+                studentId,
+                electionId,
+                clientIP,
+                labAssignment
+              });
+              
               let isValidIP = await validateStudentVotingIP(studentId, electionId, clientIP);
               console.log(`[IP Validation] IP validation result for ${clientIP}: ${isValidIP}`);
 
@@ -111,6 +132,7 @@ const validateVotingIP = async (req, res, next) => {
 
               if (!isValidIP) {
                 console.log(`[IP Validation] No valid IP found. Tried:`, [clientIP, ...possibleIPs]);
+                console.log(`[IP Validation] Lab assignment:`, labAssignment);
                 return res.status(403).json({
                   success: false,
                   message: `Access denied. You can only vote from your assigned laboratory: ${labAssignment.laboratory_name}. Please go to the designated laboratory to cast your vote.`
