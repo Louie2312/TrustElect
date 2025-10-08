@@ -4,11 +4,17 @@ const validateVotingIP = async (req, res, next) => {
   try {
     const studentId = req.user?.studentId;
     const electionId = req.params?.id;
-    const clientIP = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
-                     req.headers['x-real-ip'] || 
-                     req.connection.remoteAddress || 
-                     req.socket.remoteAddress ||
-                     req.ip;
+    // Get client IP with better detection
+    let clientIP = req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+                   req.headers['x-real-ip'] ||
+                   req.connection.remoteAddress ||
+                   req.socket.remoteAddress ||
+                   req.ip;
+    
+    // Clean IPv6-mapped IPv4 addresses
+    if (clientIP && clientIP.startsWith('::ffff:')) {
+      clientIP = clientIP.substring(7);
+    }
     
     // Validate required parameters
     if (!studentId || !electionId) {
