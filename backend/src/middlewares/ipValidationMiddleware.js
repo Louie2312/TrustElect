@@ -31,17 +31,31 @@ const validateVotingIP = async (req, res, next) => {
     // Log all request headers for debugging
     console.log(`[IP Validation] All headers:`, req.headers);
     
-    // Log additional IP detection methods
-    console.log(`[IP Validation] Additional IP info:`, {
-      'req.connection.remoteAddress': req.connection.remoteAddress,
-      'req.socket.remoteAddress': req.socket.remoteAddress,
-      'req.ip': req.ip,
-      'req.ips': req.ips,
-      'x-forwarded-for': req.headers['x-forwarded-for'],
-      'x-real-ip': req.headers['x-real-ip'],
-      'cf-connecting-ip': req.headers['cf-connecting-ip'],
-      'x-client-ip': req.headers['x-client-ip']
-    });
+            // Log additional IP detection methods
+            console.log(`[IP Validation] Additional IP info:`, {
+              'req.connection.remoteAddress': req.connection.remoteAddress,
+              'req.socket.remoteAddress': req.socket.remoteAddress,
+              'req.ip': req.ip,
+              'req.ips': req.ips,
+              'x-forwarded-for': req.headers['x-forwarded-for'],
+              'x-real-ip': req.headers['x-real-ip'],
+              'cf-connecting-ip': req.headers['cf-connecting-ip'],
+              'x-client-ip': req.headers['x-client-ip']
+            });
+
+            // Try multiple IP detection methods and log all possibilities
+            const possibleIPs = [
+              req.headers['x-forwarded-for']?.split(',')[0]?.trim(),
+              req.headers['x-real-ip'],
+              req.connection.remoteAddress,
+              req.socket.remoteAddress,
+              req.ip,
+              req.ips?.[0],
+              req.headers['cf-connecting-ip'],
+              req.headers['x-client-ip']
+            ].filter(ip => ip && ip !== '::1' && ip !== '127.0.0.1');
+
+            console.log(`[IP Validation] All possible IPs detected:`, possibleIPs);
     
     // Get student's laboratory assignment for this election
     let labAssignment;
@@ -63,31 +77,45 @@ const validateVotingIP = async (req, res, next) => {
     
     console.log(`[IP Validation] Student assigned to laboratory: ${labAssignment.laboratory_name}`);
     
-    // Validate IP against assigned laboratory
-    try {
-      const isValidIP = await validateStudentVotingIP(studentId, electionId, clientIP);
-      console.log(`[IP Validation] IP validation result: ${isValidIP}`);
-      
-      if (!isValidIP) {
-        console.log(`[IP Validation] IP ${clientIP} not authorized for laboratory ${labAssignment.laboratory_name}`);
-        return res.status(403).json({
-          success: false,
-          message: `Access denied. You can only vote from your assigned laboratory: ${labAssignment.laboratory_name}. Please go to the designated laboratory to cast your vote.`
-        });
-      }
-    } catch (validationError) {
-      console.error(`[IP Validation] Error validating IP:`, validationError);
-      // If IP validation fails due to database error, allow voting for now (backward compatibility)
-      console.log(`[IP Validation] Allowing access due to validation error (backward compatibility)`);
-      return next();
-    }
+            // Validate IP against assigned laboratory
+            try {
+              let isValidIP = await validateStudentVotingIP(studentId, electionId, clientIP);
+              console.log(`[IP Validation] IP validation result for ${clientIP}: ${isValidIP}`);
+
+              // If first IP doesn't work, try all possible IPs
+              if (!isValidIP && possibleIPs.length > 1) {
+                console.log(`[IP Validation] Trying alternative IPs...`);
+                for (const altIP of possibleIPs) {
+                  if (altIP !== clientIP) {
+                    console.log(`[IP Validation] Trying IP: ${altIP}`);
+                    isValidIP = await validateStudentVotingIP(studentId, electionId, altIP);
+                    if (isValidIP) {
+                      console.log(`[IP Validation] Alternative IP ${altIP} is valid!`);
+                      break;
+                    }
+                  }
+                }
+              }
+
+              if (!isValidIP) {
+                console.log(`[IP Validation] No valid IP found. Tried:`, [clientIP, ...possibleIPs]);
+                return res.status(403).json({
+                  success: false,
+                  message: `Access denied. You can only vote from your assigned laboratory: ${labAssignment.laboratory_name}. Please go to the designated laboratory to cast your vote.`
+                });
+              }
+            } catch (validationError) {
+              console.error(`[IP Validation] Error validating IP:`, validationError);
+              // If IP validation fails due to database error, allow voting for now (backward compatibility)
+              console.log(`[IP Validation] Allowing access due to validation error (backward compatibility)`);
+              return next();
+            }
     
     console.log(`[IP Validation] IP ${clientIP} authorized for laboratory ${labAssignment.laboratory_name}`);
     
     next();
   } catch (error) {
     console.error('IP validation error:', error);
-    // For now, allow voting if there's any error (backward compatibility)
     console.log(`[IP Validation] Allowing access due to general error (backward compatibility)`);
     return next();
   }
