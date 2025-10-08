@@ -566,33 +566,7 @@ exports.checkStudentEligibility = async (req, res) => {
 
     const hasVoted = eligibility.rows[0].has_voted;
 
-    // NEW: Check if student has laboratory assignment and validate IP
-    const laboratoryAssignment = await pool.query(`
-      SELECT elp.laboratory_precinct_id, p.name as laboratory_name
-      FROM eligible_voters ev
-      JOIN election_laboratory_precincts elp ON ev.election_laboratory_precinct_id = elp.id
-      JOIN precincts p ON elp.laboratory_precinct_id = p.id
-      WHERE ev.student_id = $1 AND ev.election_id = $2
-    `, [studentId, electionId]);
-
-    if (laboratoryAssignment.rows.length > 0) {
-      // Student has laboratory assignment - check IP
-      const clientIP = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
-                       req.headers['x-real-ip'] || 
-                       req.connection.remoteAddress || 
-                       req.socket.remoteAddress;
-      
-      // Import the validation function
-      const { validateStudentVotingIP } = require('../models/laboratoryPrecinctModel');
-      const isValidIP = await validateStudentVotingIP(studentId, electionId, clientIP);
-      
-      if (!isValidIP) {
-        return res.status(403).json({
-          eligible: false,
-          message: `You can only vote from ${laboratoryAssignment.rows[0].laboratory_name}. Please go to your assigned laboratory to cast your vote.`
-        });
-      }
-    }
+    // IP validation is now handled by the middleware, so we don't need to check it here
 
     res.status(200).json({ 
       eligible: true,
@@ -774,25 +748,7 @@ exports.submitVote = async (req, res) => {
     
     const { votes } = req.body;
 
-    const { getStudentLaboratoryAssignment, validateStudentVotingIP } = require('../models/laboratoryPrecinctModel');
-    const clientIP = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
-                     req.headers['x-real-ip'] || 
-                     req.connection.remoteAddress || 
-                     req.socket.remoteAddress;
-    
-    const labAssignment = await getStudentLaboratoryAssignment(studentId, electionId);
-    
-    if (labAssignment) {
-      const isValidIP = await validateStudentVotingIP(studentId, electionId, clientIP);
-      
-      if (!isValidIP) {
-        await client.query('ROLLBACK');
-        return res.status(403).json({
-          success: false,
-          message: `Access denied. You can only vote from your assigned laboratory: ${labAssignment.laboratory_name}`
-        });
-      }
-    }
+    // IP validation is now handled by the middleware, so we don't need to check it here
 
     const electionCheck = await client.query(
       `SELECT e.needs_approval, e.status, 

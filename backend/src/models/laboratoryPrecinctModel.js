@@ -88,13 +88,14 @@ const validateStudentVotingIP = async (studentId, electionId, clientIP) => {
 const getStudentLaboratoryAssignment = async (studentId, electionId) => {
   const result = await pool.query(`
     SELECT 
-      elp.laboratory_precinct_id,
+      p.id as laboratory_precinct_id,
       p.name as laboratory_name,
-      elp.assigned_courses
-    FROM eligible_voters ev
-    JOIN election_laboratory_precincts elp ON ev.election_laboratory_precinct_id = elp.id
-    JOIN precincts p ON elp.laboratory_precinct_id = p.id
-    WHERE ev.student_id = $1 AND ev.election_id = $2
+      epp.programs as assigned_courses
+    FROM students s
+    JOIN election_precinct_programs epp ON epp.programs @> ARRAY[s.course_name]
+    JOIN precincts p ON p.name = epp.precinct
+    WHERE s.id = $1 AND epp.election_id = $2
+    LIMIT 1
   `, [studentId, electionId]);
   
   return result.rows[0] || null;

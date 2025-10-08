@@ -111,7 +111,13 @@ export default function VotePage({ params }) {
         
       } catch (err) {
         console.error('Error fetching ballot:', err);
-        setError(err.response?.data?.message || 'Failed to load ballot. Please try again later.');
+        
+        // Handle IP validation errors specifically
+        if (err.response?.status === 403 && err.response?.data?.message?.includes('Access denied')) {
+          setError(err.response.data.message);
+        } else {
+          setError(err.response?.data?.message || 'Failed to load ballot. Please try again later.');
+        }
       } finally {
         setLoading(false);
       }
@@ -271,7 +277,14 @@ export default function VotePage({ params }) {
           return;
         }
 
-        if (error.response.data && error.response.data.message) {
+        // Handle IP validation errors specifically
+        if (error.response.status === 403 && error.response.data?.message?.includes('Access denied')) {
+          toast.error(error.response.data.message);
+          // Redirect back to elections page after showing error
+          setTimeout(() => {
+            router.push('/student/elections');
+          }, 3000);
+        } else if (error.response.data && error.response.data.message) {
           toast.error(error.response.data.message);
         } else {
           toast.error(`Failed to submit vote. Server returned status ${error.response.status}`);
@@ -394,9 +407,27 @@ export default function VotePage({ params }) {
           Back
         </button>
         
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          <p className="font-bold">Error</p>
+        <div className={`px-4 py-3 rounded mb-4 ${
+          error.includes('Access denied') 
+            ? 'bg-orange-100 border border-orange-400 text-orange-700' 
+            : 'bg-red-100 border border-red-400 text-red-700'
+        }`}>
+          <p className="font-bold">
+            {error.includes('Access denied') ? 'Voting Location Restriction' : 'Error'}
+          </p>
           <p>{error}</p>
+          {error.includes('Access denied') && (
+            <div className="mt-3">
+              <p className="text-sm">
+                <strong>What to do:</strong>
+              </p>
+              <ul className="text-sm mt-1 ml-4 list-disc">
+                <li>Go to your assigned laboratory/precinct</li>
+                <li>Use a device connected to the laboratory's network</li>
+                <li>Contact your election administrator if you need assistance</li>
+              </ul>
+            </div>
+          )}
         </div>
       </div>
     );
