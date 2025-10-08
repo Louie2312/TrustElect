@@ -1271,7 +1271,8 @@ export default function AdminDashboard() {
       <div className="bg-white rounded-lg shadow mb-6 p-1">
         <div className="flex">
           {statusTabs.map(tab => {
-            const count = getStatValue(tab.id, 'count');
+            // Use actual elections count instead of stats
+            const count = allElections[tab.id] ? allElections[tab.id].length : 0;
             const hasPending = tab.id === 'to_approve' && count > 0;
             
             return (
