@@ -92,7 +92,7 @@ const getStudentLaboratoryAssignment = async (studentId, electionId) => {
       p.name as laboratory_name,
       epp.programs as assigned_courses
     FROM students s
-    JOIN election_precinct_programs epp ON epp.programs @> ARRAY[s.course_name]
+    JOIN election_precinct_programs epp ON epp.programs @> ARRAY[s.course_name::text]
     JOIN precincts p ON p.name = epp.precinct
     WHERE s.id = $1 AND epp.election_id = $2
     LIMIT 1
