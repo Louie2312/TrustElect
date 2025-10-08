@@ -76,8 +76,8 @@ router.post("/:id/send-result-notifications", verifyToken, (req, res, next) => {
 }, sendResultNotifications);
 
 router.get("/:id/student-eligible", verifyToken, isStudent, verifyStudentRecord, checkStudentEligibility);
-router.get("/:id/student-ballot", verifyToken, isStudent, validateVotingIP, getBallotForStudent);
-router.post("/:id/vote", verifyToken, isStudent, validateVotingIP, submitVote);
+router.get("/:id/student-ballot", verifyToken, isStudent, getBallotForStudent);
+router.post("/:id/vote", verifyToken, isStudent, submitVote);
 router.get("/:id/vote-receipt", verifyToken, isStudent, getVoteReceipt);
 router.get("/:id/vote-token", verifyToken, isStudent, getVoteToken);
 router.get("/:id/voter-codes", verifyToken, getVoterVerificationCodes);
