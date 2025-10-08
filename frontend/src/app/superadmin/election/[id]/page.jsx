@@ -609,6 +609,9 @@ export default function ElectionDetailsPage() {
   const hasResults = election.positions && election.positions.length > 0 && 
     (election.status === 'ongoing' || election.status === 'completed');
 
+  // Check if current user is Super Admin (can edit any election)
+  const isCurrentUserSuperAdmin = Cookies.get('role') === 'Super Admin';
+  
   const isSuperAdminCreator =
     election.created_by === 1 ||
     (election.created_by && election.created_by.id === 1) ||
@@ -1010,7 +1013,7 @@ export default function ElectionDetailsPage() {
           </button>
    
           {(election.needs_approval || election.status === 'upcoming' || election.status === 'ongoing' || election.status === 'completed') ? (
-            isSystemAdminCreator ? (
+            (isSystemAdminCreator || isCurrentUserSuperAdmin) ? (
               <>
                 <Link
                   href={`/superadmin/election/${election.id}/edit`}
@@ -1341,7 +1344,7 @@ export default function ElectionDetailsPage() {
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold text-black">Ballot Details</h2>
                 
-                {(election.needs_approval || election.status === 'upcoming') && isSystemAdminCreator && (
+                {(election.needs_approval || election.status === 'upcoming') && (isSystemAdminCreator || isCurrentUserSuperAdmin) && (
                   <Link
                     href={`/superadmin/election/${election.id}/ballot`}
                     className="flex items-center px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
@@ -1520,7 +1523,7 @@ export default function ElectionDetailsPage() {
                 <div className="ml-3 flex-1">
                   <p className="text-sm text-yellow-700">
                     This election doesn't have a ballot yet.
-                    {(election.needs_approval || election.status === 'upcoming') && isSystemAdminCreator && (
+                    {(election.needs_approval || election.status === 'upcoming') && (isSystemAdminCreator || isCurrentUserSuperAdmin) && (
                       <>
                         <span className="font-medium"> A ballot is required before {election.needs_approval ? 'approval' : 'the election can start'}.</span>
                         <Link
