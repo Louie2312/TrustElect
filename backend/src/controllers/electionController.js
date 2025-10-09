@@ -677,12 +677,35 @@ exports.getBallotForStudent = async (req, res) => {
               return cleaned;
             }).filter(ip => ip && ip !== '::1');
             
-            // Check against all registered IPs
+            // Enhanced IP matching - check both exact match and IP type compatibility
             for (const ipRecord of ipCheck.rows) {
               const registeredIP = ipRecord.ip_address;
               
               for (const testIP of cleanedIPs) {
+                // Exact match
                 if (registeredIP === testIP) {
+                  ipMatch = true;
+                  break;
+                }
+                
+                // Check if both are private IPs (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+                const isPrivateIP = (ip) => {
+                  return ip.startsWith('192.168.') || 
+                         ip.startsWith('10.') || 
+                         (ip.startsWith('172.') && parseInt(ip.split('.')[1]) >= 16 && parseInt(ip.split('.')[1]) <= 31);
+                };
+                
+                const isLocalhost = (ip) => ip === '127.0.0.1' || ip === '::1';
+                
+                // If both are private IPs or both are localhost, allow match
+                if ((isPrivateIP(registeredIP) && isPrivateIP(testIP)) ||
+                    (isLocalhost(registeredIP) && isLocalhost(testIP))) {
+                  ipMatch = true;
+                  break;
+                }
+                
+                // If registered IP is a common private IP range and test IP is also private, allow
+                if (isPrivateIP(registeredIP) && isPrivateIP(testIP)) {
                   ipMatch = true;
                   break;
                 }
@@ -946,12 +969,35 @@ exports.submitVote = async (req, res) => {
               return cleaned;
             }).filter(ip => ip && ip !== '::1');
             
-            // Check against all registered IPs
+            // Enhanced IP matching - check both exact match and IP type compatibility
             for (const ipRecord of ipCheck.rows) {
               const registeredIP = ipRecord.ip_address;
               
               for (const testIP of cleanedIPs) {
+                // Exact match
                 if (registeredIP === testIP) {
+                  ipMatch = true;
+                  break;
+                }
+                
+                // Check if both are private IPs (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+                const isPrivateIP = (ip) => {
+                  return ip.startsWith('192.168.') || 
+                         ip.startsWith('10.') || 
+                         (ip.startsWith('172.') && parseInt(ip.split('.')[1]) >= 16 && parseInt(ip.split('.')[1]) <= 31);
+                };
+                
+                const isLocalhost = (ip) => ip === '127.0.0.1' || ip === '::1';
+                
+                // If both are private IPs or both are localhost, allow match
+                if ((isPrivateIP(registeredIP) && isPrivateIP(testIP)) ||
+                    (isLocalhost(registeredIP) && isLocalhost(testIP))) {
+                  ipMatch = true;
+                  break;
+                }
+                
+                // If registered IP is a common private IP range and test IP is also private, allow
+                if (isPrivateIP(registeredIP) && isPrivateIP(testIP)) {
                   ipMatch = true;
                   break;
                 }
