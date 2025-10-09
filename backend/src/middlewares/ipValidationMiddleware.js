@@ -48,6 +48,14 @@ const validateVotingIP = async (req, res, next) => {
       return next();
     }
     
+    // Check if there are any election-precinct assignments
+    const assignmentCount = await pool.query('SELECT COUNT(*) as count FROM election_precinct_programs');
+    
+    if (assignmentCount.rows[0].count === 0) {
+      console.log('[IP Validation] No election-precinct assignments found, allowing access');
+      return next();
+    }
+    
     // Check if student is assigned to any precinct for this election
     const studentAssignment = await pool.query(`
       SELECT 
@@ -63,10 +71,13 @@ const validateVotingIP = async (req, res, next) => {
     
     console.log(`[IP Validation] Student assignment query result: ${studentAssignment.rows.length} rows`);
     
-    // If no assignment found, allow access (IP validation not configured)
+    // If no assignment found, deny access (strict mode)
     if (studentAssignment.rows.length === 0) {
-      console.log(`[IP Validation] No precinct assignment found for student ${studentId} in election ${electionId}, allowing access`);
-      return next();
+      console.log(`[IP Validation] No precinct assignment found for student ${studentId} in election ${electionId}`);
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. You are not assigned to any laboratory for this election. Please contact your election administrator.'
+      });
     }
     
     const precinctId = studentAssignment.rows[0].precinct_id;
@@ -87,10 +98,13 @@ const validateVotingIP = async (req, res, next) => {
       console.log(`[IP Validation] Registered IP: ${row.ip_address} (${row.ip_type})`);
     });
     
-    // If no IP addresses registered for this precinct, allow access
+    // If no IP addresses registered for this precinct, deny access
     if (ipCheck.rows.length === 0) {
-      console.log(`[IP Validation] No IP addresses registered for precinct ${precinctName}, allowing access`);
-      return next();
+      console.log(`[IP Validation] No IP addresses registered for precinct ${precinctName}`);
+      return res.status(403).json({
+        success: false,
+        message: `Access denied. No IP addresses are registered for your assigned laboratory: ${precinctName}. Please contact your election administrator.`
+      });
     }
     
     // Check if client IP matches any registered IP
