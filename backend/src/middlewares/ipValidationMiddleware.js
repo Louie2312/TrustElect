@@ -91,7 +91,6 @@ const validateVotingIP = async (req, res, next) => {
       });
     }
     
-    // Check if client IP matches any registered IP
     let ipMatch = false;
     const possibleIPs = [
       clientIP,

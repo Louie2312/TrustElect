@@ -152,7 +152,11 @@ const LaboratoryPrecinctManager = ({ precincts = [] }) => {
       });
       
       toast.success('IP address added successfully');
+      
+      // Refresh both the detailed IP list and the precinct overview
       fetchIPAddresses(selectedLab.id);
+      fetchIPDataForPrecincts(laboratoryPrecincts);
+      
       setNewIP({
         ip_address: '',
         ip_type: 'single',
@@ -190,7 +194,11 @@ const LaboratoryPrecinctManager = ({ precincts = [] }) => {
       }
       
       toast.success(`${ipList.length} IP addresses added successfully`);
+      
+      // Refresh both the detailed IP list and the precinct overview
       fetchIPAddresses(selectedLab.id);
+      fetchIPDataForPrecincts(laboratoryPrecincts);
+      
       setBulkIPs('');
       setShowBulkAdd(false);
     } catch (error) {
@@ -209,10 +217,14 @@ const LaboratoryPrecinctManager = ({ precincts = [] }) => {
       });
       
       toast.success('IP address deleted successfully');
+      
+      // Refresh both the detailed IP list and the precinct overview
       fetchIPAddresses(selectedLab.id);
+      fetchIPDataForPrecincts(laboratoryPrecincts);
     } catch (error) {
       console.error('Error deleting IP address:', error);
-      toast.error('Failed to delete IP address');
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to delete IP address';
+      toast.error(errorMessage);
     }
   };
 
@@ -226,10 +238,14 @@ const LaboratoryPrecinctManager = ({ precincts = [] }) => {
       });
       
       toast.success('IP address status updated');
+      
+      // Refresh both the detailed IP list and the precinct overview
       fetchIPAddresses(selectedLab.id);
+      fetchIPDataForPrecincts(laboratoryPrecincts);
     } catch (error) {
       console.error('Error updating IP status:', error);
-      toast.error('Failed to update IP status');
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to update IP status';
+      toast.error(errorMessage);
     }
   };
 

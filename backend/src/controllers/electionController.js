@@ -25,6 +25,151 @@ const cryptoService = require('../utils/cryptoService');
 const electionModel = require("../models/electionModel");
 const { validateStudentVotingIP } = require('../models/laboratoryPrecinctModel');
 
+// Enhanced IP validation function that supports both private and public IPs
+const validateClientIP = async (client, req, studentId, electionId) => {
+  try {
+    // Get client IP from various sources
+    const clientIP = req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+                     req.headers['x-real-ip'] ||
+                     req.connection.remoteAddress ||
+                     req.socket.remoteAddress ||
+                     req.ip ||
+                     req.ips?.[0];
+    
+    // Clean IPv6-mapped IPv4 addresses
+    let cleanIP = clientIP;
+    if (cleanIP && cleanIP.startsWith('::ffff:')) {
+      cleanIP = cleanIP.substring(7);
+    }
+    if (cleanIP === '::1') {
+      cleanIP = '127.0.0.1';
+    }
+
+    // Check if IP validation tables exist
+    const tableCheck = await client.query(`
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'election_precinct_programs'
+      ) as table_exists
+    `);
+    
+    // If no IP validation tables, allow access
+    if (!tableCheck.rows[0].table_exists) {
+      return { allowed: true };
+    }
+    
+    // Check if there are any election-precinct assignments
+    const assignmentCount = await client.query('SELECT COUNT(*) as count FROM election_precinct_programs');
+    
+    if (assignmentCount.rows[0].count === 0) {
+      return { allowed: true };
+    }
+    
+    // Check if student is assigned to any precinct for this election
+    const studentAssignment = await client.query(`
+      SELECT 
+        s.course_name,
+        epp.precinct,
+        p.id as precinct_id,
+        p.name as precinct_name
+      FROM students s
+      JOIN election_precinct_programs epp ON epp.programs @> ARRAY[s.course_name::text]
+      JOIN precincts p ON p.name = epp.precinct
+      WHERE s.id = $1 AND epp.election_id = $2
+    `, [studentId, electionId]);
+    
+    // If no assignment found, deny access
+    if (studentAssignment.rows.length === 0) {
+      return { 
+        allowed: false, 
+        message: 'Access denied. You are not assigned to any laboratory for this election. Please contact your election administrator.' 
+      };
+    }
+    
+    const precinctId = studentAssignment.rows[0].precinct_id;
+    const precinctName = studentAssignment.rows[0].precinct_name;
+    
+    // Check if client IP is registered for the assigned precinct
+    const ipCheck = await client.query(`
+      SELECT ip_address, ip_type
+      FROM laboratory_ip_addresses 
+      WHERE laboratory_precinct_id = $1 
+      AND is_active = true
+    `, [precinctId]);
+    
+    // If no IP addresses registered for this precinct, deny access
+    if (ipCheck.rows.length === 0) {
+      return { 
+        allowed: false, 
+        message: `Access denied. No IP addresses are registered for your assigned laboratory: ${precinctName}. Please contact your election administrator.` 
+      };
+    }
+    
+    // Get all possible IP variations from the request
+    const possibleIPs = [
+      clientIP,
+      cleanIP,
+      req.ip,
+      req.connection.remoteAddress,
+      req.socket.remoteAddress,
+      req.headers['x-forwarded-for']?.split(',')[0]?.trim(),
+      req.headers['x-real-ip']
+    ].filter(ip => ip && ip !== '::1' && ip !== 'undefined' && ip !== 'null');
+    
+    // Clean all possible IPs
+    const cleanedIPs = possibleIPs.map(ip => {
+      let cleaned = ip;
+      if (cleaned && cleaned.startsWith('::ffff:')) {
+        cleaned = cleaned.substring(7);
+      }
+      if (cleaned === '::1') {
+        cleaned = '127.0.0.1';
+      }
+      return cleaned;
+    }).filter(ip => ip && ip !== '::1');
+    
+    // Check for IP match - supports both private and public IPs
+    let ipMatch = false;
+    for (const ipRecord of ipCheck.rows) {
+      const registeredIP = ipRecord.ip_address;
+      
+      for (const testIP of cleanedIPs) {
+        // Exact match (works for both private and public IPs)
+        if (registeredIP === testIP) {
+          ipMatch = true;
+          break;
+        }
+        
+        // Special handling for localhost variations
+        const isLocalhost = (ip) => ip === '127.0.0.1' || ip === '::1';
+        if (isLocalhost(registeredIP) && isLocalhost(testIP)) {
+          ipMatch = true;
+          break;
+        }
+      }
+      
+      if (ipMatch) break;
+    }
+    
+    if (!ipMatch) {
+      return { 
+        allowed: false, 
+        message: `Access denied. You can only vote from your assigned laboratory: ${precinctName}. Please go to the designated laboratory to cast your vote.` 
+      };
+    }
+    
+    return { allowed: true };
+    
+  } catch (error) {
+    console.error('IP validation error:', error);
+    return { 
+      allowed: false, 
+      message: 'IP validation error. Please contact your election administrator.' 
+    };
+  }
+};
+
 exports.createElection = async (req, res) => {
   try {
     const { title, description, date_from, date_to, start_time, end_time, election_type, eligible_voters, laboratoryPrecincts } = req.body;
@@ -592,140 +737,13 @@ exports.getBallotForStudent = async (req, res) => {
       });
     }
 
-    // IP VALIDATION - DIRECT CHECK
-    const clientIP = req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
-                     req.headers['x-real-ip'] ||
-                     req.connection.remoteAddress ||
-                     req.socket.remoteAddress ||
-                     req.ip ||
-                     req.ips?.[0];
-    
-    // Clean IPv6-mapped IPv4 addresses
-    let cleanIP = clientIP;
-    if (cleanIP && cleanIP.startsWith('::ffff:')) {
-      cleanIP = cleanIP.substring(7);
-    }
-    if (cleanIP === '::1') {
-      cleanIP = '127.0.0.1';
-    }
-
-    // Check if IP validation tables exist
-    const tableCheck = await pool.query(`
-      SELECT EXISTS (
-        SELECT 1 FROM information_schema.tables 
-        WHERE table_schema = 'public' 
-        AND table_name = 'election_precinct_programs'
-      ) as table_exists
-    `);
-    
-    // Check if IP validation should be enforced
-    if (tableCheck.rows[0].table_exists) {
-      // Check if there are any election-precinct assignments
-      const assignmentCount = await pool.query('SELECT COUNT(*) as count FROM election_precinct_programs');
-      
-      if (assignmentCount.rows[0].count > 0) {
-        // Check if student is assigned to any precinct for this election
-        const studentAssignment = await pool.query(`
-          SELECT 
-            s.course_name,
-            epp.precinct,
-            p.id as precinct_id,
-            p.name as precinct_name
-          FROM students s
-          JOIN election_precinct_programs epp ON epp.programs @> ARRAY[s.course_name::text]
-          JOIN precincts p ON p.name = epp.precinct
-          WHERE s.id = $1 AND epp.election_id = $2
-        `, [studentId, electionId]);
-        
-        // If assignment found, check IP
-        if (studentAssignment.rows.length > 0) {
-          const precinctId = studentAssignment.rows[0].precinct_id;
-          const precinctName = studentAssignment.rows[0].precinct_name;
-          
-          // Check if client IP is registered for the assigned precinct
-          const ipCheck = await pool.query(`
-            SELECT ip_address, ip_type
-            FROM laboratory_ip_addresses 
-            WHERE laboratory_precinct_id = $1 
-            AND is_active = true
-          `, [precinctId]);
-          
-          // If IP addresses are registered, check for match
-          if (ipCheck.rows.length > 0) {
-            let ipMatch = false;
-            
-            // Get all possible IP variations
-            const possibleIPs = [
-              clientIP,
-              cleanIP,
-              req.ip,
-              req.connection.remoteAddress,
-              req.socket.remoteAddress,
-              req.headers['x-forwarded-for']?.split(',')[0]?.trim(),
-              req.headers['x-real-ip']
-            ].filter(ip => ip && ip !== '::1' && ip !== 'undefined' && ip !== 'null');
-            
-            // Clean all possible IPs
-            const cleanedIPs = possibleIPs.map(ip => {
-              let cleaned = ip;
-              if (cleaned && cleaned.startsWith('::ffff:')) {
-                cleaned = cleaned.substring(7);
-              }
-              if (cleaned === '::1') {
-                cleaned = '127.0.0.1';
-              }
-              return cleaned;
-            }).filter(ip => ip && ip !== '::1');
-            
-            // Enhanced IP matching - check both exact match and IP type compatibility
-            for (const ipRecord of ipCheck.rows) {
-              const registeredIP = ipRecord.ip_address;
-              
-              for (const testIP of cleanedIPs) {
-                // Exact match
-                if (registeredIP === testIP) {
-                  ipMatch = true;
-                  break;
-                }
-                
-                // Check if both are private IPs (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
-                const isPrivateIP = (ip) => {
-                  return ip.startsWith('192.168.') || 
-                         ip.startsWith('10.') || 
-                         (ip.startsWith('172.') && parseInt(ip.split('.')[1]) >= 16 && parseInt(ip.split('.')[1]) <= 31);
-                };
-                
-                const isLocalhost = (ip) => ip === '127.0.0.1' || ip === '::1';
-                
-                // If both are private IPs or both are localhost, allow match
-                if ((isPrivateIP(registeredIP) && isPrivateIP(testIP)) ||
-                    (isLocalhost(registeredIP) && isLocalhost(testIP))) {
-                  ipMatch = true;
-                  break;
-                }
-                
-                // If registered IP is a common private IP range and test IP is also private, allow
-                if (isPrivateIP(registeredIP) && isPrivateIP(testIP)) {
-                  ipMatch = true;
-                  break;
-                }
-              }
-              
-              if (ipMatch) break;
-            }
-            
-            if (!ipMatch) {
-              return res.status(403).json({
-                success: false,
-                message: `Access denied. You can only vote from your assigned laboratory: ${precinctName}. Please go to the designated laboratory to cast your vote.`
-              });
-            }
-          } else {
-            // If no IPs are registered for this precinct, allow voting
-            // This is for backward compatibility
-          }
-        }
-      }
+    // IP VALIDATION - Using enhanced function that supports both private and public IPs
+    const ipValidation = await validateClientIP(pool, req, studentId, electionId);
+    if (!ipValidation.allowed) {
+      return res.status(403).json({
+        success: false,
+        message: ipValidation.message
+      });
     }
 
     const electionCheck = await pool.query(
@@ -884,141 +902,14 @@ exports.submitVote = async (req, res) => {
     
     const { votes } = req.body;
 
-    // IP VALIDATION - DIRECT CHECK
-    const clientIP = req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
-                     req.headers['x-real-ip'] ||
-                     req.connection.remoteAddress ||
-                     req.socket.remoteAddress ||
-                     req.ip ||
-                     req.ips?.[0];
-    
-    // Clean IPv6-mapped IPv4 addresses
-    let cleanIP = clientIP;
-    if (cleanIP && cleanIP.startsWith('::ffff:')) {
-      cleanIP = cleanIP.substring(7);
-    }
-    if (cleanIP === '::1') {
-      cleanIP = '127.0.0.1';
-    }
-
-    // Check if IP validation tables exist
-    const tableCheck = await client.query(`
-      SELECT EXISTS (
-        SELECT 1 FROM information_schema.tables 
-        WHERE table_schema = 'public' 
-        AND table_name = 'election_precinct_programs'
-      ) as table_exists
-    `);
-    
-    // Check if IP validation should be enforced
-    if (tableCheck.rows[0].table_exists) {
-      // Check if there are any election-precinct assignments
-      const assignmentCount = await client.query('SELECT COUNT(*) as count FROM election_precinct_programs');
-      
-      if (assignmentCount.rows[0].count > 0) {
-        // Check if student is assigned to any precinct for this election
-        const studentAssignment = await client.query(`
-          SELECT 
-            s.course_name,
-            epp.precinct,
-            p.id as precinct_id,
-            p.name as precinct_name
-          FROM students s
-          JOIN election_precinct_programs epp ON epp.programs @> ARRAY[s.course_name::text]
-          JOIN precincts p ON p.name = epp.precinct
-          WHERE s.id = $1 AND epp.election_id = $2
-        `, [studentId, electionId]);
-        
-        // If assignment found, check IP
-        if (studentAssignment.rows.length > 0) {
-          const precinctId = studentAssignment.rows[0].precinct_id;
-          const precinctName = studentAssignment.rows[0].precinct_name;
-          
-          // Check if client IP is registered for the assigned precinct
-          const ipCheck = await client.query(`
-            SELECT ip_address, ip_type
-            FROM laboratory_ip_addresses 
-            WHERE laboratory_precinct_id = $1 
-            AND is_active = true
-          `, [precinctId]);
-          
-          // If IP addresses are registered, check for match
-          if (ipCheck.rows.length > 0) {
-            let ipMatch = false;
-            
-            // Get all possible IP variations
-            const possibleIPs = [
-              clientIP,
-              cleanIP,
-              req.ip,
-              req.connection.remoteAddress,
-              req.socket.remoteAddress,
-              req.headers['x-forwarded-for']?.split(',')[0]?.trim(),
-              req.headers['x-real-ip']
-            ].filter(ip => ip && ip !== '::1' && ip !== 'undefined' && ip !== 'null');
-            
-            // Clean all possible IPs
-            const cleanedIPs = possibleIPs.map(ip => {
-              let cleaned = ip;
-              if (cleaned && cleaned.startsWith('::ffff:')) {
-                cleaned = cleaned.substring(7);
-              }
-              if (cleaned === '::1') {
-                cleaned = '127.0.0.1';
-              }
-              return cleaned;
-            }).filter(ip => ip && ip !== '::1');
-            
-            // Enhanced IP matching - check both exact match and IP type compatibility
-            for (const ipRecord of ipCheck.rows) {
-              const registeredIP = ipRecord.ip_address;
-              
-              for (const testIP of cleanedIPs) {
-                // Exact match
-                if (registeredIP === testIP) {
-                  ipMatch = true;
-                  break;
-                }
-                
-                // Check if both are private IPs (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
-                const isPrivateIP = (ip) => {
-                  return ip.startsWith('192.168.') || 
-                         ip.startsWith('10.') || 
-                         (ip.startsWith('172.') && parseInt(ip.split('.')[1]) >= 16 && parseInt(ip.split('.')[1]) <= 31);
-                };
-                
-                const isLocalhost = (ip) => ip === '127.0.0.1' || ip === '::1';
-                
-                // If both are private IPs or both are localhost, allow match
-                if ((isPrivateIP(registeredIP) && isPrivateIP(testIP)) ||
-                    (isLocalhost(registeredIP) && isLocalhost(testIP))) {
-                  ipMatch = true;
-                  break;
-                }
-                
-                // If registered IP is a common private IP range and test IP is also private, allow
-                if (isPrivateIP(registeredIP) && isPrivateIP(testIP)) {
-                  ipMatch = true;
-                  break;
-                }
-              }
-              
-              if (ipMatch) break;
-            }
-            
-            if (!ipMatch) {
-              await client.query('ROLLBACK');
-              return res.status(403).json({
-                success: false,
-                message: `Access denied. You can only vote from your assigned laboratory: ${precinctName}. Please go to the designated laboratory to cast your vote.`
-              });
-            }
-          } else {
-            // If no IPs are registered for this precinct, allow voting
-            // This is for backward compatibility
-          }
-        }
-      }
+    // IP VALIDATION - Using enhanced function that supports both private and public IPs
+    const ipValidation = await validateClientIP(client, req, studentId, electionId);
+    if (!ipValidation.allowed) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({
+        success: false,
+        message: ipValidation.message
+      });
     }
 
     const electionCheck = await client.query(

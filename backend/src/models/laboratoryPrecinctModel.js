@@ -7,14 +7,9 @@ const getAllLaboratoryPrecincts = async () => {
       p.name,
       p.name as description,
       COUNT(lia.id) as ip_count,
-      ARRAY_AGG(
-        CASE 
-          WHEN lia.is_active = TRUE THEN lia.ip_address 
-          ELSE NULL 
-        END
-      ) FILTER (WHERE lia.is_active = TRUE) as active_ips
+      ARRAY_AGG(lia.ip_address) FILTER (WHERE lia.is_active = TRUE) as active_ips
     FROM precincts p
-    LEFT JOIN laboratory_ip_addresses lia ON p.id = lia.laboratory_precinct_id
+    LEFT JOIN laboratory_ip_addresses lia ON p.id = lia.laboratory_precinct_id AND lia.is_active = TRUE
     GROUP BY p.id, p.name
     ORDER BY p.name
   `);
@@ -36,7 +31,7 @@ const getLaboratoryPrecinctById = async (id) => {
       lia.is_active as ip_active,
       lia.created_at as ip_created_at
     FROM precincts p
-    LEFT JOIN laboratory_ip_addresses lia ON p.id = lia.laboratory_precinct_id
+    LEFT JOIN laboratory_ip_addresses lia ON p.id = lia.laboratory_precinct_id AND lia.is_active = TRUE
     WHERE p.id = $1
     ORDER BY lia.created_at
   `, [id]);
@@ -70,8 +65,7 @@ const updateIPAddress = async (ipId, ipData) => {
 
 const deleteIPAddress = async (ipId) => {
   const result = await pool.query(`
-    UPDATE laboratory_ip_addresses 
-    SET is_active = FALSE
+    DELETE FROM laboratory_ip_addresses 
     WHERE id = $1 RETURNING *
   `, [ipId]);
   return result.rows[0];
