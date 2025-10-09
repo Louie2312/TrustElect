@@ -109,6 +109,68 @@ router.get("/debug-ip", (req, res) => {
   });
 });
 
+// Debug endpoint for IP validation
+router.get("/debug-ip-validation/:electionId", verifyToken, isStudent, async (req, res) => {
+  try {
+    const studentId = req.user?.studentId;
+    const electionId = req.params.electionId;
+    
+    // Get client IP
+    let clientIP = req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+                   req.headers['x-real-ip'] ||
+                   req.connection.remoteAddress ||
+                   req.socket.remoteAddress ||
+                   req.ip;
+    
+    if (clientIP && clientIP.startsWith('::ffff:')) {
+      clientIP = clientIP.substring(7);
+    }
+    
+    if (clientIP === '::1') {
+      clientIP = '127.0.0.1';
+    }
+    
+    const { pool } = require('../config/db');
+    
+    // Check student assignment
+    const studentAssignment = await pool.query(`
+      SELECT 
+        s.course_name,
+        epp.precinct,
+        p.id as precinct_id,
+        p.name as precinct_name
+      FROM students s
+      JOIN election_precinct_programs epp ON epp.programs @> ARRAY[s.course_name::text]
+      JOIN precincts p ON p.name = epp.precinct
+      WHERE s.id = $1 AND epp.election_id = $2
+    `, [studentId, electionId]);
+    
+    // Check registered IPs
+    let registeredIPs = [];
+    if (studentAssignment.rows.length > 0) {
+      const ipCheck = await pool.query(`
+        SELECT ip_address, ip_type
+        FROM laboratory_ip_addresses 
+        WHERE laboratory_precinct_id = $1 
+        AND is_active = true
+      `, [studentAssignment.rows[0].precinct_id]);
+      registeredIPs = ipCheck.rows;
+    }
+    
+    res.json({
+      studentId,
+      electionId,
+      clientIP,
+      studentAssignment: studentAssignment.rows[0] || null,
+      registeredIPs,
+      allHeaders: req.headers
+    });
+    
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.get("/ballot/:id/student", verifyToken, isStudent, validateVotingIP, getBallotForStudent);
 router.get("/ballot/:id/voting", verifyToken, getBallotForVoting);
 router.get("/student/status/:id", verifyToken, getStudentElectionStatus);

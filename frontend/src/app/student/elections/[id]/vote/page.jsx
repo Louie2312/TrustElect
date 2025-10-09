@@ -419,13 +419,9 @@ export default function VotePage({ params }) {
           {error.includes('Access denied') && (
             <div className="mt-3">
               <p className="text-sm">
-                <strong>What to do:</strong>
+                <strong>Go to your assigned laboratory to cast your vote</strong>
               </p>
-              <ul className="text-sm mt-1 ml-4 list-disc">
-                <li>Go to your assigned laboratory/precinct</li>
-                <li>Use a device connected to the laboratory's network</li>
-                <li>Contact your election administrator if you need assistance</li>
-              </ul>
+             
             </div>
           )}
         </div>
