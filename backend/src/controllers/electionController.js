@@ -618,7 +618,7 @@ exports.getBallotForStudent = async (req, res) => {
       ) as table_exists
     `);
     
-    // TEMPORARY: Skip IP validation if tables don't exist or no assignments
+    // Check if IP validation should be enforced
     if (tableCheck.rows[0].table_exists) {
       // Check if there are any election-precinct assignments
       const assignmentCount = await pool.query('SELECT COUNT(*) as count FROM election_precinct_programs');
@@ -697,6 +697,9 @@ exports.getBallotForStudent = async (req, res) => {
                 message: `Access denied. You can only vote from your assigned laboratory: ${precinctName}. Please go to the designated laboratory to cast your vote.`
               });
             }
+          } else {
+            // If no IPs are registered for this precinct, allow voting
+            // This is for backward compatibility
           }
         }
       }
@@ -884,7 +887,7 @@ exports.submitVote = async (req, res) => {
       ) as table_exists
     `);
     
-    // TEMPORARY: Skip IP validation if tables don't exist or no assignments
+    // Check if IP validation should be enforced
     if (tableCheck.rows[0].table_exists) {
       // Check if there are any election-precinct assignments
       const assignmentCount = await client.query('SELECT COUNT(*) as count FROM election_precinct_programs');
@@ -964,6 +967,9 @@ exports.submitVote = async (req, res) => {
                 message: `Access denied. You can only vote from your assigned laboratory: ${precinctName}. Please go to the designated laboratory to cast your vote.`
               });
             }
+          } else {
+            // If no IPs are registered for this precinct, allow voting
+            // This is for backward compatibility
           }
         }
       }
