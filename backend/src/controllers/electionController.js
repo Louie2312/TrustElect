@@ -28,9 +28,14 @@ const { validateStudentVotingIP } = require('../models/laboratoryPrecinctModel')
 // Enhanced IP validation function that supports both private and public IPs
 const validateClientIP = async (client, req, studentId, electionId) => {
   try {
-    // Get client IP from various sources
+    // Get client IP from various sources (including additional proxy headers)
     const clientIP = req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
                      req.headers['x-real-ip'] ||
+                     req.headers['cf-connecting-ip'] ||
+                     req.headers['x-client-ip'] ||
+                     req.headers['x-forwarded'] ||
+                     req.headers['forwarded-for'] ||
+                     req.headers['forwarded'] ||
                      req.connection.remoteAddress ||
                      req.socket.remoteAddress ||
                      req.ip ||
@@ -114,8 +119,29 @@ const validateClientIP = async (client, req, studentId, electionId) => {
       req.connection.remoteAddress,
       req.socket.remoteAddress,
       req.headers['x-forwarded-for']?.split(',')[0]?.trim(),
-      req.headers['x-real-ip']
+      req.headers['x-real-ip'],
+      req.headers['cf-connecting-ip'],
+      req.headers['x-client-ip'],
+      req.headers['x-forwarded'],
+      req.headers['forwarded-for'],
+      req.headers['forwarded']
     ].filter(ip => ip && ip !== '::1' && ip !== 'undefined' && ip !== 'null');
+    
+    // Add debugging for IP detection
+    console.log('IP Validation Debug:', {
+      studentId,
+      electionId,
+      clientIP,
+      cleanIP,
+      possibleIPs,
+      registeredIPs: ipCheck.rows.map(r => r.ip_address),
+      headers: {
+        'x-forwarded-for': req.headers['x-forwarded-for'],
+        'x-real-ip': req.headers['x-real-ip'],
+        'cf-connecting-ip': req.headers['cf-connecting-ip'],
+        'x-client-ip': req.headers['x-client-ip']
+      }
+    });
     
     // Clean all possible IPs
     const cleanedIPs = possibleIPs.map(ip => {

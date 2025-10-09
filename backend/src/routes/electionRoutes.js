@@ -54,6 +54,11 @@ router.get("/admin-pending-approval", verifyToken, isAdmin, getPendingApprovalEl
 router.get("/debug-ip", (req, res) => {
   const clientIP = req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
                    req.headers['x-real-ip'] ||
+                   req.headers['cf-connecting-ip'] ||
+                   req.headers['x-client-ip'] ||
+                   req.headers['x-forwarded'] ||
+                   req.headers['forwarded-for'] ||
+                   req.headers['forwarded'] ||
                    req.connection.remoteAddress ||
                    req.socket.remoteAddress ||
                    req.ip ||
@@ -67,15 +72,39 @@ router.get("/debug-ip", (req, res) => {
     cleanIP = '127.0.0.1';
   }
   
+  // Get all possible IP variations
+  const possibleIPs = [
+    clientIP,
+    cleanIP,
+    req.ip,
+    req.connection.remoteAddress,
+    req.socket.remoteAddress,
+    req.headers['x-forwarded-for']?.split(',')[0]?.trim(),
+    req.headers['x-real-ip'],
+    req.headers['cf-connecting-ip'],
+    req.headers['x-client-ip'],
+    req.headers['x-forwarded'],
+    req.headers['forwarded-for'],
+    req.headers['forwarded']
+  ].filter(ip => ip && ip !== '::1' && ip !== 'undefined' && ip !== 'null');
+  
   res.json({
     clientIP,
     cleanIP,
+    possibleIPs,
     req_ip: req.ip,
     connection_remoteAddress: req.connection.remoteAddress,
     socket_remoteAddress: req.socket.remoteAddress,
     x_forwarded_for: req.headers['x-forwarded-for'],
     x_real_ip: req.headers['x-real-ip'],
-    all_ips: req.ips
+    cf_connecting_ip: req.headers['cf-connecting-ip'],
+    x_client_ip: req.headers['x-client-ip'],
+    x_forwarded: req.headers['x-forwarded'],
+    forwarded_for: req.headers['forwarded-for'],
+    forwarded: req.headers['forwarded'],
+    all_ips: req.ips,
+    all_headers: req.headers,
+    timestamp: new Date().toISOString()
   });
 });
 
