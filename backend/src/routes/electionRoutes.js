@@ -78,8 +78,8 @@ router.post("/:id/send-result-notifications", verifyToken, (req, res, next) => {
 router.get("/:id/student-eligible", verifyToken, isStudent, verifyStudentRecord, checkStudentEligibility);
 router.get("/:id/student-ballot", verifyToken, isStudent, validateVotingIP, getBallotForStudent);
 router.post("/:id/vote", verifyToken, isStudent, validateVotingIP, submitVote);
-router.get("/:id/vote-receipt", verifyToken, isStudent, getVoteReceipt);
-router.get("/:id/vote-token", verifyToken, isStudent, getVoteToken);
+router.get("/:id/vote-receipt", verifyToken, isStudent, validateVotingIP, getVoteReceipt);
+router.get("/:id/vote-token", verifyToken, isStudent, validateVotingIP, getVoteToken);
 router.get("/:id/voter-codes", verifyToken, getVoterVerificationCodes);
 router.get("/:id/votes-per-candidate", verifyToken, getVotesPerCandidate);
 
@@ -109,7 +109,7 @@ router.get("/debug-ip", (req, res) => {
   });
 });
 
-router.get("/ballot/:id/student", verifyToken, getBallotForStudent);
+router.get("/ballot/:id/student", verifyToken, isStudent, validateVotingIP, getBallotForStudent);
 router.get("/ballot/:id/voting", verifyToken, getBallotForVoting);
 router.get("/student/status/:id", verifyToken, getStudentElectionStatus);
 
