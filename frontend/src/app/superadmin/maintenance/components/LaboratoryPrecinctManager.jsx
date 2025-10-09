@@ -436,7 +436,7 @@ const LaboratoryPrecinctManager = ({ precincts = [] }) => {
           {/* Bulk Add IPs Form */}
           {showBulkAdd && (
             <div className="mb-6 p-4 bg-white rounded-lg border">
-              <h4 className="font-semibold mb-3">Bulk Add IP Addresses</h4>
+              <h4 className="font-semibold mb-3 text-black">Bulk Add IP Addresses</h4>
               <p className="text-sm text-black mb-3">
                 Paste IP addresses below, one per line. Each IP will be added as a single IP address.
               </p>
@@ -445,7 +445,7 @@ const LaboratoryPrecinctManager = ({ precincts = [] }) => {
                 onChange={(e) => setBulkIPs(e.target.value)}
                 placeholder="192.168.1.1&#10;192.168.1.2&#10;192.168.1.3&#10;..."
                 rows={8}
-                className="w-full p-3 border border-gray-300 rounded-md font-mono text-sm"
+                className="w-full p-3 border border-gray-300 rounded-md font-mono text-sm text-black"
               />
               <div className="flex gap-2 mt-4">
                 <button
@@ -478,7 +478,7 @@ const LaboratoryPrecinctManager = ({ precincts = [] }) => {
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-sm">
+                      <span className="font-mono text-sm text-black">
                         {ip.ip_type === 'single' && ip.ip_address}
                         {ip.ip_type === 'range' && `${ip.ip_range_start} - ${ip.ip_range_end}`}
                         {ip.ip_type === 'subnet' && ip.subnet_mask}
