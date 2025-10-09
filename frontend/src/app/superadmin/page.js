@@ -1081,7 +1081,12 @@ export default function SuperAdminDashboard() {
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-xl font-medium mb-2 text-black">Total Elections</h3>
           <p className="text-4xl font-bold text-black">
-            {Number(stats.reduce((sum, stat) => sum + parseInt(stat.count || 0), 0)).toLocaleString()}
+            {Number(
+              (allElections.ongoing?.length || 0) + 
+              (allElections.upcoming?.length || 0) + 
+              (allElections.completed?.length || 0) + 
+              (allElections.to_approve?.length || 0)
+            ).toLocaleString()}
           </p>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
