@@ -32,7 +32,6 @@ const {
     getBallotByElection
 } = require("../controllers/ballotController");
 const { verifyToken, isSuperAdmin, isAdmin, isStudent, verifyStudentRecord } = require("../middlewares/authMiddleware");
-const { validateVotingIP } = require("../middlewares/ipValidationMiddleware");
 const electionStatusService = require('../services/electionStatusService');
 const router = express.Router();
 
@@ -80,128 +79,40 @@ router.get("/:id/student-ballot", verifyToken, isStudent, getBallotForStudent);
 router.post("/:id/vote", verifyToken, isStudent, submitVote);
 router.get("/:id/vote-receipt", verifyToken, isStudent, getVoteReceipt);
 router.get("/:id/vote-token", verifyToken, isStudent, getVoteToken);
-router.get("/:id/voter-codes", verifyToken, getVoterVerificationCodes);
-router.get("/:id/votes-per-candidate", verifyToken, getVotesPerCandidate);
 
-// Debug endpoint to check IP detection
+// DEBUG: Check IP detection
 router.get("/debug-ip", (req, res) => {
   const clientIP = req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
                    req.headers['x-real-ip'] ||
                    req.connection.remoteAddress ||
                    req.socket.remoteAddress ||
-                   req.ip;
+                   req.ip ||
+                   req.ips?.[0];
   
-  const possibleIPs = [
-    req.headers['x-forwarded-for']?.split(',')[0]?.trim(),
-    req.headers['x-real-ip'],
-    req.connection.remoteAddress,
-    req.socket.remoteAddress,
-    req.ip,
-    req.ips?.[0],
-    req.headers['cf-connecting-ip'],
-    req.headers['x-client-ip']
-  ].filter(ip => ip && ip !== '::1' && ip !== '127.0.0.1');
+  let cleanIP = clientIP;
+  if (cleanIP && cleanIP.startsWith('::ffff:')) {
+    cleanIP = cleanIP.substring(7);
+  }
+  if (cleanIP === '::1') {
+    cleanIP = '127.0.0.1';
+  }
   
   res.json({
-    detectedIP: clientIP,
-    allPossibleIPs: possibleIPs,
-    headers: req.headers
+    clientIP,
+    cleanIP,
+    req_ip: req.ip,
+    connection_remoteAddress: req.connection.remoteAddress,
+    socket_remoteAddress: req.socket.remoteAddress,
+    x_forwarded_for: req.headers['x-forwarded-for'],
+    x_real_ip: req.headers['x-real-ip'],
+    all_ips: req.ips
   });
 });
 
-// Debug endpoint for IP validation
-router.get("/debug-ip-validation/:electionId", verifyToken, isStudent, async (req, res) => {
-  try {
-    const studentId = req.user?.studentId;
-    const electionId = req.params.electionId;
-    
-    // Get client IP
-    let clientIP = req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
-                   req.headers['x-real-ip'] ||
-                   req.connection.remoteAddress ||
-                   req.socket.remoteAddress ||
-                   req.ip;
-    
-    if (clientIP && clientIP.startsWith('::ffff:')) {
-      clientIP = clientIP.substring(7);
-    }
-    
-    if (clientIP === '::1') {
-      clientIP = '127.0.0.1';
-    }
-    
-    const { pool } = require('../config/db');
-    
-    // Check student assignment
-    const studentAssignment = await pool.query(`
-      SELECT 
-        s.course_name,
-        epp.precinct,
-        p.id as precinct_id,
-        p.name as precinct_name
-      FROM students s
-      JOIN election_precinct_programs epp ON epp.programs @> ARRAY[s.course_name::text]
-      JOIN precincts p ON p.name = epp.precinct
-      WHERE s.id = $1 AND epp.election_id = $2
-    `, [studentId, electionId]);
-    
-    // Check registered IPs
-    let registeredIPs = [];
-    if (studentAssignment.rows.length > 0) {
-      const ipCheck = await pool.query(`
-        SELECT ip_address, ip_type
-        FROM laboratory_ip_addresses 
-        WHERE laboratory_precinct_id = $1 
-        AND is_active = true
-      `, [studentAssignment.rows[0].precinct_id]);
-      registeredIPs = ipCheck.rows;
-    }
-    
-    res.json({
-      studentId,
-      electionId,
-      clientIP,
-      studentAssignment: studentAssignment.rows[0] || null,
-      registeredIPs,
-      allHeaders: req.headers
-    });
-    
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+router.get("/:id/voter-codes", verifyToken, getVoterVerificationCodes);
+router.get("/:id/votes-per-candidate", verifyToken, getVotesPerCandidate);
 
-
+// Ballot routes
 router.get("/ballot/:id/student", verifyToken, isStudent, getBallotForStudent);
-router.get("/ballot/:id/voting", verifyToken, getBallotForVoting);
-router.get("/student/status/:id", verifyToken, getStudentElectionStatus);
-
-// Add this route to your existing electionRoutes.js file
-// (add after your existing routes)
-
-// Manual trigger for election status updates (for testing)
-router.post('/trigger-status-update', verifyToken, isSuperAdmin, async (req, res) => {
-  try {
-    console.log('[MANUAL TRIGGER] Running election status update...');
-    const result = await electionStatusService.updateElectionStatuses();
-    
-    res.json({
-      success: true,
-      message: 'Election status update completed',
-      data: {
-        processedElections: result.statusChanges?.length || 0,
-        statusChanges: result.statusChanges || [],
-        newlyCompletedElections: result.newlyCompletedElections?.length || 0
-      }
-    });
-  } catch (error) {
-    console.error('[MANUAL TRIGGER] Error updating election statuses:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to update election statuses',
-      error: error.message
-    });
-  }
-});
 
 module.exports = router;

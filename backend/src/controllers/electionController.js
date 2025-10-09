@@ -618,6 +618,7 @@ exports.getBallotForStudent = async (req, res) => {
       ) as table_exists
     `);
     
+    // TEMPORARY: Skip IP validation if tables don't exist or no assignments
     if (tableCheck.rows[0].table_exists) {
       // Check if there are any election-precinct assignments
       const assignmentCount = await pool.query('SELECT COUNT(*) as count FROM election_precinct_programs');
@@ -652,27 +653,35 @@ exports.getBallotForStudent = async (req, res) => {
           // If IP addresses are registered, check for match
           if (ipCheck.rows.length > 0) {
             let ipMatch = false;
+            
+            // Get all possible IP variations
             const possibleIPs = [
+              clientIP,
               cleanIP,
               req.ip,
               req.connection.remoteAddress,
               req.socket.remoteAddress,
               req.headers['x-forwarded-for']?.split(',')[0]?.trim(),
               req.headers['x-real-ip']
-            ].filter(ip => ip && ip !== '::1');
+            ].filter(ip => ip && ip !== '::1' && ip !== 'undefined' && ip !== 'null');
             
+            // Clean all possible IPs
+            const cleanedIPs = possibleIPs.map(ip => {
+              let cleaned = ip;
+              if (cleaned && cleaned.startsWith('::ffff:')) {
+                cleaned = cleaned.substring(7);
+              }
+              if (cleaned === '::1') {
+                cleaned = '127.0.0.1';
+              }
+              return cleaned;
+            }).filter(ip => ip && ip !== '::1');
+            
+            // Check against all registered IPs
             for (const ipRecord of ipCheck.rows) {
               const registeredIP = ipRecord.ip_address;
               
-              for (const possibleIP of possibleIPs) {
-                let testIP = possibleIP;
-                if (testIP && testIP.startsWith('::ffff:')) {
-                  testIP = testIP.substring(7);
-                }
-                if (testIP === '::1') {
-                  testIP = '127.0.0.1';
-                }
-                
+              for (const testIP of cleanedIPs) {
                 if (registeredIP === testIP) {
                   ipMatch = true;
                   break;
@@ -875,6 +884,7 @@ exports.submitVote = async (req, res) => {
       ) as table_exists
     `);
     
+    // TEMPORARY: Skip IP validation if tables don't exist or no assignments
     if (tableCheck.rows[0].table_exists) {
       // Check if there are any election-precinct assignments
       const assignmentCount = await client.query('SELECT COUNT(*) as count FROM election_precinct_programs');
@@ -909,27 +919,35 @@ exports.submitVote = async (req, res) => {
           // If IP addresses are registered, check for match
           if (ipCheck.rows.length > 0) {
             let ipMatch = false;
+            
+            // Get all possible IP variations
             const possibleIPs = [
+              clientIP,
               cleanIP,
               req.ip,
               req.connection.remoteAddress,
               req.socket.remoteAddress,
               req.headers['x-forwarded-for']?.split(',')[0]?.trim(),
               req.headers['x-real-ip']
-            ].filter(ip => ip && ip !== '::1');
+            ].filter(ip => ip && ip !== '::1' && ip !== 'undefined' && ip !== 'null');
             
+            // Clean all possible IPs
+            const cleanedIPs = possibleIPs.map(ip => {
+              let cleaned = ip;
+              if (cleaned && cleaned.startsWith('::ffff:')) {
+                cleaned = cleaned.substring(7);
+              }
+              if (cleaned === '::1') {
+                cleaned = '127.0.0.1';
+              }
+              return cleaned;
+            }).filter(ip => ip && ip !== '::1');
+            
+            // Check against all registered IPs
             for (const ipRecord of ipCheck.rows) {
               const registeredIP = ipRecord.ip_address;
               
-              for (const possibleIP of possibleIPs) {
-                let testIP = possibleIP;
-                if (testIP && testIP.startsWith('::ffff:')) {
-                  testIP = testIP.substring(7);
-                }
-                if (testIP === '::1') {
-                  testIP = '127.0.0.1';
-                }
-                
+              for (const testIP of cleanedIPs) {
                 if (registeredIP === testIP) {
                   ipMatch = true;
                   break;
