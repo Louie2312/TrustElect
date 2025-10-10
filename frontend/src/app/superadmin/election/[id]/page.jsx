@@ -252,6 +252,20 @@ export default function ElectionDetailsPage() {
       
       let electionData = data.election;
 
+      // Map creator information from the API response
+      if (data.creator_name) {
+        electionData.creator_name = data.creator_name;
+      }
+      if (data.creator_role) {
+        electionData.creator_role = data.creator_role;
+      } else if (electionData.created_by_role) {
+        electionData.creator_role = electionData.created_by_role;
+      } else if (electionData.created_by && electionData.created_by.role) {
+        electionData.creator_role = electionData.created_by.role;
+      } else {
+        electionData.creator_role = 'Admin';
+      }
+
       // Set system admin creator flag based on creator role from backend
       if (electionData && electionData.creator_role) {
         setIsSystemAdminCreator(electionData.creator_role === 'SuperAdmin');
@@ -1054,7 +1068,7 @@ export default function ElectionDetailsPage() {
         <p className="text-sm text-gray-600">
           <span className="font-medium">Created by: </span>
           <span className="text-black">
-            {election.creator_name || 'Unknown'}
+            {election.creator_name || election.created_by_name || 'Unknown'}
             <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
               election.creator_role === 'SuperAdmin' 
                 ? 'bg-purple-100 text-purple-800' 

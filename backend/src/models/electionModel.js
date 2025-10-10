@@ -524,9 +524,12 @@ const getElectionWithBallot = async (electionId) => {
     const electionResult = await pool.query(`
       SELECT 
         e.*,
+        u.first_name || ' ' || u.last_name as creator_name,
+        u.role as creator_role,
         (SELECT COUNT(*) FROM eligible_voters WHERE election_id = e.id) AS voter_count,
         (SELECT COALESCE(COUNT(DISTINCT student_id), 0) FROM votes WHERE election_id = e.id) AS vote_count
       FROM elections e
+      LEFT JOIN users u ON e.created_by = u.id
       WHERE e.id = $1
     `, [electionId]);
 
