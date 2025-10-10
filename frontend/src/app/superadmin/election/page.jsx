@@ -447,16 +447,6 @@ export default function ElectionPage() {
         </>
       )}
 
-      {/* Archived Folder Button */}
-      <div className="mt-6 flex justify-center">
-        <button
-          onClick={handleArchivedFolderClick}
-          className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors flex items-center shadow-sm"
-        >
-          <Archive className="w-5 h-5 mr-2" />
-          Archived Folder
-        </button>
-      </div>
 
       {/* Delete Confirmation Modal */}
       <DeleteConfirmationModal 
