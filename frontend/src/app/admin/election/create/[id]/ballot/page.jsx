@@ -2218,7 +2218,7 @@ export default function BallotPage() {
       
         setTimeout(() => {
           
-          document.location.href = '/superadmin';
+          router.push('/admin');
         }, 100);
         
       } catch (apiError) {
@@ -2232,7 +2232,7 @@ export default function BallotPage() {
         
        
         setTimeout(() => {
-          document.location.href = '/superadmin';
+          router.push('/admin');
         }, 100);
       }
     } catch (error) {
@@ -2242,7 +2242,7 @@ export default function BallotPage() {
         window.scrollTo(0, 0);
       } else {
         setTimeout(() => {
-          document.location.href = '/superadmin';
+          router.push('/admin');
         }, 100);
       }
       setIsLoading(false);
@@ -2286,7 +2286,7 @@ export default function BallotPage() {
   const fetchAllStudents = async () => {
     try {
       const token = Cookies.get("token");
-      const res = await axios.get('/api/superadmin/students', {
+      const res = await axios.get('/api/admin/students', {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
