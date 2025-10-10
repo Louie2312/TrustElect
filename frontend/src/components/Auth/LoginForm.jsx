@@ -42,6 +42,17 @@ export default function LoginForm({ onClose }) {
   const [showConfirmResetPassword, setShowConfirmResetPassword] = useState(false);
   const [resetStep, setResetStep] = useState(1); 
   
+  // SMS OTP states
+  const [useSmsOtp, setUseSmsOtp] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [smsOtp, setSmsOtp] = useState("");
+  const [phoneRegistrationStep, setPhoneRegistrationStep] = useState(1); // 1: phone input, 2: SMS OTP verification
+  const [smsDevOtp, setSmsDevOtp] = useState("");
+  const [smsResendLoading, setSmsResendLoading] = useState(false);
+  const [smsResendMessage, setSmsResendMessage] = useState("");
+  const [smsCooldownActive, setSmsCooldownActive] = useState(false);
+  const [smsCooldownTime, setSmsCooldownTime] = useState(0);
+  
   const router = useRouter();
 
   // Add keyboard event handlers - Fixed to always trigger, let functions handle validation
@@ -88,6 +99,20 @@ export default function LoginForm({ onClose }) {
     }
   };
 
+  const handlePhoneNumberKeyDown = (e) => {
+    if (e.key === 'Enter' && !loading) {
+      e.preventDefault();
+      handlePhoneRegistration();
+    }
+  };
+
+  const handleSmsOtpKeyDown = (e) => {
+    if (e.key === 'Enter' && !loading) {
+      e.preventDefault();
+      handleSmsOtpVerification();
+    }
+  };
+
   // Global keyboard event handler
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
@@ -98,7 +123,15 @@ export default function LoginForm({ onClose }) {
         if (step === 1) {
           handleLogin();
         } else if (step === 2) {
-          handleOtpVerification();
+          if (useSmsOtp) {
+            if (phoneRegistrationStep === 1) {
+              handlePhoneRegistration();
+            } else if (phoneRegistrationStep === 2) {
+              handleSmsOtpVerification();
+            }
+          } else {
+            handleOtpVerification();
+          }
         } else if (step === 3) {
           handlePasswordChange();
         } else if (step === 4) {
@@ -121,7 +154,8 @@ export default function LoginForm({ onClose }) {
       window.removeEventListener('keydown', handleGlobalKeyDown);
     };
   }, [step, resetStep, loading, email, password, otp, newPassword, confirmPassword, 
-      forgotEmail, resetOtp, resetPassword, confirmResetPassword]);
+      forgotEmail, resetOtp, resetPassword, confirmResetPassword, useSmsOtp, 
+      phoneRegistrationStep, phoneNumber, smsOtp]);
   
   // Cooldown timer effect
   useEffect(() => {
@@ -140,6 +174,24 @@ export default function LoginForm({ onClose }) {
     }
     return () => clearInterval(interval);
   }, [cooldownActive, cooldownTime]);
+
+  // SMS cooldown timer effect
+  useEffect(() => {
+    let interval;
+    if (smsCooldownActive && smsCooldownTime > 0) {
+      interval = setInterval(() => {
+        setSmsCooldownTime((prev) => {
+          if (prev <= 1) {
+            setSmsCooldownActive(false);
+            clearInterval(interval);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [smsCooldownActive, smsCooldownTime]);
 
   const handleLogin = async () => {
     setError("");
@@ -539,6 +591,171 @@ export default function LoginForm({ onClose }) {
     }
   };
 
+  // SMS OTP handler functions
+  const handleSmsOtpRequest = async () => {
+    setError("");
+    setSmsResendMessage("");
+    setUseSmsOtp(true);
+    setPhoneRegistrationStep(1);
+    setPhoneNumber("");
+    setSmsOtp("");
+    setSmsDevOtp("");
+  };
+
+  const handlePhoneRegistration = async () => {
+    if (!phoneNumber.trim()) {
+      setError("Please enter your phone number.");
+      return;
+    }
+
+    // Basic phone number validation for Philippines
+    const phoneRegex = /^(\+63|63|0)?[9]\d{9}$/;
+    if (!phoneRegex.test(phoneNumber.replace(/\s/g, ''))) {
+      setError("Please enter a valid Philippines phone number (e.g., +639123456789 or 09123456789).");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const userId = Cookies.get("userId");
+      const userEmail = Cookies.get("email");
+      
+      // Normalize phone number to +63 format
+      let normalizedPhone = phoneNumber.replace(/\s/g, '');
+      if (normalizedPhone.startsWith('0')) {
+        normalizedPhone = '+63' + normalizedPhone.substring(1);
+      } else if (normalizedPhone.startsWith('63')) {
+        normalizedPhone = '+' + normalizedPhone;
+      } else if (!normalizedPhone.startsWith('+63')) {
+        normalizedPhone = '+63' + normalizedPhone;
+      }
+
+      const response = await axios.post(
+        `/api/auth/register-phone`,
+        { userId, email: userEmail, phoneNumber: normalizedPhone },
+        { withCredentials: true }
+      );
+
+      if (response.data.devMode && response.data.otp) {
+        setSmsDevOtp(response.data.otp);
+      }
+
+      setPhoneRegistrationStep(2);
+      setSmsCooldownActive(true);
+      setSmsCooldownTime(COOLDOWN_SECONDS);
+      setSmsResendMessage("SMS verification code sent to your phone.");
+    } catch (err) {
+      console.error("Phone registration error:", err);
+      setError(err.response?.data?.message || "Failed to register phone number. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSmsOtpVerification = async () => {
+    if (smsOtp.length !== 6) {
+      setError("SMS OTP must be exactly 6 digits.");
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const userId = Cookies.get("userId");
+      
+      const response = await axios.post(
+        `/api/auth/verify-sms-otp`,
+        { userId, otp: smsOtp },
+        { withCredentials: true }
+      );
+
+      if (response.data.success) {
+        const role = Cookies.get("role");
+
+        if (role !== "Super Admin") {
+          try {
+            const token = Cookies.get("token");
+            const firstLoginCheckResponse = await axios.get(
+              `/api/auth/check-first-login`,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`
+                },
+                withCredentials: true
+              }
+            );
+            
+            if (firstLoginCheckResponse.data.isFirstLogin) {
+              setIsFirstLogin(true);
+              setStep(3);
+              return;
+            }
+          } catch (firstLoginCheckError) {
+            console.error("Error checking first login status:", firstLoginCheckError);
+          }
+        }
+
+        navigateToDashboard(role);
+      } else {
+        throw new Error("SMS verification failed. Please try again.");
+      }
+    } catch (err) {
+      if (err.response && err.response.status === 400) {
+        setError("Invalid SMS verification code. Please check and try again.");
+      } else if (err.response && err.response.status === 401) {
+        setError("SMS verification code has expired or already been used. Please request a new one.");
+      } else {
+        setError(err.response?.data?.message || "Invalid SMS verification code. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendSmsOtp = async () => {
+    if (smsCooldownActive) {
+      setSmsResendMessage(`Please wait ${smsCooldownTime} seconds before requesting another code.`);
+      return;
+    }
+
+    setSmsResendLoading(true);
+    setSmsResendMessage("");
+    setSmsDevOtp("");
+    try {
+      const userId = Cookies.get("userId");
+      const userEmail = Cookies.get("email");
+      
+      const response = await axios.post(
+        `/api/auth/resend-sms-otp`,
+        { userId, email: userEmail, phoneNumber },
+        { withCredentials: true }
+      );
+
+      if (response.data.devMode && response.data.otp) {
+        setSmsDevOtp(response.data.otp);
+      }
+      
+      setSmsResendMessage("SMS verification code resent. Check your phone.");
+      
+      setSmsCooldownActive(true);
+      setSmsCooldownTime(COOLDOWN_SECONDS);
+    } catch (err) {
+      console.error("Resend SMS OTP error:", err);
+      setSmsResendMessage("Failed to resend SMS code. Try again later.");
+    } finally {
+      setSmsResendLoading(false);
+    }
+  };
+
+  const handleBackToEmailOtp = () => {
+    setUseSmsOtp(false);
+    setPhoneRegistrationStep(1);
+    setPhoneNumber("");
+    setSmsOtp("");
+    setSmsDevOtp("");
+    setSmsResendMessage("");
+    setError("");
+  };
+
   return (
     <Card className="relative w-96 p-6 bg-white shadow-2xl rounded-lg">
       
@@ -657,7 +874,7 @@ export default function LoginForm({ onClose }) {
           </form>
         )}
 
-        {step === 2 && (
+        {step === 2 && !useSmsOtp && (
           <form onSubmit={(e) => {
             e.preventDefault();
             handleOtpVerification();
@@ -705,6 +922,117 @@ export default function LoginForm({ onClose }) {
               {resendMessage && (
                 <p className="text-xs mt-1 text-gray-600">{resendMessage}</p>
               )}
+            </div>
+
+            {/* SMS OTP Option */}
+            <div className="mt-4 text-center">
+              <button 
+                type="button"
+                onClick={handleSmsOtpRequest}
+                className="text-sm text-[#01579B] hover:underline"
+              >
+                Use SMS OTP instead if email OTP is not working
+              </button>
+            </div>
+          </form>
+        )}
+
+        {step === 2 && useSmsOtp && phoneRegistrationStep === 1 && (
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            handlePhoneRegistration();
+          }}>
+            <h2 className="text-[#01579B] font-semibold mb-2">Register Phone Number</h2>
+            <p className="text-sm text-gray-700 mb-2">
+              Enter your Philippines phone number to receive SMS verification codes.
+            </p>
+            <Input
+              type="tel"
+              placeholder="Enter phone number (e.g., +639123456789 or 09123456789)"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              onKeyDown={handlePhoneNumberKeyDown}
+              required
+            />
+            
+            <Button
+              type="submit"
+              className="cursor-pointer mt-4 w-full bg-[#FFDF00] hover:bg-[#00FF00] text-black"
+              disabled={loading}
+            >
+              {loading ? "Sending..." : "Send SMS Code"}
+            </Button>
+
+            <div className="mt-4 text-center">
+              <button 
+                type="button"
+                onClick={handleBackToEmailOtp}
+                className="text-sm text-[#01579B] hover:underline"
+              >
+                Back to Email OTP
+              </button>
+            </div>
+          </form>
+        )}
+
+        {step === 2 && useSmsOtp && phoneRegistrationStep === 2 && (
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            handleSmsOtpVerification();
+          }}>
+            <h2 className="text-[#01579B] font-semibold mb-2">Enter SMS OTP</h2>
+            <p className="text-sm text-gray-700 mb-2">
+              A verification code has been sent to your phone number.
+            </p>
+            <Input
+              type="text"
+              placeholder="Enter 6-digit SMS OTP"
+              value={smsOtp}
+              onChange={(e) => setSmsOtp(e.target.value)}
+              onKeyDown={handleSmsOtpKeyDown}
+              required
+            />
+
+            {smsDevOtp && (
+              <div className="mt-2 p-2 bg-gray-100 rounded text-center">
+                <p className="text-xs text-gray-500">Development SMS OTP:</p>
+                <p className="font-mono text-sm">{smsDevOtp}</p>
+              </div>
+            )}
+            
+            <Button
+              type="submit"
+              className="cursor-pointer mt-4 w-full bg-[#FFDF00] hover:bg-[#00FF00] text-black"
+              disabled={loading}
+            >
+              {loading ? "Verifying..." : "Verify SMS Code"}
+            </Button>
+            
+
+            <div className="mt-4 text-center">
+              <button 
+                type="button"
+                onClick={handleResendSmsOtp}
+                disabled={smsResendLoading || smsCooldownActive}
+                className={`text-sm ${smsCooldownActive ? 'text-gray-400 cursor-not-allowed' : 'text-[#01579B] hover:underline'}`}
+              >
+                {smsResendLoading ? "Sending..." : 
+                 smsCooldownActive ? `Resend available in ${smsCooldownTime}s` : 
+                 "Resend SMS verification code"}
+              </button>
+              {smsResendMessage && (
+                <p className="text-xs mt-1 text-gray-600">{smsResendMessage}</p>
+              )}
+            </div>
+
+            <div className="mt-2 text-center">
+              <button 
+                type="button"
+                onClick={handleBackToEmailOtp}
+                className="text-sm text-[#01579B] hover:underline"
+              >
+                Back to Email OTP
+              </button>
             </div>
           </form>
         )}
