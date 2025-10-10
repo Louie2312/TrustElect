@@ -2286,7 +2286,7 @@ export default function BallotPage() {
   const fetchAllStudents = async () => {
     try {
       const token = Cookies.get("token");
-      const res = await axios.get('/api/admin/students', {
+      const res = await axios.get('/api/superadmin/students', {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
