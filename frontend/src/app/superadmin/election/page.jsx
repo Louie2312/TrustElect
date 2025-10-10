@@ -1,11 +1,50 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, Plus, ArrowLeft } from 'lucide-react';
+import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, Plus, ArrowLeft, Trash2, Archive } from 'lucide-react';
 import Cookies from 'js-cookie';
 import Link from 'next/link';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+
+const DeleteConfirmationModal = ({ isOpen, election, onCancel, onConfirm, isDeleting }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-lg">
+        <h3 className="text-xl font-bold mb-4 text-black">Confirm Delete</h3>
+        <p className="mb-6 text-black">
+          Are you sure you want to delete the election <span className="font-semibold">{election?.title}</span>?      
+        </p>  
+             
+        <div className="flex justify-end space-x-3">
+          <button
+            className="px-4 py-2 border rounded-md text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+            onClick={onCancel}
+            disabled={isDeleting}
+          >
+            Cancel
+          </button>
+          <button
+            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 flex items-center disabled:opacity-50"
+            onClick={onConfirm}
+            disabled={isDeleting}
+          >
+            {isDeleting ? (
+              <>
+                <span className="mr-2">Deleting...</span>
+                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+              </>
+            ) : (
+              'Delete'
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 async function fetchWithAuth(url, options = {}) {
   const token = Cookies.get('token');
@@ -43,6 +82,10 @@ export default function ElectionPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [electionToDelete, setElectionToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [actionMessage, setActionMessage] = useState(null);
   const [tabs, setTabs] = useState([
     { id: 'all', label: 'All Elections' },
     { id: 'ongoing', label: 'Ongoing' },
@@ -141,6 +184,60 @@ export default function ElectionPage() {
     router.push(`/superadmin/election/${electionId}`);
   };
 
+  const handleDeleteClick = (election, e) => {
+    e.stopPropagation(); // Prevent row click
+    setElectionToDelete(election);
+    setDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!electionToDelete) return;
+    
+    try {
+      setIsDeleting(true);
+      
+      if (electionToDelete.status !== 'completed') {
+        setActionMessage({
+          type: 'error',
+          text: 'Only completed elections can be deleted'
+        });
+        setDeleteModalOpen(false);
+        return;
+      }
+      
+      await fetchWithAuth(`/elections/${electionToDelete.id}`, {
+        method: 'DELETE'
+      });
+      
+      // Update the elections state to remove the deleted election
+      setElections(prev => prev.filter(e => e.id !== electionToDelete.id));
+      setFilteredElections(prev => prev.filter(e => e.id !== electionToDelete.id));
+      
+      setActionMessage({
+        type: 'success',
+        text: `Election "${electionToDelete.title}" was successfully deleted.`
+      });
+      
+    } catch (error) {
+      setActionMessage({
+        type: 'error',
+        text: `Failed to delete election: ${error.message}`
+      });
+    } finally {
+      setIsDeleting(false);
+      setDeleteModalOpen(false);
+      setElectionToDelete(null);
+      
+      setTimeout(() => {
+        setActionMessage(null);
+      }, 5000);
+    }
+  };
+
+  const handleArchivedFolderClick = () => {
+    router.push('/superadmin/election/archived');
+  };
+
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
@@ -228,6 +325,27 @@ export default function ElectionPage() {
         </div>
       )}
 
+      {actionMessage && (
+        <div className={`border-l-4 text-black p-4 rounded-lg mb-6 ${
+          actionMessage.type === 'success' 
+            ? 'bg-green-100 border-green-500' 
+            : 'bg-red-100 border-red-500'
+        }`}>
+          <div className="flex">
+            <div className="flex-shrink-0">
+              {actionMessage.type === 'success' ? (
+                <CheckCircle className="h-5 w-5 text-green-500" />
+              ) : (
+                <XCircle className="h-5 w-5 text-red-500" />
+              )}
+            </div>
+            <div className="ml-3">
+              <p className="text-sm">{actionMessage.text}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -256,6 +374,9 @@ export default function ElectionPage() {
                         Created By
                       </th>
                     )}
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -290,6 +411,17 @@ export default function ElectionPage() {
                           )}
                         </td>
                       )}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                        {election.status === 'completed' && (
+                          <button
+                            onClick={(e) => handleDeleteClick(election, e)}
+                            className="text-red-600 hover:text-red-800 p-1 rounded-md hover:bg-red-50 transition-colors"
+                            title="Delete Election"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -314,6 +446,26 @@ export default function ElectionPage() {
           )}
         </>
       )}
+
+      {/* Archived Folder Button */}
+      <div className="mt-6 flex justify-center">
+        <button
+          onClick={handleArchivedFolderClick}
+          className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors flex items-center shadow-sm"
+        >
+          <Archive className="w-5 h-5 mr-2" />
+          Archived Folder
+        </button>
+      </div>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal 
+        isOpen={deleteModalOpen}
+        election={electionToDelete}
+        onCancel={() => setDeleteModalOpen(false)}
+        onConfirm={handleDeleteConfirm}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }
