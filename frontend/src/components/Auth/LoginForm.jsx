@@ -944,11 +944,11 @@ export default function LoginForm({ onClose }) {
           }}>
             <h2 className="text-[#01579B] font-semibold mb-2">Register Phone Number</h2>
             <p className="text-sm text-gray-700 mb-2">
-              Enter your Philippines phone number to receive SMS verification codes.
+              Enter your  phone number to receive SMS verification codes.
             </p>
             <Input
               type="tel"
-              placeholder="Enter phone number (e.g., +639123456789 or 09123456789)"
+              placeholder="Enter your phone number"
               value={phoneNumber}
               onChange={(e) => setPhoneNumber(e.target.value)}
               onKeyDown={handlePhoneNumberKeyDown}
