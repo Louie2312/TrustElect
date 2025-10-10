@@ -525,7 +525,12 @@ const getElectionWithBallot = async (electionId) => {
       SELECT 
         e.*,
         u.first_name || ' ' || u.last_name as creator_name,
-        u.role as creator_role,
+        CASE u.role_id
+          WHEN 1 THEN 'SuperAdmin'
+          WHEN 2 THEN 'Admin'
+          WHEN 3 THEN 'Student'
+          ELSE 'Unknown'
+        END as creator_role,
         (SELECT COUNT(*) FROM eligible_voters WHERE election_id = e.id) AS voter_count,
         (SELECT COALESCE(COUNT(DISTINCT student_id), 0) FROM votes WHERE election_id = e.id) AS vote_count
       FROM elections e
