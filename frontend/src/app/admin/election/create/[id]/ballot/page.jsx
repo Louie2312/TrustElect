@@ -23,6 +23,16 @@ const studentCouncilPositionOrder = {
   "Sergeant at Arms": 8
 };
 
+// Mr/Ms STI position order for sorting
+const mrMsSTIPositionOrder = {
+  "Mr. STI": 1,
+  "Ms. STI": 2,
+  "Mr. STI 1st Runner-up": 3,
+  "Ms. STI 1st Runner-up": 4,
+  "Mr. STI 2nd Runner-up": 5,
+  "Ms. STI 2nd Runner-up": 6
+};
+
 function formatNameSimple(lastName, firstName, fallback) {
   const cap = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
   if ((!lastName && !firstName) && fallback) {
@@ -113,13 +123,6 @@ const getBallotByElection = async (electionId) => {
   }
 };
 
-const updateBallotDescription = async (ballotId, description) => {
-  return fetchWithAuth(`/api/ballots/${ballotId}/description`, {
-    method: 'PUT',
-    body: JSON.stringify({ description })
-  });
-};
-
 const createPosition = async (ballotId, positionData) => {
   return fetchWithAuth(`/api/ballots/${ballotId}/positions`, {
     method: 'POST',
@@ -205,8 +208,10 @@ const PreviewModal = ({ ballot, election, onConfirm, onCancel, isMrMsSTIElection
                     <div>
                       {(() => {
                         try {
-                          const isGroup = isMrMsSTIElection === true && 
-                            candidateTypes && candidateTypes[candidate.id] === 'group';
+                          const isGroup = isMrMsSTIElection === true && (
+                            (candidateTypes && candidateTypes[candidate.id] === 'group') || 
+                            (candidate.first_name && !candidate.last_name)
+                          );
                           return isGroup;
                         } catch (error) {
                           console.warn('Error checking candidate type:', error);
@@ -280,6 +285,7 @@ const BackConfirmationModal = ({ onConfirm, onCancel }) => {
   );
 };
 
+
 const PartylistSelectionModal = ({ partylists, onSelect, onCancel, currentPosition, currentStudent }) => {
   const [partylistCandidates, setPartylistCandidates] = useState({});
   const [isLoading, setIsLoading] = useState(false);
@@ -293,7 +299,6 @@ const PartylistSelectionModal = ({ partylists, onSelect, onCancel, currentPositi
         
         // If student is selected, fetch their partylist directly
         if (currentStudent && currentStudent.student_number) {
-          console.log('Fetching partylist for student:', currentStudent.student_number);
           try {
             const response = await axios.get(
               `/api/partylist-candidates/student/${currentStudent.student_number}`,
@@ -303,16 +308,13 @@ const PartylistSelectionModal = ({ partylists, onSelect, onCancel, currentPositi
               }
             );
             
-            console.log('Student partylist response:', response.data);
             
             if (response.data.success && response.data.data) {
               // Student is in a partylist
               const studentPartylist = response.data.data;
-              console.log('Setting student partylist:', studentPartylist);
               setFilteredPartylists([studentPartylist]);
             } else {
               // Student is not in any partylist
-              console.log('Student not in any partylist, showing Independent');
               setFilteredPartylists([{ name: "Independent", slogan: "", advocacy: "" }]);
             }
           } catch (error) {
@@ -322,7 +324,6 @@ const PartylistSelectionModal = ({ partylists, onSelect, onCancel, currentPositi
           }
         } else {
           // No student selected, fetch all partylists and their candidates
-          console.log('No student selected, showing all partylists');
           const candidatesPromises = partylists.map(async (party) => {
             if (!party || party.name === "Independent") return null;
             const response = await axios.get(
@@ -476,30 +477,6 @@ const PartylistSelectionModal = ({ partylists, onSelect, onCancel, currentPositi
   );
 };
 
-// Helper function to get the best candidate image source
-const getCandidateImageSource = (candidate, candidateId, imagePreviews) => {
-  // Priority order:
-  // 1. Image previews (for freshly uploaded images)
-  // 2. Image URL from server
-  // 3. Local image preview (fallback)
-  
-  if (imagePreviews && imagePreviews[candidateId]) {
-    return imagePreviews[candidateId];
-  }
-  
-  if (candidate.image_url) {
-    return candidate.image_url.startsWith('http') 
-      ? candidate.image_url 
-      : `${BASE_URL}${candidate.image_url}`;
-  }
-  
-  if (candidate._localImagePreview) {
-    return candidate._localImagePreview;
-  }
-  
-  return null;
-};
-
 export default function BallotPage() {
   const router = useRouter();
   const params = useParams();
@@ -557,6 +534,7 @@ export default function BallotPage() {
     if (!candidateTypes || typeof candidateTypes !== 'object') return 'individual';
     return candidateTypes[candidateId] || 'individual';
   };
+  
 
   // Mr/Ms STI positions hook
   const { mrMsSTIPositions, fetchMrMsSTIPositions, mrMsSTIPositionOrder } = useMrMsSTIPositions();
@@ -682,7 +660,6 @@ export default function BallotPage() {
           setStudentCouncilPositions(positionNames);
         } else {
 
-          console.log("No Student Council positions found, using default positions");
           setStudentCouncilPositions([ 
             "President",
             "Vice President",
@@ -815,7 +792,6 @@ export default function BallotPage() {
             createDefaultBallotStructure(electionData.election_type);
           }
         } catch (ballotError) {
-          console.log("No existing ballot found, creating default structure");
           createDefaultBallotStructure(electionData.election_type);
         }
       } catch (error) {
@@ -913,31 +889,127 @@ export default function BallotPage() {
     loadData();
   }, [electionId]);
 
-  useEffect(() => {
-    fetchAllStudents();
-  }, []);
-
-  const fetchAllStudents = async () => {
+  const reloadStudentCouncilPositions = async () => {
     try {
       const token = Cookies.get("token");
-      const res = await axios.get('/api/superadmin/students', {
-        headers: { Authorization: `Bearer ${token}` },
-        withCredentials: true,
+      
+      const studentCouncilPositionOrder = {
+        "President": 1,
+        "Vice President": 2,
+        "Secretary": 3,
+        "Treasurer": 4,
+        "Auditor": 5,
+        "Public Relations Officer": 6,
+        "PRO": 6,
+        "Business Manager": 7,
+        "Sergeant at Arms": 8
+      };
+
+      const typesResponse = await axios.get('/api/maintenance/election-types', {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        withCredentials: true
       });
-
-      console.log('fetchAllStudents response:', res.data);
-
-      if (res.data && res.data.students) {
-        const activeStudents = res.data.students.filter((student) => student.is_active);
-        console.log('Active students loaded:', activeStudents.length, activeStudents.slice(0, 3));
-        setAllStudents(activeStudents);
-        } else {
-          console.log('No students data in response');
+      
+      let studentCouncilTypeId = null;
+      if (typesResponse.data.success && typesResponse.data.data) {
+        const scType = typesResponse.data.data.find(type => 
+          type.name.toLowerCase() === "student council"
+        );
+        if (scType) {
+          studentCouncilTypeId = scType.id;
         }
-      } catch (error) {
-      console.error("Error fetching students:", error);
       }
-    };
+
+      if (studentCouncilTypeId) {
+        const response = await axios.get(`/api/direct/positions?electionTypeId=${studentCouncilTypeId}`, {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          withCredentials: true
+        });
+        
+        if (response.data.success && response.data.data && response.data.data.length > 0) {
+          const scPositions = response.data.data;
+          const positionNames = scPositions.map(pos => pos.name);
+          positionNames.sort((a, b) => (studentCouncilPositionOrder[a] || 999) - (studentCouncilPositionOrder[b] || 999));
+          setStudentCouncilPositions(positionNames);
+          return true;
+        }
+      }
+
+      const response = await axios.get('/api/direct/positions', {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        withCredentials: true
+      });
+      
+      if (response.data.success && response.data.data) {
+        const allPositions = response.data.data;
+        
+     
+        const scPositions = allPositions.filter(pos => 
+          ["president", "vice president", "secretary", "treasurer", "auditor", "vp", "pro", "public relations officer", "business manager", "sergeant at arms"].some(
+            term => pos.name.toLowerCase().includes(term)
+          )
+        );
+        
+        if (scPositions.length > 0) {
+          const positionNames = scPositions.map(pos => pos.name);
+          positionNames.sort((a, b) => (studentCouncilPositionOrder[a] || 999) - (studentCouncilPositionOrder[b] || 999));
+          setStudentCouncilPositions(positionNames);
+          return true;
+        }
+      }
+
+      const allPositionsData = JSON.parse(localStorage.getItem('electionPositions') || '{}');
+      let foundPositions = false;
+      
+      // Try to find the Student Council type ID in localStorage
+      const electionTypes = JSON.parse(localStorage.getItem('election_types') || '[]');
+      const scType = electionTypes.find(type => 
+        type.name && type.name.toLowerCase() === "student council"
+      );
+      
+      // If we found the SC type, check for its positions directly
+      if (scType && scType.id && allPositionsData[scType.id]) {
+        const scPositions = allPositionsData[scType.id];
+        const positionNames = scPositions.map(pos => pos.name);
+        positionNames.sort((a, b) => (studentCouncilPositionOrder[a] || 999) - (studentCouncilPositionOrder[b] || 999));
+        setStudentCouncilPositions(positionNames);
+        return true;
+      }
+      
+      // Otherwise search all positions
+      Object.values(allPositionsData).forEach(positionsArray => {
+        if (!foundPositions && Array.isArray(positionsArray) && positionsArray.length > 0) {
+          // Filter positions that match common Student Council position names
+          const foundSCPositions = positionsArray.filter(pos => 
+            ["president", "vice president", "secretary", "treasurer", "auditor", "vp", "pro", "public relations officer", "business manager", "sergeant at arms"].some(
+              term => pos.name && pos.name.toLowerCase().includes(term)
+            )
+          );
+          
+          if (foundSCPositions.length > 0) {
+            const positionNames = foundSCPositions.map(pos => pos.name);
+            positionNames.sort((a, b) => (studentCouncilPositionOrder[a] || 999) - (studentCouncilPositionOrder[b] || 999));
+            setStudentCouncilPositions(positionNames);
+            foundPositions = true;
+          }
+        }
+      });
+      
+      return foundPositions;
+    } catch (error) {
+      console.error("Error reloading Student Council positions:", error);
+      return false;
+    }
+  };
 
   const validateField = (field, value) => {
     if (!value.trim()) return `${field} is required`;
@@ -1024,44 +1096,9 @@ export default function BallotPage() {
     setBallot(prev => ({ ...prev, positions: updatedPositions }));
   };
 
-  const handleCandidateTypeChange = (posId, candId, candidateType) => {
-    try {
-      setCandidateTypes(prev => {
-        const currentTypes = prev || {};
-        return {
-          ...currentTypes,
-          [candId]: candidateType
-        };
-      });
-    } catch (error) {
-      console.warn('Error updating candidate type:', error);
-    }
-
-    // Clear student-specific fields when switching to group
-    if (candidateType === 'group') {
-      const updatedPositions = ballot.positions.map(pos => ({
-        ...pos,
-        candidates: pos.candidates.map(cand =>
-          cand.id === candId
-            ? {
-                ...cand,
-                student_number: '',
-                course: '',
-                student_id: null,
-                last_name: '' // Clear last name for group candidates
-              }
-            : cand
-        )
-      }));
-      setBallot(prev => ({ ...prev, positions: updatedPositions }));
-    }
-  };
-
   const fetchNameSuggestions = (searchTerm, type, posId, candId) => {
-    console.log('fetchNameSuggestions called with:', { searchTerm, type, posId, candId, allStudentsLength: allStudents.length });
-    
     if (!searchTerm || searchTerm.length < 2) {
-      if (type === 'first_name') {
+      if (type === 'firstName') {
         setFirstNameSuggestions([]);
         setShowFirstNameSuggestions(false);
       } else {
@@ -1073,16 +1110,14 @@ export default function BallotPage() {
     
     try {
       const matchingStudents = allStudents.filter(student => {
-        if (type === 'first_name') {
-          return student.first_name && student.first_name.toLowerCase().includes(searchTerm.toLowerCase());
+        if (type === 'firstName') {
+          return student.first_name.toLowerCase().includes(searchTerm.toLowerCase());
         } else {
-          return student.last_name && student.last_name.toLowerCase().includes(searchTerm.toLowerCase());
+          return student.last_name.toLowerCase().includes(searchTerm.toLowerCase());
         }
       }).slice(0, 10);
 
-      console.log('Name matching students found:', matchingStudents.length, matchingStudents);
-
-      if (type === 'first_name') {
+      if (type === 'firstName') {
         setFirstNameSuggestions(matchingStudents);
         setShowFirstNameSuggestions(matchingStudents.length > 0);
       } else {
@@ -1091,7 +1126,7 @@ export default function BallotPage() {
       }
     } catch (error) {
       console.error("Error filtering name suggestions:", error);
-      if (type === 'first_name') {
+      if (type === 'firstName') {
         setFirstNameSuggestions([]);
         setShowFirstNameSuggestions(false);
       } else {
@@ -1102,21 +1137,16 @@ export default function BallotPage() {
   };
 
   const fetchStudentNumberSuggestions = (searchTerm, posId, candId) => {
-    console.log('fetchStudentNumberSuggestions called with:', { searchTerm, posId, candId, allStudentsLength: allStudents.length });
-    
     if (!searchTerm || searchTerm.length < 2) {
       setStudentNumberSuggestions([]);
       setShowStudentNumberSuggestions(false);
       return;
     }
-    
     try {
       const matchingStudents = allStudents.filter(student =>
-        student.student_number && student.student_number.toLowerCase().includes(searchTerm.toLowerCase())
+        student.student_number.toLowerCase().includes(searchTerm.toLowerCase())
       ).slice(0, 10);
 
-      console.log('Matching students found:', matchingStudents.length, matchingStudents);
-      
       setStudentNumberSuggestions(matchingStudents);
       setShowStudentNumberSuggestions(matchingStudents.length > 0);
     } catch (error) {
@@ -1137,12 +1167,12 @@ export default function BallotPage() {
     );
 
     if (isDuplicate) {
-        setErrors(prev => ({
-          ...prev,
+      setErrors(prev => ({
+        ...prev,
         [`candidate-${candId}-duplicate`]: 'This candidate is already a candidate'
-        }));
-        return;
-      }
+      }));
+      return;
+    }
 
     const updatedPositions = ballot.positions.map(pos => ({
       ...pos,
@@ -1152,15 +1182,14 @@ export default function BallotPage() {
           first_name: student.first_name,
           last_name: student.last_name,
           student_number: student.student_number,
-          course: student.course_name,
-          student_id: student.id
+          course: student.course_name
         } : cand
       )
     }));
     
     setBallot(prev => ({ ...prev, positions: updatedPositions }));
     
-    if (type === 'first_name') {
+    if (type === 'firstName') {
       setShowFirstNameSuggestions(false);
     } else {
       setShowLastNameSuggestions(false);
@@ -1224,6 +1253,36 @@ export default function BallotPage() {
       delete newErrors[`candidate-${candId}-duplicate`];
       return newErrors;
     });
+  };
+
+  const handleCandidateTypeChange = (posId, candId, candidateType) => {
+    try {
+      setCandidateTypes(prev => {
+        const currentTypes = prev || {};
+        return {
+          ...currentTypes,
+          [candId]: candidateType
+        };
+      });
+    } catch (error) {
+      console.warn('Error updating candidate type:', error);
+    }
+
+    // Clear student-specific fields when switching to group
+    if (candidateType === 'group') {
+      const updatedPositions = ballot.positions.map(pos => ({
+        ...pos,
+        candidates: pos.candidates.map(cand => 
+          cand.id === candId ? { 
+            ...cand, 
+            student_number: '', 
+            course: '', 
+            student_id: null 
+          } : cand
+        )
+      }));
+      setBallot(prev => ({ ...prev, positions: updatedPositions }));
+    }
   };
 
   const handleCandidateChange = async (posId, candId, field, value) => {
@@ -1364,9 +1423,7 @@ export default function BallotPage() {
       // Compress image if it's larger than 2MB
       let processedFile = file;
       if (file.size > 2 * 1024 * 1024) { // 2MB
-        console.log('Compressing image...', file.size, 'bytes');
         processedFile = await compressImage(file, 1000, 0.8);
-        console.log('Compressed image size:', processedFile.size, 'bytes');
       }
 
       // Create preview
@@ -1379,14 +1436,7 @@ export default function BallotPage() {
       // Prepare form data
       const formData = new FormData();
       formData.append('image', processedFile);
-      
-      console.log('FormData prepared:', {
-        fileSize: processedFile.size,
-        fileName: processedFile.name || 'compressed-image',
-        fileType: processedFile.type
-      });
-      
-      // Upload with timeout
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
@@ -1400,7 +1450,6 @@ export default function BallotPage() {
         
         clearTimeout(timeoutId);
         
-        console.log('Upload response:', imageResponse);
         
         if (!imageResponse.success || !imageResponse.filePath) {
           throw new Error(imageResponse.message || 'Failed to upload image');
@@ -1622,10 +1671,9 @@ export default function BallotPage() {
         const position = ballot.positions.find(pos => 
           pos.candidates.some(c => c.id === deleteConfirm.id)
         );
-        
-        // Check if we're trying to delete a candidate and that would leave fewer than 2
+        2
         if (position && position.candidates.length <= 2) {
-          alert("At least two candidates are required for each position");
+          alert("Each position must have at least 2 candidates");
           return;
         }
         
@@ -1649,76 +1697,6 @@ export default function BallotPage() {
     }
   };
 
-  const addCandidate = async (posId) => {
-    try {
-      setIsLoading(true);
-      
-      // Get all existing candidates across all positions
-      const allExistingCandidates = ballot.positions.flatMap(pos => pos.candidates);
-      
-      // Check if there are any candidates with empty names or student numbers
-      const hasEmptyCandidates = allExistingCandidates.some(cand => {
-        const candidateType = getCandidateType(cand.id);
-        
-        // For group candidates, only check first_name
-        if (isMrMsSTIElection === true && candidateType === 'group') {
-          return !cand.first_name.trim();
-        }
-        
-        // For individual candidates, check both names or student number
-        return (!cand.first_name.trim() || !cand.last_name.trim()) && !cand.student_number.trim();
-      });
-      
-      if (hasEmptyCandidates) {
-        setApiError("Please fill in all candidate names or student numbers before adding a new one.");
-        setIsLoading(false);
-        return;
-      }
-
-      // Check if there are any validation errors
-      if (!validateAllCandidates()) {
-        setApiError("Please fix existing candidate validation errors before adding a new one.");
-        setIsLoading(false);
-        return;
-      }
-      
-      const newCandidate = {
-        id: Math.floor(Math.random() * 1000000).toString(),
-        first_name: "",
-        last_name: "",
-        student_number: "", // Initialize student_number
-        course: "",        // Initialize course
-        party: (isMrMsSTIElection === true) ? "" : "",
-        slogan: (isMrMsSTIElection === true) ? "" : "",
-        platform: (isMrMsSTIElection === true) ? "" : "",
-        image_url: null,
-        student_id: null,    // Initialize student_id
-        _isNew: true
-      };
-
-      // Set default candidate type for Mr/Ms STI elections
-      if (isMrMsSTIElection === true) {
-        setCandidateTypes(prev => ({
-          ...prev,
-          [newCandidate.id]: 'individual'
-        }));
-      }
-  
-      setBallot(prev => ({
-        ...prev,
-        positions: prev.positions.map(pos => 
-          pos.id === posId 
-            ? { ...pos, candidates: [...pos.candidates, newCandidate] } 
-            : pos
-        )
-      }));
-    } catch (error) {
-      setApiError(error.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const validateAllCandidates = () => {
     let hasInvalidCandidates = false;
     const newErrors = { ...errors }; // Start with existing errors
@@ -1736,27 +1714,26 @@ export default function BallotPage() {
       if (isMrMsSTIElection === true && candidateType === 'group') {
         // Group validation - only require name
         if (!cand.first_name.trim()) {
-          candidateErrors[`candidate-fn-${cand.id}`] = "Group/Band name is required";
+          candidateErrors[`candidate-fn-${cand.id}`] = "Group name is required";
           isCurrentCandidateInvalid = true;
         }
-
+        
         // Check for duplicate group names
         if (cand.first_name.trim()) {
           const groupName = cand.first_name.toLowerCase();
-          if (seenFullNames.has(groupName) ||
-              allCandidates.some(otherCand => 
-                otherCand.id !== cand.id && 
-                getCandidateType(otherCand.id) === 'group' &&
-                otherCand.first_name.toLowerCase() === groupName
-              )) {
-            candidateErrors[`candidate-${cand.id}-duplicate`] = 'This group/band name is already used.';
+          const duplicateCount = allCandidates.filter(otherCand => 
+            otherCand.id !== cand.id && 
+            getCandidateType(otherCand.id) === 'group' &&
+            otherCand.first_name.toLowerCase() === groupName
+          ).length;
+
+          if (duplicateCount > 0) {
+            candidateErrors[`candidate-${cand.id}-duplicate`] = 'This group name is already used.';
             isCurrentCandidateInvalid = true;
           }
-          seenFullNames.add(groupName);
         }
       } else {
-        // Individual candidate validation (existing logic)
-        // Prioritize student number for validation and uniqueness
+        // Individual student validation - prioritize student number for validation and uniqueness
         if (cand.student_number) {
         const studentMatch = allStudents.find(student =>
           student.student_number === cand.student_number
@@ -1789,39 +1766,60 @@ export default function BallotPage() {
           candidateErrors[`candidate-fn-${cand.id}`] = "First name is required";
           isCurrentCandidateInvalid = true;
         }
-        if (!cand.last_name.trim()) {
+        
+        // Only require last name for individual students, not for groups
+        if (candidateType !== 'group' && !cand.last_name.trim()) {
           candidateErrors[`candidate-ln-${cand.id}`] = "Last name is required";
           isCurrentCandidateInvalid = true;
         }
 
-        if (cand.first_name.trim() && cand.last_name.trim()) {
-          const fullName = `${cand.first_name.toLowerCase()} ${cand.last_name.toLowerCase()}`;
-          
-          // Check for name-based duplicates (only if no student_number is set for either)
-          if (seenFullNames.has(fullName) ||
-              allCandidates.some(otherCand =>
-                otherCand.id !== cand.id &&
-                !otherCand.student_number && // Ensure other candidate also has no student_number
-                getCandidateType(otherCand.id) !== 'group' && // Don't compare with group candidates
-                otherCand.first_name.toLowerCase() === cand.first_name.toLowerCase() &&
-                otherCand.last_name.toLowerCase() === cand.last_name.toLowerCase()
-              )) {
-            candidateErrors[`candidate-${cand.id}-duplicate`] = 'This candidate (by name) is already a candidate.';
-            isCurrentCandidateInvalid = true;
-          }
-          seenFullNames.add(fullName);
-
-          const studentExists = allStudents.some(student =>
-            student.first_name.toLowerCase() === cand.first_name.toLowerCase() &&
-            student.last_name.toLowerCase() === cand.last_name.toLowerCase()
-          );
-
-          if (!studentExists) {
-            candidateErrors[`candidate-${cand.id}-validation`] = 'Student not found in registered students list.';
-            isCurrentCandidateInvalid = true;
+        if (cand.first_name.trim()) {
+          // For group candidates, only check first name for duplicates
+          if (candidateType === 'group') {
+            const groupName = cand.first_name.toLowerCase();
+            if (seenFullNames.has(groupName) ||
+                allCandidates.some(otherCand =>
+                  otherCand.id !== cand.id &&
+                  getCandidateType(otherCand.id) === 'group' &&
+                  otherCand.first_name.toLowerCase() === groupName
+                )) {
+              candidateErrors[`candidate-${cand.id}-duplicate`] = 'This group name is already used.';
+              isCurrentCandidateInvalid = true;
+            }
+            seenFullNames.add(groupName);
+          } else if (cand.last_name.trim()) {
+            // For individual students, check both first and last name
+            const fullName = `${cand.first_name.toLowerCase()} ${cand.last_name.toLowerCase()}`;
+            
+            // Check for name-based duplicates (only if no student_number is set for either)
+            if (seenFullNames.has(fullName) ||
+                allCandidates.some(otherCand =>
+                  otherCand.id !== cand.id &&
+                  !otherCand.student_number && // Ensure other candidate also has no student_number
+                  getCandidateType(otherCand.id) !== 'group' && // Don't compare with group candidates
+                  otherCand.first_name.toLowerCase() === cand.first_name.toLowerCase() &&
+                  otherCand.last_name.toLowerCase() === cand.last_name.toLowerCase()
+                )) {
+              candidateErrors[`candidate-${cand.id}-duplicate`] = 'This candidate (by name) is already a candidate.';
+              isCurrentCandidateInvalid = true;
+            }
+            seenFullNames.add(fullName);
           }
         }
-      }
+
+          // Only check student existence for individual students, not for groups
+          if (candidateType !== 'group') {
+            const studentExists = allStudents.some(student =>
+              student.first_name.toLowerCase() === cand.first_name.toLowerCase() &&
+              student.last_name.toLowerCase() === cand.last_name.toLowerCase()
+            );
+
+            if (!studentExists) {
+              candidateErrors[`candidate-${cand.id}-validation`] = 'Student not found in registered students list.';
+              isCurrentCandidateInvalid = true;
+            }
+          }
+        }
       }
 
       // Update errors for the current candidate
@@ -1842,12 +1840,92 @@ export default function BallotPage() {
     return !hasInvalidCandidates;
   };
 
+  const addCandidate = async (posId) => {
+    try {
+      setIsLoading(true);
+      
+      // Get all existing candidates across all positions
+      const allExistingCandidates = ballot.positions.flatMap(pos => pos.candidates);
+      
+      // Check if there are any candidates with empty names or student numbers
+      const hasEmptyCandidates = allExistingCandidates.some(
+        cand => {
+          const candidateType = getCandidateType(cand.id) || 'individual';
+          
+          // For group candidates, only check if first_name (group name) is empty
+          if (isMrMsSTIElection === true && candidateType === 'group') {
+            return !cand.first_name.trim();
+          }
+          
+          // For individual students, check both names or student number
+          return (!cand.first_name.trim() || !cand.last_name.trim()) && !cand.student_number.trim();
+        }
+      );
+      
+      if (hasEmptyCandidates) {
+        const hasGroupCandidates = allExistingCandidates.some(cand => 
+          isMrMsSTIElection === true && (getCandidateType(cand.id) || 'individual') === 'group'
+        );
+        
+        if (hasGroupCandidates) {
+          setApiError("Please fill in all candidate names (for groups) or student information (for individuals) before adding a new one.");
+        } else {
+          setApiError("Please fill in all candidate names or student numbers before adding a new one.");
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      // Check if there are any validation errors
+      if (!validateAllCandidates()) {
+        setApiError("Please fix existing candidate validation errors before adding a new one.");
+        setIsLoading(false);
+        return;
+      }
+      
+      const newCandidate = {
+        id: Math.floor(Math.random() * 1000000).toString(),
+        first_name: "",
+        last_name: "",
+        student_number: "", // Initialize student_number
+        course: "",        // Initialize course
+        party: (isMrMsSTIElection === true) ? "" : "",
+        slogan: (isMrMsSTIElection === true) ? "" : "",
+        platform: (isMrMsSTIElection === true) ? "" : "",
+        image_url: null,
+        student_id: null,    // Initialize student_id
+        _isNew: true
+      };
+
+      // Set default candidate type for Mr/Ms STI elections
+      if (isMrMsSTIElection === true) {
+        setCandidateTypes(prev => ({
+          ...prev,
+          [newCandidate.id]: 'individual' // Default to individual student
+        }));
+      }
+  
+      setBallot(prev => ({
+        ...prev,
+        positions: prev.positions.map(pos => 
+          pos.id === posId 
+            ? { ...pos, candidates: [...pos.candidates, newCandidate] } 
+            : pos
+        )
+      }));
+    } catch (error) {
+      setApiError(error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const saveCandidate = async (positionId, candidate) => {
     try {
       setIsLoading(true);
       setApiError(null);
   
-      const candidateType = getCandidateType(candidate.id);
+      const candidateType = getCandidateType(candidate.id) || 'individual';
       
       // Validate based on candidate type
       if (isMrMsSTIElection === true && candidateType === 'group') {
@@ -1882,30 +1960,26 @@ export default function BallotPage() {
       
       if (candidate._pendingImage) {
         formData.append('image', candidate._pendingImage);
-        console.log('Adding image to formData:', candidate._pendingImage);
       }
   
       let response;
       if (candidate._isNew) {
-        console.log('Creating new candidate with image');
         response = await fetchWithAuth(
-          `/api/ballots/positions/${positionId}/candidates`,
+          `/positions/${positionId}/candidates`,
           {
             method: 'POST',
             body: formData
           }
         );
       } else if (candidate._pendingImage) {
-        console.log('Updating candidate with new image');
         response = await fetchWithAuth(
-          `/api/ballots/candidates/${candidate.id}`,
+          `/candidates/${candidate.id}`,
           {
             method: 'PUT',
             body: formData
           }
         );
       } else {
-        console.log('Updating candidate without image');
         const updateData = {
           firstName: candidate.first_name,
           lastName: candidate.last_name
@@ -1919,7 +1993,7 @@ export default function BallotPage() {
         }
         
         response = await fetchWithAuth(
-          `/api/ballots/candidates/${candidate.id}`,
+          `/candidates/${candidate.id}`,
           {
             method: 'PUT',
             body: JSON.stringify(updateData)
@@ -1927,7 +2001,6 @@ export default function BallotPage() {
         );
       }
   
-      console.log('Response from server:', response);
   
       setBallot(prev => ({
         ...prev,
@@ -2024,15 +2097,13 @@ export default function BallotPage() {
       }
       
       pos.candidates.forEach((cand) => {
-        const candidateType = getCandidateType(cand.id);
+        const candidateType = getCandidateType(cand.id) || 'individual';
         
-        // For group candidates, only require first name (group name)
         if (isMrMsSTIElection === true && candidateType === 'group') {
           if (!cand.first_name.trim()) {
-            newErrors[`candidate-fn-${cand.id}`] = "Group/Band name is required";
+            newErrors[`candidate-fn-${cand.id}`] = "Group name is required";
           }
         } else {
-          // For individual candidates, require both names
           if (!cand.first_name.trim()) {
             newErrors[`candidate-fn-${cand.id}`] = "First name is required";
           }
@@ -2144,10 +2215,11 @@ export default function BallotPage() {
         setIsLoading(false);
         setPreviewBallot(false);
         
-        toast.success('Ballot saved successfully!');
+      
         setTimeout(() => {
-          router.push('/admin/election');
-        }, 1000);
+          
+          document.location.href = '/superadmin';
+        }, 100);
         
       } catch (apiError) {
        
@@ -2158,10 +2230,10 @@ export default function BallotPage() {
         
         setIsLoading(false);
         
-        toast.success('Ballot saved successfully!');
+       
         setTimeout(() => {
-          router.push('/admin/election');
-        }, 1000);
+          document.location.href = '/superadmin';
+        }, 100);
       }
     } catch (error) {
       
@@ -2169,10 +2241,9 @@ export default function BallotPage() {
         setApiError(error.message || "An unexpected error occurred");
         window.scrollTo(0, 0);
       } else {
-        toast.success('Ballot saved successfully!');
         setTimeout(() => {
-          router.push('/admin/election');
-        }, 1000);
+          document.location.href = '/superadmin';
+        }, 100);
       }
       setIsLoading(false);
     }
@@ -2208,6 +2279,27 @@ export default function BallotPage() {
     setShowPartylistModal(false);
   };
 
+  useEffect(() => {
+    fetchAllStudents();
+  }, []);
+
+  const fetchAllStudents = async () => {
+    try {
+      const token = Cookies.get("token");
+      const res = await axios.get('/api/superadmin/students', {
+        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
+      });
+
+      if (res.data && res.data.students) {
+        const activeStudents = res.data.students.filter((student) => student.is_active);
+        setAllStudents(activeStudents);
+      }
+    } catch (error) {
+      console.error("Error fetching students:", error);
+    }
+  };
+
   const validateStudentExists = (firstName, lastName) => {
     const studentExists = allStudents.some(student => 
       student.first_name.toLowerCase() === firstName.toLowerCase() && 
@@ -2230,81 +2322,6 @@ export default function BallotPage() {
     return true;
   };
 
-  const reloadStudentCouncilPositions = async () => {
-    try {
-      const token = Cookies.get("token");
-
-      const typesResponse = await axios.get('/api/maintenance/election-types', {
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        withCredentials: true
-      });
-      
-      let studentCouncilTypeId = null;
-      if (typesResponse.data.success && typesResponse.data.data) {
-        const scType = typesResponse.data.data.find(type => 
-          type.name.toLowerCase() === "student council"
-        );
-        if (scType) {
-          studentCouncilTypeId = scType.id;
-        }
-      }
-
-      if (studentCouncilTypeId) {
-        const response = await axios.get(`/api/direct/positions?electionTypeId=${studentCouncilTypeId}`, {
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          withCredentials: true
-        });
-        
-        if (response.data.success && response.data.data && response.data.data.length > 0) {
-          const scPositions = response.data.data;
-          const positionNames = scPositions.map(pos => pos.name);
-          positionNames.sort((a, b) => (studentCouncilPositionOrder[a] || 999) - (studentCouncilPositionOrder[b] || 999));
-          setStudentCouncilPositions(positionNames);
-          toast.success('Student Council positions reloaded successfully!');
-          return;
-        }
-      }
-
-      // Fallback to all positions
-      const response = await axios.get('/api/direct/positions', {
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        withCredentials: true
-      });
-      
-      if (response.data.success && response.data.data) {
-        const allPositions = response.data.data;
-        const scPositions = allPositions.filter(pos => 
-          ["president", "vice president", "secretary", "treasurer", "auditor", "vp", "pro", "public relations officer", "business manager", "sergeant at arms"].some(
-            term => pos.name.toLowerCase().includes(term)
-          )
-        );
-        
-        if (scPositions.length > 0) {
-          const positionNames = scPositions.map(pos => pos.name);
-          positionNames.sort((a, b) => (studentCouncilPositionOrder[a] || 999) - (studentCouncilPositionOrder[b] || 999));
-          setStudentCouncilPositions(positionNames);
-          toast.success('Student Council positions reloaded successfully!');
-        }
-      }
-    } catch (error) {
-      console.error("Error reloading Student Council positions:", error);
-      toast.error('Failed to reload positions. Using cached data.');
-    }
-  };
-
-  const handleBack = () => {
-    router.back();
-  };
-
   if (!election) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -2312,6 +2329,19 @@ export default function BallotPage() {
       </div>
     );
   }
+
+  // Error boundary for rendering
+  try {
+    // Ensure all critical state is properly initialized
+    if (!ballot || !ballot.positions) {
+      return (
+        <div className="max-w-4xl mx-auto p-4">
+          <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
+            <p>Loading ballot data...</p>
+          </div>
+        </div>
+      );
+    }
 
   return (
     <div className="max-w-4xl mx-auto p-4">
@@ -2324,19 +2354,23 @@ export default function BallotPage() {
           isMrMsSTIElection={isMrMsSTIElection}
         />
       )}
-      
+
       {showBackConfirmation && (
         <BackConfirmationModal
-          onConfirm={handleBack}
+          onConfirm={() => router.back()}
           onCancel={() => setShowBackConfirmation(false)}
         />
       )}
-
+      
       {showPartylistModal && (
-        <PartylistSelectionModal
-          partylists={partylists}
-          onSelect={handlePartylistSelect}
-          onClose={() => setShowPartylistModal(false)}
+        <PartylistSelectionModal 
+          partylists={partylists} 
+          onSelect={handlePartylistSelect} 
+          onCancel={() => setShowPartylistModal(false)}
+          currentPosition={ballot.positions.find(pos => pos.id === currentEditingCandidate.posId)?.name}
+          currentStudent={ballot.positions
+            .find(pos => pos.id === currentEditingCandidate.posId)
+            ?.candidates.find(cand => cand.id === currentEditingCandidate.candId)}
         />
       )}
 
@@ -2355,41 +2389,53 @@ export default function BallotPage() {
       </div>
 
       {apiError && (
-        <div className={`border px-4 py-3 rounded mb-4 ${
-          typeof apiError === 'object' && apiError.type === 'success' 
-            ? 'bg-green-100 border-green-400 text-green-700' 
-            : 'bg-red-100 border-red-400 text-red-700'
-        }`}>
-          {typeof apiError === 'object' ? apiError.message : apiError}
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {apiError}
         </div>
       )}
 
-
-      {/* Election Type Specific Controls */}
-      {(isStudentCouncilElection || isMrMsSTIElection) && (
-        <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-          <h3 className="text-lg font-semibold text-blue-800 mb-3">
-            {isStudentCouncilElection ? 'Student Council Positions' : 'Mr/Ms STI Positions'}
-          </h3>
-          {isStudentCouncilElection && (
-            <button
-              onClick={reloadStudentCouncilPositions}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
-            >
-              Reload Positions from Maintenance
-            </button>
-          )}
+      {errors.duplicatePositions && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {errors.duplicatePositions}
         </div>
       )}
+
+  
+      <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <p className="text-black mb-4"> {election.description || "No description provided"}</p>
+        
+        
+      </div>
 
       {ballot.positions.map((position) => (
         <div key={position.id} className="bg-white rounded-lg shadow p-6 mb-6">
           <div className="flex justify-between items-center mb-4">
             <div className="flex-1 mr-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Position Name 
+              <label className="block text-sm font-medium text-black mb-1">
+                Position Name
               </label>
-              {isMrMsSTIElection ? (
+              
+              {isStudentCouncilElection ? (
+                <select
+                  value={position.name}
+                  onChange={(e) => handlePositionChange(position.id, "name", e.target.value)}
+                  className={`w-full p-2 border rounded text-black ${
+                    errors[`position-${position.id}`] ? "border-red-500" : "border-gray-300"
+                  }`}
+                >
+                  {studentCouncilPositions
+                    .filter(posName => 
+                      position.name === posName || 
+                      !ballot.positions.some(p => p.id !== position.id && p.name === posName)
+                    )
+                    .map(posName => (
+                      <option key={posName} value={posName}>
+                        {posName}
+                      </option>
+                    ))
+                  }
+                </select>
+              ) : (isMrMsSTIElection === true) ? (
                 <MrMsSTIPositionSelector
                   position={position}
                   ballot={ballot}
@@ -2406,6 +2452,7 @@ export default function BallotPage() {
                   }`}
                 />
               )}
+              
               {errors[`position-${position.id}`] && (
                 <p className="text-red-500 text-sm mt-1">{errors[`position-${position.id}`]}</p>
               )}
@@ -2439,38 +2486,40 @@ export default function BallotPage() {
               <div key={candidate.id} className="border rounded-lg p-4">
                 <div className="flex">
                   <div className="mr-4 relative">
-                    <label className="block w-32 h-32 rounded-lg border-2 border-dashed border-gray-300 overflow-hidden cursor-pointer hover:border-blue-500 transition-colors relative group">
-                      {(() => {
-                        // Get appropriate image source
-                        const imageSource = getCandidateImageSource(candidate, candidate.id, imagePreviews);
-                        
-                        if (imageSource) {
-                          return (
-                            <div className="w-full h-full relative">
-                              <img 
-                                src={imageSource}
-                                alt={`${candidate.first_name} ${candidate.last_name}`}
-                                className="absolute inset-0 w-full h-full object-cover"
-                                onError={(e) => {
-                                  console.error('Error loading candidate image');
-                                  e.target.src = '/default-candidate.png';
-                                }}
-                              />
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <Upload className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                              </div>
-                            </div>
-                          );
-                        } else {
-                          // No image, show upload placeholder
-                          return (
-                            <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
-                              <ImageIcon className="w-6 h-6 mb-2" />
-                              <span className="text-xs">Upload Photo</span>
-                            </div>
-                          );
-                        }
-                      })()}
+                    <label className="block w-32 h-32 rounded-lg border-2 border-dashed border-gray-300 overflow-hidden cursor-pointer hover:border-blue-500 transition-colors relative group" title="Click to upload image (max 5MB)">
+                      {imagePreviews[candidate.id] ? (
+                        <div className="w-full h-full relative">
+                          <img 
+                            src={imagePreviews[candidate.id]} 
+                            alt="Candidate preview" 
+                            className="absolute inset-0 w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <Upload className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                        </div>
+                      ) : candidate.image_url ? (
+                        <div className="w-full h-full relative">
+                          <img 
+                            src={`${BASE_URL}${candidate.image_url}`}
+                            alt={`${candidate.first_name} ${candidate.last_name}`}
+                            className="absolute inset-0 w-full h-full object-cover"
+                            onError={(e) => {
+                              console.error(`Error loading image: ${candidate.image_url}`);
+                              e.target.src = '/default-candidate.png';
+                            }}
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <Upload className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                          <ImageIcon className="w-6 h-6 mb-2" />
+                          <span className="text-xs">Upload Photo</span>
+                          <span className="text-xs text-gray-300">Max 5MB</span>
+                        </div>
+                      )}
                       <input
                         type="file"
                         accept="image/jpeg, image/png, image/webp"
@@ -2478,6 +2527,8 @@ export default function BallotPage() {
                         onChange={(e) => {
                           if (e.target.files && e.target.files[0]) {
                             const file = e.target.files[0];
+                            // Show file size info
+                            const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
                             handleImageUpload(position.id, candidate.id, file);
                           }
                         }}
@@ -2490,8 +2541,7 @@ export default function BallotPage() {
                   </div>
 
                   <div className="flex-1">
-
-                    {/* Candidate Type Selection - Only for Mr/Ms STI elections */}
+                    {/* Candidate Type Selector for Mr/Ms STI elections */}
                     {isMrMsSTIElection === true && (
                       <div className="mb-4">
                         <label className="block text-sm font-medium text-black mb-2">
@@ -2541,8 +2591,10 @@ export default function BallotPage() {
                     {/* Conditional form fields based on candidate type */}
                     {(() => {
                       try {
-                        const isGroup = isMrMsSTIElection === true && 
-                          candidateTypes && candidateTypes[candidate.id] === 'group';
+                        const isGroup = isMrMsSTIElection === true && (
+                          (candidateTypes && candidateTypes[candidate.id] === 'group') || 
+                          (candidate.first_name && !candidate.last_name)
+                        );
                         return isGroup;
                       } catch (error) {
                         console.warn('Error checking candidate type:', error);
@@ -2568,42 +2620,40 @@ export default function BallotPage() {
                         )}
                       </div>
                     ) : (
-                      /* Individual Student form - full fields */
+                      /* Individual student form - full fields */
                       <>
-                    {/* Student Number and Course - Only for individual students */}
-                    <div className="grid grid-cols-2 gap-3 mb-3">
-                      <div>
-                        <label className="block text-sm font-medium text-black mb-1">
-                          Student Number
-                        </label>
-                        <div className="relative">
+                        <div className="grid grid-cols-2 gap-3 mb-3">
+                        <div>
+                          <label className="block text-sm font-medium text-black mb-1">
+                            Student Number
+                          </label>
+                          <div className="relative">
                           <input
                             type="text"
                             value={candidate.student_number || ''}
-                            onChange={(e) => {
-                              handleCandidateChange(position.id, candidate.id, "student_number", e.target.value);
-                              fetchStudentNumberSuggestions(e.target.value, position.id, candidate.id);
-                            }}
-                            onFocus={() => {
-                              setActiveInput(`sn-${candidate.id}`);
-                              if (candidate.student_number) {
-                                fetchStudentNumberSuggestions(candidate.student_number, position.id, candidate.id);
+                            onChange={(e) => handleCandidateChange(position.id, candidate.id, "student_number", e.target.value)}
+                            onFocus={() => setActiveInput({ posId: position.id, candId: candidate.id, field: 'student_number' })}
+                            onBlur={() => setTimeout(() => {
+                              if (activeInput.posId === position.id && activeInput.candId === candidate.id && activeInput.field === 'student_number') {
+                                setShowStudentNumberSuggestions(false);
                               }
-                            }}
-                            className={`w-full p-2 border rounded text-black ${
-                              errors[`candidate-sn-${candidate.id}`] ? "border-red-500" : "border-gray-300"
-                            }`}
+                            }, 200)}
+                            className={`w-full p-2 border rounded text-black ${errors[`candidate-sn-${candidate.id}`] ? "border-red-500" : "border-gray-300"}`}
                             placeholder="Student number"
                           />
-                          {showStudentNumberSuggestions && activeInput === `sn-${candidate.id}` && studentNumberSuggestions.length > 0 && (
-                            <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
-                              {studentNumberSuggestions.map((suggestion, index) => (
-                                <div
-                                  key={index}
-                                  className="p-2 hover:bg-gray-100 cursor-pointer text-sm text-black"
-                                  onClick={() => selectStudentNumberSuggestion(suggestion, position.id, candidate.id)}
+                          {showStudentNumberSuggestions && studentNumberSuggestions.length > 0 && 
+                           activeInput.posId === position.id && 
+                           activeInput.candId === candidate.id && 
+                           activeInput.field === 'student_number' && (
+                            <div className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md border max-h-60 overflow-y-auto">
+                              {studentNumberSuggestions.map(student => (
+                                <div 
+                                  key={student.id} 
+                                  className="p-2 hover:bg-gray-100 cursor-pointer border-b"
+                                  onClick={() => selectStudentNumberSuggestion(student, position.id, candidate.id)}
                                 >
-                                  {suggestion.student_number} - {suggestion.first_name} {suggestion.last_name}
+                                  <div className="font-medium text-black">{student.student_number}</div>
+                                  <div className="text-sm text-gray-600">{student.first_name} {student.last_name} - {student.course_name}</div>
                                 </div>
                               ))}
                             </div>
@@ -2614,23 +2664,19 @@ export default function BallotPage() {
                         )}
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-black mb-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
                           Course
                         </label>
                         <input
                           type="text"
                           value={candidate.course || ''}
                           readOnly 
-                          className="w-full p-2 border border-gray-300 rounded text-black bg-blue-50"
+                          className="w-full p-2 border border-gray-300 rounded text-black bg-gray-100"
                           placeholder="Course"
                         />
-                        {errors[`candidate-course-${candidate.id}`] && (
-                          <p className="text-red-500 text-sm mt-1 text-black">{errors[`candidate-course-${candidate.id}`]}</p>
-                        )}
                       </div>
                     </div>
 
-                    {/* First Name and Last Name - Below student number */}
                     <div className="grid grid-cols-2 gap-3 mb-3">
                       <div>
                         <label className="block text-sm font-medium text-black mb-1">
@@ -2642,28 +2688,38 @@ export default function BallotPage() {
                             value={candidate.first_name}
                             onChange={(e) => {
                               handleCandidateChange(position.id, candidate.id, "first_name", e.target.value);
-                              fetchNameSuggestions(e.target.value, 'first_name', position.id, candidate.id);
+                              fetchNameSuggestions(e.target.value, 'firstName', position.id, candidate.id);
                             }}
                             onFocus={() => {
-                              setActiveInput(`fn-${candidate.id}`);
+                              setActiveInput({ posId: position.id, candId: candidate.id, field: 'first_name' });
                               if (candidate.first_name) {
-                                fetchNameSuggestions(candidate.first_name, 'first_name', position.id, candidate.id);
+                                fetchNameSuggestions(candidate.first_name, 'firstName', position.id, candidate.id);
                               }
                             }}
+                            onBlur={() => setTimeout(() => {
+                              if (activeInput.posId === position.id && activeInput.candId === candidate.id && activeInput.field === 'first_name') {
+                                setShowFirstNameSuggestions(false);
+                              }
+                            }, 200)}
                             className={`w-full p-2 border rounded text-black ${
                               errors[`candidate-fn-${candidate.id}`] ? "border-red-500" : "border-gray-300"
                             }`}
                             placeholder="First name"
+                            readOnly={!!candidate.student_number} 
                           />
-                          {showFirstNameSuggestions && activeInput === `fn-${candidate.id}` && firstNameSuggestions.length > 0 && (
-                            <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
-                              {firstNameSuggestions.map((suggestion, index) => (
-                                <div
-                                  key={index}
-                                  className="p-2 hover:bg-gray-100 cursor-pointer text-sm text-black"
-                                  onClick={() => selectNameSuggestion(suggestion, 'first_name', position.id, candidate.id)}
+                          {showFirstNameSuggestions && firstNameSuggestions.length > 0 && 
+                           activeInput.posId === position.id && 
+                           activeInput.candId === candidate.id && 
+                           activeInput.field === 'first_name' && (
+                            <div className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md border max-h-60 overflow-y-auto">
+                              {firstNameSuggestions.map(student => (
+                                <div 
+                                  key={student.id} 
+                                  className="p-2 hover:bg-gray-100 cursor-pointer border-b"
+                                  onClick={() => selectNameSuggestion(student, 'firstName', position.id, candidate.id)}
                                 >
-                                  {suggestion.first_name} {suggestion.last_name} - {suggestion.student_number}
+                                  <div className="font-medium text-black">{student.first_name} {student.last_name}</div>
+                                  <div className="text-sm text-gray-600">{student.student_number} - {student.course_name}</div>
                                 </div>
                               ))}
                             </div>
@@ -2683,28 +2739,38 @@ export default function BallotPage() {
                             value={candidate.last_name}
                             onChange={(e) => {
                               handleCandidateChange(position.id, candidate.id, "last_name", e.target.value);
-                              fetchNameSuggestions(e.target.value, 'last_name', position.id, candidate.id);
+                              fetchNameSuggestions(e.target.value, 'lastName', position.id, candidate.id);
                             }}
                             onFocus={() => {
-                              setActiveInput(`ln-${candidate.id}`);
+                              setActiveInput({ posId: position.id, candId: candidate.id, field: 'last_name' });
                               if (candidate.last_name) {
-                                fetchNameSuggestions(candidate.last_name, 'last_name', position.id, candidate.id);
+                                fetchNameSuggestions(candidate.last_name, 'lastName', position.id, candidate.id);
                               }
                             }}
+                            onBlur={() => setTimeout(() => {
+                              if (activeInput.posId === position.id && activeInput.candId === candidate.id && activeInput.field === 'last_name') {
+                                setShowLastNameSuggestions(false);
+                              }
+                            }, 200)}
                             className={`w-full p-2 border rounded text-black ${
                               errors[`candidate-ln-${candidate.id}`] ? "border-red-500" : "border-gray-300"
                             }`}
                             placeholder="Last name"
+                            readOnly={!!candidate.student_number}
                           />
-                          {showLastNameSuggestions && activeInput === `ln-${candidate.id}` && lastNameSuggestions.length > 0 && (
-                            <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
-                              {lastNameSuggestions.map((suggestion, index) => (
-                                <div
-                                  key={index}
-                                  className="p-2 hover:bg-gray-100 cursor-pointer text-sm text-black"
-                                  onClick={() => selectNameSuggestion(suggestion, 'last_name', position.id, candidate.id)}
+                          {showLastNameSuggestions && lastNameSuggestions.length > 0 && 
+                           activeInput.posId === position.id && 
+                           activeInput.candId === candidate.id && 
+                           activeInput.field === 'last_name' && (
+                            <div className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md border max-h-60 overflow-y-auto">
+                              {lastNameSuggestions.map(student => (
+                                <div 
+                                  key={student.id} 
+                                  className="p-2 hover:bg-gray-100 cursor-pointer border-b"
+                                  onClick={() => selectNameSuggestion(student, 'lastName', position.id, candidate.id)}
                                 >
-                                  {suggestion.first_name} {suggestion.last_name} - {suggestion.student_number}
+                                  <div className="font-medium text-black">{student.first_name} {student.last_name}</div>
+                                  <div className="text-sm text-gray-600">{student.student_number} - {student.course_name}</div>
                                 </div>
                               ))}
                             </div>
@@ -2715,39 +2781,35 @@ export default function BallotPage() {
                         )}
                       </div>
                     </div>
+                        </>
+                    )}
 
-                    {/* Campaign fields - Only show for non-Mr/Ms STI elections */}
-                    {!isMrMsSTIElection && (
+                    {/* Only show campaign fields for non-Mr/Ms STI elections */}
+                    {(isMrMsSTIElection !== true) && (
                       <>
                         <div className="grid grid-cols-2 gap-3 mb-3">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Party (Optional)
+                              Partylist
                             </label>
-                            <div className="flex gap-2">
-                              <input
-                                type="text"
-                                value={candidate.party}
-                                onChange={(e) => handleCandidateChange(position.id, candidate.id, "party", e.target.value)}
-                                className="flex-1 p-2 border border-gray-300 rounded text-black"
-                                placeholder="Party"
-                              />
-                              <button
-                                type="button"
+                            <div>
+                              <div 
                                 onClick={() => openPartylistModal(position.id, candidate.id)}
-                                className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+                                className={`w-full p-2 border border-gray-300 rounded text-black flex justify-between items-center cursor-pointer hover:border-blue-500 ${candidate.party ? 'bg-gray-50' : ''}`}
                               >
-                                Select
-                              </button>
+                                <span className={candidate.party ? 'text-black' : 'text-gray-400'}>
+                                  {candidate.party || "Select a partylist"}
+                                </span>
+                              </div>
                             </div>
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-black mb-1">
-                              Slogan (Optional)
+                              Slogan
                             </label>
                             <input
                               type="text"
-                              value={candidate.slogan}
+                              value={candidate.slogan || ''}
                               onChange={(e) => handleCandidateChange(position.id, candidate.id, "slogan", e.target.value)}
                               className="w-full p-2 border border-gray-300 rounded text-black"
                               placeholder="Campaign slogan"
@@ -2760,7 +2822,7 @@ export default function BallotPage() {
                             Platform/Description
                           </label>
                           <textarea
-                            value={candidate.platform}
+                            value={candidate.platform || ''}
                             onChange={(e) => handleCandidateChange(position.id, candidate.id, "platform", e.target.value)}
                             className="w-full p-2 border border-gray-300 rounded text-black"
                             rows={2}
@@ -2769,27 +2831,25 @@ export default function BallotPage() {
                         </div>
                       </>
                     )}
-                    </>
+                    {errors[`candidate-${candidate.id}-validation`] && (
+                      <p className="text-red-500 text-sm mt-1">{errors[`candidate-${candidate.id}-validation`]}</p>
                     )}
-                    
+                    {errors[`candidate-${candidate.id}-duplicate`] && (
+                      <p className="text-red-500 text-sm mt-1">{errors[`candidate-${candidate.id}-duplicate`]}</p>
+                    )}
+
                   </div>
                   <button
                     onClick={() => confirmDelete("candidate", candidate.id)}
                     className="ml-4 text-red-600 hover:text-red-800 p-2"
                     title="Delete candidate"
-                    disabled={position.candidates.length <= 1}
+                    disabled={position.candidates.length <= 2}
                   >
                     <Trash2 className="w-5 h-5" />
                   </button>
                 </div>
               </div>
             ))}
-
-            {errors[`position-candidates-${position.id}`] && (
-              <p className="text-red-500 text-sm mt-2 mb-2">
-                {errors[`position-candidates-${position.id}`]}
-              </p>
-            )}
 
             <button
               onClick={() => addCandidate(position.id)}
@@ -2859,4 +2919,22 @@ export default function BallotPage() {
       )}
     </div>
   );
+  } catch (error) {
+    console.error('Error rendering ballot component:', error);
+    return (
+      <div className="max-w-4xl mx-auto p-4">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <h2 className="text-lg font-bold mb-2">Application Error</h2>
+          <p>There was an error loading the ballot page. Please refresh the page and try again.</p>
+          <p className="text-sm mt-2">Error: {error.message}</p>
+        </div>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
+          Refresh Page
+        </button>
+      </div>
+    );
+  }
 }
