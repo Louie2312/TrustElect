@@ -1151,9 +1151,8 @@ exports.submitVote = async (req, res) => {
       [electionId, studentId]
     );
 
-    await client.query('COMMIT');
-
-    // Send vote receipt email
+    // Send vote receipt email BEFORE committing and releasing client
+    console.log('🚀 Starting vote receipt email process...');
     try {
       // Get student email and user ID for email sending
       const studentInfo = await client.query(
@@ -1164,8 +1163,11 @@ exports.submitVote = async (req, res) => {
         [studentId]
       );
 
+      console.log(`📊 Student info query result: ${studentInfo.rows.length} rows found`);
+      
       if (studentInfo.rows.length > 0) {
         const student = studentInfo.rows[0];
+        console.log(`👤 Student found: ${student.first_name} ${student.last_name} (${student.email})`);
         
         // Get election title
         const electionInfo = await client.query(
@@ -1174,6 +1176,7 @@ exports.submitVote = async (req, res) => {
         );
         
         const electionTitle = electionInfo.rows[0]?.title || 'Student Election';
+        console.log(`📋 Election title: ${electionTitle}`);
         
         // Get vote selections for email
         const voteSelections = await client.query(`
@@ -1193,6 +1196,8 @@ exports.submitVote = async (req, res) => {
           ORDER BY p.id
         `, [electionId, studentId]);
 
+        console.log(`🗳️ Vote selections found: ${voteSelections.rows.length} positions`);
+
         const receiptData = {
           electionTitle,
           voteDate: new Date().toISOString(),
@@ -1208,19 +1213,30 @@ exports.submitVote = async (req, res) => {
           }))
         };
 
+        console.log(`📧 Attempting to send vote receipt email to: ${student.email}`);
+        console.log(`📧 Receipt data prepared:`, JSON.stringify(receiptData, null, 2));
+
         // Send email receipt (don't await to avoid blocking the response)
         sendVoteReceiptEmail(student.user_id, student.email, receiptData)
           .then(result => {
             console.log(`✅ Vote receipt email sent successfully to ${student.email}`);
+            console.log(`✅ Email result:`, result);
           })
           .catch(error => {
             console.error(`❌ Failed to send vote receipt email to ${student.email}:`, error.message);
+            console.error(`❌ Error stack:`, error.stack);
           });
+      } else {
+        console.warn(`⚠️ No student info found for studentId: ${studentId}. Cannot send vote receipt email.`);
       }
     } catch (emailError) {
-      console.error('Error sending vote receipt email:', emailError);
+      console.error('❌ Error in vote receipt email process:', emailError);
+      console.error('❌ Error stack:', emailError.stack);
       // Don't fail the vote submission if email fails
     }
+
+    // Commit the transaction after email processing
+    await client.query('COMMIT');
 
     return res.status(200).json({
       success: true,

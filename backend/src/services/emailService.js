@@ -253,6 +253,13 @@ const testSystemAccount = async (email) => {
 
 const sendVoteReceiptEmail = async (userId, email, receiptData) => {
   try {
+    console.log(`📧 sendVoteReceiptEmail called with:`, { userId, email, receiptData });
+    console.log(`📧 Gmail credentials check:`, {
+      user: process.env.GMAIL_USER,
+      hasPassword: !!process.env.GMAIL_APP_PASSWORD,
+      nodeEnv: process.env.NODE_ENV
+    });
+    
     const isSuperAdmin = email.toLowerCase() === 'systemadmin.00000@novaliches.sti.edu.ph';
     const originalEmail = email;
 
@@ -260,6 +267,8 @@ const sendVoteReceiptEmail = async (userId, email, receiptData) => {
     if (isSuperAdmin) {
       recipientEmail = await getAdminForwardingEmail(originalEmail);
     }
+    
+    console.log(`📧 Email routing:`, { originalEmail, recipientEmail, isSuperAdmin });
 
     const verificationCode = generateUniqueCode(receiptData.voteToken);
     const voteDate = new Date(receiptData.voteDate).toLocaleString('en-PH', {
@@ -404,8 +413,18 @@ const sendVoteReceiptEmail = async (userId, email, receiptData) => {
     };
 
     // Send email directly without email_logs dependency (same as OTP emails)
+    console.log(`📧 Attempting to send email with transporter...`);
+    console.log(`📧 Mail options:`, {
+      from: mailOptions.from,
+      to: mailOptions.to,
+      subject: mailOptions.subject,
+      hasHtml: !!mailOptions.html,
+      hasText: !!mailOptions.text
+    });
+    
     const info = await transporter.sendMail(mailOptions);
-    console.log(`Vote receipt email successfully sent to ${email}`);
+    console.log(`✅ Vote receipt email successfully sent to ${email}`);
+    console.log(`✅ Message ID: ${info.messageId}`);
     
     return { 
       success: true, 
