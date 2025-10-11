@@ -1328,8 +1328,38 @@ export default function BallotPage() {
       }
 
 
-      if (candidate && candidate.first_name && candidate.last_name) {
-        // Check for duplicate candidates by name (only if student_number is not set)
+      if (isSymposiumElection) {
+        // For Symposium elections, only validate project title
+        if (candidate && candidate.first_name && candidate.first_name.trim()) {
+          const allCandidates = updatedPositions.flatMap(pos => pos.candidates);
+          const duplicateCount = allCandidates.filter(cand => 
+            cand.id !== candId && 
+            cand.first_name.toLowerCase().trim() === candidate.first_name.toLowerCase().trim()
+          ).length;
+
+          if (duplicateCount > 0) {
+            setErrors(prev => ({
+              ...prev,
+              [`candidate-${candId}-duplicate`]: 'This project title is already used.'
+            }));
+          } else {
+            setErrors(prev => {
+              const newErrors = { ...prev };
+              delete newErrors[`candidate-${candId}-duplicate`];
+              return newErrors;
+            });
+          }
+        } else {
+          // Clear validation error if project title is empty
+          setErrors(prev => {
+            const newErrors = { ...prev };
+            delete newErrors[`candidate-${candId}-validation`];
+            delete newErrors[`candidate-${candId}-duplicate`];
+            return newErrors;
+          });
+        }
+      } else if (candidate && candidate.first_name && candidate.last_name) {
+        // For regular elections, validate student names
         const allCandidates = updatedPositions.flatMap(pos => pos.candidates);
         const duplicateCount = allCandidates.filter(cand => 
           cand.id !== candId && 
@@ -1861,6 +1891,11 @@ export default function BallotPage() {
         cand => {
           const candidateType = getCandidateType(cand.id) || 'individual';
           
+          // For Symposium elections, only check if project title is empty
+          if (isSymposiumElection) {
+            return !cand.first_name.trim();
+          }
+          
           // For group candidates, only check if first_name (group name) is empty
           if (isMrMsSTIElection === true && candidateType === 'group') {
             return !cand.first_name.trim();
@@ -1876,7 +1911,9 @@ export default function BallotPage() {
           isMrMsSTIElection === true && (getCandidateType(cand.id) || 'individual') === 'group'
         );
         
-        if (hasGroupCandidates) {
+        if (isSymposiumElection) {
+          setApiError("Please fill in all project titles before adding a new one.");
+        } else if (hasGroupCandidates) {
           setApiError("Please fill in all candidate names (for groups) or student information (for individuals) before adding a new one.");
         } else {
           setApiError("Please fill in all candidate names or student numbers before adding a new one.");
@@ -2066,29 +2103,41 @@ export default function BallotPage() {
 
     ballot.positions.forEach((pos) => {
       pos.candidates.forEach((cand) => {
-        if (cand.first_name && (cand.last_name || isSymposiumElection)) {
-          const fullName = isSymposiumElection 
-            ? cand.first_name.toLowerCase() 
-            : `${cand.first_name.toLowerCase()} ${cand.last_name.toLowerCase()}`;
-          
-        // Check if student exists in the student list (skip for Symposium elections)
-        if (!isSymposiumElection) {
-          const studentExists = allStudents.some(student => 
-            student.first_name.toLowerCase() === cand.first_name.toLowerCase() && 
-            student.last_name.toLowerCase() === cand.last_name.toLowerCase()
-          );
-          
-          if (!studentExists) {
-            newErrors[`candidate-${cand.id}-validation`] = 'This student is not in the student list';
+        // For Symposium elections, only validate project title
+        if (isSymposiumElection) {
+          if (cand.first_name && cand.first_name.trim()) {
+            const projectTitle = cand.first_name.toLowerCase().trim();
+            
+            // Check for duplicate project titles
+            if (seenCandidates.has(projectTitle)) {
+              newErrors[`candidate-${cand.id}-duplicate`] = 'This project title is already used';
+              hasDuplicates = true;
+            } else {
+              seenCandidates.add(projectTitle);
+            }
           }
-        }
+        } else {
+          // For regular elections, validate student names
+          if (cand.first_name && cand.last_name) {
+            const fullName = `${cand.first_name.toLowerCase()} ${cand.last_name.toLowerCase()}`;
+            
+            // Check if student exists in the student list
+            const studentExists = allStudents.some(student => 
+              student.first_name.toLowerCase() === cand.first_name.toLowerCase() && 
+              student.last_name.toLowerCase() === cand.last_name.toLowerCase()
+            );
+            
+            if (!studentExists) {
+              newErrors[`candidate-${cand.id}-validation`] = 'This student is not in the student list';
+            }
 
-          // Check for duplicate candidates
-          if (seenCandidates.has(fullName)) {
-            newErrors[`candidate-${cand.id}-duplicate`] = 'This candidate is already a candidate';
-            hasDuplicates = true;
-          } else {
-            seenCandidates.add(fullName);
+            // Check for duplicate candidates
+            if (seenCandidates.has(fullName)) {
+              newErrors[`candidate-${cand.id}-duplicate`] = 'This candidate is already a candidate';
+              hasDuplicates = true;
+            } else {
+              seenCandidates.add(fullName);
+            }
           }
         }
       });
