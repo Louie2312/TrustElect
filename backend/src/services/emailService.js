@@ -16,7 +16,6 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-
 const logEmailStatus = async (userId, email, emailType, status, messageId = null, errorMessage = null, isSystemAccount = false, recipientEmail = null) => {
   try {
     await pool.query(
