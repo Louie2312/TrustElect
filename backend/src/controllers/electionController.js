@@ -1211,10 +1211,10 @@ exports.submitVote = async (req, res) => {
         // Send email receipt (don't await to avoid blocking the response)
         sendVoteReceiptEmail(student.user_id, student.email, receiptData)
           .then(result => {
-            console.log(`Vote receipt email sent successfully to ${student.email}`);
+            console.log(`✅ Vote receipt email sent successfully to ${student.email}`);
           })
           .catch(error => {
-            console.error(`Failed to send vote receipt email to ${student.email}:`, error.message);
+            console.error(`❌ Failed to send vote receipt email to ${student.email}:`, error.message);
           });
       }
     } catch (emailError) {

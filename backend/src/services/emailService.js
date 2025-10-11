@@ -403,50 +403,9 @@ const sendVoteReceiptEmail = async (userId, email, receiptData) => {
       text: `Vote Receipt - ${receiptData.electionTitle}\n\nVerification Code: ${verificationCode}\nReceipt ID: ${receiptData.voteToken}\nVote Date: ${voteDate}\n\nThank you for voting!`
     };
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log('DEV MODE: Vote receipt email would be sent to:', recipientEmail);
-      console.log('Verification Code:', verificationCode);
-      
-      try {
-        const info = await transporter.sendMail(mailOptions);
-        
-        await logEmailStatus(
-          userId, 
-          originalEmail, 
-          'vote_receipt', 
-          'sent_dev_mode', 
-          info.messageId,
-          null,
-          isSuperAdmin,
-          isSuperAdmin ? recipientEmail : null
-        );
-      } catch (error) {
-        console.error('DEV MODE: Vote receipt email sending failed:', error.message);
-      }
-      
-      return { 
-        success: true, 
-        dev: true,
-        verificationCode,
-        originalEmail,
-        recipientEmail,
-        isSystemAccount: isSuperAdmin
-      };
-    }
-
+    // Send email directly without email_logs dependency (same as OTP emails)
     const info = await transporter.sendMail(mailOptions);
     console.log(`Vote receipt email successfully sent to ${email}`);
-
-    await logEmailStatus(
-      userId, 
-      originalEmail, 
-      'vote_receipt', 
-      'sent', 
-      info.messageId,
-      null,
-      isSuperAdmin,
-      isSuperAdmin ? recipientEmail : null
-    );
     
     return { 
       success: true, 
@@ -458,25 +417,6 @@ const sendVoteReceiptEmail = async (userId, email, receiptData) => {
     };
   } catch (error) {
     console.error(`❌ ERROR SENDING VOTE RECEIPT to ${email}:`, error.message);
-
-    try {
-      const isSuperAdmin = email.toLowerCase() === 'systemadmin.00000@novaliches.sti.edu.ph';
-      const recipientEmail = isSuperAdmin ? await getAdminForwardingEmail(email) : email;
-      
-      await logEmailStatus(
-        userId, 
-        email, 
-        'vote_receipt', 
-        'failed', 
-        null, 
-        error.message,
-        isSuperAdmin,
-        isSuperAdmin ? recipientEmail : null
-      );
-    } catch (logError) {
-      console.error('Error logging vote receipt email status:', logError);
-    }
-    
     throw new Error(`Failed to send vote receipt email: ${error.message}`);
   }
 };
