@@ -357,8 +357,11 @@ export default function LoginForm({ onClose }) {
       );
       
       if (response.data.success) {
+        // Get the user role before clearing cookies
+        const role = Cookies.get("role");
+        
+        // Clear sensitive data but keep role for navigation
         Cookies.remove("token");
-        Cookies.remove("role");
         Cookies.remove("email");
         Cookies.remove("userId");
         
@@ -368,21 +371,21 @@ export default function LoginForm({ onClose }) {
         }
         
         localStorage.removeItem("token");
-        localStorage.removeItem("role");
         localStorage.removeItem("email");
         localStorage.removeItem("userId");
         
+        // Clear form data
         setEmail("");
         setPassword("");
         setOtp("");
         setNewPassword("");
         setConfirmPassword("");
         setIsFirstLogin(false);
-
         setError("");
-        setResendMessage("Password changed successfully. Please login again with your new password.");
+        setResendMessage("");
 
-        setStep(1);
+        // Navigate to dashboard based on role
+        navigateToDashboard(role);
       } else {
         throw new Error("Password change failed. Please try again.");
       }
@@ -401,6 +404,11 @@ export default function LoginForm({ onClose }) {
       router.push("/admin");
     } else if (role === "Student") {
       router.push("/student");
+    } else {
+      // Fallback: redirect to login if role is not recognized
+      console.warn("Unknown role:", role);
+      setError("Authentication error. Please login again.");
+      setStep(1);
     }
   };
 
