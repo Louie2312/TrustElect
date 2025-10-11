@@ -357,22 +357,14 @@ export default function LoginForm({ onClose }) {
       );
       
       if (response.data.success) {
-        // Get the user role before clearing cookies
-        const role = Cookies.get("role");
+        // Get the user role and check authentication status
+        const role = Cookies.get("role") || localStorage.getItem("role");
+        const token = Cookies.get("token") || localStorage.getItem("token");
+        console.log("User role before navigation:", role); // Debug log
+        console.log("Token exists:", !!token); // Debug log
         
-        // Clear sensitive data but keep role for navigation
-        Cookies.remove("token");
-        Cookies.remove("email");
-        Cookies.remove("userId");
-        
-        if (Cookies.get("studentId")) {
-          Cookies.remove("studentId");
-          localStorage.removeItem("studentId");
-        }
-        
-        localStorage.removeItem("token");
-        localStorage.removeItem("email");
-        localStorage.removeItem("userId");
+        // DON'T clear authentication data - user should remain logged in
+        // Only clear form data and reset first login flag
         
         // Clear form data
         setEmail("");
@@ -384,8 +376,22 @@ export default function LoginForm({ onClose }) {
         setError("");
         setResendMessage("");
 
-        // Navigate to dashboard based on role
-        navigateToDashboard(role);
+        // Close the login modal first
+        if (onClose) {
+          onClose();
+        }
+
+        // Navigate to dashboard based on role (with small delay to ensure modal closes)
+        if (role) {
+          console.log("Navigating to dashboard for role:", role); // Debug log
+          setTimeout(() => {
+            navigateToDashboard(role);
+          }, 100); // Small delay to ensure modal closes
+        } else {
+          console.error("No role found, redirecting to login");
+          setError("Authentication error. Please login again.");
+          setStep(1);
+        }
       } else {
         throw new Error("Password change failed. Please try again.");
       }
@@ -398,11 +404,16 @@ export default function LoginForm({ onClose }) {
   };
   
   const navigateToDashboard = (role) => {
+    console.log("navigateToDashboard called with role:", role); // Debug log
+    
     if (role === "Super Admin") {
+      console.log("Redirecting to Super Admin dashboard");
       router.push("/superadmin");
     } else if (role === "Admin") {
+      console.log("Redirecting to Admin dashboard");
       router.push("/admin");
     } else if (role === "Student") {
+      console.log("Redirecting to Student dashboard");
       router.push("/student");
     } else {
       // Fallback: redirect to login if role is not recognized
