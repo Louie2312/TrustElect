@@ -782,6 +782,7 @@ export default function Home() {
         </div>
       </section>
 
+
       {/* New About Us Section */}
       <section className="py-20 px-6 bg-white">
         <div className="container mx-auto max-w-6xl">
