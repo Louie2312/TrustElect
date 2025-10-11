@@ -24,6 +24,7 @@ const notificationService = require('../services/notificationService');
 const cryptoService = require('../utils/cryptoService');
 const electionModel = require("../models/electionModel");
 const { validateStudentVotingIP } = require('../models/laboratoryPrecinctModel');
+const { sendVoteReceiptEmail } = require('../services/emailService');
 
 // Enhanced IP validation function that supports both private and public IPs
 const validateClientIP = async (client, req, studentId, electionId) => {
@@ -1150,6 +1151,75 @@ exports.submitVote = async (req, res) => {
     );
 
     await client.query('COMMIT');
+
+    // Send vote receipt email
+    try {
+      // Get student email and user ID for email sending
+      const studentInfo = await client.query(
+        `SELECT s.email, u.id as user_id, s.first_name, s.last_name, s.student_number
+         FROM students s 
+         JOIN users u ON s.email = u.email 
+         WHERE s.id = $1`,
+        [studentId]
+      );
+
+      if (studentInfo.rows.length > 0) {
+        const student = studentInfo.rows[0];
+        
+        // Get election title
+        const electionInfo = await client.query(
+          `SELECT title FROM elections WHERE id = $1`,
+          [electionId]
+        );
+        
+        const electionTitle = electionInfo.rows[0]?.title || 'Student Election';
+        
+        // Get vote selections for email
+        const voteSelections = await client.query(`
+          SELECT 
+            p.position_name,
+            json_agg(
+              json_build_object(
+                'name', CONCAT(c.first_name, ' ', c.last_name),
+                'party', c.party
+              )
+            ) as candidates
+          FROM votes v
+          JOIN positions p ON v.position_id = p.id
+          JOIN candidates c ON v.candidate_id = c.id
+          WHERE v.election_id = $1 AND v.student_id = $2
+          GROUP BY p.position_name, p.id
+          ORDER BY p.id
+        `, [electionId, studentId]);
+
+        const receiptData = {
+          electionTitle,
+          voteDate: new Date().toISOString(),
+          voteToken,
+          student: {
+            firstName: student.first_name,
+            lastName: student.last_name,
+            studentId: student.student_number
+          },
+          selections: voteSelections.rows.map(row => ({
+            position: row.position_name,
+            candidates: row.candidates
+          }))
+        };
+
+        // Send email receipt (don't await to avoid blocking the response)
+        sendVoteReceiptEmail(student.user_id, student.email, receiptData)
+          .then(result => {
+            console.log(`Vote receipt email sent successfully to ${student.email}`);
+          })
+          .catch(error => {
+            console.error(`Failed to send vote receipt email to ${student.email}:`, error.message);
+          });
+      }
+    } catch (emailError) {
+      console.error('Error sending vote receipt email:', emailError);
+      // Don't fail the vote submission if email fails
+    }
 
     return res.status(200).json({
       success: true,
