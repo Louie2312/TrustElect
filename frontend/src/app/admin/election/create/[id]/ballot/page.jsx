@@ -212,20 +212,25 @@ const PreviewModal = ({ ballot, election, onConfirm, onCancel, isMrMsSTIElection
                             (candidateTypes && candidateTypes[candidate.id] === 'group') || 
                             (candidate.first_name && !candidate.last_name)
                           );
-                          return isGroup;
+                          const isSymposium = isSymposiumElection === true;
+                          return isGroup || isSymposium;
                         } catch (error) {
                           console.warn('Error checking candidate type:', error);
                           return false;
                         }
                       })() ? (
-                        <p className="font-medium text-black"><span className="text-black font-bold">Group/Band Name:</span> {candidate.first_name}</p>
+                        <p className="font-medium text-black">
+                          <span className="text-black font-bold">
+                            {isSymposiumElection ? 'Project Title:' : 'Group/Band Name:'}
+                          </span> {candidate.first_name}
+                        </p>
                       ) : (
                         <p className="font-medium text-black"><span className="text-black font-bold">Full Name:</span> {formatNameSimple(candidate.last_name, candidate.first_name, candidate.name)}</p>
                       )}
-                      {(isMrMsSTIElection !== true) && candidate.party && <p className="text-black"><span className="text-black font-bold">Partylist:</span> {candidate.party}</p>}
+                      {(isMrMsSTIElection !== true) && !isSymposiumElection && candidate.party && <p className="text-black"><span className="text-black font-bold">Partylist:</span> {candidate.party}</p>}
                   
-                      {(isMrMsSTIElection !== true) && candidate.slogan && <p className="text-sm  text-black"><span className="text-black font-bold">Slogan:</span>{candidate.slogan}</p>}
-                      {(isMrMsSTIElection !== true) && candidate.platform && <p className="text-sm text-black"><span className="text-black font-bold">Description/Platform: </span> {candidate.platform}</p>}
+                      {(isMrMsSTIElection !== true) && !isSymposiumElection && candidate.slogan && <p className="text-sm  text-black"><span className="text-black font-bold">Slogan:</span>{candidate.slogan}</p>}
+                      {(isMrMsSTIElection !== true) && candidate.platform && <p className="text-sm text-black"><span className="text-black font-bold">{isSymposiumElection ? 'Project Description:' : 'Description/Platform:'} </span> {candidate.platform}</p>}
                     </div>
                   </div>
                 ))}
@@ -502,6 +507,7 @@ export default function BallotPage() {
   const [showBackConfirmation, setShowBackConfirmation] = useState(false);
   const [isStudentCouncilElection, setIsStudentCouncilElection] = useState(false);
   const [isMrMsSTIElection, setIsMrMsSTIElection] = useState(false);
+  const [isSymposiumElection, setIsSymposiumElection] = useState(false);
   const [studentCouncilPositions, setStudentCouncilPositions] = useState([]);
   const [partylists, setPartylists] = useState([]);
   const [partylistCandidates, setPartylistCandidates] = useState({});
@@ -756,6 +762,9 @@ export default function BallotPage() {
           // Fetch Mr/Ms STI positions when this election type is detected
           // The hook will auto-fetch, but we can also call it explicitly
           fetchMrMsSTIPositions();
+        } else if (electionData.election_type && 
+                   electionData.election_type.toLowerCase().includes("symposium")) {
+          setIsSymposiumElection(true);
         }
         
         // Try to fetch existing ballot
@@ -1932,6 +1941,10 @@ export default function BallotPage() {
         if (!candidate.first_name) {
           throw new Error("Group name is required");
         }
+      } else if (isSymposiumElection === true) {
+        if (!candidate.first_name) {
+          throw new Error("Project title is required");
+        }
       } else {
         if (!candidate.first_name || !candidate.last_name) {
           throw new Error("First name and last name are required");
@@ -1940,22 +1953,30 @@ export default function BallotPage() {
   
       const formData = new FormData();
      
-      // For group candidates in Mr/Ms STI elections, only use first_name as the group name
-      if (isMrMsSTIElection === true && candidateType === 'group') {
+      // For group candidates in Mr/Ms STI elections or Symposium elections, only use first_name
+      if ((isMrMsSTIElection === true && candidateType === 'group') || isSymposiumElection === true) {
         formData.append('firstName', candidate.first_name);
-        formData.append('lastName', ''); // Empty for groups
-        formData.append('candidateType', 'group');
+        formData.append('lastName', ''); // Empty for groups/symposium
+        formData.append('candidateType', isSymposiumElection ? 'symposium' : 'group');
       } else {
         formData.append('firstName', candidate.first_name);
         formData.append('lastName', candidate.last_name);
         formData.append('candidateType', 'individual');
       }
       
-      // Only add campaign fields for non-Mr/Ms STI elections
+      // Only add campaign fields for non-Mr/Ms STI elections, but handle Symposium differently
       if (isMrMsSTIElection !== true) {
-        formData.append('party', candidate.party || '');
-        formData.append('slogan', candidate.slogan || '');
-        formData.append('platform', candidate.platform || '');
+        if (isSymposiumElection === true) {
+          // For Symposium, only add platform (project description)
+          formData.append('party', '');
+          formData.append('slogan', '');
+          formData.append('platform', candidate.platform || '');
+        } else {
+          // For regular elections, add all campaign fields
+          formData.append('party', candidate.party || '');
+          formData.append('slogan', candidate.slogan || '');
+          formData.append('platform', candidate.platform || '');
+        }
       }
       
       if (candidate._pendingImage) {
@@ -2045,10 +2066,13 @@ export default function BallotPage() {
 
     ballot.positions.forEach((pos) => {
       pos.candidates.forEach((cand) => {
-        if (cand.first_name && cand.last_name) {
-          const fullName = `${cand.first_name.toLowerCase()} ${cand.last_name.toLowerCase()}`;
+        if (cand.first_name && (cand.last_name || isSymposiumElection)) {
+          const fullName = isSymposiumElection 
+            ? cand.first_name.toLowerCase() 
+            : `${cand.first_name.toLowerCase()} ${cand.last_name.toLowerCase()}`;
           
-          // Check if student exists in the student list
+        // Check if student exists in the student list (skip for Symposium elections)
+        if (!isSymposiumElection) {
           const studentExists = allStudents.some(student => 
             student.first_name.toLowerCase() === cand.first_name.toLowerCase() && 
             student.last_name.toLowerCase() === cand.last_name.toLowerCase()
@@ -2057,6 +2081,7 @@ export default function BallotPage() {
           if (!studentExists) {
             newErrors[`candidate-${cand.id}-validation`] = 'This student is not in the student list';
           }
+        }
 
           // Check for duplicate candidates
           if (seenCandidates.has(fullName)) {
@@ -2541,8 +2566,8 @@ export default function BallotPage() {
                   </div>
 
                   <div className="flex-1">
-                    {/* Candidate Type Selector for Mr/Ms STI elections */}
-                    {isMrMsSTIElection === true && (
+                    {/* Candidate Type Selector for Mr/Ms STI elections (not needed for Symposium) */}
+                    {isMrMsSTIElection === true && !isSymposiumElection && (
                       <div className="mb-4">
                         <label className="block text-sm font-medium text-black mb-2">
                           Candidate Type
@@ -2595,16 +2620,17 @@ export default function BallotPage() {
                           (candidateTypes && candidateTypes[candidate.id] === 'group') || 
                           (candidate.first_name && !candidate.last_name)
                         );
-                        return isGroup;
+                        const isSymposium = isSymposiumElection === true;
+                        return isGroup || isSymposium;
                       } catch (error) {
                         console.warn('Error checking candidate type:', error);
                         return false;
                       }
                     })() ? (
-                      /* Group/Band form - only name field */
+                      /* Group/Band/Symposium form - only name field */
                       <div className="mb-3">
                         <label className="block text-sm font-medium text-black mb-1">
-                          Group/Band Name
+                          {isSymposiumElection ? 'Project Title' : 'Group/Band Name'}
                         </label>
                         <input
                           type="text"
@@ -2613,7 +2639,7 @@ export default function BallotPage() {
                           className={`w-full p-2 border rounded text-black ${
                             errors[`candidate-fn-${candidate.id}`] ? "border-red-500" : "border-gray-300"
                           }`}
-                          placeholder="Enter group or band name"
+                          placeholder={isSymposiumElection ? "Enter project title" : "Enter group or band name"}
                         />
                         {errors[`candidate-fn-${candidate.id}`] && (
                           <p className="text-red-500 text-sm mt-1 text-black">{errors[`candidate-fn-${candidate.id}`]}</p>
@@ -2784,49 +2810,52 @@ export default function BallotPage() {
                         </>
                     )}
 
-                    {/* Only show campaign fields for non-Mr/Ms STI elections */}
+                    {/* Only show campaign fields for non-Mr/Ms STI elections, but show platform for Symposium */}
                     {(isMrMsSTIElection !== true) && (
                       <>
-                        <div className="grid grid-cols-2 gap-3 mb-3">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Partylist
-                            </label>
+                        {/* Hide partylist and slogan for Symposium elections */}
+                        {!isSymposiumElection && (
+                          <div className="grid grid-cols-2 gap-3 mb-3">
                             <div>
-                              <div 
-                                onClick={() => openPartylistModal(position.id, candidate.id)}
-                                className={`w-full p-2 border border-gray-300 rounded text-black flex justify-between items-center cursor-pointer hover:border-blue-500 ${candidate.party ? 'bg-gray-50' : ''}`}
-                              >
-                                <span className={candidate.party ? 'text-black' : 'text-gray-400'}>
-                                  {candidate.party || "Select a partylist"}
-                                </span>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Partylist
+                              </label>
+                              <div>
+                                <div 
+                                  onClick={() => openPartylistModal(position.id, candidate.id)}
+                                  className={`w-full p-2 border border-gray-300 rounded text-black flex justify-between items-center cursor-pointer hover:border-blue-500 ${candidate.party ? 'bg-gray-50' : ''}`}
+                                >
+                                  <span className={candidate.party ? 'text-black' : 'text-gray-400'}>
+                                    {candidate.party || "Select a partylist"}
+                                  </span>
+                                </div>
                               </div>
                             </div>
+                            <div>
+                              <label className="block text-sm font-medium text-black mb-1">
+                                Slogan
+                              </label>
+                              <input
+                                type="text"
+                                value={candidate.slogan || ''}
+                                onChange={(e) => handleCandidateChange(position.id, candidate.id, "slogan", e.target.value)}
+                                className="w-full p-2 border border-gray-300 rounded text-black"
+                            
+                              />
+                            </div>
                           </div>
-                          <div>
-                            <label className="block text-sm font-medium text-black mb-1">
-                              Slogan
-                            </label>
-                            <input
-                              type="text"
-                              value={candidate.slogan || ''}
-                              onChange={(e) => handleCandidateChange(position.id, candidate.id, "slogan", e.target.value)}
-                              className="w-full p-2 border border-gray-300 rounded text-black"
-                              placeholder="Campaign slogan"
-                            />
-                          </div>
-                        </div>
+                        )}
 
                         <div>
                           <label className="block text-sm font-medium text-black mb-1">
-                            Platform/Description
+                            {isSymposiumElection ? 'Project Description' : 'Platform/Description'}
                           </label>
                           <textarea
                             value={candidate.platform || ''}
                             onChange={(e) => handleCandidateChange(position.id, candidate.id, "platform", e.target.value)}
                             className="w-full p-2 border border-gray-300 rounded text-black"
                             rows={2}
-                            placeholder="Candidate platform or bio"
+                            placeholder={isSymposiumElection ? "Enter project description" : "Candidate platform or bio"}
                           />
                         </div>
                       </>
