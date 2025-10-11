@@ -7,7 +7,7 @@ import axios from 'axios';
 import Cookies from 'js-cookie';
 import { use } from 'react';
 import { toast } from 'react-hot-toast';
-import { generateUniqueCode } from '../../../utils/verificationCodeGenerator';
+import { generateUniqueCode } from '../../../../utils/verificationCodeGenerator';
 
 // Import html2canvas via client-side only
 let html2canvas = null;
