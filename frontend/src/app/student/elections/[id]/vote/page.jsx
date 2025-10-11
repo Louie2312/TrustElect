@@ -8,7 +8,6 @@ import axios from 'axios';
 import { use } from 'react';
 import Image from 'next/image';
 import { toast } from 'react-hot-toast';
-import { generateUniqueCode } from '../../../utils/verificationCodeGenerator';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
